@@ -1,0 +1,110 @@
+import React from 'react';
+import { View, Text, Dimensions } from 'react-native';
+import Svg, { Rect } from 'react-native-svg';
+import type { GradePyramidRow } from '../../db/queries';
+
+const SCREEN_WIDTH = Dimensions.get('window').width;
+const CHART_H = 26;
+const LABEL_W = 38;
+const COUNT_W = 32;
+// Inside card with mx-4 (32) and card p-4 (32)
+const BAR_AREA = SCREEN_WIDTH - 64 - LABEL_W - COUNT_W;
+
+interface SessionPyramidChartProps {
+  pyramid: GradePyramidRow[];
+}
+
+export function SessionPyramidChart({ pyramid }: SessionPyramidChartProps) {
+  if (!pyramid || pyramid.length === 0) {
+    return (
+      <View className="bg-card mx-4 rounded-2xl p-4 border border-border mb-4 items-center">
+        <Text className="text-muted text-xs">No grade data recorded for this session</Text>
+      </View>
+    );
+  }
+
+  const maxTotal = pyramid.reduce((max, r) => {
+    const t = r.flashes + r.sends + r.attempts;
+    return Math.max(max, t);
+  }, 1);
+
+  return (
+    <View className="bg-card mx-4 rounded-2xl p-4 border border-border mb-4">
+      <View className="flex-row items-center justify-between mb-3">
+        <Text className="text-white font-bold text-base">Session Grade Pyramid</Text>
+        <Text className="text-muted text-xs">Volume per grade</Text>
+      </View>
+
+      {/* Rows */}
+      {pyramid.map((row) => {
+        const total = row.flashes + row.sends + row.attempts;
+        const scaleF = total > 0 ? BAR_AREA / Math.max(maxTotal, 1) : 0;
+        const flashW = row.flashes * scaleF;
+        const sendW = row.sends * scaleF;
+        const attemptW = row.attempts * scaleF;
+
+        return (
+          <View key={row.gradeRaw} className="flex-row items-center mb-2">
+            <Text style={{ width: LABEL_W }} className="text-secondary text-xs font-black">
+              {row.gradeRaw}
+            </Text>
+
+            <Svg width={BAR_AREA} height={CHART_H}>
+              {/* Background track */}
+              <Rect x={0} y={3} width={BAR_AREA} height={CHART_H - 6} fill="#1E1E1E" rx={5} />
+
+              {/* Flash segment (Green) */}
+              {row.flashes > 0 && (
+                <Rect x={0} y={3} width={flashW} height={CHART_H - 6} fill="#22C55E" rx={5} />
+              )}
+
+              {/* Send segment (Purple) */}
+              {row.sends > 0 && (
+                <Rect
+                  x={flashW}
+                  y={3}
+                  width={sendW}
+                  height={CHART_H - 6}
+                  fill="#A78BFA"
+                  rx={row.flashes > 0 ? 0 : 5}
+                />
+              )}
+
+              {/* Attempt segment (Gray) */}
+              {row.attempts > 0 && (
+                <Rect
+                  x={flashW + sendW}
+                  y={3}
+                  width={attemptW}
+                  height={CHART_H - 6}
+                  fill="#374151"
+                  rx={row.flashes === 0 && row.sends === 0 ? 5 : 0}
+                />
+              )}
+            </Svg>
+
+            <Text style={{ width: COUNT_W }} className="text-secondary text-xs font-semibold text-right">
+              {total}
+            </Text>
+          </View>
+        );
+      })}
+
+      {/* Legend */}
+      <View className="flex-row items-center justify-center gap-5 mt-3 pt-3 border-t border-border/50">
+        <View className="flex-row items-center gap-1.5">
+          <View className="w-2.5 h-2.5 rounded-sm bg-flash" />
+          <Text className="text-secondary text-[11px] font-semibold">Flash</Text>
+        </View>
+        <View className="flex-row items-center gap-1.5">
+          <View className="w-2.5 h-2.5 rounded-sm bg-send" />
+          <Text className="text-secondary text-[11px] font-semibold">Top</Text>
+        </View>
+        <View className="flex-row items-center gap-1.5">
+          <View className="w-2.5 h-2.5 rounded-sm bg-[#374151]" />
+          <Text className="text-secondary text-[11px] font-semibold">Attempt</Text>
+        </View>
+      </View>
+    </View>
+  );
+}

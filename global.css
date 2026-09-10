@@ -1,0 +1,4 @@
+/* NativeWind v4 global stylesheet — must be imported in _layout.tsx */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
