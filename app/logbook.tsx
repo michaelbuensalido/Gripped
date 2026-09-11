@@ -20,7 +20,7 @@ import {
   Plus,
   Compass,
 } from 'lucide-react-native';
-import { Video as ExpoVideo, ResizeMode } from 'expo-av';
+import { VideoPlayerView } from '../components/ui/VideoPlayerView';
 import { ScreenContainer } from '../components/ui/ScreenContainer';
 import { FLOATING_CARD_STYLE, THEME_COLORS } from '../constants/theme';
 import {
@@ -986,13 +986,12 @@ export default function LogbookScreen() {
                       resizeMode="contain"
                     />
                   ) : (
-                    <ExpoVideo
-                      source={{ uri: activePreviewBeta.mediaUri }}
+                    <VideoPlayerView
+                      uri={activePreviewBeta.mediaUri}
                       style={{ width: '100%', height: '100%' }}
-                      resizeMode={ResizeMode.CONTAIN}
-                      useNativeControls
-                      isLooping
-                      shouldPlay
+                      nativeControls
+                      loop
+                      autoPlay
                     />
                   )
                 ) : (

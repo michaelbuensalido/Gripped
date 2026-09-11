@@ -17,7 +17,7 @@ import {
   type CameraType,
   type FlashMode,
 } from 'expo-camera';
-import { Video, ResizeMode } from 'expo-av';
+import { VideoPlayerView } from '../ui/VideoPlayerView';
 import * as FileSystem from 'expo-file-system/legacy';
 import { Asset } from 'expo-asset';
 import {
@@ -469,13 +469,12 @@ export function BetaCamModal({
             {/* Viewport */}
             <View style={styles.mediaViewport}>
               {capturedMedia.type === 'video' ? (
-                <Video
-                  source={{ uri: capturedMedia.uri }}
+                <VideoPlayerView
+                  uri={capturedMedia.uri}
                   style={StyleSheet.absoluteFill}
-                  resizeMode={ResizeMode.CONTAIN}
-                  isLooping
-                  shouldPlay
-                  useNativeControls={false}
+                  nativeControls={false}
+                  loop
+                  autoPlay
                 />
               ) : (
                 <Image

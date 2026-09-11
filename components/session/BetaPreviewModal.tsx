@@ -8,7 +8,7 @@ import {
   Image,
   Dimensions,
 } from 'react-native';
-import { Video, ResizeMode } from 'expo-av';
+import { VideoPlayerView } from '../ui/VideoPlayerView';
 import { X, Trash2, RotateCcw, Check, Film, Camera } from 'lucide-react-native';
 import { triggerHaptic } from '../../utils/haptics';
 import type { Outcome } from '../../types';
@@ -103,13 +103,12 @@ export function BetaPreviewModal({
           {/* Media Viewport */}
           <View style={styles.viewport}>
             {mediaType === 'video' ? (
-              <Video
-                source={{ uri: mediaUri }}
+              <VideoPlayerView
+                uri={mediaUri}
                 style={StyleSheet.absoluteFill}
-                resizeMode={ResizeMode.CONTAIN}
-                useNativeControls
-                isLooping
-                shouldPlay
+                nativeControls
+                loop
+                autoPlay
               />
             ) : (
               <Image
