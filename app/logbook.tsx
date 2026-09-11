@@ -979,7 +979,10 @@ export default function LogbookScreen() {
             >
               {activePreviewBeta && (
                 activePreviewBeta.mediaUri && activePreviewBeta.mediaUri.startsWith('file://') ? (
-                  activePreviewBeta.mediaType === 'photo' ? (
+                  activePreviewBeta.mediaType === 'photo' ||
+                  activePreviewBeta.mediaUri.endsWith('.jpg') ||
+                  activePreviewBeta.mediaUri.endsWith('.png') ||
+                  activePreviewBeta.mediaUri.endsWith('.jpeg') ? (
                     <Image
                       source={{ uri: activePreviewBeta.mediaUri }}
                       style={{ width: '100%', height: '100%' }}

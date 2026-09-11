@@ -21,6 +21,7 @@ import { GRADES, GRADE_BY_LABEL } from '../../constants/grades';
 import {
   estimateRouteGrade,
   getWallAngleCategory,
+  RouteAnnotationPayload,
 } from '../../services/gradeEstimator';
 
 interface GradeEstimationSheetProps {
@@ -28,6 +29,7 @@ interface GradeEstimationSheetProps {
   angleDegrees: number;
   userMedianGrade?: string;
   initialPickerOpen?: boolean;
+  annotationPayload?: RouteAnnotationPayload;
   onAccept: (grade: string, notes: string) => void;
   onRetake: () => void;
   onClose: () => void;
@@ -38,13 +40,14 @@ export function GradeEstimationSheet({
   angleDegrees,
   userMedianGrade = 'V4',
   initialPickerOpen = false,
+  annotationPayload,
   onAccept,
   onRetake,
   onClose,
 }: GradeEstimationSheetProps) {
   const estimation = useMemo(
-    () => estimateRouteGrade({ angleDegrees, userMedianGrade }),
-    [angleDegrees, userMedianGrade]
+    () => estimateRouteGrade({ angleDegrees, userMedianGrade, annotationPayload }),
+    [angleDegrees, userMedianGrade, annotationPayload]
   );
 
   const [selectedGrade, setSelectedGrade] = useState<string>(estimation.estimatedGrade);
@@ -70,7 +73,14 @@ export function GradeEstimationSheet({
 
   const handleConfirm = () => {
     triggerHaptic('success');
-    const noteText = `Wall: ${wallInfo.angleDegrees}° ${wallInfo.category} • Estimated: ${estimation.estimatedGrade}`;
+    let noteText = `Wall: ${wallInfo.angleDegrees}° ${wallInfo.category}`;
+    if (estimation.annotationSummary) {
+      noteText += ` • ${estimation.annotationSummary.holdCount} holds (Crux ~${estimation.annotationSummary.maxSpanCm}cm)`;
+      if (estimation.annotationSummary.routeColor) {
+        noteText += ` • ${estimation.annotationSummary.routeColor}`;
+      }
+    }
+    noteText += ` • AI Grade: ${estimation.estimatedGrade}`;
     onAccept(selectedGrade, noteText);
   };
 
@@ -116,6 +126,43 @@ export function GradeEstimationSheet({
                 </View>
               ))}
             </View>
+
+            {/* Spatial Route Isolation Telemetry */}
+            {estimation.annotationSummary && (
+              <View style={styles.telemetryRow}>
+                <View style={styles.telemetryMetric}>
+                  <Text style={styles.telemetryLabel}>HOLDS</Text>
+                  <Text style={styles.telemetryVal}>
+                    {estimation.annotationSummary.holdCount}
+                  </Text>
+                </View>
+                <View style={styles.telemetryDivider} />
+                <View style={styles.telemetryMetric}>
+                  <Text style={styles.telemetryLabel}>CRUX SPAN</Text>
+                  <Text style={styles.telemetryVal}>
+                    ~{estimation.annotationSummary.maxSpanCm}cm
+                  </Text>
+                </View>
+                <View style={styles.telemetryDivider} />
+                <View style={styles.telemetryMetric}>
+                  <Text style={styles.telemetryLabel}>AVG REACH</Text>
+                  <Text style={styles.telemetryVal}>
+                    ~{estimation.annotationSummary.averageSpanCm}cm
+                  </Text>
+                </View>
+                {estimation.annotationSummary.routeColor && (
+                  <>
+                    <View style={styles.telemetryDivider} />
+                    <View style={styles.telemetryMetric}>
+                      <Text style={styles.telemetryLabel}>COLOR</Text>
+                      <Text style={styles.telemetryVal}>
+                        {estimation.annotationSummary.routeColor}
+                      </Text>
+                    </View>
+                  </>
+                )}
+              </View>
+            )}
           </View>
 
           {/* Manual Override Accordion */}
@@ -313,6 +360,39 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '600',
     color: '#E0E0E8',
+  },
+  telemetryRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-around',
+    width: '100%',
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.06)',
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    marginTop: 14,
+  },
+  telemetryMetric: {
+    alignItems: 'center',
+  },
+  telemetryLabel: {
+    fontSize: 9,
+    fontWeight: '800',
+    letterSpacing: 1.1,
+    color: '#8A8A98',
+    marginBottom: 2,
+  },
+  telemetryVal: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#8E7CFF',
+  },
+  telemetryDivider: {
+    width: 1,
+    height: 24,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
   },
   overrideSection: {
     marginBottom: 14,

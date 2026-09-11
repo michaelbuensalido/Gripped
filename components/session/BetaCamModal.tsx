@@ -31,10 +31,13 @@ import {
   RefreshCw,
   Sparkles,
   Compass,
+  Target,
 } from 'lucide-react-native';
 import { triggerHaptic } from '../../utils/haptics';
 import { useWallAngle } from '../../hooks/useWallAngle';
 import { GradeEstimationSheet } from './GradeEstimationSheet';
+import { HoldAnnotatorCanvas } from './HoldAnnotatorCanvas';
+import { RouteAnnotationPayload } from '../../services/gradeEstimator';
 
 interface BetaCamModalProps {
   visible: boolean;
@@ -51,6 +54,7 @@ interface BetaCamModalProps {
   autoSimulatorBypass?: boolean;
   testReview?: boolean;
   testSetGrader?: boolean;
+  testHoldAnnotator?: boolean;
   testAngle?: number;
   testPickerOpen?: boolean;
 }
@@ -71,6 +75,7 @@ export function BetaCamModal({
   autoSimulatorBypass = false,
   testReview = false,
   testSetGrader = false,
+  testHoldAnnotator = false,
   testAngle,
   testPickerOpen = false,
 }: BetaCamModalProps) {
@@ -95,6 +100,8 @@ export function BetaCamModal({
   const wallAngle = useWallAngle(visible);
   const [capturedAngle, setCapturedAngle] = useState<number | null>(null);
   const [showEstimationSheet, setShowEstimationSheet] = useState(false);
+  const [annotationPayload, setAnnotationPayload] = useState<RouteAnnotationPayload | null>(null);
+  const [showHoldAnnotator, setShowHoldAnnotator] = useState(testHoldAnnotator || false);
 
   // Angle stability detection (switches leveling dot green when held steady)
   const [isStable, setIsStable] = useState(true);
@@ -146,23 +153,35 @@ export function BetaCamModal({
       if (testAngle !== undefined) {
         wallAngle.setAngle(testAngle);
       }
-      if (testSetGrader) {
+      if (testHoldAnnotator) {
+        setCapturedMedia({
+          uri: 'https://images.unsplash.com/photo-1522163182402-834f871fd851?auto=format&fit=crop&w=800&q=80',
+          type: 'photo',
+        });
+        setCapturedAngle(testAngle ?? 35);
+        setShowHoldAnnotator(true);
+        setShowEstimationSheet(false);
+      } else if (testSetGrader) {
         setCapturedMedia({
           uri: 'https://images.unsplash.com/photo-1522163182402-834f871fd851?auto=format&fit=crop&w=800&q=80',
           type: 'photo',
         });
         setCapturedAngle(testAngle ?? 35);
         setShowEstimationSheet(true);
+        setShowHoldAnnotator(false);
       } else if (testReview) {
         setCapturedMedia({
           uri: 'https://images.unsplash.com/photo-1522163182402-834f871fd851?auto=format&fit=crop&w=800&q=80',
           type: 'photo',
         });
         setShowEstimationSheet(false);
+        setShowHoldAnnotator(false);
       } else {
         setCapturedMedia(null);
         setShowEstimationSheet(false);
+        setShowHoldAnnotator(false);
         setCapturedAngle(null);
+        setAnnotationPayload(null);
       }
       setIsRecording(false);
       setRecordingSeconds(0);
@@ -171,7 +190,7 @@ export function BetaCamModal({
         setSimulatorBypass(true);
       }
     }
-  }, [visible, initialMode, autoSimulatorBypass, testReview, testSetGrader, testAngle]);
+  }, [visible, initialMode, autoSimulatorBypass, testReview, testSetGrader, testHoldAnnotator, testAngle]);
 
   // Clean up timer on unmount or close
   useEffect(() => {
@@ -263,7 +282,8 @@ export function BetaCamModal({
         });
         if (photo?.uri) {
           setCapturedMedia({ uri: photo.uri, type: 'photo' });
-          setShowEstimationSheet(true);
+          setShowHoldAnnotator(true);
+          setShowEstimationSheet(false);
         }
       } else {
         await handleMockCapture('photo');
@@ -298,7 +318,12 @@ export function BetaCamModal({
         uri: mockUri,
         type: fallbackType,
       });
-      setShowEstimationSheet(true);
+      if (fallbackType === 'photo') {
+        setShowHoldAnnotator(true);
+        setShowEstimationSheet(false);
+      } else {
+        setShowEstimationSheet(true);
+      }
     } catch (e) {
       console.error('Failed to create mock capture:', e);
     } finally {
@@ -333,11 +358,13 @@ export function BetaCamModal({
 
       triggerHaptic('success');
       setShowEstimationSheet(false);
+      setShowHoldAnnotator(false);
       onClose();
     } catch (err) {
       console.error('Failed to attach graded beta media:', err);
       onAttach(capturedMedia.uri, capturedMedia.type, selectedGrade, notes);
       setShowEstimationSheet(false);
+      setShowHoldAnnotator(false);
       onClose();
     } finally {
       setIsProcessing(false);
@@ -382,6 +409,8 @@ export function BetaCamModal({
     triggerHaptic('light');
     setCapturedMedia(null);
     setShowEstimationSheet(false);
+    setShowHoldAnnotator(false);
+    setAnnotationPayload(null);
     setCapturedAngle(null);
     setIsRecording(false);
     setRecordingSeconds(0);
@@ -463,8 +492,19 @@ export function BetaCamModal({
   return (
     <Modal visible={visible} animationType="slide" transparent={false} onRequestClose={onClose}>
       <View style={styles.container}>
-        {/* ── State 1: Review Captured Media ─────────────────────────────── */}
-        {capturedMedia ? (
+        {/* ── State 1: Review Captured Media / Route Isolator ─────────────────────────────── */}
+        {capturedMedia && capturedMedia.type === 'photo' && showHoldAnnotator ? (
+          <HoldAnnotatorCanvas
+            imageUri={capturedMedia.uri}
+            wallAngleDegrees={capturedAngle ?? wallAngle.angleDegrees}
+            onAnalyze={(payload) => {
+              setAnnotationPayload(payload);
+              setShowHoldAnnotator(false);
+              setShowEstimationSheet(true);
+            }}
+            onClose={() => setShowHoldAnnotator(false)}
+          />
+        ) : capturedMedia ? (
           <View style={styles.reviewContainer}>
             {/* Viewport */}
             <View style={styles.mediaViewport}>
@@ -512,6 +552,24 @@ export function BetaCamModal({
                 <Text style={styles.retakeBtnText}>Retake</Text>
               </TouchableOpacity>
 
+              {capturedMedia.type === 'photo' && (
+                <TouchableOpacity
+                  onPress={() => {
+                    triggerHaptic('light');
+                    setShowHoldAnnotator(true);
+                  }}
+                  style={styles.annotateBtn}
+                  activeOpacity={0.8}
+                >
+                  <Target size={16} color="#8E7CFF" style={{ marginRight: 6 }} />
+                  <Text style={styles.annotateBtnText}>
+                    {annotationPayload && annotationPayload.holdCount > 0
+                      ? `${annotationPayload.holdCount} Holds`
+                      : 'Tag Holds'}
+                  </Text>
+                </TouchableOpacity>
+              )}
+
               <TouchableOpacity
                 onPress={() => {
                   triggerHaptic('light');
@@ -547,6 +605,7 @@ export function BetaCamModal({
               angleDegrees={capturedAngle ?? wallAngle.angleDegrees}
               userMedianGrade={gradeLabel || 'V4'}
               initialPickerOpen={testPickerOpen}
+              annotationPayload={annotationPayload || undefined}
               onAccept={handleAcceptGrading}
               onRetake={handleRetake}
               onClose={() => setShowEstimationSheet(false)}
@@ -1093,6 +1152,22 @@ const styles = StyleSheet.create({
     color: '#9A9AA6',
     fontSize: 14,
     fontWeight: '700',
+  },
+  annotateBtn: {
+    flex: 1.1,
+    flexDirection: 'row',
+    height: 52,
+    borderRadius: 26,
+    borderWidth: 1,
+    borderColor: '#8E7CFF',
+    backgroundColor: 'rgba(142, 124, 255, 0.16)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  annotateBtnText: {
+    color: '#8E7CFF',
+    fontSize: 14,
+    fontWeight: '800',
   },
   analyzeBtn: {
     flex: 1.1,
