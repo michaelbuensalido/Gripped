@@ -18,14 +18,31 @@ import com.mrousavy.camera.frameprocessors.VisionCameraProxy
  * for real-time edge pose tracking of climbers.
  *
  * Normalizes all landmarks to [0.0, 1.0] relative to frame dimensions.
+ *
+ * Orientation fix: `frame.orientation` is derived from VisionCamera's frame metadata and
+ * passed directly into `InputImage.fromMediaImage(mediaImage, rotationDegrees)`. ML Kit
+ * uses this value to internally correct the pixel orientation before inference.
+ * Without it, portrait-camera frames (rotated 90°) cause zero detections.
+ *
+ * Confidence threshold: `inFrameLikelihood >= 0.25f` — lower than the standard 0.5f
+ * because climbers face the wall (back-body pose), which reduces model certainty.
+ * Minimum 2 confident joints required to assert a climber is present.
  */
 class ClimbingPoseTrackerPlugin(proxy: VisionCameraProxy, options: Map<String, Any>?): FrameProcessorPlugin() {
 
-  private val options = PoseDetectorOptions.Builder()
+  // Minimum in-frame likelihood to accept a landmark. Lowered for back-body climbing pose.
+  private val kMinLandmarkConfidence = 0.25f
+
+  // Minimum number of confident landmarks to declare a climber is present.
+  private val kMinLandmarksForClimber = 2
+
+  private val detectorOptions = PoseDetectorOptions.Builder()
     .setDetectorMode(PoseDetectorOptions.STREAM_MODE)
+    // Enable GPU acceleration for real-time throughput on modern Android devices
+    .setPreferredHardwareConfigs(PoseDetectorOptions.CPU_GPU)
     .build()
 
-  private val poseDetector = PoseDetection.getClient(options)
+  private val poseDetector = PoseDetection.getClient(detectorOptions)
 
   override fun callback(frame: Frame, params: Map<String, Any>?): Any? {
     val image: Image = frame.image ?: return mapOf(
@@ -33,6 +50,8 @@ class ClimbingPoseTrackerPlugin(proxy: VisionCameraProxy, options: Map<String, A
       "landmarks" to emptyMap<String, Any>()
     )
 
+    // Pass the rotation degrees from frame metadata so ML Kit corrects the orientation
+    // before inference. Omitting this causes 0 detections in portrait mode (90° offset).
     val inputImage = InputImage.fromMediaImage(image, frame.orientation.toDegrees())
     val width = image.width.toDouble()
     val height = image.height.toDouble()
@@ -54,7 +73,8 @@ class ClimbingPoseTrackerPlugin(proxy: VisionCameraProxy, options: Map<String, A
 
       for ((landmarkType, key) in landmarkMappings) {
         val landmark = pose.getPoseLandmark(landmarkType)
-        if (landmark != null && landmark.inFrameLikelihood > 0.15f) {
+        // Accept landmarks at or above the minimum confidence threshold
+        if (landmark != null && landmark.inFrameLikelihood >= kMinLandmarkConfidence) {
           landmarks[key] = mapOf(
             "x" to (landmark.position.x / width),
             "y" to (landmark.position.y / height),
@@ -63,8 +83,9 @@ class ClimbingPoseTrackerPlugin(proxy: VisionCameraProxy, options: Map<String, A
         }
       }
 
-      val hasClimber = landmarks.isNotEmpty() &&
-        (landmarks.containsKey("leftWrist") || landmarks.containsKey("rightWrist"))
+      // Require a minimum number of distinct landmarks before asserting climber presence.
+      // This prevents a single noisy detection on an empty wall triggering the HUD.
+      val hasClimber = landmarks.size >= kMinLandmarksForClimber
 
       mapOf(
         "hasClimber" to hasClimber,

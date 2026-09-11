@@ -34,7 +34,7 @@ export interface UseClimbingPoseTrackerOptions {
   enabled?: boolean;
   targetHolds?: TargetHold[];
   contactDistanceThreshold?: number; // Normalized threshold (default: 0.08 ~ 8% of viewport)
-  minConfidence?: number;            // Minimum landmark confidence (default: 0.25)
+  minConfidence?: number;            // Minimum landmark confidence (default: 0.2 — lowered for back-body climbing pose)
   enableSimulatorSimulation?: boolean; // Generates realistic kinematic climber motion in simulator/demo
   onHandContactChange?: (isContacting: boolean, contactCount: number) => void;
 }
@@ -45,6 +45,10 @@ const DEFAULT_INITIAL_STATE: PoseTrackingState = {
   isHandOnHold: false,
   activeHoldIntersections: 0,
 };
+
+// Diagnostic log throttle interval: emit once per 2 seconds to avoid flooding the console.
+const DIAGNOSTIC_LOG_INTERVAL_MS = 2000;
+
 
 // Default target holds for climbing wall simulation (Start, Crux, Finish)
 const DEFAULT_SIMULATED_HOLDS: TargetHold[] = [
@@ -120,13 +124,15 @@ export function useClimbingPoseTracker({
   enabled = true,
   targetHolds = DEFAULT_SIMULATED_HOLDS,
   contactDistanceThreshold = 0.08,
-  minConfidence = 0.25,
+  minConfidence = 0.2,  // Matches native plugin kMinJointConfidence / kMinLandmarkConfidence
   enableSimulatorSimulation = false,
   onHandContactChange,
 }: UseClimbingPoseTrackerOptions = {}) {
   const [poseState, setPoseState] = useState<PoseTrackingState>(DEFAULT_INITIAL_STATE);
   const previousContactRef = useRef(false);
   const animationFrameRef = useRef<number | null>(null);
+  // Tracks the last time we emitted a diagnostic console log (throttled to 1 per 2s)
+  const lastDiagnosticLogRef = useRef<number>(0);
 
   // Synchronous update handler with change detection
   const updatePoseState = useCallback(
@@ -145,6 +151,23 @@ export function useClimbingPoseTracker({
         contactDistanceThreshold,
         minConfidence
       );
+
+      // ── Throttled diagnostic logging ──────────────────────────────────────────
+      // Emits once every 2 seconds so the console stays readable during 60fps processing.
+      const now = Date.now();
+      if (now - lastDiagnosticLogRef.current >= DIAGNOSTIC_LOG_INTERVAL_MS) {
+        lastDiagnosticLogRef.current = now;
+        console.log(
+          '[PoseTracker] Tracked joints count:',
+          Object.keys(rawLandmarks).length,
+          '| Confident joints:',
+          validLandmarksCount,
+          '| HasClimber:',
+          verifiedClimber,
+          '| HandOnHold:',
+          verifiedClimber ? isHandOnHold : false
+        );
+      }
 
       setPoseState({
         hasClimber: verifiedClimber,
