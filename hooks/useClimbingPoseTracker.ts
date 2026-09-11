@@ -46,8 +46,51 @@ const DEFAULT_INITIAL_STATE: PoseTrackingState = {
   activeHoldIntersections: 0,
 };
 
+// ── Frame Processor Pipeline Constants ────────────────────────────────────────
+
+/**
+ * Process every Nth frame from the camera feed.
+ *
+ * At 30 FPS, skipping 2 of every 3 frames yields ~10 FPS of ML inference.
+ * This prevents buffer starvation and thread lag that cause missed detections.
+ *
+ * Usage in a worklet frame processor (with react-native-worklets-core):
+ *
+ *   const frameCount = useSharedValue(0);
+ *   const frameProcessor = useFrameProcessor((frame) => {
+ *     'worklet';
+ *     frameCount.value = (frameCount.value + 1) % FRAME_SKIP_INTERVAL;
+ *     if (frameCount.value !== 0) return;   // ← skip 2 of 3 frames
+ *     try {
+ *       const result = detectClimbingPose(frame);
+ *       runOnJS(updatePoseState)(result.landmarks, result.hasClimber);
+ *     } catch (e) {
+ *       runOnJS(logFrameError)(String(e));
+ *     }
+ *   }, [frameCount]);
+ */
+export const FRAME_SKIP_INTERVAL = 3; // Process 1 in 3 frames → ~10 FPS at 30 FPS
+
+/**
+ * Recommended camera format constraints for reliable pose detection.
+ * 4K buffers saturate the ML thread; 720p is the sweet spot for real-time inference.
+ */
+export const RECOMMENDED_FRAME_WIDTH  = 720;
+export const RECOMMENDED_FRAME_HEIGHT = 1280;
+
+/**
+ * JS-thread error logger for frame processor worklet errors.
+ * Call via `runOnJS(logFrameProcessorError)(errorMessage)` from inside a worklet.
+ *
+ * @param message  String-coerced error from the worklet catch block.
+ */
+export function logFrameProcessorError(message: string): void {
+  console.warn('[PoseTracker][FrameProcessor] Native detection error:', message);
+}
+
 // Diagnostic log throttle interval: emit once per 2 seconds to avoid flooding the console.
 const DIAGNOSTIC_LOG_INTERVAL_MS = 2000;
+
 
 
 // Default target holds for climbing wall simulation (Start, Crux, Finish)
