@@ -1,0 +1,62 @@
+import * as Haptics from 'expo-haptics';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+export const HAPTICS_STORAGE_KEY = '@cruxlog_haptics_enabled';
+
+let isHapticsEnabled = true;
+
+// Initialize from storage on app startup
+AsyncStorage.getItem(HAPTICS_STORAGE_KEY)
+  .then((val) => {
+    if (val !== null) {
+      isHapticsEnabled = val === 'true';
+    }
+  })
+  .catch(() => {});
+
+export function getHapticsEnabled(): boolean {
+  return isHapticsEnabled;
+}
+
+export async function setHapticsEnabled(enabled: boolean): Promise<void> {
+  isHapticsEnabled = enabled;
+  try {
+    await AsyncStorage.setItem(HAPTICS_STORAGE_KEY, String(enabled));
+  } catch (err) {
+    console.error('Failed to persist haptic preference:', err);
+  }
+}
+
+export async function triggerHaptic(
+  type: 'light' | 'medium' | 'heavy' | 'selection' | 'success' | 'warning' | 'error' = 'light'
+): Promise<void> {
+  if (!isHapticsEnabled) return;
+
+  try {
+    switch (type) {
+      case 'light':
+        await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        break;
+      case 'medium':
+        await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+        break;
+      case 'heavy':
+        await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+        break;
+      case 'selection':
+        await Haptics.selectionAsync();
+        break;
+      case 'success':
+        await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        break;
+      case 'warning':
+        await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+        break;
+      case 'error':
+        await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+        break;
+    }
+  } catch {
+    // Graceful fallback on devices/simulators where haptics are not supported
+  }
+}

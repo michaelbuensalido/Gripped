@@ -5,8 +5,8 @@ import {
   TouchableOpacity,
   Pressable,
 } from 'react-native';
-import * as Haptics from 'expo-haptics';
 import { Minus, Plus, Check, Zap } from 'lucide-react-native';
+import { triggerHaptic } from '../../utils/haptics';
 import type { BoulderLog } from '../../types';
 import { GRADE_BY_LABEL } from '../../constants/grades';
 import { useSessionStore } from '../../store/sessionStore';
@@ -50,40 +50,44 @@ export function SetRow({ log, index, groupId }: SetRowProps) {
   );
 
   const handleIncrement = useCallback(() => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    triggerHaptic('light');
     incrementAttempts(groupId, log.id);
   }, [groupId, log.id, incrementAttempts]);
 
   const handleDecrement = useCallback(() => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    triggerHaptic('light');
     decrementAttempts(groupId, log.id);
   }, [groupId, log.id, decrementAttempts]);
 
   const handleRpeIncrement = useCallback(() => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    triggerHaptic('light');
     const next = Math.min((log.rpe ?? 0) + 1, RPE_MAX);
     updateRpe(groupId, log.id, next);
   }, [groupId, log.id, log.rpe, updateRpe]);
 
   const handleRpeDecrement = useCallback(() => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    triggerHaptic('light');
     const current = log.rpe ?? 0;
     updateRpe(groupId, log.id, current <= 1 ? null : current - 1);
   }, [groupId, log.id, log.rpe, updateRpe]);
 
   /** Single tap: toggle attempt ↔ send. Long press: mark flash */
   const handleSendTap = useCallback(() => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    triggerHaptic('medium');
     const next = isSent ? 'attempt' : 'send';
     setOutcome(groupId, log.id, next);
-    if (next !== 'attempt') triggerRestTimer();
+    if (next !== 'attempt') {
+      const group = useSessionStore.getState().groups.find((g) => g.id === groupId);
+      triggerRestTimer(group?.defaultRestSeconds ?? 90);
+    }
   }, [isSent, groupId, log.id, setOutcome, triggerRestTimer]);
 
   const handleFlashLongPress = useCallback(() => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+    triggerHaptic('heavy');
     const next = isFlash ? 'send' : 'flash';
     setOutcome(groupId, log.id, next);
-    triggerRestTimer();
+    const group = useSessionStore.getState().groups.find((g) => g.id === groupId);
+    triggerRestTimer(group?.defaultRestSeconds ?? 90);
   }, [isFlash, groupId, log.id, setOutcome, triggerRestTimer]);
 
   // ── Render ────────────────────────────────────────────────────────────────
@@ -92,7 +96,7 @@ export function SetRow({ log, index, groupId }: SetRowProps) {
     <>
       <View
         className={`flex-row items-center py-2.5 px-1 gap-2 rounded-xl ${
-          isSent ? 'bg-surface/60' : ''
+          isSent ? 'bg-[#16161C]' : ''
         }`}
       >
         {/* ── #Index ─────────────────────────────────────────────────── */}
@@ -102,7 +106,7 @@ export function SetRow({ log, index, groupId }: SetRowProps) {
         <TouchableOpacity
           onPress={() => setGradeSheetOpen(true)}
           activeOpacity={0.8}
-          style={{ backgroundColor: grade?.color ?? '#374151' }}
+          style={{ backgroundColor: grade?.color ?? '#2C2C35' }}
           className="rounded-full px-3 py-1.5 min-w-[46px] items-center justify-center"
         >
           <Text style={{ color: grade?.textColor ?? '#fff' }} className="text-sm font-black">
@@ -115,16 +119,19 @@ export function SetRow({ log, index, groupId }: SetRowProps) {
           <Text className="text-muted text-[9px] font-semibold uppercase tracking-wide mb-0.5">
             RPE
           </Text>
-          <View className="flex-row items-center bg-card rounded-lg border border-border overflow-hidden">
+          <View
+            style={{ backgroundColor: 'rgba(255, 255, 255, 0.05)', borderColor: 'rgba(255, 255, 255, 0.08)' }}
+            className="flex-row items-center rounded-lg border overflow-hidden"
+          >
             <TouchableOpacity
               onPress={handleRpeDecrement}
               activeOpacity={0.7}
               className="w-7 h-8 items-center justify-center"
             >
-              <Minus size={11} color="#6B7280" />
+              <Minus size={11} color="#8A8A98" />
             </TouchableOpacity>
             <Text
-              style={{ color: log.rpe ? rpeColor(log.rpe) : '#4B5563' }}
+              style={{ color: log.rpe ? rpeColor(log.rpe) : '#484852' }}
               className="text-sm font-black w-6 text-center"
             >
               {log.rpe ?? '—'}
@@ -134,7 +141,7 @@ export function SetRow({ log, index, groupId }: SetRowProps) {
               activeOpacity={0.7}
               className="w-7 h-8 items-center justify-center"
             >
-              <Plus size={11} color="#6B7280" />
+              <Plus size={11} color="#8A8A98" />
             </TouchableOpacity>
           </View>
         </View>
@@ -144,13 +151,16 @@ export function SetRow({ log, index, groupId }: SetRowProps) {
           <Text className="text-muted text-[9px] font-semibold uppercase tracking-wide mb-0.5">
             Att
           </Text>
-          <View className="flex-row items-center bg-card rounded-lg border border-border overflow-hidden">
+          <View
+            style={{ backgroundColor: 'rgba(255, 255, 255, 0.05)', borderColor: 'rgba(255, 255, 255, 0.08)' }}
+            className="flex-row items-center rounded-lg border overflow-hidden"
+          >
             <TouchableOpacity
               onPress={handleDecrement}
               activeOpacity={0.7}
               className="w-7 h-8 items-center justify-center"
             >
-              <Minus size={11} color="#6B7280" />
+              <Minus size={11} color="#8A8A98" />
             </TouchableOpacity>
             <Text className="text-white font-black text-sm w-6 text-center">
               {log.attempts}
@@ -160,7 +170,7 @@ export function SetRow({ log, index, groupId }: SetRowProps) {
               activeOpacity={0.7}
               className="w-7 h-8 items-center justify-center"
             >
-              <Plus size={11} color="#6B7280" />
+              <Plus size={11} color="#8A8A98" />
             </TouchableOpacity>
           </View>
         </View>
@@ -172,13 +182,15 @@ export function SetRow({ log, index, groupId }: SetRowProps) {
             <TouchableOpacity
               onPress={handleFlashLongPress}
               activeOpacity={0.7}
-              className={`w-9 h-9 rounded-xl items-center justify-center border ${
-                isFlash ? 'bg-flash border-flash' : 'bg-card border-border'
-              }`}
+              style={{
+                backgroundColor: isFlash ? '#6EE756' : 'rgba(255, 255, 255, 0.06)',
+                borderColor: isFlash ? '#6EE756' : 'rgba(255, 255, 255, 0.10)',
+              }}
+              className="w-9 h-9 rounded-xl items-center justify-center border"
             >
               <Zap
                 size={16}
-                color={isFlash ? '#FFFFFF' : '#4B5563'}
+                color={isFlash ? '#FFFFFF' : '#8A8A98'}
                 fill={isFlash ? '#FFFFFF' : 'none'}
               />
             </TouchableOpacity>
@@ -187,13 +199,11 @@ export function SetRow({ log, index, groupId }: SetRowProps) {
           {/* Send checkbox */}
           <Pressable
             onPress={handleSendTap}
-            className={`w-11 h-11 rounded-xl items-center justify-center border-2 ${
-              isSent
-                ? isFlash
-                  ? 'bg-flash border-flash'
-                  : 'bg-send border-send'
-                : 'bg-transparent border-border'
-            }`}
+            style={{
+              backgroundColor: isSent ? (isFlash ? '#6EE756' : '#8E7CFF') : 'transparent',
+              borderColor: isSent ? (isFlash ? '#6EE756' : '#8E7CFF') : '#2C2C35',
+            }}
+            className="w-11 h-11 rounded-xl items-center justify-center border-2"
           >
             {isSent && <Check size={20} color="#FFFFFF" strokeWidth={3} />}
           </Pressable>

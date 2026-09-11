@@ -41,6 +41,23 @@ export function getSessionById(id: string): Session | null {
   return row ? mapSession(row) : null;
 }
 
+export function getActiveSession(): Session | null {
+  const db = getDatabase();
+  const row = db.getFirstSync<{
+    id: string;
+    start_time: number;
+    end_time: number | null;
+    gym_name: string;
+    notes: string;
+    title?: string;
+    rpe?: number | null;
+    media_uris?: string;
+  }>(
+    `SELECT * FROM sessions WHERE end_time IS NULL ORDER BY start_time DESC LIMIT 1`
+  );
+  return row ? mapSession(row) : null;
+}
+
 export function updateSessionNotes(id: string, notes: string): void {
   const db = getDatabase();
   db.runSync(`UPDATE sessions SET notes = ? WHERE id = ?`, [notes, id]);
@@ -58,7 +75,42 @@ export function reopenSession(id: string): void {
 
 export function deleteSession(id: string): void {
   const db = getDatabase();
+  try {
+    const groupRows = db.getAllSync<{ id: string }>('SELECT id FROM boulder_groups WHERE session_id = ?', [id]);
+    for (const g of groupRows) {
+      db.runSync('DELETE FROM boulder_logs WHERE group_id = ?', [g.id]);
+    }
+    db.runSync('DELETE FROM boulder_groups WHERE session_id = ?', [id]);
+  } catch (err) {
+    console.warn('Cascade delete warning:', err);
+  }
   db.runSync(`DELETE FROM sessions WHERE id = ?`, [id]);
+}
+
+export function completeSessionWrapUp(
+  id: string,
+  endTime: number,
+  title: string,
+  notes: string,
+  gymName: string,
+  rpe: number | null,
+  mediaUris: string[]
+): void {
+  const db = getDatabase();
+  const mediaJson = JSON.stringify(mediaUris);
+  try {
+    db.runSync(
+      `UPDATE sessions 
+       SET end_time = ?, title = ?, notes = ?, gym_name = ?, rpe = ?, media_uris = ?
+       WHERE id = ?`,
+      [endTime, title, notes, gymName, rpe, mediaJson, id]
+    );
+  } catch (err) {
+    db.runSync(
+      `UPDATE sessions SET end_time = ?, notes = ?, gym_name = ? WHERE id = ?`,
+      [endTime, notes, gymName, id]
+    );
+  }
 }
 
 function mapSession(row: {
@@ -67,13 +119,27 @@ function mapSession(row: {
   end_time: number | null;
   gym_name: string;
   notes: string;
+  title?: string;
+  rpe?: number | null;
+  media_uris?: string;
 }): Session {
+  let mediaUris: string[] = [];
+  if (row.media_uris) {
+    try {
+      mediaUris = JSON.parse(row.media_uris);
+    } catch {
+      mediaUris = [];
+    }
+  }
   return {
     id: row.id,
     startTime: row.start_time,
     endTime: row.end_time,
     gymName: row.gym_name,
     notes: row.notes,
+    title: row.title || '',
+    rpe: row.rpe ?? null,
+    mediaUris,
   };
 }
 
@@ -81,16 +147,49 @@ function mapSession(row: {
 
 export function insertBoulderGroup(group: BoulderGroup): void {
   const db = getDatabase();
-  db.runSync(
-    `INSERT INTO boulder_groups (id, session_id, zone_name, sort_order)
-     VALUES (?, ?, ?, ?)`,
-    [group.id, group.sessionId, group.zoneName, group.order]
-  );
+  try {
+    db.runSync(
+      `INSERT INTO boulder_groups (id, session_id, zone_name, sort_order, default_rest_seconds, notes)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+      [group.id, group.sessionId, group.zoneName, group.order, group.defaultRestSeconds ?? 90, group.notes ?? '']
+    );
+  } catch {
+    db.runSync(
+      `INSERT INTO boulder_groups (id, session_id, zone_name, sort_order, default_rest_seconds)
+       VALUES (?, ?, ?, ?, ?)`,
+      [group.id, group.sessionId, group.zoneName, group.order, group.defaultRestSeconds ?? 90]
+    );
+  }
 }
 
 export function updateGroupZoneName(id: string, zoneName: string): void {
   const db = getDatabase();
   db.runSync(`UPDATE boulder_groups SET zone_name = ? WHERE id = ?`, [zoneName, id]);
+}
+
+export function updateGroupRestSeconds(id: string, defaultRestSeconds: number): void {
+  const db = getDatabase();
+  db.runSync(`UPDATE boulder_groups SET default_rest_seconds = ? WHERE id = ?`, [defaultRestSeconds, id]);
+}
+
+export function updateGroupNotes(id: string, notes: string): void {
+  const db = getDatabase();
+  try {
+    db.runSync(`UPDATE boulder_groups SET notes = ? WHERE id = ?`, [notes, id]);
+  } catch (err) {
+    console.warn('Failed to update group notes:', err);
+  }
+}
+
+export function deleteBoulderGroup(id: string): void {
+  const db = getDatabase();
+  db.runSync(`DELETE FROM boulder_logs WHERE group_id = ?`, [id]);
+  db.runSync(`DELETE FROM boulder_groups WHERE id = ?`, [id]);
+}
+
+export function updateGroupOrder(id: string, sortOrder: number): void {
+  const db = getDatabase();
+  db.runSync(`UPDATE boulder_groups SET sort_order = ? WHERE id = ?`, [sortOrder, id]);
 }
 
 export function getGroupsForSession(sessionId: string): BoulderGroup[] {
@@ -100,6 +199,8 @@ export function getGroupsForSession(sessionId: string): BoulderGroup[] {
     session_id: string;
     zone_name: string;
     sort_order: number;
+    default_rest_seconds?: number | null;
+    notes?: string | null;
   }>(
     `SELECT * FROM boulder_groups WHERE session_id = ? ORDER BY sort_order`,
     [sessionId]
@@ -109,6 +210,8 @@ export function getGroupsForSession(sessionId: string): BoulderGroup[] {
     sessionId: r.session_id,
     zoneName: r.zone_name,
     order: r.sort_order,
+    defaultRestSeconds: r.default_rest_seconds ?? 90,
+    notes: r.notes ?? '',
   }));
 }
 
@@ -460,6 +563,8 @@ export interface SessionSummary extends Session {
   sendCount: number;
   flashCount: number;
   gradesSent: string[];
+  hardestGrade: string | null;
+  durationMinutes: number;
 }
 
 export function getAllSessionSummaries(): SessionSummary[] {
@@ -467,14 +572,21 @@ export function getAllSessionSummaries(): SessionSummary[] {
   return sessions.map((s) => {
     const logs = getLogsForSession(s.id);
     const sent = logs.filter((l) => l.outcome === 'send' || l.outcome === 'flash');
+    const sortedSends = [...sent].sort((a, b) => b.normalizedDifficulty - a.normalizedDifficulty);
+    const hardestSend = sortedSends[0]?.gradeRaw ?? null;
+    const sortedAll = [...logs].sort((a, b) => b.normalizedDifficulty - a.normalizedDifficulty);
+    const hardestGrade = hardestSend ?? sortedAll[0]?.gradeRaw ?? null;
     const uniqueGrades = [...new Set(sent.map((l) => l.gradeRaw))]
       .sort((a, b) => parseInt(b.replace('V', ''), 10) - parseInt(a.replace('V', ''), 10))
       .slice(0, 5);
+    const durationMinutes = s.endTime ? Math.max(1, Math.round((s.endTime - s.startTime) / 60000)) : 0;
     return {
       ...s,
       sendCount: sent.length,
       flashCount: logs.filter((l) => l.outcome === 'flash').length,
       gradesSent: uniqueGrades,
+      hardestGrade,
+      durationMinutes,
     };
   });
 }
@@ -602,5 +714,166 @@ export function getHomeStats(): HomeStats {
       ? { id: activeRow.id, gymName: activeRow.gym_name, startTime: activeRow.start_time }
       : null,
   };
+}
+
+export function clearAllSessionData(): void {
+  const db = getDatabase();
+  db.execSync('DELETE FROM boulder_logs; DELETE FROM boulder_groups; DELETE FROM sessions;');
+}
+
+export interface RecentBoulderLog {
+  id: string;
+  gradeRaw: string;
+  outcome: 'send' | 'flash' | 'attempt';
+  attempts: number;
+  timestamp: number;
+  gymName: string;
+}
+
+export function getRecentBoulderLogs(limit = 10): RecentBoulderLog[] {
+  const db = getDatabase();
+  const rows = db.getAllSync<{
+    id: string;
+    grade_raw: string;
+    outcome: string;
+    attempts: number;
+    timestamp: number;
+    gym_name: string;
+  }>(
+    `SELECT bl.id, bl.grade_raw, bl.outcome, bl.attempts, bl.timestamp, s.gym_name
+     FROM boulder_logs bl
+     JOIN boulder_groups bg ON bl.group_id = bg.id
+     JOIN sessions s ON bg.session_id = s.id
+     ORDER BY bl.timestamp DESC
+     LIMIT ?`,
+    [limit]
+  );
+  return rows.map((r) => ({
+    id: r.id,
+    gradeRaw: r.grade_raw,
+    outcome: r.outcome as 'send' | 'flash' | 'attempt',
+    attempts: r.attempts,
+    timestamp: r.timestamp,
+    gymName: r.gym_name || 'Climbing Session',
+  }));
+}
+
+// ─── Project Book & Beta Vault ────────────────────────────────────────────────
+
+export interface ProjectBookItem {
+  id: string;
+  gradeRaw: string;
+  normalizedDifficulty: number;
+  zoneName: string;
+  gymName: string;
+  totalAttempts: number;
+  lastAttempted: number;
+  gradeTier: string;
+}
+
+export function getProjectBookLogs(): ProjectBookItem[] {
+  const db = getDatabase();
+  try {
+    const rows = db.getAllSync<{
+      id: string;
+      grade_raw: string;
+      normalized_difficulty: number;
+      title: string;
+      gym_name: string;
+      total_attempts: number;
+      last_attempted: number;
+    }>(
+      `SELECT
+         MIN(bl.id) AS id,
+         bl.grade_raw,
+         bl.normalized_difficulty,
+         COALESCE(TRIM(bg.zone_name), 'Main Wall') AS title,
+         s.gym_name,
+         SUM(bl.attempts) AS total_attempts,
+         MAX(bl.timestamp) AS last_attempted
+       FROM boulder_logs bl
+       JOIN boulder_groups bg ON bl.group_id = bg.id
+       JOIN sessions s ON bg.session_id = s.id
+       WHERE bl.outcome = 'attempt'
+       GROUP BY bl.grade_raw, title
+       ORDER BY bl.normalized_difficulty DESC, last_attempted DESC`
+    );
+
+    return rows.map((r) => {
+      let gradeTier = 'V0–V3';
+      if (r.normalized_difficulty >= 8) {
+        gradeTier = 'V8+';
+      } else if (r.normalized_difficulty >= 6) {
+        gradeTier = 'V6–V7';
+      } else if (r.normalized_difficulty >= 4) {
+        gradeTier = 'V4–V5';
+      }
+      return {
+        id: r.id,
+        gradeRaw: r.grade_raw,
+        normalizedDifficulty: r.normalized_difficulty,
+        zoneName: r.title,
+        gymName: r.gym_name || 'Gym Session',
+        totalAttempts: r.total_attempts,
+        lastAttempted: r.last_attempted,
+        gradeTier,
+      };
+    });
+  } catch (err) {
+    console.error('Failed to get project book logs:', err);
+    return [];
+  }
+}
+
+export interface BetaVaultItem {
+  id: string;
+  gradeRaw: string;
+  title: string;
+  zoneName: string;
+  gymName: string;
+  durationSeconds: number;
+  mediaUri?: string | null;
+  date: string;
+}
+
+export function getBetaVaultLogs(): BetaVaultItem[] {
+  const db = getDatabase();
+  try {
+    const tableInfo = db.getAllSync<{ name: string }>('PRAGMA table_info(boulder_logs);');
+    const hasMediaCol = tableInfo.some((c) => c.name === 'media_uri');
+    if (!hasMediaCol) {
+      return [];
+    }
+    const rows = db.getAllSync<{
+      id: string;
+      grade_raw: string;
+      media_uri: string;
+      zone_name: string;
+      gym_name: string;
+      timestamp: number;
+    }>(
+      `SELECT bl.id, bl.grade_raw, bl.media_uri, bg.zone_name, s.gym_name, bl.timestamp
+       FROM boulder_logs bl
+       JOIN boulder_groups bg ON bl.group_id = bg.id
+       JOIN sessions s ON bg.session_id = s.id
+       WHERE bl.media_uri IS NOT NULL AND bl.media_uri != ''
+       ORDER BY bl.timestamp DESC`
+    );
+    return rows.map((r) => {
+      const d = new Date(r.timestamp);
+      return {
+        id: r.id,
+        gradeRaw: r.grade_raw,
+        title: `${r.zone_name} Project Beta`,
+        zoneName: r.zone_name,
+        gymName: r.gym_name,
+        durationSeconds: 24,
+        mediaUri: r.media_uri,
+        date: d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+      };
+    });
+  } catch {
+    return [];
+  }
 }
 

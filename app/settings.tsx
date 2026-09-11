@@ -9,19 +9,20 @@ import {
   Alert,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Settings, Clock, Trash2, Info } from 'lucide-react-native';
+import { Settings, Clock, Trash2, Info, ArrowLeft } from 'lucide-react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useFocusEffect } from 'expo-router';
-import { getDatabase } from '../db/schema';
-import { FLOATING_CARD_STYLE } from '../constants/theme';
+import { useFocusEffect, useRouter } from 'expo-router';
+import { clearAllSessionData } from '../db/queries';
+import { FLOATING_CARD_STYLE, THEME_COLORS } from '../constants/theme';
 import { ScreenContainer } from '../components/ui/ScreenContainer';
+import { getHapticsEnabled, setHapticsEnabled, HAPTICS_STORAGE_KEY } from '../utils/haptics';
 
 const REST_TIMER_KEY = '@cruxlog/rest_timer_seconds';
 const DEFAULT_REST = 90;
 
 function SectionHeader({ label }: { label: string }) {
   return (
-    <Text className="text-muted text-xs font-bold uppercase tracking-widest px-4 mt-6 mb-2">
+    <Text className="text-[#8A8A98] text-[11px] font-bold uppercase tracking-[1.2px] px-4 mt-6 mb-2.5">
       {label}
     </Text>
   );
@@ -37,10 +38,10 @@ function SettingsRow({
   right?: React.ReactNode;
 }) {
   return (
-    <View className="flex-row items-center justify-between px-4 py-4 border-b border-border/40">
+    <View className="flex-row items-center justify-between px-4 py-4 border-b border-[#2C2C35]/60">
       <View className="flex-1 mr-4">
         <Text className="text-white font-semibold">{label}</Text>
-        {sublabel ? <Text className="text-muted text-xs mt-0.5">{sublabel}</Text> : null}
+        {sublabel ? <Text className="text-[#9A9AA6] text-xs mt-0.5">{sublabel}</Text> : null}
       </View>
       {right}
     </View>
@@ -48,10 +49,11 @@ function SettingsRow({
 }
 
 export default function SettingsScreen() {
+  const router = useRouter();
   const insets = useSafeAreaInsets();
   const [restSeconds, setRestSeconds] = useState(DEFAULT_REST);
   const [restInput, setRestInput] = useState(String(DEFAULT_REST));
-  const [haptics, setHaptics] = useState(true);
+  const [haptics, setHaptics] = useState(getHapticsEnabled());
 
   useFocusEffect(
     useCallback(() => {
@@ -64,8 +66,19 @@ export default function SettingsScreen() {
           }
         }
       });
+
+      AsyncStorage.getItem(HAPTICS_STORAGE_KEY).then((val) => {
+        if (val !== null) {
+          setHaptics(val === 'true');
+        }
+      });
     }, [])
   );
+
+  const handleToggleHaptics = useCallback((val: boolean) => {
+    setHaptics(val);
+    setHapticsEnabled(val);
+  }, []);
 
   const saveRestTimer = useCallback((value: string) => {
     const n = parseInt(value, 10);
@@ -88,8 +101,7 @@ export default function SettingsScreen() {
           style: 'destructive',
           onPress: () => {
             try {
-              const db = getDatabase();
-              db.execSync('DELETE FROM boulder_logs; DELETE FROM boulder_groups; DELETE FROM sessions;');
+              clearAllSessionData();
               Alert.alert('Done', 'All data has been cleared.');
             } catch (e) {
               Alert.alert('Error', 'Could not clear data.');
@@ -106,13 +118,34 @@ export default function SettingsScreen() {
     <ScreenContainer>
       <ScrollView
         className="flex-1"
-        contentContainerStyle={{ paddingBottom: insets.bottom + 100 }}
+        contentContainerStyle={{ paddingBottom: 180 }}
         showsVerticalScrollIndicator={false}
       >
         {/* Header */}
-        <View className="flex-row items-center gap-2 px-4 pt-4 pb-2">
-          <Settings size={22} color="#A78BFA" />
-          <Text className="text-white text-2xl font-black">Settings</Text>
+        <View className="px-4 pt-3 pb-2">
+          <View className="flex-row items-center gap-3 mb-1">
+            <TouchableOpacity
+              onPress={() => router.back()}
+              activeOpacity={0.7}
+              style={{
+                width: 40,
+                height: 40,
+                borderRadius: 20,
+                backgroundColor: THEME_COLORS.cardSurface,
+                borderColor: THEME_COLORS.cardBorder,
+                borderTopColor: 'rgba(255, 255, 255, 0.14)',
+                borderWidth: 1,
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <ArrowLeft size={20} color="#FFFFFF" />
+            </TouchableOpacity>
+            <View className="flex-1">
+              <Text className="text-white text-3xl font-black tracking-tight">Settings</Text>
+            </View>
+          </View>
+          <Text className="text-[#9A9AA6] text-sm ml-13">Configure preferences and manage data</Text>
         </View>
 
       {/* Timer section */}
@@ -129,8 +162,8 @@ export default function SettingsScreen() {
               onSubmitEditing={() => saveRestTimer(restInput)}
               keyboardType="numeric"
               returnKeyType="done"
-              className="text-accentLight font-bold text-right text-base w-14"
-              style={{ color: '#A78BFA' }}
+              className="font-bold text-right text-base w-14"
+              style={{ color: '#8E7CFF' }}
             />
           }
         />
@@ -145,11 +178,15 @@ export default function SettingsScreen() {
                 AsyncStorage.setItem(REST_TIMER_KEY, String(s));
               }}
               activeOpacity={0.75}
-              className={`px-3 py-1.5 rounded-full border ${
-                restSeconds === s ? 'bg-accent border-accent' : 'bg-surface/60 border-border'
-              }`}
+              style={{
+                backgroundColor: restSeconds === s ? '#8E7CFF' : THEME_COLORS.cardSurface,
+                borderColor: restSeconds === s ? '#8E7CFF' : THEME_COLORS.cardBorder,
+                borderTopColor: restSeconds === s ? '#8E7CFF' : 'rgba(255, 255, 255, 0.14)',
+                borderWidth: 1,
+              }}
+              className="px-3 py-1.5 rounded-full"
             >
-              <Text className={`text-sm font-bold ${restSeconds === s ? 'text-white' : 'text-secondary'}`}>
+              <Text className={`text-sm font-bold ${restSeconds === s ? 'text-white' : 'text-[#9A9AA6]'}`}>
                 {s}s
               </Text>
             </TouchableOpacity>
@@ -166,8 +203,8 @@ export default function SettingsScreen() {
           right={
             <Switch
               value={haptics}
-              onValueChange={setHaptics}
-              trackColor={{ false: '#333339', true: '#7C3AED' }}
+              onValueChange={handleToggleHaptics}
+              trackColor={{ false: '#333339', true: '#8E7CFF' }}
               thumbColor="#FFFFFF"
             />
           }

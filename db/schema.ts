@@ -19,10 +19,12 @@ export function getDatabase(): SQLite.SQLiteDatabase {
       );
 
       CREATE TABLE IF NOT EXISTS boulder_groups (
-        id          TEXT PRIMARY KEY,
-        session_id  TEXT    NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
-        zone_name   TEXT    NOT NULL DEFAULT 'Main Wall',
-        sort_order  INTEGER NOT NULL DEFAULT 0
+        id                   TEXT PRIMARY KEY,
+        session_id           TEXT    NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
+        zone_name            TEXT    NOT NULL DEFAULT 'Main Wall',
+        sort_order           INTEGER NOT NULL DEFAULT 0,
+        default_rest_seconds INTEGER NOT NULL DEFAULT 90,
+        notes                TEXT    NOT NULL DEFAULT ''
       );
 
       CREATE INDEX IF NOT EXISTS idx_groups_session ON boulder_groups(session_id);
@@ -75,19 +77,55 @@ export function getDatabase(): SQLite.SQLiteDatabase {
 
       CREATE INDEX IF NOT EXISTS idx_boulders_block ON routine_boulders(block_id);
     `);
-
-    /* Migration: add rpe column if upgrading from an older build */
-    try {
-      _db.execSync(`ALTER TABLE boulder_logs ADD COLUMN rpe INTEGER;`);
-    } catch {
-      // Column already exists — safe to ignore
-    }
   }
+  runMigrations(_db);
   return _db;
 }
 
+function runMigrations(db: SQLite.SQLiteDatabase): void {
+  try {
+    const tableInfo = db.getAllSync<{ name: string }>('PRAGMA table_info(boulder_groups);');
+    const hasCol = tableInfo.some((c) => c.name === 'default_rest_seconds');
+    if (!hasCol) {
+      db.execSync('ALTER TABLE boulder_groups ADD COLUMN default_rest_seconds INTEGER NOT NULL DEFAULT 90;');
+    }
+    const hasNotes = tableInfo.some((c) => c.name === 'notes');
+    if (!hasNotes) {
+      db.execSync("ALTER TABLE boulder_groups ADD COLUMN notes TEXT NOT NULL DEFAULT '';");
+    }
+  } catch (err) {
+    console.warn('Migration boulder_groups warning:', err);
+  }
+
+  try {
+    const logsInfo = db.getAllSync<{ name: string }>('PRAGMA table_info(boulder_logs);');
+    const hasRpe = logsInfo.some((c) => c.name === 'rpe');
+    if (!hasRpe) {
+      db.execSync('ALTER TABLE boulder_logs ADD COLUMN rpe INTEGER;');
+    }
+  } catch (err) {
+    console.warn('Migration boulder_logs rpe warning:', err);
+  }
+
+  try {
+    const sessInfo = db.getAllSync<{ name: string }>('PRAGMA table_info(sessions);');
+    if (!sessInfo.some((c) => c.name === 'title')) {
+      db.execSync("ALTER TABLE sessions ADD COLUMN title TEXT NOT NULL DEFAULT '';");
+    }
+    if (!sessInfo.some((c) => c.name === 'rpe')) {
+      db.execSync('ALTER TABLE sessions ADD COLUMN rpe INTEGER;');
+    }
+    if (!sessInfo.some((c) => c.name === 'media_uris')) {
+      db.execSync("ALTER TABLE sessions ADD COLUMN media_uris TEXT NOT NULL DEFAULT '[]';");
+    }
+  } catch (err) {
+    console.warn('Migration sessions columns warning:', err);
+  }
+}
+
 export async function initializeDatabase(): Promise<void> {
-  getDatabase();
+  const db = getDatabase();
+  runMigrations(db);
   try {
     seedDefaultRoutinesIfEmpty();
   } catch (err) {

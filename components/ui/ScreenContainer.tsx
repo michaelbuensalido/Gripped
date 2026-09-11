@@ -25,7 +25,7 @@ export function ScreenContainer({
       <ImageBackground
         source={require('../../assets/speckled_mat_bg.jpg')}
         style={StyleSheet.absoluteFillObject}
-        imageStyle={{ opacity: 0.18 }}
+        imageStyle={{ opacity: 0.22 }}
         resizeMode="cover"
       />
       <View

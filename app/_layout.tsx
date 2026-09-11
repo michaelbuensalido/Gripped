@@ -5,9 +5,11 @@ import { Tabs } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Home, GitBranch, BarChart2, Settings as SettingsIcon, type LucideIcon } from 'lucide-react-native';
+import { Home, Layers, BarChart2, BookOpen, Settings as SettingsIcon, type LucideIcon } from 'lucide-react-native';
 import { initializeDatabase } from '../db/schema';
 import { FLOATING_ISLAND_STYLE, THEME_COLORS } from '../constants/theme';
+import { ActiveSessionMiniBar } from '../components/session/ActiveSessionMiniBar';
+import { useSessionStore } from '../store/sessionStore';
 import '../global.css';
 
 function TabIcon({
@@ -82,9 +84,9 @@ function TabLayout() {
       <Tabs.Screen
         name="routines"
         options={{
-          title: 'Routes',
+          title: 'Routines',
           tabBarIcon: ({ color, size, focused }) => (
-            <TabIcon Icon={GitBranch} size={size} color={color} focused={focused} />
+            <TabIcon Icon={Layers} size={size} color={color} focused={focused} />
           ),
         }}
       />
@@ -98,16 +100,17 @@ function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="settings"
+        name="logbook"
         options={{
-          title: 'Settings',
+          title: 'Logbook',
           tabBarIcon: ({ color, size, focused }) => (
-            <TabIcon Icon={SettingsIcon} size={size} color={color} focused={focused} />
+            <TabIcon Icon={BookOpen} size={size} color={color} focused={focused} />
           ),
         }}
       />
 
       {/* Hidden screens — no tab entries, full-screen layout */}
+      <Tabs.Screen name="settings" options={{ href: null, tabBarStyle: { display: 'none' } }} />
       <Tabs.Screen name="session/new" options={{ href: null, tabBarStyle: { display: 'none' } }} />
       <Tabs.Screen name="session/[id]" options={{ href: null, tabBarStyle: { display: 'none' } }} />
       <Tabs.Screen name="session/detail/[id]" options={{ href: null, tabBarStyle: { display: 'none' } }} />
@@ -124,13 +127,17 @@ const NavigationTheme = {
     ...DarkTheme.colors,
     background: 'transparent',
     card: '#1E1E24',
-    border: '#2D2D35',
+    border: '#2C2C35',
   },
 };
 
 export default function RootLayout() {
   useEffect(() => {
-    initializeDatabase().catch(console.error);
+    initializeDatabase()
+      .then(() => {
+        useSessionStore.getState().initActiveSession();
+      })
+      .catch(console.error);
   }, []);
 
   return (
@@ -138,13 +145,15 @@ export default function RootLayout() {
       <ImageBackground
         source={require('../assets/speckled_mat_bg.jpg')}
         style={StyleSheet.absoluteFillObject}
-        imageStyle={{ opacity: 0.18 }}
+        imageStyle={{ opacity: 0.22 }}
         resizeMode="cover"
       />
       <SafeAreaProvider>
         <ThemeProvider value={NavigationTheme}>
           <StatusBar style="light" />
           <TabLayout />
+          {/* Global floating mini-bar — shows on all tabs when a session is active */}
+          <ActiveSessionMiniBar />
         </ThemeProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>

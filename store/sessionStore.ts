@@ -24,10 +24,25 @@ interface SessionState {
   startEmptySession: (gymName?: string) => string;
   startSessionFromRoutine: (routine: RoutineWithBlocks, gymName?: string) => string;
   finishSession: () => void;
+  completeSession: (params: {
+    title: string;
+    notes: string;
+    gymName: string;
+    rpe: number | null;
+    mediaUris: string[];
+    endTime?: number;
+  }) => void;
+  discardSession: () => void;
+  cancelSession: (sessionId?: string) => void;
   loadSession: (sessionId: string) => void;
+  initActiveSession: () => void;
 
-  addGroup: (zoneName?: string) => void;
+  addGroup: (zoneName?: string, defaultRestSeconds?: number) => void;
   updateGroupName: (groupId: string, zoneName: string) => void;
+  updateGroupRestTimer: (groupId: string, seconds: number) => void;
+  updateGroupNotes: (groupId: string, notes: string) => void;
+  moveGroup: (groupId: string, direction: 'up' | 'down') => void;
+  deleteGroup: (groupId: string) => void;
 
   addLog: (groupId: string) => void;
   updateLog: (groupId: string, log: BoulderLog) => void;
@@ -94,6 +109,7 @@ export const useSessionStore = create<SessionState>()(
         sessionId: session.id,
         zoneName: 'Main Wall',
         order: 0,
+        defaultRestSeconds: 90,
       };
       Q.insertBoulderGroup(group);
 
@@ -127,6 +143,7 @@ export const useSessionStore = create<SessionState>()(
           sessionId: session.id,
           zoneName: block.title,
           order: bIdx,
+          defaultRestSeconds: block.defaultRestSeconds,
         };
         Q.insertBoulderGroup(group);
 
@@ -155,6 +172,7 @@ export const useSessionStore = create<SessionState>()(
           sessionId: session.id,
           zoneName: 'Main Wall',
           order: 0,
+          defaultRestSeconds: 90,
         };
         Q.insertBoulderGroup(group);
         newGroups.push({ ...group, logs: [] });
@@ -176,8 +194,64 @@ export const useSessionStore = create<SessionState>()(
       if (!activeSession) return;
       const endTime = Date.now();
       Q.finishSession(activeSession.id, endTime);
+      // Clear from store so the mini-bar and home CTA reset immediately
       set((state) => {
-        if (state.activeSession) state.activeSession.endTime = endTime;
+        state.activeSession = null;
+        state.groups = [];
+        state.restTimerActive = false;
+        state.restTimerSeconds = 0;
+        state.restTimerMax = 90;
+      });
+    },
+
+    completeSession: ({ title, notes, gymName, rpe, mediaUris, endTime }) => {
+      const { activeSession } = get();
+      if (!activeSession) return;
+      const finalEndTime = endTime ?? Date.now();
+      Q.completeSessionWrapUp(
+        activeSession.id,
+        finalEndTime,
+        title,
+        notes,
+        gymName,
+        rpe,
+        mediaUris
+      );
+      set((state) => {
+        state.activeSession = null;
+        state.groups = [];
+        state.restTimerActive = false;
+        state.restTimerSeconds = 0;
+        state.restTimerMax = 90;
+      });
+    },
+
+    discardSession: () => {
+      const { activeSession } = get();
+      if (activeSession) {
+        Q.deleteSession(activeSession.id);
+      }
+      set((state) => {
+        state.activeSession = null;
+        state.groups = [];
+        state.restTimerActive = false;
+        state.restTimerSeconds = 0;
+        state.restTimerMax = 90;
+      });
+    },
+
+    cancelSession: (sessionId) => {
+      const { activeSession } = get();
+      const targetId = sessionId || activeSession?.id;
+      if (targetId) {
+        Q.deleteSession(targetId);
+      }
+      set((state) => {
+        state.activeSession = null;
+        state.groups = [];
+        state.restTimerActive = false;
+        state.restTimerSeconds = 0;
+        state.restTimerMax = 90;
       });
     },
 
@@ -195,7 +269,14 @@ export const useSessionStore = create<SessionState>()(
       });
     },
 
-    addGroup: (zoneName = 'New Zone') => {
+    initActiveSession: () => {
+      const active = Q.getActiveSession();
+      if (active) {
+        get().loadSession(active.id);
+      }
+    },
+
+    addGroup: (zoneName = 'New Zone', defaultRestSeconds = 90) => {
       const { activeSession, groups } = get();
       if (!activeSession) return;
       const group: BoulderGroup = {
@@ -203,6 +284,7 @@ export const useSessionStore = create<SessionState>()(
         sessionId: activeSession.id,
         zoneName,
         order: groups.length,
+        defaultRestSeconds,
       };
       Q.insertBoulderGroup(group);
       set((state) => {
@@ -215,6 +297,54 @@ export const useSessionStore = create<SessionState>()(
       set((state) => {
         const g = state.groups.find((g) => g.id === groupId);
         if (g) g.zoneName = zoneName;
+      });
+    },
+
+    updateGroupRestTimer: (groupId, seconds) => {
+      Q.updateGroupRestSeconds(groupId, seconds);
+      set((state) => {
+        const g = state.groups.find((g) => g.id === groupId);
+        if (g) g.defaultRestSeconds = seconds;
+      });
+    },
+
+    updateGroupNotes: (groupId, notes) => {
+      Q.updateGroupNotes(groupId, notes);
+      set((state) => {
+        const g = state.groups.find((g) => g.id === groupId);
+        if (g) g.notes = notes;
+      });
+    },
+
+    moveGroup: (groupId, direction) => {
+      const { groups } = get();
+      const index = groups.findIndex((g) => g.id === groupId);
+      if (index === -1) return;
+      const targetIndex = direction === 'up' ? index - 1 : index + 1;
+      if (targetIndex < 0 || targetIndex >= groups.length) return;
+
+      const currentGroup = groups[index];
+      const targetGroup = groups[targetIndex];
+
+      Q.updateGroupOrder(currentGroup.id, targetIndex);
+      Q.updateGroupOrder(targetGroup.id, index);
+
+      set((state) => {
+        const item = state.groups.splice(index, 1)[0];
+        state.groups.splice(targetIndex, 0, item);
+        state.groups.forEach((g, idx) => {
+          g.order = idx;
+        });
+      });
+    },
+
+    deleteGroup: (groupId) => {
+      Q.deleteBoulderGroup(groupId);
+      set((state) => {
+        state.groups = state.groups.filter((g) => g.id !== groupId);
+        state.groups.forEach((g, idx) => {
+          g.order = idx;
+        });
       });
     },
 
@@ -270,7 +400,9 @@ export const useSessionStore = create<SessionState>()(
         const idx = sg.logs.findIndex((l) => l.id === logId);
         if (idx >= 0) sg.logs[idx].outcome = nextOutcome;
       });
-      get().triggerRestTimer();
+      if (nextOutcome !== 'attempt') {
+        get().triggerRestTimer(g.defaultRestSeconds ?? 90);
+      }
     },
 
     setOutcome: (groupId, logId, outcome) => {
@@ -287,7 +419,9 @@ export const useSessionStore = create<SessionState>()(
         const idx = sg.logs.findIndex((l) => l.id === logId);
         if (idx >= 0) sg.logs[idx].outcome = outcome;
       });
-      get().triggerRestTimer();
+      if (outcome !== 'attempt') {
+        get().triggerRestTimer(g.defaultRestSeconds ?? 90);
+      }
     },
 
     updateGrade: (groupId, logId, gradeRaw) => {

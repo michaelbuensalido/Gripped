@@ -44,11 +44,11 @@ export function OutcomeDistributionBar({
       <View className="mb-3">
         <Svg width={BAR_WIDTH} height={BAR_HEIGHT}>
           {/* Background Track */}
-          <Rect x={0} y={0} width={BAR_WIDTH} height={BAR_HEIGHT} fill="#1E1E1E" rx={8} />
+          <Rect x={0} y={0} width={BAR_WIDTH} height={BAR_HEIGHT} fill="#16161C" rx={8} />
 
           {/* Flash Segment */}
           {flashW > 0 && (
-            <Rect x={0} y={0} width={flashW} height={BAR_HEIGHT} fill="#22C55E" rx={8} />
+            <Rect x={0} y={0} width={flashW} height={BAR_HEIGHT} fill="#6EE756" rx={8} />
           )}
 
           {/* Send Segment */}
@@ -58,7 +58,7 @@ export function OutcomeDistributionBar({
               y={0}
               width={sendW}
               height={BAR_HEIGHT}
-              fill="#A78BFA"
+              fill="#8E7CFF"
               rx={flashW > 0 ? 0 : 8}
             />
           )}
@@ -70,7 +70,7 @@ export function OutcomeDistributionBar({
               y={0}
               width={attemptW}
               height={BAR_HEIGHT}
-              fill="#374151"
+              fill="#484852"
               rx={flashW === 0 && sendW === 0 ? 8 : 0}
             />
           )}
@@ -80,27 +80,27 @@ export function OutcomeDistributionBar({
       {/* Breakdown Metrics Grid */}
       <View className="flex-row items-center justify-between">
         {/* Flash */}
-        <View className="flex-1 items-center bg-surface/50 py-2.5 px-1 rounded-xl border border-border/40 mr-1.5">
+        <View className="flex-1 items-center bg-[#16161C] py-2.5 px-1 rounded-xl border border-[#2C2C35] mr-1.5">
           <View className="flex-row items-center gap-1 mb-0.5">
-            <Zap size={11} color="#22C55E" fill="#22C55E" />
+            <Zap size={11} color="#6EE756" fill="#6EE756" />
             <Text className="text-flash text-xs font-black">{flashPct}%</Text>
           </View>
           <Text className="text-secondary text-[11px] font-semibold">{flashes} Flashes</Text>
         </View>
 
         {/* Redpoint Send */}
-        <View className="flex-1 items-center bg-surface/50 py-2.5 px-1 rounded-xl border border-border/40 mr-1.5">
+        <View className="flex-1 items-center bg-[#16161C] py-2.5 px-1 rounded-xl border border-[#2C2C35] mr-1.5">
           <View className="flex-row items-center gap-1 mb-0.5">
-            <Check size={11} color="#A78BFA" strokeWidth={3} />
+            <Check size={11} color="#8E7CFF" strokeWidth={3} />
             <Text className="text-send text-xs font-black">{sendPct}%</Text>
           </View>
           <Text className="text-secondary text-[11px] font-semibold">{sends} Sends</Text>
         </View>
 
         {/* Attempts */}
-        <View className="flex-1 items-center bg-surface/50 py-2.5 px-1 rounded-xl border border-border/40">
+        <View className="flex-1 items-center bg-[#16161C] py-2.5 px-1 rounded-xl border border-[#2C2C35]">
           <View className="flex-row items-center gap-1 mb-0.5">
-            <RotateCcw size={11} color="#9CA3AF" />
+            <RotateCcw size={11} color="#9A9AA6" />
             <Text className="text-muted text-xs font-black">{attemptPct}%</Text>
           </View>
           <Text className="text-secondary text-[11px] font-semibold">{attempts} Attempts</Text>

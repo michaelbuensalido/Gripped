@@ -46,17 +46,25 @@ export function StyleTagPickerModal({
     >
       <View className="flex-1 bg-black/70 justify-end">
         <View
-          style={{ paddingBottom: insets.bottom + 16 }}
-          className="bg-surface rounded-t-3xl p-6 border-t border-border max-h-[80%]"
+          style={{
+            paddingBottom: insets.bottom + 16,
+            backgroundColor: 'rgba(26, 26, 32, 0.95)',
+            borderColor: 'rgba(255, 255, 255, 0.12)',
+            borderTopWidth: 1,
+            borderTopLeftRadius: 28,
+            borderTopRightRadius: 28,
+            padding: 24,
+            maxHeight: '80%',
+          }}
         >
           {/* Header */}
           <View className="flex-row items-center justify-between mb-4">
             <View>
               <Text className="text-white font-bold text-lg">Climbing Style Tags</Text>
-              <Text className="text-muted text-xs">Select wall angle, grip type, or movement</Text>
+              <Text className="text-[#9A9AA6] text-xs">Select wall angle, grip type, or movement</Text>
             </View>
             <TouchableOpacity onPress={onClose} className="p-1">
-              <X size={20} color="#9CA3AF" />
+              <X size={20} color="#9A9AA6" />
             </TouchableOpacity>
           </View>
 
@@ -72,14 +80,14 @@ export function StyleTagPickerModal({
                     activeOpacity={0.75}
                     className={`flex-row items-center gap-1.5 px-3.5 py-2 rounded-full border ${
                       isSelected
-                        ? 'bg-accent/20 border-accent'
-                        : 'bg-card border-border'
+                        ? 'bg-[#8E7CFF]/20 border-[#8E7CFF]'
+                        : 'bg-[#16161C] border-[#2C2C35]'
                     }`}
                   >
-                    {isSelected && <Check size={13} color="#7C3AED" strokeWidth={3} />}
+                    {isSelected && <Check size={13} color="#8E7CFF" strokeWidth={3} />}
                     <Text
                       className={`text-xs font-bold ${
-                        isSelected ? 'text-accent' : 'text-secondary'
+                        isSelected ? 'text-[#8E7CFF]' : 'text-[#9A9AA6]'
                       }`}
                     >
                       {tag}
@@ -94,7 +102,14 @@ export function StyleTagPickerModal({
           <TouchableOpacity
             onPress={onClose}
             activeOpacity={0.85}
-            className="bg-accent py-3.5 rounded-xl items-center mt-5"
+            style={{
+              height: 52,
+              borderRadius: 26,
+              backgroundColor: '#8E7CFF',
+              alignItems: 'center',
+              justifyContent: 'center',
+              marginTop: 20,
+            }}
           >
             <Text className="text-white font-bold text-base">Done</Text>
           </TouchableOpacity>

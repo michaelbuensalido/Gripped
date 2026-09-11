@@ -6,6 +6,9 @@ export interface Session {
   endTime: number | null;
   gymName: string;
   notes: string;
+  title?: string;
+  rpe?: number | null;
+  mediaUris?: string[];
 }
 
 export interface BoulderGroup {
@@ -13,6 +16,8 @@ export interface BoulderGroup {
   sessionId: string;
   zoneName: string;
   order: number;
+  defaultRestSeconds?: number;
+  notes?: string;
 }
 
 export interface BoulderLog {
@@ -24,11 +29,6 @@ export interface BoulderLog {
   attempts: number;
   outcome: Outcome;          // 'flash' | 'send' | 'attempt'
   timestamp: number;         // unix ms
-}
-
-export interface BoulderLogDraft extends Omit<BoulderLog, 'id' | 'timestamp'> {
-  id: string;
-  timestamp: number;
 }
 
 export interface BoulderGroupWithLogs extends BoulderGroup {

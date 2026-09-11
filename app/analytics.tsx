@@ -6,9 +6,18 @@ import { SlidersHorizontal } from 'lucide-react-native';
 import {
   getAnalyticsOverview,
   getAllSessionSummaries,
+  getGradePyramid,
+  getRecentSessionTrends,
+  getRecentBoulderLogs,
+  type AnalyticsOverview,
   type SessionSummary,
+  type GradePyramidRow,
+  type SessionTrendPoint,
+  type RecentBoulderLog,
 } from '../db/queries';
 import { DonutChart, type DonutSegment } from '../components/analytics/DonutChart';
+import { InteractiveGradePyramid } from '../components/analytics/InteractiveGradePyramid';
+import { SessionTrendChart } from '../components/analytics/SessionTrendChart';
 import { THEME_COLORS, FLOATING_CARD_STYLE } from '../constants/theme';
 import { ScreenContainer } from '../components/ui/ScreenContainer';
 import { ClimbingHoldGraphic, type HoldType } from '../components/ui/ClimbingHoldGraphic';
@@ -131,7 +140,7 @@ function RecentRouteRow({
           height: 48,
           borderRadius: 14,
           backgroundColor: '#141416',
-          borderColor: '#2D2D35',
+          borderColor: '#2C2C35',
           borderWidth: 1,
           overflow: 'hidden',
           alignItems: 'center',
@@ -197,61 +206,75 @@ function RecentRouteRow({
 
 export default function ProgressScreen() {
   const insets = useSafeAreaInsets();
+  const [overview, setOverview] = React.useState<AnalyticsOverview | null>(null);
+  const [pyramid, setPyramid] = React.useState<GradePyramidRow[]>([]);
+  const [trends, setTrends] = React.useState<SessionTrendPoint[]>([]);
   const [sessions, setSessions] = React.useState<SessionSummary[]>([]);
+  const [recentLogs, setRecentLogs] = React.useState<RecentBoulderLog[]>([]);
 
   useFocusEffect(
     useCallback(() => {
       try {
+        setOverview(getAnalyticsOverview());
+        setPyramid(getGradePyramid(null));
+        setTrends(getRecentSessionTrends(7));
         setSessions(getAllSessionSummaries());
+        setRecentLogs(getRecentBoulderLogs(6));
       } catch (e) {
         console.error('Failed to load progress data:', e);
       }
     }, [])
   );
 
-  // 4 split segments matching reference mockup
-  const donutSegments: DonutSegment[] = [
-    { label: 'Flash', value: 42, color: '#6EE756' },
-    { label: 'Top', value: 28, color: '#8E7CFF' },
-    { label: 'Attempt', value: 18, color: '#E8DEB5' },
-    { label: 'Fail', value: 12, color: '#484852' },
+  const hasClimbs = (overview?.totalClimbs ?? 0) > 0;
+
+  // Donut chart segments: real SQLite breakdown or mockup defaults
+  const donutSegments: DonutSegment[] =
+    hasClimbs && overview
+      ? [
+          { label: 'Flash', value: overview.outcomeBreakdown.flashes, color: '#6EE756' },
+          { label: 'Top', value: overview.outcomeBreakdown.sends, color: '#8E7CFF' },
+          { label: 'Attempt', value: overview.outcomeBreakdown.attempts, color: '#E8DEB5' },
+        ]
+      : [
+          { label: 'Flash', value: 42, color: '#6EE756' },
+          { label: 'Top', value: 28, color: '#8E7CFF' },
+          { label: 'Attempt', value: 18, color: '#E8DEB5' },
+          { label: 'Fail', value: 12, color: '#484852' },
+        ];
+
+  const centerLabel = hasClimbs
+    ? (overview?.hardestSend ?? (overview ? `V${Math.round(overview.sendRate / 10)}` : '—'))
+    : '—';
+
+  const centerSubLabel = hasClimbs
+    ? `${overview?.totalClimbs ?? 0} total climbs`
+    : 'No climbs logged yet';
+
+  const HOLD_TYPE_LIST: HoldType[] = [
+    'ripple-effect',
+    'slab-rise',
+    'kars-sloper',
+    'poly-edge',
+    'purple-sloper',
+    'yellow-jug',
+    'orange-facet',
   ];
 
-  // Recent routes matching reference mockup
-  const displayRoutes: DisplayRoute[] = [
-    {
-      id: 'route-1',
-      title: 'Ripple Effect',
-      grade: 'V6',
-      holdType: 'ripple-effect',
-      outcome: 'Flash',
-      date: 'Sep 10',
-    },
-    {
-      id: 'route-2',
-      title: 'Slab Rise',
-      grade: 'V5',
-      holdType: 'slab-rise',
-      outcome: 'Top',
-      date: 'Sep 9',
-    },
-    {
-      id: 'route-3',
-      title: 'Crimpy Corner',
-      grade: 'V7',
-      holdType: 'kars-sloper',
-      outcome: 'Flash',
-      date: 'Sep 9',
-    },
-    {
-      id: 'route-4',
-      title: 'Dyno Thunder',
-      grade: 'V4',
-      holdType: 'poly-edge',
-      outcome: 'Top',
-      date: 'Sep 8',
-    },
-  ];
+  const displayRoutes: DisplayRoute[] = recentLogs.map((log, index) => {
+    const d = new Date(log.timestamp);
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const dateStr = `${months[d.getMonth()]} ${d.getDate()}`;
+    const holdType = HOLD_TYPE_LIST[index % HOLD_TYPE_LIST.length];
+    return {
+      id: log.id,
+      title: `${log.gymName} • #${log.attempts} att`,
+      grade: log.gradeRaw,
+      holdType,
+      outcome: log.outcome === 'flash' ? 'Flash' : 'Top',
+      date: dateStr,
+    };
+  });
 
   return (
     <ScreenContainer>
@@ -330,8 +353,8 @@ export default function ProgressScreen() {
         >
           <DonutChart
             segments={donutSegments}
-            centerLabel="V7"
-            centerSubLabel="Average of last 20 routes"
+            centerLabel={centerLabel}
+            centerSubLabel={centerSubLabel}
           />
         </View>
 
@@ -352,33 +375,94 @@ export default function ProgressScreen() {
 
         {/* ── 4. Performance Trends Cards (3-Column Grid) ────── */}
         <View className="flex-row gap-2.5 px-4">
-          {/* Card 1: WEEKLY VOLUME -> Routes (purple) -> 12 */}
+          {/* Card 1: VOLUME -> Routes (purple) -> totalClimbs */}
           <TrendCard
-            label="WEEKLY VOLUME"
+            label="VOLUME"
             sublabel="Routes"
             sublabelColor="#8E7CFF"
-            value="12"
+            value={String(overview?.totalClimbs ?? 0)}
           />
 
-          {/* Card 2: FLASH EFFICIENCY -> Flashes (green) -> 32% ↗ */}
+          {/* Card 2: FLASH EFFICIENCY -> Flashes (green) -> flashRate% */}
           <TrendCard
             label="FLASH EFFICIENCY"
             sublabel="Flashes"
             sublabelColor="#6EE756"
-            value="32%"
-            indicator="↗"
+            value={`${overview?.flashRate ?? 0}%`}
+            indicator={overview && overview.flashRate > 0 ? '↗' : undefined}
           />
 
-          {/* Card 3: OVERHANG STRENGTH -> Improving (white) -> +8% */}
+          {/* Card 3: SEND RATE -> Send Rate (white) -> sendRate% */}
           <TrendCard
-            label="OVERHANG STRENGTH"
-            sublabel="Improving"
+            label="SEND RATE"
+            sublabel={overview && overview.sendRate > 50 ? 'Improving' : 'Baseline'}
             sublabelColor="#FFFFFF"
-            value="+8%"
+            value={`${overview?.sendRate ?? 0}%`}
+            indicator={overview && overview.sendRate > 50 ? '↗' : undefined}
           />
         </View>
 
-        {/* ── 5. Section Title: RECENT ROUTES SUMMARY ────────── */}
+        {/* ── 5. Section Title: GRADE PYRAMID ────────────────── */}
+        <View style={{ marginTop: 24, marginBottom: 12, paddingHorizontal: 16 }}>
+          <Text
+            style={{
+              color: '#8A8A98',
+              fontSize: 13,
+              fontWeight: '700',
+              letterSpacing: 1.2,
+            }}
+            className="uppercase"
+          >
+            GRADE PYRAMID
+          </Text>
+        </View>
+
+        {/* Grade Pyramid Card */}
+        <View
+          style={[
+            FLOATING_CARD_STYLE,
+            {
+              borderRadius: 24,
+              padding: 20,
+              marginBottom: 8,
+            },
+          ]}
+          className="mx-4"
+        >
+          <InteractiveGradePyramid pyramid={pyramid} />
+        </View>
+
+        {/* ── 6. Section Title: SESSION TRENDS ───────────────── */}
+        <View style={{ marginTop: 24, marginBottom: 12, paddingHorizontal: 16 }}>
+          <Text
+            style={{
+              color: '#8A8A98',
+              fontSize: 13,
+              fontWeight: '700',
+              letterSpacing: 1.2,
+            }}
+            className="uppercase"
+          >
+            SESSION TRENDS
+          </Text>
+        </View>
+
+        {/* Session Trends Card */}
+        <View
+          style={[
+            FLOATING_CARD_STYLE,
+            {
+              borderRadius: 24,
+              padding: 20,
+              marginBottom: 8,
+            },
+          ]}
+          className="mx-4"
+        >
+          <SessionTrendChart trends={trends} />
+        </View>
+
+        {/* ── 7. Section Title: RECENT ROUTES SUMMARY ────────── */}
         <View style={{ marginTop: 24, marginBottom: 12, paddingHorizontal: 16 }}>
           <Text
             style={{
@@ -400,19 +484,31 @@ export default function ProgressScreen() {
             {
               borderRadius: 24,
               paddingHorizontal: 18,
-              paddingVertical: 6,
+              paddingVertical: displayRoutes.length > 0 ? 6 : 24,
               marginBottom: 20,
+              alignItems: displayRoutes.length > 0 ? 'stretch' : 'center',
             },
           ]}
           className="mx-4"
         >
-          {displayRoutes.map((route, idx) => (
-            <RecentRouteRow
-              key={route.id}
-              route={route}
-              isLast={idx === displayRoutes.length - 1}
-            />
-          ))}
+          {displayRoutes.length === 0 ? (
+            <View style={{ alignItems: 'center', paddingVertical: 12 }}>
+              <Text style={{ color: '#FFFFFF', fontSize: 15, fontWeight: '600', marginBottom: 4 }}>
+                No routes logged yet
+              </Text>
+              <Text style={{ color: '#8A8A96', fontSize: 13, textAlign: 'center' }}>
+                Completed boulders from your sessions will appear here.
+              </Text>
+            </View>
+          ) : (
+            displayRoutes.map((route, idx) => (
+              <RecentRouteRow
+                key={route.id}
+                route={route}
+                isLast={idx === displayRoutes.length - 1}
+              />
+            ))
+          )}
         </View>
       </ScrollView>
     </ScreenContainer>

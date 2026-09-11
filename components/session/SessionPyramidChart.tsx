@@ -45,45 +45,45 @@ export function SessionPyramidChart({ pyramid }: SessionPyramidChartProps) {
 
         return (
           <View key={row.gradeRaw} className="flex-row items-center mb-2">
-            <Text style={{ width: LABEL_W }} className="text-secondary text-xs font-black">
+            <Text style={{ width: LABEL_W }} className="text-[#9A9AA6] text-xs font-black">
               {row.gradeRaw}
             </Text>
 
             <Svg width={BAR_AREA} height={CHART_H}>
               {/* Background track */}
-              <Rect x={0} y={3} width={BAR_AREA} height={CHART_H - 6} fill="#1E1E1E" rx={5} />
+              <Rect x={0} y={3} width={BAR_AREA} height={CHART_H - 6} fill="#16161C" rx={5} />
 
               {/* Flash segment (Green) */}
               {row.flashes > 0 && (
-                <Rect x={0} y={3} width={flashW} height={CHART_H - 6} fill="#22C55E" rx={5} />
+                <Rect x={0} y={3} width={flashW} height={CHART_H - 6} fill="#6EE756" rx={5} />
               )}
 
-              {/* Send segment (Purple) */}
+              {/* Send segment (Lavender) */}
               {row.sends > 0 && (
                 <Rect
                   x={flashW}
                   y={3}
                   width={sendW}
                   height={CHART_H - 6}
-                  fill="#A78BFA"
+                  fill="#8E7CFF"
                   rx={row.flashes > 0 ? 0 : 5}
                 />
               )}
 
-              {/* Attempt segment (Gray) */}
+              {/* Attempt segment (Muted) */}
               {row.attempts > 0 && (
                 <Rect
                   x={flashW + sendW}
                   y={3}
                   width={attemptW}
                   height={CHART_H - 6}
-                  fill="#374151"
+                  fill="#484852"
                   rx={row.flashes === 0 && row.sends === 0 ? 5 : 0}
                 />
               )}
             </Svg>
 
-            <Text style={{ width: COUNT_W }} className="text-secondary text-xs font-semibold text-right">
+            <Text style={{ width: COUNT_W }} className="text-[#9A9AA6] text-xs font-semibold text-right">
               {total}
             </Text>
           </View>
@@ -91,18 +91,18 @@ export function SessionPyramidChart({ pyramid }: SessionPyramidChartProps) {
       })}
 
       {/* Legend */}
-      <View className="flex-row items-center justify-center gap-5 mt-3 pt-3 border-t border-border/50">
+      <View className="flex-row items-center justify-center gap-5 mt-3 pt-3 border-t border-[#2C2C35]">
         <View className="flex-row items-center gap-1.5">
-          <View className="w-2.5 h-2.5 rounded-sm bg-flash" />
-          <Text className="text-secondary text-[11px] font-semibold">Flash</Text>
+          <View className="w-2.5 h-2.5 rounded-sm bg-[#6EE756]" />
+          <Text className="text-[#9A9AA6] text-[11px] font-semibold">Flash</Text>
         </View>
         <View className="flex-row items-center gap-1.5">
-          <View className="w-2.5 h-2.5 rounded-sm bg-send" />
-          <Text className="text-secondary text-[11px] font-semibold">Top</Text>
+          <View className="w-2.5 h-2.5 rounded-sm bg-[#8E7CFF]" />
+          <Text className="text-[#9A9AA6] text-[11px] font-semibold">Top</Text>
         </View>
         <View className="flex-row items-center gap-1.5">
-          <View className="w-2.5 h-2.5 rounded-sm bg-[#374151]" />
-          <Text className="text-secondary text-[11px] font-semibold">Attempt</Text>
+          <View className="w-2.5 h-2.5 rounded-sm bg-[#484852]" />
+          <Text className="text-[#9A9AA6] text-[11px] font-semibold">Attempt</Text>
         </View>
       </View>
     </View>

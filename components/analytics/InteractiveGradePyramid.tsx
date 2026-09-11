@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, Dimensions } from 'react-native';
 import Svg, { Rect } from 'react-native-svg';
-import * as Haptics from 'expo-haptics';
+import { triggerHaptic } from '../../utils/haptics';
 import { Zap, Check, X } from 'lucide-react-native';
 import type { GradePyramidRow } from '../../db/queries';
 import { GRADE_BY_LABEL } from '../../constants/grades';
+import { THEME_COLORS } from '../../constants/theme';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 const CHART_H = 26;
@@ -38,7 +39,7 @@ export function InteractiveGradePyramid({ pyramid }: InteractiveGradePyramidProp
   }, 1);
 
   const handleRowPress = (row: GradePyramidRow) => {
-    Haptics.selectionAsync();
+    triggerHaptic('selection');
     if (selectedRow?.gradeRaw === row.gradeRaw) {
       setSelectedRow(null);
     } else {
@@ -50,12 +51,22 @@ export function InteractiveGradePyramid({ pyramid }: InteractiveGradePyramidProp
     <View>
       {/* Interactive Tooltip Inspector Card */}
       {selectedRow ? (
-        <View className="bg-surface rounded-xl p-3 mb-4 border border-accent/40 shadow-sm">
-          <View className="flex-row items-center justify-between mb-2 pb-1.5 border-b border-border/50">
+        <View
+          style={{
+            backgroundColor: THEME_COLORS.cardSurface,
+            borderColor: 'rgba(142, 124, 255, 0.4)',
+            borderTopColor: 'rgba(255, 255, 255, 0.16)',
+            borderWidth: 1,
+            borderRadius: 14,
+            padding: 12,
+            marginBottom: 16,
+          }}
+        >
+          <View className="flex-row items-center justify-between mb-2 pb-1.5 border-b border-[#2C2C35]">
             <View className="flex-row items-center gap-2">
               <View
                 style={{
-                  backgroundColor: GRADE_BY_LABEL[selectedRow.gradeRaw]?.color ?? '#374151',
+                  backgroundColor: GRADE_BY_LABEL[selectedRow.gradeRaw]?.color ?? '#484852',
                 }}
                 className="rounded-full px-2 py-0.5"
               >
@@ -72,7 +83,7 @@ export function InteractiveGradePyramid({ pyramid }: InteractiveGradePyramidProp
             </View>
 
             <TouchableOpacity onPress={() => setSelectedRow(null)} className="p-1">
-              <X size={14} color="#9CA3AF" />
+              <X size={14} color="#9A9AA6" />
             </TouchableOpacity>
           </View>
 
@@ -82,22 +93,22 @@ export function InteractiveGradePyramid({ pyramid }: InteractiveGradePyramidProp
                 {selectedRow.flashes}
               </Text>
               <View className="flex-row items-center gap-1">
-                <Zap size={10} color="#22C55E" fill="#22C55E" />
+                <Zap size={10} color="#6EE756" fill="#6EE756" />
                 <Text className="text-muted text-[10px] uppercase font-bold">Flash</Text>
               </View>
             </View>
 
-            <View className="items-center flex-1 border-x border-border/40">
+            <View className="items-center flex-1 border-x border-[#2C2C35]">
               <Text className="text-send text-base font-black">
                 {selectedRow.sends}
               </Text>
               <View className="flex-row items-center gap-1">
-                <Check size={10} color="#A78BFA" strokeWidth={3} />
+                <Check size={10} color="#8E7CFF" strokeWidth={3} />
                 <Text className="text-muted text-[10px] uppercase font-bold">Top</Text>
               </View>
             </View>
 
-            <View className="items-center flex-1 border-r border-border/40">
+            <View className="items-center flex-1 border-r border-[#2C2C35]">
               <Text className="text-secondary text-base font-black">
                 {selectedRow.attempts}
               </Text>
@@ -158,7 +169,7 @@ export function InteractiveGradePyramid({ pyramid }: InteractiveGradePyramidProp
                 y={3}
                 width={BAR_AREA}
                 height={CHART_H - 6}
-                fill={isSelected ? '#2A2A2A' : '#1E1E1E'}
+                fill={isSelected ? '#202026' : '#16161C'}
                 rx={5}
               />
 
@@ -169,7 +180,7 @@ export function InteractiveGradePyramid({ pyramid }: InteractiveGradePyramidProp
                   y={3}
                   width={flashW}
                   height={CHART_H - 6}
-                  fill="#22C55E"
+                  fill="#6EE756"
                   rx={5}
                 />
               )}
@@ -181,7 +192,7 @@ export function InteractiveGradePyramid({ pyramid }: InteractiveGradePyramidProp
                   y={3}
                   width={sendW}
                   height={CHART_H - 6}
-                  fill="#A78BFA"
+                  fill="#8E7CFF"
                   rx={row.flashes > 0 ? 0 : 5}
                 />
               )}
@@ -193,7 +204,7 @@ export function InteractiveGradePyramid({ pyramid }: InteractiveGradePyramidProp
                   y={3}
                   width={attemptW}
                   height={CHART_H - 6}
-                  fill="#374151"
+                  fill="#484852"
                   rx={row.flashes === 0 && row.sends === 0 ? 5 : 0}
                 />
               )}
@@ -213,18 +224,18 @@ export function InteractiveGradePyramid({ pyramid }: InteractiveGradePyramidProp
       })}
 
       {/* Legend & Tip */}
-      <View className="flex-row items-center justify-between mt-3 pt-3 border-t border-border/50">
+      <View className="flex-row items-center justify-between mt-3 pt-3 border-t border-[#2C2C35]">
         <View className="flex-row items-center gap-4">
           <View className="flex-row items-center gap-1.5">
-            <View className="w-2.5 h-2.5 rounded-sm bg-flash" />
+            <View className="w-2.5 h-2.5 rounded-sm bg-[#6EE756]" />
             <Text className="text-secondary text-[11px] font-semibold">Flash</Text>
           </View>
           <View className="flex-row items-center gap-1.5">
-            <View className="w-2.5 h-2.5 rounded-sm bg-send" />
+            <View className="w-2.5 h-2.5 rounded-sm bg-[#8E7CFF]" />
             <Text className="text-secondary text-[11px] font-semibold">Top</Text>
           </View>
           <View className="flex-row items-center gap-1.5">
-            <View className="w-2.5 h-2.5 rounded-sm bg-[#374151]" />
+            <View className="w-2.5 h-2.5 rounded-sm bg-[#484852]" />
             <Text className="text-secondary text-[11px] font-semibold">Attempt</Text>
           </View>
         </View>

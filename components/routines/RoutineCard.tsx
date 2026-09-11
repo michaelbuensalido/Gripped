@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, Modal, Image } from 'react-native';
+import React, { useState } from "react";
+import { View, Text, TouchableOpacity, Modal, Image } from "react-native";
 import {
   Play,
   MoreVertical,
@@ -8,11 +8,11 @@ import {
   Trash2,
   Clock,
   Layers,
-} from 'lucide-react-native';
-import Svg, { Polygon, Path } from 'react-native-svg';
-import type { RoutineWithBlocks, RoutineCategory } from '../../types';
-import { GRADE_BY_LABEL } from '../../constants/grades';
-import { FLOATING_CARD_STYLE } from '../../constants/theme';
+} from "lucide-react-native";
+import Svg, { Polygon, Path } from "react-native-svg";
+import type { RoutineWithBlocks, RoutineCategory } from "../../types";
+import { GRADE_BY_LABEL } from "../../constants/grades";
+import { FLOATING_CARD_STYLE } from "../../constants/theme";
 
 interface RoutineCardProps {
   routine: RoutineWithBlocks;
@@ -35,34 +35,34 @@ const CATEGORY_STYLES: Record<
   { bg: string; text: string; border: string }
 > = {
   Strength: {
-    bg: 'rgba(142, 124, 255, 0.15)',
-    text: '#8E7CFF',
-    border: '#8E7CFF',
+    bg: "rgba(142, 124, 255, 0.15)",
+    text: "#8E7CFF",
+    border: "#8E7CFF",
   },
   Projecting: {
-    bg: 'rgba(142, 124, 255, 0.15)',
-    text: '#8E7CFF',
-    border: '#8E7CFF',
+    bg: "rgba(142, 124, 255, 0.15)",
+    text: "#8E7CFF",
+    border: "#8E7CFF",
   },
-  'Power Endurance': {
-    bg: 'rgba(255, 92, 92, 0.15)',
-    text: '#FF5C5C',
-    border: '#FF5C5C',
+  "Power Endurance": {
+    bg: "rgba(255, 92, 92, 0.15)",
+    text: "#FF5C5C",
+    border: "#FF5C5C",
   },
   Volume: {
-    bg: 'rgba(110, 231, 86, 0.15)',
-    text: '#6EE756',
-    border: '#6EE756',
+    bg: "rgba(110, 231, 86, 0.15)",
+    text: "#6EE756",
+    border: "#6EE756",
   },
   Technique: {
-    bg: 'rgba(77, 175, 255, 0.15)',
-    text: '#4DAFFF',
-    border: '#4DAFFF',
+    bg: "rgba(77, 175, 255, 0.15)",
+    text: "#4DAFFF",
+    border: "#4DAFFF",
   },
   Other: {
-    bg: 'rgba(142, 142, 154, 0.15)',
-    text: '#8E8E9A',
-    border: '#8E8E9A',
+    bg: "rgba(142, 142, 154, 0.15)",
+    text: "#8E8E9A",
+    border: "#8E8E9A",
   },
 };
 
@@ -73,23 +73,29 @@ const CATEGORY_STYLES: Record<
  * - 'strength' / 'projecting' -> pink_pinch.png
  */
 function getCategoryHoldImage(category: RoutineCategory | string) {
-  const norm = (category || '').toLowerCase().replace(/[\s_-]/g, '');
-  if (norm.includes('volume') || norm.includes('technique')) {
-    return require('../../assets/holds-images/teal_ripple_disc.png');
+  const norm = (category || "").toLowerCase().replace(/[\s_-]/g, "");
+  if (norm.includes("volume") || norm.includes("technique")) {
+    return require("../../assets/holds-images/teal_ripple_disc.png");
   }
-  if (norm.includes('endurance')) {
-    return require('../../assets/holds-images/yellow_jug.png');
+  if (norm.includes("endurance")) {
+    return require("../../assets/holds-images/yellow_jug.png");
   }
-  if (norm.includes('strength') || norm.includes('projecting')) {
-    return require('../../assets/holds-images/pink_pinch.png');
+  if (norm.includes("strength") || norm.includes("projecting")) {
+    return require("../../assets/holds-images/pink_pinch.png");
   }
-  return require('../../assets/holds-images/teal_ripple_disc.png');
+  return require("../../assets/holds-images/teal_ripple_disc.png");
 }
 
 /**
  * Solid faceted 3D boulder glyph
  */
-function MiniBoulderIcon({ size = 13, color = '#8A8A96' }: { size?: number; color?: string }) {
+function MiniBoulderIcon({
+  size = 13,
+  color = "#8A8A96",
+}: {
+  size?: number;
+  color?: string;
+}) {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24">
       <Polygon points="4,15 7,6 15,3 21,8 20,18 8,21" fill={color} />
@@ -113,7 +119,10 @@ export function RoutineCard({
   const [menuVisible, setMenuVisible] = useState(false);
 
   const catStyle = CATEGORY_STYLES[routine.category] ?? CATEGORY_STYLES.Other;
-  const totalBoulders = routine.blocks.reduce((acc, b) => acc + b.boulders.length, 0);
+  const totalBoulders = routine.blocks.reduce(
+    (acc, b) => acc + b.boulders.length,
+    0,
+  );
 
   // Compute concise Grade Span (e.g. "V3 – V5" or "V5")
   const gradeList = routine.blocks
@@ -126,7 +135,7 @@ export function RoutineCard({
     return diffA - diffB;
   });
 
-  let gradeSpanText = '';
+  let gradeSpanText = "";
   if (sortedGrades.length === 1) {
     gradeSpanText = sortedGrades[0];
   } else if (sortedGrades.length > 1) {
@@ -138,37 +147,25 @@ export function RoutineCard({
       style={[
         FLOATING_CARD_STYLE,
         {
-          backgroundColor: '#1E1E24',
-          borderColor: '#2C2C35',
-          borderWidth: 1,
-          borderRadius: 24,
+          borderRadius: 20,
           padding: 20,
           marginHorizontal: 16,
           marginBottom: 16,
-          shadowColor: '#000000',
-          shadowOffset: { width: 0, height: 6 },
-          shadowOpacity: 0.45,
-          shadowRadius: 16,
-          elevation: 6,
         },
       ]}
     >
       {/* ── Top Header Row: Category Badge (Left) + 3-Dot Menu (Right) ── */}
       <View
         style={{
-          flexDirection: 'row',
-          alignItems: 'center',
-          justifyContent: 'space-between',
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "space-between",
           marginBottom: 14,
         }}
       >
         {/* Category Badge: Bold, compact rounded pill */}
         <View
           style={{
-            backgroundColor: catStyle.bg,
-            borderColor: catStyle.border,
-            borderWidth: 1,
-            borderRadius: 12,
             paddingHorizontal: 10,
             paddingVertical: 3,
           }}
@@ -177,7 +174,7 @@ export function RoutineCard({
             style={{
               color: catStyle.text,
               fontSize: 11,
-              fontWeight: '700',
+              fontWeight: "700",
               letterSpacing: 0.5,
             }}
             className="uppercase"
@@ -195,35 +192,35 @@ export function RoutineCard({
             width: 36,
             height: 36,
             borderRadius: 18,
-            alignItems: 'center',
-            justifyContent: 'center',
+            alignItems: "center",
+            justifyContent: "center",
           }}
         >
-          <MoreVertical size={18} color="#8A8A96" />
+          <MoreVertical size={18} color="#8A8A98" />
         </TouchableOpacity>
       </View>
 
       {/* ── Title Row: Direct 3D Hold + Routine Title + Grade Pill ── */}
       <View
         style={{
-          flexDirection: 'row',
-          alignItems: 'center',
+          flexDirection: "row",
+          alignItems: "center",
           gap: 12,
           marginBottom: routine.description ? 8 : 14,
         }}
       >
-        {/* Hold Display: 3D hold sitting directly on the card canvas */}
+        {/* Hold Display: 3D hold floating unboxed directly on the card canvas */}
         <Image
           source={getCategoryHoldImage(routine.category)}
-          style={{ width: 44, height: 44, borderRadius: 12 }}
-          resizeMode="cover"
+          style={{ width: 44, height: 44 }}
+          resizeMode="contain"
         />
 
         <Text
           style={{
-            color: '#FFFFFF',
+            color: "#FFFFFF",
             fontSize: 20,
-            fontWeight: '700',
+            fontWeight: "700",
             letterSpacing: -0.3,
             flex: 1,
           }}
@@ -236,11 +233,11 @@ export function RoutineCard({
         {gradeSpanText ? (
           <View
             style={{
-              backgroundColor: '#6EE756',
+              backgroundColor: "#6EE756",
               borderRadius: 12,
               paddingHorizontal: 10,
               paddingVertical: 3,
-              shadowColor: '#6EE756',
+              shadowColor: "#6EE756",
               shadowOffset: { width: 0, height: 2 },
               shadowOpacity: 0.35,
               shadowRadius: 5,
@@ -249,9 +246,9 @@ export function RoutineCard({
           >
             <Text
               style={{
-                color: '#111115',
+                color: "#111115",
                 fontSize: 12,
-                fontWeight: '700',
+                fontWeight: "700",
                 letterSpacing: 0.3,
               }}
             >
@@ -265,7 +262,7 @@ export function RoutineCard({
       {routine.description ? (
         <Text
           style={{
-            color: '#9A9AA6',
+            color: "#9A9AA6",
             fontSize: 13,
             lineHeight: 18,
             marginBottom: 14,
@@ -279,33 +276,39 @@ export function RoutineCard({
       {/* ── Metadata Bar (Clean Icon Pills) ─────────────────────────── */}
       <View
         style={{
-          flexDirection: 'row',
-          alignItems: 'center',
-          flexWrap: 'wrap',
+          flexDirection: "row",
+          alignItems: "center",
+          flexWrap: "wrap",
           gap: 12,
           marginBottom: 16,
         }}
       >
         {/* Blocks */}
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
           <Layers size={13} color="#8A8A96" />
-          <Text style={{ color: '#9A9AA6', fontSize: 12.5, fontWeight: '500' }}>
-            <Text style={{ color: '#FFFFFF', fontWeight: '700' }}>{routine.blocks.length}</Text> Blocks
+          <Text style={{ color: "#9A9AA6", fontSize: 12.5, fontWeight: "500" }}>
+            <Text style={{ color: "#FFFFFF", fontWeight: "700" }}>
+              {routine.blocks.length}
+            </Text>{" "}
+            Blocks
           </Text>
         </View>
 
         {/* Boulders / Problems */}
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
           <MiniBoulderIcon size={13} color="#8A8A96" />
-          <Text style={{ color: '#9A9AA6', fontSize: 12.5, fontWeight: '500' }}>
-            <Text style={{ color: '#FFFFFF', fontWeight: '700' }}>{totalBoulders}</Text> Problems
+          <Text style={{ color: "#9A9AA6", fontSize: 12.5, fontWeight: "500" }}>
+            <Text style={{ color: "#FFFFFF", fontWeight: "700" }}>
+              {totalBoulders}
+            </Text>{" "}
+            Problems
           </Text>
         </View>
 
         {/* Duration */}
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
           <Clock size={13} color="#8A8A96" />
-          <Text style={{ color: '#9A9AA6', fontSize: 12.5, fontWeight: '500' }}>
+          <Text style={{ color: "#9A9AA6", fontSize: 12.5, fontWeight: "500" }}>
             ~{routine.estimatedMinutes} min
           </Text>
         </View>
@@ -316,31 +319,31 @@ export function RoutineCard({
         onPress={() => onStart(routine)}
         activeOpacity={0.85}
         style={{
-          backgroundColor: '#8E7CFF',
-          height: 48,
-          borderRadius: 24,
-          flexDirection: 'row',
-          alignItems: 'center',
-          justifyContent: 'center',
+          backgroundColor: "#8E7CFF",
+          height: 52,
+          borderRadius: 26,
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "center",
           gap: 8,
-          shadowColor: '#8E7CFF',
+          shadowColor: "#8E7CFF",
           shadowOffset: { width: 0, height: 4 },
           shadowOpacity: 0.4,
           shadowRadius: 10,
-          elevation: 4,
+          elevation: 5,
           marginTop: 2,
         }}
       >
         <Play size={15} color="#FFFFFF" fill="#FFFFFF" />
         <Text
           style={{
-            color: '#FFFFFF',
+            color: "#FFFFFF",
             fontSize: 15,
-            fontWeight: '700',
+            fontWeight: "700",
             letterSpacing: 0.5,
           }}
         >
-          Start Routine
+          START ROUTINE
         </Text>
       </TouchableOpacity>
 
@@ -354,20 +357,20 @@ export function RoutineCard({
         <TouchableOpacity
           style={{
             flex: 1,
-            backgroundColor: 'rgba(0, 0, 0, 0.65)',
-            justifyContent: 'flex-end',
+            backgroundColor: "rgba(0, 0, 0, 0.65)",
+            justifyContent: "flex-end",
           }}
           activeOpacity={1}
           onPress={() => setMenuVisible(false)}
         >
           <View
             style={{
-              backgroundColor: '#1E1E24',
+              backgroundColor: 'rgba(28, 28, 35, 0.94)',
               borderTopLeftRadius: 28,
               borderTopRightRadius: 28,
               padding: 24,
               borderTopWidth: 1,
-              borderColor: '#2C2C35',
+              borderColor: 'rgba(255, 255, 255, 0.12)',
               paddingBottom: 40,
             }}
           >
@@ -376,18 +379,18 @@ export function RoutineCard({
               style={{
                 width: 40,
                 height: 4,
-                backgroundColor: '#374151',
+                backgroundColor: "#374151",
                 borderRadius: 2,
-                alignSelf: 'center',
+                alignSelf: "center",
                 marginBottom: 20,
               }}
             />
 
             <Text
               style={{
-                color: '#FFFFFF',
+                color: "#FFFFFF",
                 fontSize: 18,
-                fontWeight: '700',
+                fontWeight: "700",
                 marginBottom: 16,
               }}
               numberOfLines={1}
@@ -403,16 +406,18 @@ export function RoutineCard({
               }}
               activeOpacity={0.7}
               style={{
-                flexDirection: 'row',
-                alignItems: 'center',
+                flexDirection: "row",
+                alignItems: "center",
                 gap: 12,
                 paddingVertical: 14,
                 borderBottomWidth: 1,
-                borderBottomColor: 'rgba(255, 255, 255, 0.08)',
+                borderBottomColor: "rgba(255, 255, 255, 0.08)",
               }}
             >
               <Edit3 size={18} color="#FFFFFF" />
-              <Text style={{ color: '#FFFFFF', fontSize: 16, fontWeight: '600' }}>
+              <Text
+                style={{ color: "#FFFFFF", fontSize: 16, fontWeight: "600" }}
+              >
                 Edit Routine
               </Text>
             </TouchableOpacity>
@@ -425,16 +430,18 @@ export function RoutineCard({
               }}
               activeOpacity={0.7}
               style={{
-                flexDirection: 'row',
-                alignItems: 'center',
+                flexDirection: "row",
+                alignItems: "center",
                 gap: 12,
                 paddingVertical: 14,
                 borderBottomWidth: 1,
-                borderBottomColor: 'rgba(255, 255, 255, 0.08)',
+                borderBottomColor: "rgba(255, 255, 255, 0.08)",
               }}
             >
               <Copy size={18} color="#8E7CFF" />
-              <Text style={{ color: '#8E7CFF', fontSize: 16, fontWeight: '600' }}>
+              <Text
+                style={{ color: "#8E7CFF", fontSize: 16, fontWeight: "600" }}
+              >
                 Duplicate as Custom
               </Text>
             </TouchableOpacity>
@@ -448,15 +455,17 @@ export function RoutineCard({
                 }}
                 activeOpacity={0.7}
                 style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
+                  flexDirection: "row",
+                  alignItems: "center",
                   gap: 12,
                   paddingVertical: 14,
                   marginTop: 4,
                 }}
               >
                 <Trash2 size={18} color="#FF5C5C" />
-                <Text style={{ color: '#FF5C5C', fontSize: 16, fontWeight: '600' }}>
+                <Text
+                  style={{ color: "#FF5C5C", fontSize: 16, fontWeight: "600" }}
+                >
                   Delete Routine
                 </Text>
               </TouchableOpacity>

@@ -10,6 +10,7 @@ import {
   TextInput,
   KeyboardAvoidingView,
   Platform,
+  Image,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -75,6 +76,86 @@ function rpeColor(rpe: number): string {
   if (rpe <= 4) return '#22C55E';
   if (rpe <= 7) return '#EAB308';
   return '#EF4444';
+}
+
+function StatCard({
+  label,
+  sublabel,
+  sublabelColor,
+  value,
+  secondaryValue,
+}: {
+  label: string;
+  sublabel: string;
+  sublabelColor: string;
+  value: string;
+  secondaryValue?: string;
+}) {
+  return (
+    <View
+      style={[
+        FLOATING_CARD_STYLE,
+        {
+          padding: 14,
+          minHeight: 112,
+          justifyContent: 'space-between',
+          borderRadius: 20,
+        },
+      ]}
+      className="flex-1"
+    >
+      {/* Top Label: 11pt, uppercase, 600 weight, #8E8E9A */}
+      <Text
+        style={{
+          color: '#8E8E9A',
+          fontSize: 11,
+          fontWeight: '600',
+          letterSpacing: 0.8,
+        }}
+        className="uppercase"
+      >
+        {label}
+      </Text>
+
+      {/* Middle Colored Label: 13pt, 500 weight */}
+      <Text
+        style={{
+          color: sublabelColor,
+          fontSize: 13,
+          fontWeight: '500',
+          marginTop: 4,
+          marginBottom: 6,
+        }}
+      >
+        {sublabel}
+      </Text>
+
+      {/* Bottom Metric: 24pt, bold */}
+      <View style={{ flexDirection: 'row', alignItems: 'baseline' }}>
+        <Text
+          style={{
+            color: '#FFFFFF',
+            fontSize: 24,
+            fontWeight: '700',
+          }}
+        >
+          {value}
+        </Text>
+        {secondaryValue ? (
+          <Text
+            style={{
+              color: '#8E8E9A',
+              fontSize: 15,
+              fontWeight: '600',
+              marginLeft: 2,
+            }}
+          >
+            {secondaryValue}
+          </Text>
+        ) : null}
+      </View>
+    </View>
+  );
 }
 
 export default function SessionDetailScreen() {
@@ -192,7 +273,13 @@ export default function SessionDetailScreen() {
   return (
     <ScreenContainer>
       {/* ── Top Bar ────────────────────────────────────────────── */}
-      <View className="flex-row items-center justify-between px-4 py-3 border-b border-border/40">
+      <View
+        style={{
+          borderBottomColor: '#2C2C35',
+          borderBottomWidth: 1,
+        }}
+        className="flex-row items-center justify-between px-4 py-3"
+      >
         <TouchableOpacity
           onPress={() => router.back()}
           activeOpacity={0.7}
@@ -203,79 +290,68 @@ export default function SessionDetailScreen() {
 
         <View className="flex-1 mx-3 items-center">
           <Text className="text-white font-bold text-base" numberOfLines={1}>
-            {session.gymName || 'Session Details'}
+            {session.title || session.gymName || 'Session Details'}
           </Text>
           <Text className="text-muted text-xs">
+            {session.title && session.gymName ? `${session.gymName} • ` : ''}
             {formatSessionDate(session.startTime)}
           </Text>
         </View>
 
         <View className="flex-row items-center gap-1">
           <TouchableOpacity onPress={handleShare} activeOpacity={0.7} className="p-2">
-            <Share2 size={19} color="#7C3AED" />
+            <Share2 size={19} color="#8E7CFF" />
           </TouchableOpacity>
           <TouchableOpacity
             onPress={() => setMenuVisible(true)}
             activeOpacity={0.7}
             className="p-2"
           >
-            <MoreVertical size={19} color="#9CA3AF" />
+            <MoreVertical size={19} color="#8A8A98" />
           </TouchableOpacity>
         </View>
       </View>
 
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingTop: 16, paddingBottom: insets.bottom + 40 }}
+        contentContainerStyle={{ paddingTop: 16, paddingBottom: 180 }}
       >
-        {/* ── KPI Grid (4 Cards) ─────────────────────────────────── */}
+        {/* ── KPI Grid (4 Cards matching Progress TrendCard UI) ─── */}
         <View className="flex-row gap-3 px-4 mb-3">
-          {/* Card 1: Duration */}
-          <View style={FLOATING_CARD_STYLE} className="rounded-2xl p-4 flex-1">
-            <View className="mb-2">
-              <Clock size={18} color="#60A5FA" />
-            </View>
-            <Text className="text-white text-xl font-black">{formatDuration(kpis.durationMs)}</Text>
-            <Text className="text-muted text-xs mt-0.5">Total Duration</Text>
-          </View>
+          {/* Card 1: Total Duration */}
+          <StatCard
+            label="TOTAL DURATION"
+            sublabel="Session"
+            sublabelColor="#8E7CFF"
+            value={formatDuration(kpis.durationMs)}
+          />
 
           {/* Card 2: Total Sends */}
-          <View style={FLOATING_CARD_STYLE} className="rounded-2xl p-4 flex-1">
-            <View className="mb-2">
-              <TrendingUp size={18} color="#22C55E" />
-            </View>
-            <Text className="text-send text-xl font-black">
-              {kpis.totalSends}
-              <Text className="text-muted text-sm font-semibold">/{kpis.totalClimbs}</Text>
-            </Text>
-            <Text className="text-muted text-xs mt-0.5">Total Sends</Text>
-          </View>
+          <StatCard
+            label="TOTAL SENDS"
+            sublabel={`${kpis.totalClimbs} ${kpis.totalClimbs === 1 ? 'Route' : 'Routes'}`}
+            sublabelColor="#6EE756"
+            value={`${kpis.totalSends}`}
+            secondaryValue={`/${kpis.totalClimbs}`}
+          />
         </View>
 
         <View className="flex-row gap-3 px-4 mb-4">
-          {/* Card 3: Top Grade */}
-          <View style={FLOATING_CARD_STYLE} className="rounded-2xl p-4 flex-1">
-            <View className="mb-2">
-              <Target size={18} color="#A78BFA" />
-            </View>
-            <Text className="text-[#A78BFA] text-xl font-black">
-              {kpis.hardestSend ?? '—'}
-            </Text>
-            <Text className="text-muted text-xs mt-0.5">Hardest Send</Text>
-          </View>
+          {/* Card 3: Hardest Send */}
+          <StatCard
+            label="HARDEST SEND"
+            sublabel="Top Grade"
+            sublabelColor="#8E7CFF"
+            value={kpis.hardestSend ?? '—'}
+          />
 
           {/* Card 4: Flash Rate */}
-          <View style={FLOATING_CARD_STYLE} className="rounded-2xl p-4 flex-1">
-            <View className="mb-2">
-              <Zap size={18} color="#22C55E" />
-            </View>
-            <Text className="text-accentLight text-xl font-black">
-              {kpis.flashRate}%
-            </Text>
-            <Text className="text-muted text-xs mt-0.5">
-              Flash Rate ({kpis.totalFlashes})
-            </Text>
-          </View>
+          <StatCard
+            label="FLASH RATE"
+            sublabel={`${kpis.totalFlashes} ${kpis.totalFlashes === 1 ? 'Flash' : 'Flashes'}`}
+            sublabelColor="#FFFFFF"
+            value={`${kpis.flashRate}%`}
+          />
         </View>
 
         {/* ── Perceived Effort & Notes Card ──────────────────────── */}
@@ -286,8 +362,8 @@ export default function SessionDetailScreen() {
               onPress={() => setEditModalVisible(true)}
               className="flex-row items-center gap-1"
             >
-              <Edit3 size={13} color="#7C3AED" />
-              <Text className="text-accentLight text-xs font-semibold">Edit</Text>
+              <Edit3 size={13} color="#8E7CFF" />
+              <Text style={{ color: '#8E7CFF' }} className="text-xs font-semibold">Edit</Text>
             </TouchableOpacity>
           </View>
 
@@ -321,6 +397,33 @@ export default function SessionDetailScreen() {
               No notes logged. Tap Edit to add reflections or crux details.
             </Text>
           )}
+
+          {/* Media Attachments */}
+          {session.mediaUris && session.mediaUris.length > 0 ? (
+            <View className="mt-3 pt-3 border-t border-border/40">
+              <Text className="text-muted text-[11px] uppercase font-bold tracking-wider mb-2">
+                Attached Media ({session.mediaUris.length})
+              </Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} className="gap-2">
+                {session.mediaUris.map((uri, idx) => (
+                  <View
+                    key={`${uri}-${idx}`}
+                    style={{
+                      width: 72,
+                      height: 72,
+                      borderRadius: 12,
+                      overflow: 'hidden',
+                      borderWidth: 1,
+                      borderColor: '#2C2C35',
+                      marginRight: 8,
+                    }}
+                  >
+                    <Image source={{ uri }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+                  </View>
+                ))}
+              </ScrollView>
+            </View>
+          ) : null}
         </View>
 
         {/* ── Session Grade Pyramid ──────────────────────────────── */}
@@ -347,10 +450,29 @@ export default function SessionDetailScreen() {
           <TouchableOpacity
             onPress={handleShare}
             activeOpacity={0.85}
-            className="bg-accent flex-row items-center justify-center gap-2 py-4 rounded-2xl"
+            style={{
+              backgroundColor: '#8E7CFF',
+              height: 52,
+              borderRadius: 26,
+              shadowColor: '#8E7CFF',
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: 0.4,
+              shadowRadius: 10,
+              elevation: 5,
+            }}
+            className="flex-row items-center justify-center gap-2"
           >
-            <Share2 size={20} color="#FFFFFF" />
-            <Text className="text-white text-base font-black">Share Workout Summary</Text>
+            <Share2 size={18} color="#FFFFFF" />
+            <Text
+              style={{
+                color: '#FFFFFF',
+                fontSize: 15,
+                fontWeight: '700',
+                letterSpacing: 0.5,
+              }}
+            >
+              SHARE WORKOUT SUMMARY
+            </Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -397,10 +519,10 @@ export default function SessionDetailScreen() {
             <TouchableOpacity
               onPress={handleShare}
               activeOpacity={0.7}
-              className="flex-row items-center gap-3 py-3.5 border-b border-border/50"
+              className="flex-row items-center gap-3 py-3.5 border-b border-[#2C2C35]"
             >
-              <Share2 size={18} color="#7C3AED" />
-              <Text className="text-accent font-bold text-base">Share Summary</Text>
+              <Share2 size={18} color="#8E7CFF" />
+              <Text className="text-[#8E7CFF] font-bold text-base">Share Summary</Text>
             </TouchableOpacity>
 
             <TouchableOpacity

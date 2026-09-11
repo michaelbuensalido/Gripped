@@ -23,6 +23,7 @@ import type { RoutineWithBlocks } from '../types';
 import { useSessionStore } from '../store/sessionStore';
 import { RoutineCard } from '../components/routines/RoutineCard';
 import { ScreenContainer } from '../components/ui/ScreenContainer';
+import { FLOATING_CARD_STYLE, THEME_COLORS } from '../constants/theme';
 
 export default function RoutinesListScreen() {
   const router = useRouter();
@@ -105,7 +106,7 @@ export default function RoutinesListScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{
           paddingTop: 8,
-          paddingBottom: 130,
+          paddingBottom: 180,
         }}
       >
         {/* ── 1. Top Header Area ────────────────────────────── */}
@@ -207,8 +208,9 @@ export default function RoutinesListScreen() {
             onPress={() => router.push('/routines/editor')}
             activeOpacity={0.75}
             style={{
-              backgroundColor: '#1E1E24',
-              borderColor: '#2A2A32',
+              backgroundColor: THEME_COLORS.cardSurface,
+              borderColor: THEME_COLORS.cardBorder,
+              borderTopColor: 'rgba(255, 255, 255, 0.14)',
               borderWidth: 1,
               borderRadius: 16,
               paddingHorizontal: 12,
@@ -233,22 +235,16 @@ export default function RoutinesListScreen() {
         {/* My Routines List / Empty State */}
         {myRoutines.length === 0 ? (
           <View
-            style={{
-              marginHorizontal: 16,
-              marginBottom: 24,
-              paddingVertical: 24,
-              paddingHorizontal: 20,
-              borderRadius: 24,
-              borderWidth: 1,
-              borderColor: '#2A2A32',
-              backgroundColor: 'rgba(30, 30, 36, 0.7)',
-              alignItems: 'center',
-              shadowColor: '#000000',
-              shadowOffset: { width: 0, height: 4 },
-              shadowOpacity: 0.35,
-              shadowRadius: 12,
-              elevation: 4,
-            }}
+            style={[
+              FLOATING_CARD_STYLE,
+              {
+                marginHorizontal: 16,
+                marginBottom: 24,
+                paddingVertical: 24,
+                paddingHorizontal: 20,
+                alignItems: 'center',
+              },
+            ]}
           >
             {/* Unboxed, floating 3D graphic */}
             <Image
@@ -290,7 +286,7 @@ export default function RoutinesListScreen() {
               onPress={() => router.push('/routines/editor')}
               activeOpacity={0.75}
               style={{
-                backgroundColor: '#1E1E24',
+                backgroundColor: THEME_COLORS.cardSurface,
                 borderColor: 'rgba(255, 255, 255, 0.14)',
                 borderWidth: 1,
                 paddingHorizontal: 20,

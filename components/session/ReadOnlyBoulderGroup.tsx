@@ -16,12 +16,26 @@ export function ReadOnlyBoulderGroup({ zoneName, logs }: ReadOnlyBoulderGroupPro
   return (
     <View style={FLOATING_CARD_STYLE} className="rounded-2xl mx-4 mb-4 overflow-hidden">
       {/* Header */}
-      <View className="flex-row items-center justify-between px-4 py-3 bg-surface/40 border-b border-border">
+      <View
+        style={{
+          borderBottomColor: '#2C2C35',
+          borderBottomWidth: 1,
+          backgroundColor: 'rgba(22, 22, 28, 0.6)',
+        }}
+        className="flex-row items-center justify-between px-4 py-3"
+      >
         <View className="flex-row items-center gap-2">
-          <Layers size={16} color="#7C3AED" />
+          <Layers size={16} color="#8E7CFF" />
           <Text className="text-white font-bold text-base">{zoneName}</Text>
         </View>
-        <View className="bg-card px-2.5 py-1 rounded-full border border-border">
+        <View
+          style={{
+            backgroundColor: '#16161C',
+            borderColor: '#2C2C35',
+            borderWidth: 1,
+          }}
+          className="px-2.5 py-1 rounded-full"
+        >
           <Text className="text-secondary text-xs font-semibold">
             <Text className="text-white font-bold">{sends}</Text>/{logs.length} sends
           </Text>

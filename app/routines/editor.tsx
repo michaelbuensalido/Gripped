@@ -31,13 +31,15 @@ import type {
 import { GRADE_BY_LABEL } from '../../constants/grades';
 import { GradeSheet } from '../../components/session/GradeSheet';
 import { StyleTagPickerModal } from '../../components/routines/StyleTagPickerModal';
+import { CustomRestModal } from '../../components/routines/CustomRestModal';
+import { triggerHaptic } from '../../utils/haptics';
 import {
   getRoutineById,
   insertRoutine,
   updateRoutine,
 } from '../../db/routineQueries';
 import { ScreenContainer } from '../../components/ui/ScreenContainer';
-import { FLOATING_CARD_STYLE } from '../../constants/theme';
+import { FLOATING_CARD_STYLE, THEME_COLORS } from '../../constants/theme';
 
 const CATEGORIES: RoutineCategory[] = [
   'Strength',
@@ -48,7 +50,15 @@ const CATEGORIES: RoutineCategory[] = [
   'Other',
 ];
 
-const REST_PRESETS = [30, 45, 60, 90, 120, 180];
+const REST_PRESETS = [45, 60, 90, 120, 180, 240, 300];
+
+function formatRestDisplay(sec: number): string {
+  const m = Math.floor(sec / 60);
+  const s = sec % 60;
+  if (m > 0 && s > 0) return `${sec}s (${m}m ${s}s)`;
+  if (m > 0) return `${sec}s (${m}m)`;
+  return `${sec}s`;
+}
 
 export default function RoutineEditorScreen() {
   const { id } = useLocalSearchParams<{ id?: string }>();
@@ -75,6 +85,12 @@ export default function RoutineEditorScreen() {
     blockId: string;
     boulderId: string;
     tags: string[];
+  } | null>(null);
+
+  const [activeBlockForCustomRest, setActiveBlockForCustomRest] = useState<{
+    blockId: string;
+    title: string;
+    seconds: number;
   } | null>(null);
 
   // Load existing or initialize draft
@@ -331,7 +347,7 @@ export default function RoutineEditorScreen() {
             paddingHorizontal: 16,
             paddingVertical: 12,
             borderBottomWidth: 1,
-            borderColor: '#2A2A32',
+            borderColor: '#2C2C35',
           }}
         >
           <TouchableOpacity
@@ -342,8 +358,9 @@ export default function RoutineEditorScreen() {
               width: 36,
               height: 36,
               borderRadius: 18,
-              backgroundColor: '#1E1E24',
-              borderColor: '#2A2A32',
+              backgroundColor: THEME_COLORS.cardSurface,
+              borderColor: THEME_COLORS.cardBorder,
+              borderTopColor: 'rgba(255, 255, 255, 0.14)',
               borderWidth: 1,
               alignItems: 'center',
               justifyContent: 'center',
@@ -389,16 +406,13 @@ export default function RoutineEditorScreen() {
         <ScrollView
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
-          contentContainerStyle={{ paddingTop: 16, paddingBottom: insets.bottom + 80 }}
+          contentContainerStyle={{ paddingTop: 16, paddingBottom: 180 }}
         >
           {/* ── Metadata Section ───────────────────────────────────── */}
           <View
             style={[
               FLOATING_CARD_STYLE,
               {
-                backgroundColor: '#1E1E24',
-                borderColor: '#2C2C35',
-                borderWidth: 1,
                 borderRadius: 20,
                 padding: 16,
                 marginHorizontal: 16,
@@ -430,7 +444,7 @@ export default function RoutineEditorScreen() {
                 marginBottom: 14,
                 paddingBottom: 6,
                 borderBottomWidth: 1,
-                borderBottomColor: '#2A2A32',
+                borderBottomColor: '#2C2C35',
               }}
             />
 
@@ -460,7 +474,7 @@ export default function RoutineEditorScreen() {
                 marginBottom: 14,
                 paddingBottom: 6,
                 borderBottomWidth: 1,
-                borderBottomColor: '#2A2A32',
+                borderBottomColor: '#2C2C35',
               }}
             />
 
@@ -490,7 +504,7 @@ export default function RoutineEditorScreen() {
                       paddingHorizontal: 12,
                       paddingVertical: 6,
                       backgroundColor: isSelected ? '#8E7CFF' : '#141418',
-                      borderColor: isSelected ? '#8E7CFF' : '#2A2A32',
+                      borderColor: isSelected ? '#8E7CFF' : '#2C2C35',
                       borderWidth: 1,
                     }}
                   >
@@ -516,7 +530,7 @@ export default function RoutineEditorScreen() {
                 justifyContent: 'space-between',
                 paddingTop: 10,
                 borderTopWidth: 1,
-                borderTopColor: '#2A2A32',
+                borderTopColor: '#2C2C35',
               }}
             >
               <Text
@@ -572,9 +586,6 @@ export default function RoutineEditorScreen() {
               style={[
                 FLOATING_CARD_STYLE,
                 {
-                  backgroundColor: '#1E1E24',
-                  borderColor: '#2C2C35',
-                  borderWidth: 1,
                   borderRadius: 20,
                   padding: 16,
                   marginHorizontal: 16,
@@ -590,7 +601,7 @@ export default function RoutineEditorScreen() {
                   justifyContent: 'space-between',
                   paddingBottom: 10,
                   borderBottomWidth: 1,
-                  borderBottomColor: '#2A2A32',
+                  borderBottomColor: '#2C2C35',
                   marginBottom: 12,
                 }}
               >
@@ -624,59 +635,131 @@ export default function RoutineEditorScreen() {
                 </TouchableOpacity>
               </View>
 
-              {/* Rest Timer Selector */}
-              <View
-                style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  marginBottom: 12,
-                  backgroundColor: '#16161B',
-                  paddingHorizontal: 12,
-                  paddingVertical: 8,
-                  borderRadius: 12,
-                  borderColor: '#2A2A32',
-                  borderWidth: 1,
-                }}
-              >
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                  <Timer size={13} color="#8E7CFF" />
-                  <Text style={{ color: '#9A9AA6', fontSize: 12, fontWeight: '600' }}>
-                    Target Rest:
+              {/* ── Rest Interval Row ───────────────────────────────── */}
+              <View style={{ marginBottom: 14 }}>
+                {/* Header: Label "REST BETWEEN BURNS" + formatted current value */}
+                <View
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    marginBottom: 8,
+                  }}
+                >
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <Timer size={13} color="#8E7CFF" />
+                    <Text
+                      style={{
+                        color: '#8A8A98',
+                        fontSize: 12,
+                        fontWeight: '700',
+                        letterSpacing: 0.8,
+                      }}
+                      className="uppercase"
+                    >
+                      Rest Between Burns
+                    </Text>
+                  </View>
+                  <Text
+                    style={{
+                      color: '#8E7CFF',
+                      fontSize: 12,
+                      fontWeight: '700',
+                    }}
+                  >
+                    {formatRestDisplay(block.defaultRestSeconds)}
                   </Text>
                 </View>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+
+                {/* Quick-select pill row: Scrollable chips (#1E1E24 surface, 1px border #2C2C35) */}
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={{ gap: 6, alignItems: 'center', paddingVertical: 2 }}
+                >
                   {REST_PRESETS.map((sec) => {
                     const isSelected = block.defaultRestSeconds === sec;
                     return (
                       <TouchableOpacity
                         key={sec}
-                        onPress={() => handleUpdateBlockRest(block.id, sec)}
-                        activeOpacity={0.7}
+                        onPress={() => {
+                          triggerHaptic('selection');
+                          handleUpdateBlockRest(block.id, sec);
+                        }}
+                        activeOpacity={0.75}
                         style={{
-                          paddingHorizontal: 8,
-                          paddingVertical: 3,
-                          borderRadius: 6,
-                          backgroundColor: isSelected
-                            ? 'rgba(142, 124, 255, 0.2)'
-                            : '#1E1E24',
-                          borderColor: isSelected ? '#8E7CFF' : '#2A2A32',
+                          paddingHorizontal: 12,
+                          paddingVertical: 6,
+                          borderRadius: 14,
+                          backgroundColor: isSelected ? '#8E7CFF' : THEME_COLORS.cardSurface,
+                          borderColor: isSelected ? '#8E7CFF' : THEME_COLORS.cardBorder,
+                          borderTopColor: isSelected ? '#8E7CFF' : 'rgba(255, 255, 255, 0.14)',
                           borderWidth: 1,
+                          shadowColor: isSelected ? '#8E7CFF' : 'transparent',
+                          shadowOffset: { width: 0, height: 2 },
+                          shadowOpacity: isSelected ? 0.35 : 0,
+                          shadowRadius: 4,
+                          elevation: isSelected ? 2 : 0,
                         }}
                       >
                         <Text
                           style={{
-                            fontSize: 10,
-                            fontWeight: '700',
-                            color: isSelected ? '#8E7CFF' : '#8A8A98',
+                            fontSize: 12,
+                            fontWeight: isSelected ? '700' : '600',
+                            color: isSelected ? '#FFFFFF' : '#9A9AA6',
                           }}
                         >
-                          {sec >= 60 ? `${sec / 60}m` : `${sec}s`}
+                          {sec >= 120 && sec % 60 === 0 ? `${sec / 60}m` : `${sec}s`}
                         </Text>
                       </TouchableOpacity>
                     );
                   })}
-                </View>
+
+                  {/* Custom option pill */}
+                  {(() => {
+                    const isCustomActive = !REST_PRESETS.includes(block.defaultRestSeconds);
+                    return (
+                      <TouchableOpacity
+                        onPress={() => {
+                          triggerHaptic('selection');
+                          setActiveBlockForCustomRest({
+                            blockId: block.id,
+                            title: block.title,
+                            seconds: block.defaultRestSeconds,
+                          });
+                        }}
+                        activeOpacity={0.75}
+                        style={{
+                          paddingHorizontal: 12,
+                          paddingVertical: 6,
+                          borderRadius: 14,
+                          backgroundColor: isCustomActive ? '#8E7CFF' : THEME_COLORS.cardSurface,
+                          borderColor: isCustomActive ? '#8E7CFF' : THEME_COLORS.cardBorder,
+                          borderTopColor: isCustomActive ? '#8E7CFF' : 'rgba(255, 255, 255, 0.14)',
+                          borderWidth: 1,
+                          flexDirection: 'row',
+                          alignItems: 'center',
+                          gap: 4,
+                          shadowColor: isCustomActive ? '#8E7CFF' : 'transparent',
+                          shadowOffset: { width: 0, height: 2 },
+                          shadowOpacity: isCustomActive ? 0.35 : 0,
+                          shadowRadius: 4,
+                          elevation: isCustomActive ? 2 : 0,
+                        }}
+                      >
+                        <Text
+                          style={{
+                            fontSize: 12,
+                            fontWeight: isCustomActive ? '700' : '600',
+                            color: isCustomActive ? '#FFFFFF' : '#9A9AA6',
+                          }}
+                        >
+                          {isCustomActive ? `${block.defaultRestSeconds}s` : 'Custom...'}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })()}
+                </ScrollView>
               </View>
 
               {/* Boulders List Header */}
@@ -756,7 +839,7 @@ export default function RoutineEditorScreen() {
                         alignItems: 'center',
                         backgroundColor: '#141418',
                         borderRadius: 8,
-                        borderColor: '#2A2A32',
+                        borderColor: '#2C2C35',
                         borderWidth: 1,
                         overflow: 'hidden',
                       }}
@@ -815,7 +898,7 @@ export default function RoutineEditorScreen() {
                             paddingHorizontal: 8,
                             paddingVertical: 4,
                             borderRadius: 6,
-                            borderColor: '#2A2A32',
+                            borderColor: '#2C2C35',
                             borderWidth: 1,
                           }}
                         >
@@ -923,6 +1006,19 @@ export default function RoutineEditorScreen() {
           selectedTags={activeBoulderForTags?.tags ?? []}
           onToggleTag={handleToggleTag}
           onClose={() => setActiveBoulderForTags(null)}
+        />
+
+        {/* ── Custom Rest Interval Modal ──────────────────────────── */}
+        <CustomRestModal
+          visible={Boolean(activeBlockForCustomRest)}
+          initialSeconds={activeBlockForCustomRest?.seconds ?? 90}
+          blockTitle={activeBlockForCustomRest?.title}
+          onSave={(sec) => {
+            if (activeBlockForCustomRest) {
+              handleUpdateBlockRest(activeBlockForCustomRest.blockId, sec);
+            }
+          }}
+          onClose={() => setActiveBlockForCustomRest(null)}
         />
       </KeyboardAvoidingView>
     </ScreenContainer>
