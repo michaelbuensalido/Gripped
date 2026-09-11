@@ -19,6 +19,7 @@
     "expo-sqlite": "~57.0.2",
     "expo-status-bar": "~57.0.1",
     "expo-video": "~57.0.3",
+    "expo-video-thumbnails": "~57.0.1",
     "immer": "^10.0.0",
     "lucide-react-native": "^0.475.0",
     "nativewind": "^4.1.23",

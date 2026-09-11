@@ -17,12 +17,28 @@ import { FloatingRestTimer } from '../../components/session/FloatingRestTimer';
 import { SessionCompletionModal } from '../../components/session/SessionCompletionModal';
 import { BetaCamModal } from '../../components/session/BetaCamModal';
 import { BetaPreviewModal } from '../../components/session/BetaPreviewModal';
+import { ValidationFailureReason } from '../../services/videoAnalyzer';
 import { triggerHaptic } from '../../utils/haptics';
 import { getAllRoutinesWithBlocks } from '../../db/routineQueries';
 import { ScreenContainer } from '../../components/ui/ScreenContainer';
 
 export default function ActiveSessionScreen() {
-  const { id, showWrapUp, wrapUpNonce, testBetaCam, testBetaReview, testBetaPreview, attachSampleBeta, testSetGrader, testAngle, testPicker, testRestTimer, testRestDuration } = useLocalSearchParams<{
+  const {
+    id,
+    showWrapUp,
+    wrapUpNonce,
+    testBetaCam,
+    testBetaReview,
+    testBetaPreview,
+    attachSampleBeta,
+    testSetGrader,
+    testAngle,
+    testPicker,
+    testRestTimer,
+    testRestDuration,
+    testValidationFailure,
+    testValidationPassed,
+  } = useLocalSearchParams<{
     id: string;
     showWrapUp?: string;
     wrapUpNonce?: string;
@@ -35,6 +51,8 @@ export default function ActiveSessionScreen() {
     testPicker?: string;
     testRestTimer?: string;
     testRestDuration?: string;
+    testValidationFailure?: string;
+    testValidationPassed?: string;
   }>();
   const router = useRouter();
 
@@ -76,6 +94,8 @@ export default function ActiveSessionScreen() {
               testPicker: testPicker || '',
               testRestTimer: testRestTimer || '',
               testRestDuration: testRestDuration || '',
+              testValidationFailure: testValidationFailure || '',
+              testValidationPassed: testValidationPassed || '',
             },
           });
         } else {
@@ -99,6 +119,8 @@ export default function ActiveSessionScreen() {
               testPicker: testPicker || '',
               testRestTimer: testRestTimer || '',
               testRestDuration: testRestDuration || '',
+              testValidationFailure: testValidationFailure || '',
+              testValidationPassed: testValidationPassed || '',
             },
           });
         }
@@ -107,7 +129,7 @@ export default function ActiveSessionScreen() {
     } else if (!activeSession || activeSession.id !== id) {
       loadSession(id);
     }
-  }, [id, showWrapUp, wrapUpNonce, testBetaCam, testBetaReview, testBetaPreview, attachSampleBeta, testRestTimer, testRestDuration]);
+  }, [id, showWrapUp, wrapUpNonce, testBetaCam, testBetaReview, testBetaPreview, attachSampleBeta, testRestTimer, testRestDuration, testValidationFailure, testValidationPassed]);
 
   useEffect(() => {
     if (showWrapUp === '1') {
@@ -117,7 +139,13 @@ export default function ActiveSessionScreen() {
   }, [showWrapUp, wrapUpNonce]);
 
   useEffect(() => {
-    if (testBetaCam === '1' || testBetaReview === '1' || testSetGrader === '1') {
+    if (
+      testBetaCam === '1' ||
+      testBetaReview === '1' ||
+      testSetGrader === '1' ||
+      !!testValidationFailure ||
+      testValidationPassed === '1'
+    ) {
       setTestCamOpen(true);
       setTestPreviewOpen(false);
     } else if (testBetaPreview === '1') {
@@ -146,7 +174,7 @@ export default function ActiveSessionScreen() {
         }
       );
     }
-  }, [testBetaCam, testBetaReview, testBetaPreview, attachSampleBeta, testSetGrader, groups]);
+  }, [testBetaCam, testBetaReview, testBetaPreview, attachSampleBeta, testSetGrader, testValidationFailure, testValidationPassed, groups]);
 
   const handleFinish = useCallback(() => {
     setPausedEndTime(Date.now());
@@ -262,11 +290,19 @@ export default function ActiveSessionScreen() {
       {/* Global / Test Beta Cam & Preview Modals */}
       <BetaCamModal
         visible={testCamOpen}
-        autoSimulatorBypass={testBetaCam === '1' || testBetaReview === '1' || testSetGrader === '1'}
+        autoSimulatorBypass={
+          testBetaCam === '1' ||
+          testBetaReview === '1' ||
+          testSetGrader === '1' ||
+          !!testValidationFailure ||
+          testValidationPassed === '1'
+        }
         testReview={testBetaReview === '1'}
         testSetGrader={testSetGrader === '1'}
         testAngle={testAngle ? Number(testAngle) : undefined}
         testPickerOpen={testPicker === '1'}
+        testValidationFailure={testValidationFailure as ValidationFailureReason}
+        testValidationPassed={testValidationPassed === '1'}
         onClose={() => setTestCamOpen(false)}
         onAttach={(uri, type, gradeRaw, notes) => {
           if (groups.length > 0 && groups[0].logs.length > 0) {

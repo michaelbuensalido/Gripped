@@ -30,6 +30,7 @@ interface GradeEstimationSheetProps {
   userMedianGrade?: string;
   initialPickerOpen?: boolean;
   annotationPayload?: RouteAnnotationPayload;
+  isVerifiedSequence?: boolean;
   onAccept: (grade: string, notes: string) => void;
   onRetake: () => void;
   onClose: () => void;
@@ -41,14 +42,21 @@ export function GradeEstimationSheet({
   userMedianGrade = 'V4',
   initialPickerOpen = false,
   annotationPayload,
+  isVerifiedSequence = false,
   onAccept,
   onRetake,
   onClose,
 }: GradeEstimationSheetProps) {
-  const estimation = useMemo(
-    () => estimateRouteGrade({ angleDegrees, userMedianGrade, annotationPayload }),
-    [angleDegrees, userMedianGrade, annotationPayload]
-  );
+  const estimation = useMemo(() => {
+    const res = estimateRouteGrade({ angleDegrees, userMedianGrade, annotationPayload });
+    if (isVerifiedSequence && !res.tags.includes('✅ Verified Sequence')) {
+      return {
+        ...res,
+        tags: ['✅ Verified Sequence', ...res.tags],
+      };
+    }
+    return res;
+  }, [angleDegrees, userMedianGrade, annotationPayload, isVerifiedSequence]);
 
   const [selectedGrade, setSelectedGrade] = useState<string>(estimation.estimatedGrade);
   const [pickerOpen, setPickerOpen] = useState(initialPickerOpen);
@@ -74,6 +82,9 @@ export function GradeEstimationSheet({
   const handleConfirm = () => {
     triggerHaptic('success');
     let noteText = `Wall: ${wallInfo.angleDegrees}° ${wallInfo.category}`;
+    if (isVerifiedSequence) {
+      noteText += ' • ✅ Verified Sequence';
+    }
     if (estimation.annotationSummary) {
       noteText += ` • ${estimation.annotationSummary.holdCount} holds (Crux ~${estimation.annotationSummary.maxSpanCm}cm)`;
       if (estimation.annotationSummary.routeColor) {
@@ -100,9 +111,17 @@ export function GradeEstimationSheet({
               <Text style={styles.headerTitle}>ROUTE ANALYSIS</Text>
             </View>
 
-            <View style={styles.angleBadge}>
-              <Compass size={12} color="#8E7CFF" style={{ marginRight: 4 }} />
-              <Text style={styles.angleBadgeText}>{wallInfo.shortBadge}</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              {isVerifiedSequence && (
+                <View style={styles.verifiedBadge}>
+                  <Check size={11} color="#6EE756" strokeWidth={3} style={{ marginRight: 3 }} />
+                  <Text style={styles.verifiedBadgeText}>VERIFIED</Text>
+                </View>
+              )}
+              <View style={styles.angleBadge}>
+                <Compass size={12} color="#8E7CFF" style={{ marginRight: 4 }} />
+                <Text style={styles.angleBadgeText}>{wallInfo.shortBadge}</Text>
+              </View>
             </View>
           </View>
 
@@ -289,6 +308,22 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     letterSpacing: 1.4,
     color: '#8A8A98',
+  },
+  verifiedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(110, 231, 86, 0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(110, 231, 86, 0.35)',
+    borderRadius: 20,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  verifiedBadgeText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#6EE756',
+    letterSpacing: 0.5,
   },
   angleBadge: {
     flexDirection: 'row',

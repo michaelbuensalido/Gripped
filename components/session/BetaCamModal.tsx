@@ -32,12 +32,19 @@ import {
   Sparkles,
   Compass,
   Target,
+  AlertTriangle,
 } from 'lucide-react-native';
 import { triggerHaptic } from '../../utils/haptics';
 import { useWallAngle } from '../../hooks/useWallAngle';
 import { GradeEstimationSheet } from './GradeEstimationSheet';
 import { HoldAnnotatorCanvas } from './HoldAnnotatorCanvas';
 import { RouteAnnotationPayload } from '../../services/gradeEstimator';
+import {
+  extractClimbingKeyframes,
+  validateClimbingSequence,
+  ValidationResult,
+  ValidationFailureReason,
+} from '../../services/videoAnalyzer';
 
 interface BetaCamModalProps {
   visible: boolean;
@@ -57,6 +64,8 @@ interface BetaCamModalProps {
   testHoldAnnotator?: boolean;
   testAngle?: number;
   testPickerOpen?: boolean;
+  testValidationFailure?: ValidationFailureReason;
+  testValidationPassed?: boolean;
 }
 
 const MAX_RECORDING_SECONDS = 45;
@@ -78,6 +87,8 @@ export function BetaCamModal({
   testHoldAnnotator = false,
   testAngle,
   testPickerOpen = false,
+  testValidationFailure,
+  testValidationPassed = false,
 }: BetaCamModalProps) {
   const [cameraPermission, requestCameraPermission] = useCameraPermissions();
   const [microphonePermission, requestMicrophonePermission] = useMicrophonePermissions();
@@ -102,6 +113,11 @@ export function BetaCamModal({
   const [showEstimationSheet, setShowEstimationSheet] = useState(false);
   const [annotationPayload, setAnnotationPayload] = useState<RouteAnnotationPayload | null>(null);
   const [showHoldAnnotator, setShowHoldAnnotator] = useState(testHoldAnnotator || false);
+
+  // ── Smart Climbing Validation State ─────────────────────────────────────────
+  const [isValidating, setIsValidating] = useState(false);
+  const [validationResult, setValidationResult] = useState<ValidationResult | null>(null);
+  const [manualGradeOverride, setManualGradeOverride] = useState(false);
 
   // Angle stability detection (switches leveling dot green when held steady)
   const [isStable, setIsStable] = useState(true);
@@ -153,7 +169,58 @@ export function BetaCamModal({
       if (testAngle !== undefined) {
         wallAngle.setAngle(testAngle);
       }
-      if (testHoldAnnotator) {
+      if (testValidationFailure) {
+        const mockThumb = require('../../assets/holds-images/v6-ripple-effect-square.jpg');
+        setCapturedMedia({
+          uri: 'mock_beta_fail.mp4',
+          type: 'video',
+        });
+        setCapturedAngle(testAngle ?? 35);
+        setValidationResult({
+          isValid: false,
+          confidence: 0.35,
+          detectedHoldsCount: testValidationFailure === 'NO_HOLDS' ? 1 : 6,
+          climberDetected: testValidationFailure !== 'NO_CLIMBER',
+          failureReason: testValidationFailure,
+          keyframes: [mockThumb, mockThumb, mockThumb],
+          metrics: {
+            holdContrastRatio: testValidationFailure === 'NO_HOLDS' ? 0.25 : 0.82,
+            climberPoseConfidence: testValidationFailure === 'NO_CLIMBER' ? 0.12 : 0.91,
+            handHoldContact: testValidationFailure !== 'NO_CLIMBER',
+            chromaticVariance: testValidationFailure === 'POOR_LIGHTING' ? 0.15 : 0.74,
+            averageBrightness: testValidationFailure === 'POOR_LIGHTING' ? 0.18 : 0.62,
+          },
+          extractedTimestampsMs: [2000, 5000, 8000],
+        });
+        setManualGradeOverride(false);
+        setShowEstimationSheet(false);
+        setShowHoldAnnotator(false);
+      } else if (testValidationPassed) {
+        const mockThumb = require('../../assets/holds-images/v6-ripple-effect-square.jpg');
+        setCapturedMedia({
+          uri: 'mock_beta_valid.mp4',
+          type: 'video',
+        });
+        setCapturedAngle(testAngle ?? 35);
+        setValidationResult({
+          isValid: true,
+          confidence: 0.94,
+          detectedHoldsCount: 6,
+          climberDetected: true,
+          keyframes: [mockThumb, mockThumb, mockThumb],
+          metrics: {
+            holdContrastRatio: 0.88,
+            climberPoseConfidence: 0.94,
+            handHoldContact: true,
+            chromaticVariance: 0.78,
+            averageBrightness: 0.65,
+          },
+          extractedTimestampsMs: [2000, 5000, 8000],
+        });
+        setManualGradeOverride(false);
+        setShowEstimationSheet(true);
+        setShowHoldAnnotator(false);
+      } else if (testHoldAnnotator) {
         setCapturedMedia({
           uri: 'https://images.unsplash.com/photo-1522163182402-834f871fd851?auto=format&fit=crop&w=800&q=80',
           type: 'photo',
@@ -161,6 +228,8 @@ export function BetaCamModal({
         setCapturedAngle(testAngle ?? 35);
         setShowHoldAnnotator(true);
         setShowEstimationSheet(false);
+        setValidationResult(null);
+        setManualGradeOverride(false);
       } else if (testSetGrader) {
         setCapturedMedia({
           uri: 'https://images.unsplash.com/photo-1522163182402-834f871fd851?auto=format&fit=crop&w=800&q=80',
@@ -169,6 +238,8 @@ export function BetaCamModal({
         setCapturedAngle(testAngle ?? 35);
         setShowEstimationSheet(true);
         setShowHoldAnnotator(false);
+        setValidationResult(null);
+        setManualGradeOverride(false);
       } else if (testReview) {
         setCapturedMedia({
           uri: 'https://images.unsplash.com/photo-1522163182402-834f871fd851?auto=format&fit=crop&w=800&q=80',
@@ -176,21 +247,36 @@ export function BetaCamModal({
         });
         setShowEstimationSheet(false);
         setShowHoldAnnotator(false);
+        setValidationResult(null);
+        setManualGradeOverride(false);
       } else {
         setCapturedMedia(null);
         setShowEstimationSheet(false);
         setShowHoldAnnotator(false);
         setCapturedAngle(null);
         setAnnotationPayload(null);
+        setValidationResult(null);
+        setManualGradeOverride(false);
       }
       setIsRecording(false);
       setRecordingSeconds(0);
       setIsProcessing(false);
+      setIsValidating(false);
       if (autoSimulatorBypass) {
         setSimulatorBypass(true);
       }
     }
-  }, [visible, initialMode, autoSimulatorBypass, testReview, testSetGrader, testHoldAnnotator, testAngle]);
+  }, [
+    visible,
+    initialMode,
+    autoSimulatorBypass,
+    testReview,
+    testSetGrader,
+    testHoldAnnotator,
+    testAngle,
+    testValidationFailure,
+    testValidationPassed,
+  ]);
 
   // Clean up timer on unmount or close
   useEffect(() => {
@@ -211,6 +297,69 @@ export function BetaCamModal({
     const m = Math.floor(secs / 60);
     const s = secs % 60;
     return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+  };
+
+  // ── Smart Climbing Validation Logic ────────────────────────────────────────
+
+  const getRejectionMessage = (reason?: ValidationFailureReason): string => {
+    switch (reason) {
+      case 'NO_WALL':
+      case 'NO_HOLDS':
+        return 'Could not detect climbing wall or resin holds. Ensure the camera frames the wall clearly.';
+      case 'NO_CLIMBER':
+        return 'No climber or hand contact detected on holds. Make sure the burn sequence is visible.';
+      case 'POOR_LIGHTING':
+        return 'Insufficient lighting or high glare. Improve gym lighting or adjust angle.';
+      default:
+        return 'Could not verify a valid climbing sequence in this video. Please frame the wall and climber clearly.';
+    }
+  };
+
+  const processVideoValidation = async (videoUri: string, durationSec: number = 10) => {
+    setIsProcessing(true);
+    setIsValidating(true);
+    setManualGradeOverride(false);
+    try {
+      const { keyframes } = await extractClimbingKeyframes(videoUri, {
+        durationSeconds: durationSec,
+      });
+      const result = await validateClimbingSequence(keyframes, {
+        durationSeconds: durationSec,
+        testFailureReason: testValidationFailure,
+      });
+      setValidationResult(result);
+      if (result.isValid) {
+        triggerHaptic('success');
+        setShowEstimationSheet(true);
+      } else {
+        triggerHaptic('error');
+        setShowEstimationSheet(false);
+      }
+    } catch (err) {
+      console.warn('Video validation error, applying fallback rejection:', err);
+      const fallbackThumb = require('../../assets/holds-images/v6-ripple-effect-square.jpg');
+      setValidationResult({
+        isValid: false,
+        confidence: 0.35,
+        detectedHoldsCount: 1,
+        climberDetected: false,
+        failureReason: 'NO_CLIMBER',
+        keyframes: [fallbackThumb, fallbackThumb, fallbackThumb],
+        metrics: {
+          holdContrastRatio: 0.2,
+          climberPoseConfidence: 0.15,
+          handHoldContact: false,
+          chromaticVariance: 0.2,
+          averageBrightness: 0.5,
+        },
+        extractedTimestampsMs: [2000, 5000, 8000],
+      });
+      triggerHaptic('error');
+      setShowEstimationSheet(false);
+    } finally {
+      setIsValidating(false);
+      setIsProcessing(false);
+    }
   };
 
   // ── Shutter Action (Photo / Video) ──────────────────────────────────────────
@@ -240,7 +389,7 @@ export function BetaCamModal({
         if (video?.uri) {
           setCapturedAngle(wallAngle.angleDegrees);
           setCapturedMedia({ uri: video.uri, type: 'video' });
-          setShowEstimationSheet(true);
+          await processVideoValidation(video.uri, recordingSeconds || 10);
         }
       }
     } catch (err) {
@@ -322,7 +471,7 @@ export function BetaCamModal({
         setShowHoldAnnotator(true);
         setShowEstimationSheet(false);
       } else {
-        setShowEstimationSheet(true);
+        await processVideoValidation(mockUri, 10);
       }
     } catch (e) {
       console.error('Failed to create mock capture:', e);
@@ -359,12 +508,16 @@ export function BetaCamModal({
       triggerHaptic('success');
       setShowEstimationSheet(false);
       setShowHoldAnnotator(false);
+      setValidationResult(null);
+      setManualGradeOverride(false);
       onClose();
     } catch (err) {
       console.error('Failed to attach graded beta media:', err);
       onAttach(capturedMedia.uri, capturedMedia.type, selectedGrade, notes);
       setShowEstimationSheet(false);
       setShowHoldAnnotator(false);
+      setValidationResult(null);
+      setManualGradeOverride(false);
       onClose();
     } finally {
       setIsProcessing(false);
@@ -395,10 +548,14 @@ export function BetaCamModal({
       }
 
       triggerHaptic('success');
+      setValidationResult(null);
+      setManualGradeOverride(false);
       onClose();
     } catch (err) {
       console.error('Failed to attach beta media:', err);
       onAttach(capturedMedia.uri, capturedMedia.type);
+      setValidationResult(null);
+      setManualGradeOverride(false);
       onClose();
     } finally {
       setIsProcessing(false);
@@ -414,6 +571,9 @@ export function BetaCamModal({
     setCapturedAngle(null);
     setIsRecording(false);
     setRecordingSeconds(0);
+    setValidationResult(null);
+    setManualGradeOverride(false);
+    setIsValidating(false);
   };
 
   const toggleFacing = () => {
@@ -573,6 +733,14 @@ export function BetaCamModal({
               <TouchableOpacity
                 onPress={() => {
                   triggerHaptic('light');
+                  if (
+                    capturedMedia.type === 'video' &&
+                    validationResult &&
+                    !validationResult.isValid &&
+                    !manualGradeOverride
+                  ) {
+                    return;
+                  }
                   setShowEstimationSheet(true);
                 }}
                 style={styles.analyzeBtn}
@@ -599,13 +767,88 @@ export function BetaCamModal({
               </TouchableOpacity>
             </View>
 
+            {/* ── Validation Rejection Overlay ───────────────────────────── */}
+            {capturedMedia.type === 'video' &&
+              validationResult &&
+              !validationResult.isValid &&
+              !manualGradeOverride && (
+                <View style={styles.rejectionOverlay}>
+                  <View style={styles.rejectionCard}>
+                    {/* Icon */}
+                    <View style={styles.rejectionIconCircle}>
+                      <AlertTriangle size={32} color="#FF5C5C" />
+                    </View>
+
+                    {/* Header & Dynamic Message */}
+                    <Text style={styles.rejectionTitle}>Invalid Climbing Sequence</Text>
+                    <Text style={styles.rejectionMessage}>
+                      {getRejectionMessage(validationResult.failureReason)}
+                    </Text>
+
+                    {/* Extracted Keyframes Strip */}
+                    {validationResult.keyframes && validationResult.keyframes.length > 0 && (
+                      <View style={styles.keyframesPreviewSection}>
+                        <Text style={styles.keyframesSectionTitle}>EXTRACTED KEYFRAMES</Text>
+                        <View style={styles.keyframesRow}>
+                          {validationResult.keyframes.slice(0, 3).map((frameUri, idx) => {
+                            const label = idx === 0 ? '20%' : idx === 1 ? '50%' : '80%';
+                            return (
+                              <View key={`keyframe-${idx}`} style={styles.keyframeItem}>
+                                <Image
+                                  source={
+                                    typeof frameUri === 'number'
+                                      ? frameUri
+                                      : { uri: frameUri }
+                                  }
+                                  style={styles.keyframeThumb}
+                                  resizeMode="cover"
+                                />
+                                <View style={styles.keyframeBadge}>
+                                  <Text style={styles.keyframeBadgeText}>{label}</Text>
+                                </View>
+                              </View>
+                            );
+                          })}
+                        </View>
+                      </View>
+                    )}
+
+                    {/* Actions */}
+                    <View style={styles.rejectionActionsRow}>
+                      <TouchableOpacity
+                        onPress={handleRetake}
+                        style={styles.rejectionRetakeBtn}
+                        activeOpacity={0.8}
+                      >
+                        <RotateCcw size={16} color="#FFFFFF" style={{ marginRight: 6 }} />
+                        <Text style={styles.rejectionRetakeText}>Retake Video</Text>
+                      </TouchableOpacity>
+
+                      <TouchableOpacity
+                        onPress={() => {
+                          triggerHaptic('selection');
+                          setManualGradeOverride(true);
+                          setShowEstimationSheet(true);
+                        }}
+                        style={styles.rejectionManualBtn}
+                        activeOpacity={0.8}
+                      >
+                        <Sparkles size={16} color="#8E7CFF" style={{ marginRight: 6 }} />
+                        <Text style={styles.rejectionManualText}>Manual Grade</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                </View>
+              )}
+
             {/* Grade Estimation Sheet Modal */}
             <GradeEstimationSheet
               visible={showEstimationSheet}
               angleDegrees={capturedAngle ?? wallAngle.angleDegrees}
               userMedianGrade={gradeLabel || 'V4'}
-              initialPickerOpen={testPickerOpen}
+              initialPickerOpen={testPickerOpen || manualGradeOverride}
               annotationPayload={annotationPayload || undefined}
+              isVerifiedSequence={validationResult?.isValid ?? false}
               onAccept={handleAcceptGrading}
               onRetake={handleRetake}
               onClose={() => setShowEstimationSheet(false)}
@@ -830,6 +1073,19 @@ export function BetaCamModal({
               >
                 <Sparkles size={20} color="#8E7CFF" />
               </TouchableOpacity>
+            </View>
+          </View>
+        )}
+
+        {/* ── Scanning / Validating Overlay ───────────────────────────── */}
+        {isValidating && (
+          <View style={styles.validatingOverlay}>
+            <View style={styles.validatingCard}>
+              <ActivityIndicator size="large" color="#8E7CFF" style={{ marginBottom: 16 }} />
+              <Text style={styles.validatingTitle}>Analyzing Climbing Sequence...</Text>
+              <Text style={styles.validatingSubtitle}>
+                Extracting keyframes (20%, 50%, 80%) & checking hold contacts
+              </Text>
             </View>
           </View>
         )}
@@ -1259,5 +1515,178 @@ const styles = StyleSheet.create({
     color: '#8E7CFF',
     fontSize: 14,
     fontWeight: '600',
+  },
+  // ── Smart Climbing Validation HUD Styles ─────────────────────────────────
+  rejectionOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.78)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    zIndex: 100,
+  },
+  rejectionCard: {
+    backgroundColor: '#1E1E24',
+    borderColor: '#FF5C5C',
+    borderWidth: 1,
+    borderRadius: 20,
+    padding: 22,
+    width: '100%',
+    maxWidth: 360,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.5,
+    shadowRadius: 20,
+    elevation: 12,
+  },
+  rejectionIconCircle: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: 'rgba(255, 92, 92, 0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 92, 92, 0.3)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 14,
+  },
+  rejectionTitle: {
+    color: '#FFFFFF',
+    fontSize: 18,
+    fontWeight: '800',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  rejectionMessage: {
+    color: '#9A9AA6',
+    fontSize: 13,
+    lineHeight: 19,
+    textAlign: 'center',
+    marginBottom: 18,
+  },
+  keyframesPreviewSection: {
+    width: '100%',
+    marginBottom: 20,
+  },
+  keyframesSectionTitle: {
+    color: '#8A8A98',
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 0.8,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  keyframesRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 8,
+  },
+  keyframeItem: {
+    flex: 1,
+    height: 72,
+    borderRadius: 8,
+    overflow: 'hidden',
+    backgroundColor: '#141418',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+    position: 'relative',
+  },
+  keyframeThumb: {
+    width: '100%',
+    height: '100%',
+  },
+  keyframeBadge: {
+    position: 'absolute',
+    bottom: 4,
+    right: 4,
+    backgroundColor: 'rgba(0, 0, 0, 0.75)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    borderWidth: 0.5,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  keyframeBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 9,
+    fontWeight: '700',
+  },
+  rejectionActionsRow: {
+    flexDirection: 'row',
+    width: '100%',
+    gap: 10,
+  },
+  rejectionRetakeBtn: {
+    flex: 1,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: '#2C2C35',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+  },
+  rejectionRetakeText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  rejectionManualBtn: {
+    flex: 1,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: 'rgba(142, 124, 255, 0.15)',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#8E7CFF',
+  },
+  rejectionManualText: {
+    color: '#8E7CFF',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  validatingOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.75)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 110,
+    paddingHorizontal: 28,
+  },
+  validatingCard: {
+    backgroundColor: '#1E1E24',
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: 'rgba(142, 124, 255, 0.3)',
+    paddingVertical: 28,
+    paddingHorizontal: 24,
+    alignItems: 'center',
+    width: '100%',
+    maxWidth: 320,
+  },
+  validatingTitle: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '700',
+    marginBottom: 6,
+    textAlign: 'center',
+  },
+  validatingSubtitle: {
+    color: '#9A9AA6',
+    fontSize: 12,
+    textAlign: 'center',
+    lineHeight: 18,
   },
 });
