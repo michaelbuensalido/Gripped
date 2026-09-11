@@ -121,7 +121,7 @@ export function useClimbingPoseTracker({
   targetHolds = DEFAULT_SIMULATED_HOLDS,
   contactDistanceThreshold = 0.08,
   minConfidence = 0.25,
-  enableSimulatorSimulation = true,
+  enableSimulatorSimulation = false,
   onHandContactChange,
 }: UseClimbingPoseTrackerOptions = {}) {
   const [poseState, setPoseState] = useState<PoseTrackingState>(DEFAULT_INITIAL_STATE);
@@ -134,6 +134,11 @@ export function useClimbingPoseTracker({
       rawLandmarks: Record<string, LandmarkPoint>,
       hasClimber: boolean
     ) => {
+      const validLandmarksCount = Object.values(rawLandmarks).filter(
+        (pt) => pt && pt.confidence >= minConfidence
+      ).length;
+      const verifiedClimber = hasClimber && validLandmarksCount >= 2;
+
       const { isHandOnHold, activeHoldIntersections } = evaluateHoldContacts(
         rawLandmarks,
         targetHolds,
@@ -142,15 +147,18 @@ export function useClimbingPoseTracker({
       );
 
       setPoseState({
-        hasClimber,
+        hasClimber: verifiedClimber,
         landmarks: rawLandmarks,
-        isHandOnHold,
-        activeHoldIntersections,
+        isHandOnHold: verifiedClimber ? isHandOnHold : false,
+        activeHoldIntersections: verifiedClimber ? activeHoldIntersections : 0,
       });
 
-      if (previousContactRef.current !== isHandOnHold) {
-        previousContactRef.current = isHandOnHold;
-        onHandContactChange?.(isHandOnHold, activeHoldIntersections);
+      if (previousContactRef.current !== (verifiedClimber ? isHandOnHold : false)) {
+        previousContactRef.current = verifiedClimber ? isHandOnHold : false;
+        onHandContactChange?.(
+          verifiedClimber ? isHandOnHold : false,
+          verifiedClimber ? activeHoldIntersections : 0
+        );
       }
     },
     [targetHolds, contactDistanceThreshold, minConfidence, onHandContactChange]

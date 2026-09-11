@@ -68,6 +68,7 @@ interface BetaCamModalProps {
   testPickerOpen?: boolean;
   testValidationFailure?: ValidationFailureReason;
   testValidationPassed?: boolean;
+  testSimulateClimber?: boolean;
 }
 
 const MAX_RECORDING_SECONDS = 45;
@@ -91,6 +92,7 @@ export function BetaCamModal({
   testPickerOpen = false,
   testValidationFailure,
   testValidationPassed = false,
+  testSimulateClimber = false,
 }: BetaCamModalProps) {
   const [cameraPermission, requestCameraPermission] = useCameraPermissions();
   const [microphonePermission, requestMicrophonePermission] = useMicrophonePermissions();
@@ -124,7 +126,7 @@ export function BetaCamModal({
   // ── On-Device Real-Time Pose & Hold Contact Tracker ─────────────────────────
   const { poseState, resetTracker } = useClimbingPoseTracker({
     enabled: visible && !capturedMedia,
-    enableSimulatorSimulation: true,
+    enableSimulatorSimulation: testSimulateClimber,
     onHandContactChange: (isContacting) => {
       if (isContacting) {
         triggerHaptic('light');
