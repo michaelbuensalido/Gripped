@@ -199,7 +199,7 @@ export function SessionCompletionModal({
             {/* Speckled mat background */}
             <ImageBackground
               source={require('../../assets/speckled_mat_bg.jpg')}
-              style={StyleSheet.absoluteFillObject}
+              style={StyleSheet.absoluteFill}
               imageStyle={{ opacity: 0.18 }}
               resizeMode="cover"
             />

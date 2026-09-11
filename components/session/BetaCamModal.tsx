@@ -18,7 +18,7 @@ import {
   type FlashMode,
 } from 'expo-camera';
 import { Video, ResizeMode } from 'expo-av';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import { Asset } from 'expo-asset';
 import {
   X,

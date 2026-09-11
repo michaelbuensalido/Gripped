@@ -19,7 +19,7 @@ function TabIcon({
   focused,
 }: {
   Icon: LucideIcon;
-  color: string;
+  color: any;
   size: number;
   focused: boolean;
 }) {
@@ -119,18 +119,6 @@ function TabLayout() {
   );
 }
 
-import { ThemeProvider, DarkTheme } from '@react-navigation/native';
-
-const NavigationTheme = {
-  ...DarkTheme,
-  colors: {
-    ...DarkTheme.colors,
-    background: 'transparent',
-    card: '#1E1E24',
-    border: '#2C2C35',
-  },
-};
-
 export default function RootLayout() {
   useEffect(() => {
     initializeDatabase()
@@ -144,17 +132,15 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1, backgroundColor: '#131316' }}>
       <ImageBackground
         source={require('../assets/speckled_mat_bg.jpg')}
-        style={StyleSheet.absoluteFillObject}
+        style={StyleSheet.absoluteFill}
         imageStyle={{ opacity: 0.22 }}
         resizeMode="cover"
       />
       <SafeAreaProvider>
-        <ThemeProvider value={NavigationTheme}>
-          <StatusBar style="light" />
-          <TabLayout />
-          {/* Global floating mini-bar — shows on all tabs when a session is active */}
-          <ActiveSessionMiniBar />
-        </ThemeProvider>
+        <StatusBar style="light" />
+        <TabLayout />
+        {/* Global floating mini-bar — shows on all tabs when a session is active */}
+        <ActiveSessionMiniBar />
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );
