@@ -5,12 +5,15 @@ import {
   TouchableOpacity,
   Pressable,
 } from 'react-native';
-import { Minus, Plus, Check, Zap } from 'lucide-react-native';
+import { Minus, Plus, Check, Zap, Camera, Play } from 'lucide-react-native';
+import Animated, { useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated';
 import { triggerHaptic } from '../../utils/haptics';
 import type { BoulderLog } from '../../types';
 import { GRADE_BY_LABEL } from '../../constants/grades';
 import { useSessionStore } from '../../store/sessionStore';
 import { GradeSheet } from './GradeSheet';
+import { BetaCamModal } from './BetaCamModal';
+import { BetaPreviewModal } from './BetaPreviewModal';
 
 interface SetRowProps {
   log: BoulderLog;
@@ -30,17 +33,33 @@ function rpeColor(rpe: number): string {
 
 export function SetRow({ log, index, groupId }: SetRowProps) {
   const [gradeSheetOpen, setGradeSheetOpen] = useState(false);
+  const [camModalOpen, setCamModalOpen] = useState(false);
+  const [previewModalOpen, setPreviewModalOpen] = useState(false);
 
   const setOutcome      = useSessionStore((s) => s.setOutcome);
   const updateGrade     = useSessionStore((s) => s.updateGrade);
   const updateRpe       = useSessionStore((s) => s.updateRpe);
   const incrementAttempts = useSessionStore((s) => s.incrementAttempts);
   const decrementAttempts = useSessionStore((s) => s.decrementAttempts);
+  const updateSetMedia  = useSessionStore((s) => s.updateSetMedia);
+  const commitSetGrading = useSessionStore((s) => s.commitSetGrading);
   const triggerRestTimer  = useSessionStore((s) => s.triggerRestTimer);
 
   const grade   = GRADE_BY_LABEL[log.gradeRaw];
   const isSent  = log.outcome === 'send' || log.outcome === 'flash';
   const isFlash = log.outcome === 'flash';
+
+  // ── Spring Scale Feedback ──────────────────────────────────────────────────
+  const sendScale = useSharedValue(1);
+  const flashScale = useSharedValue(1);
+
+  const sendAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: sendScale.value }],
+  }));
+
+  const flashAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: flashScale.value }],
+  }));
 
   // ── Handlers ──────────────────────────────────────────────────────────────
 
@@ -71,10 +90,14 @@ export function SetRow({ log, index, groupId }: SetRowProps) {
     updateRpe(groupId, log.id, current <= 1 ? null : current - 1);
   }, [groupId, log.id, log.rpe, updateRpe]);
 
-  /** Single tap: toggle attempt ↔ send. Long press: mark flash */
+  /** Single tap: toggle attempt ↔ send. Distinct haptics for Attempt (light) and Top (medium) */
   const handleSendTap = useCallback(() => {
-    triggerHaptic('medium');
     const next = isSent ? 'attempt' : 'send';
+    if (next === 'attempt') {
+      triggerHaptic('light');
+    } else {
+      triggerHaptic('medium');
+    }
     setOutcome(groupId, log.id, next);
     if (next !== 'attempt') {
       const group = useSessionStore.getState().groups.find((g) => g.id === groupId);
@@ -82,13 +105,38 @@ export function SetRow({ log, index, groupId }: SetRowProps) {
     }
   }, [isSent, groupId, log.id, setOutcome, triggerRestTimer]);
 
+  /** Flash toggle: heavy success notification haptic */
   const handleFlashLongPress = useCallback(() => {
-    triggerHaptic('heavy');
     const next = isFlash ? 'send' : 'flash';
+    if (next === 'flash') {
+      triggerHaptic('success');
+    } else {
+      triggerHaptic('medium');
+    }
     setOutcome(groupId, log.id, next);
     const group = useSessionStore.getState().groups.find((g) => g.id === groupId);
     triggerRestTimer(group?.defaultRestSeconds ?? 90);
   }, [isFlash, groupId, log.id, setOutcome, triggerRestTimer]);
+
+  const handleAttachBeta = useCallback(
+    (uri: string, type: 'video' | 'photo', gradeRaw?: string, notes?: string) => {
+      if (gradeRaw) {
+        commitSetGrading(groupId, log.id, {
+          gradeRaw,
+          mediaUri: uri,
+          mediaType: type,
+          notes,
+        });
+      } else {
+        updateSetMedia(groupId, log.id, uri, type);
+      }
+    },
+    [groupId, log.id, commitSetGrading, updateSetMedia]
+  );
+
+  const handleDeleteBeta = useCallback(() => {
+    updateSetMedia(groupId, log.id, null, null);
+  }, [groupId, log.id, updateSetMedia]);
 
   // ── Render ────────────────────────────────────────────────────────────────
 
@@ -175,37 +223,111 @@ export function SetRow({ log, index, groupId }: SetRowProps) {
           </View>
         </View>
 
-        {/* ── Send Checkbox + Flash indicator ────────────────────────── */}
-        <View className="flex-1 flex-row items-center justify-end gap-2">
-          {/* Flash lightning — only visible/tappable once sent */}
-          {isSent && (
+        {/* ── Beta Cam + Flash + Send Checkbox ────────────────────────── */}
+        <View className="flex-1 flex-row items-center justify-end gap-1.5">
+          {/* Beta Cam Trigger */}
+          {log.media_uri ? (
             <TouchableOpacity
-              onPress={handleFlashLongPress}
+              onPress={() => {
+                triggerHaptic('light');
+                setPreviewModalOpen(true);
+              }}
+              activeOpacity={0.8}
+              style={{
+                width: 36,
+                height: 36,
+                borderRadius: 10,
+                backgroundColor: '#8E7CFF',
+                alignItems: 'center',
+                justifyContent: 'center',
+                borderWidth: 1,
+                borderColor: '#A294FF',
+                shadowColor: '#8E7CFF',
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.35,
+                shadowRadius: 5,
+              }}
+            >
+              {log.media_type === 'photo' ? (
+                <Camera size={15} color="#FFFFFF" />
+              ) : (
+                <Play size={14} color="#FFFFFF" fill="#FFFFFF" style={{ marginLeft: 2 }} />
+              )}
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity
+              onPress={() => {
+                triggerHaptic('light');
+                setCamModalOpen(true);
+              }}
               activeOpacity={0.7}
               style={{
-                backgroundColor: isFlash ? '#6EE756' : 'rgba(255, 255, 255, 0.06)',
-                borderColor: isFlash ? '#6EE756' : 'rgba(255, 255, 255, 0.10)',
+                width: 36,
+                height: 36,
+                borderRadius: 10,
+                borderWidth: 1,
+                borderColor: '#2C2C35',
+                backgroundColor: 'rgba(255, 255, 255, 0.04)',
+                alignItems: 'center',
+                justifyContent: 'center',
               }}
-              className="w-9 h-9 rounded-xl items-center justify-center border"
             >
-              <Zap
-                size={16}
-                color={isFlash ? '#FFFFFF' : '#8A8A98'}
-                fill={isFlash ? '#FFFFFF' : 'none'}
-              />
+              <Camera size={16} color="#8A8A98" />
             </TouchableOpacity>
           )}
 
-          {/* Send checkbox */}
+          {/* Flash lightning — only visible/tappable once sent */}
+          {isSent && (
+            <Pressable
+              onPressIn={() => {
+                flashScale.value = withSpring(0.93, { damping: 14, stiffness: 240 });
+              }}
+              onPressOut={() => {
+                flashScale.value = withSpring(1.0, { damping: 14, stiffness: 240 });
+              }}
+              onPress={handleFlashLongPress}
+            >
+              <Animated.View
+                style={[
+                  {
+                    backgroundColor: isFlash ? '#6EE756' : 'rgba(255, 255, 255, 0.06)',
+                    borderColor: isFlash ? '#6EE756' : 'rgba(255, 255, 255, 0.10)',
+                  },
+                  flashAnimatedStyle,
+                ]}
+                className="w-9 h-9 rounded-xl items-center justify-center border"
+              >
+                <Zap
+                  size={16}
+                  color={isFlash ? '#FFFFFF' : '#8A8A98'}
+                  fill={isFlash ? '#FFFFFF' : 'none'}
+                />
+              </Animated.View>
+            </Pressable>
+          )}
+
+          {/* Send checkbox with spring scale */}
           <Pressable
-            onPress={handleSendTap}
-            style={{
-              backgroundColor: isSent ? (isFlash ? '#6EE756' : '#8E7CFF') : 'transparent',
-              borderColor: isSent ? (isFlash ? '#6EE756' : '#8E7CFF') : '#2C2C35',
+            onPressIn={() => {
+              sendScale.value = withSpring(0.93, { damping: 14, stiffness: 240 });
             }}
-            className="w-11 h-11 rounded-xl items-center justify-center border-2"
+            onPressOut={() => {
+              sendScale.value = withSpring(1.0, { damping: 14, stiffness: 240 });
+            }}
+            onPress={handleSendTap}
           >
-            {isSent && <Check size={20} color="#FFFFFF" strokeWidth={3} />}
+            <Animated.View
+              style={[
+                {
+                  backgroundColor: isSent ? (isFlash ? '#6EE756' : '#8E7CFF') : 'transparent',
+                  borderColor: isSent ? (isFlash ? '#6EE756' : '#8E7CFF') : '#2C2C35',
+                },
+                sendAnimatedStyle,
+              ]}
+              className="w-11 h-11 rounded-xl items-center justify-center border-2"
+            >
+              {isSent && <Check size={20} color="#FFFFFF" strokeWidth={3} />}
+            </Animated.View>
           </Pressable>
         </View>
       </View>
@@ -215,6 +337,26 @@ export function SetRow({ log, index, groupId }: SetRowProps) {
         selectedGrade={log.gradeRaw}
         onSelect={handleGradeSelect}
         onClose={() => setGradeSheetOpen(false)}
+      />
+
+      <BetaCamModal
+        visible={camModalOpen}
+        onClose={() => setCamModalOpen(false)}
+        onAttach={handleAttachBeta}
+        gradeLabel={log.gradeRaw}
+        setIndex={index}
+      />
+
+      <BetaPreviewModal
+        visible={previewModalOpen}
+        mediaUri={log.media_uri ?? null}
+        mediaType={log.media_type}
+        setIndex={index}
+        gradeRaw={log.gradeRaw}
+        outcome={log.outcome}
+        onClose={() => setPreviewModalOpen(false)}
+        onRetake={() => setCamModalOpen(true)}
+        onDelete={handleDeleteBeta}
       />
     </>
   );

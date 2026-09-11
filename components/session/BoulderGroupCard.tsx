@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { View, Text, TouchableOpacity, TextInput } from 'react-native';
+import { View, Text, TouchableOpacity, TextInput, Keyboard } from 'react-native';
 import { Plus, ChevronDown, ChevronUp, Clock, MoreVertical } from 'lucide-react-native';
 import type { BoulderLog } from '../../types';
 import { useSessionStore } from '../../store/sessionStore';
@@ -167,6 +167,11 @@ export function BoulderGroupCard({
               value={notesValue}
               onChangeText={setNotesValue}
               onBlur={handleNotesBlur}
+              onSubmitEditing={() => {
+                handleNotesBlur();
+                Keyboard.dismiss();
+              }}
+              returnKeyType="done"
               placeholder="Add notes here..."
               placeholderTextColor="#555562"
               multiline={false}
@@ -201,7 +206,10 @@ export function BoulderGroupCard({
               <Text className="text-[#8A8A98] text-[10px] w-12 text-center font-bold">Grade</Text>
               <Text className="text-[#8A8A98] text-[10px] w-20 text-center font-bold">RPE</Text>
               <Text className="text-[#8A8A98] text-[10px] w-20 text-center font-bold">Att</Text>
-              <Text className="text-[#8A8A98] text-[10px] flex-1 text-right pr-1 font-bold">Send</Text>
+              <View className="flex-1 flex-row items-center justify-end gap-1.5">
+                <Text className="text-[#8A8A98] text-[10px] w-9 text-center font-bold">Beta</Text>
+                <Text className="text-[#8A8A98] text-[10px] w-11 text-center font-bold">Send</Text>
+              </View>
             </View>
           )}
 

@@ -18,6 +18,7 @@ interface SessionState {
   restTimerActive: boolean;
   restTimerSeconds: number;
   restTimerMax: number;
+  restTimerTargetTimestampMs: number | null;
 
   // actions
   startSession: (gymName: string) => void;
@@ -53,9 +54,26 @@ interface SessionState {
   updateRpe: (groupId: string, logId: string, rpe: number | null) => void;
   incrementAttempts: (groupId: string, logId: string) => void;
   decrementAttempts: (groupId: string, logId: string) => void;
+  updateSetMedia: (
+    groupId: string,
+    logId: string,
+    mediaUri: string | null,
+    mediaType: 'video' | 'photo' | null
+  ) => void;
+  commitSetGrading: (
+    groupId: string,
+    logId: string,
+    data: {
+      gradeRaw: string;
+      mediaUri: string;
+      mediaType: 'video' | 'photo';
+      notes?: string;
+    }
+  ) => void;
 
   triggerRestTimer: (seconds?: number) => void;
   tickRestTimer: () => void;
+  syncRestTimer: () => number;
   dismissRestTimer: () => void;
 }
 
@@ -68,6 +86,7 @@ export const useSessionStore = create<SessionState>()(
     restTimerActive: false,
     restTimerSeconds: 0,
     restTimerMax: 90,
+    restTimerTargetTimestampMs: null,
 
     startSession: (gymName) => {
       const session: Session = {
@@ -85,12 +104,27 @@ export const useSessionStore = create<SessionState>()(
         sessionId: session.id,
         zoneName: 'Main Wall',
         order: 0,
+        defaultRestSeconds: 90,
       };
       Q.insertBoulderGroup(group);
 
+      const log: BoulderLog = {
+        id: uuid(),
+        groupId: group.id,
+        gradeRaw: DEFAULT_GRADE.label,
+        normalizedDifficulty: DEFAULT_GRADE.difficulty,
+        rpe: null,
+        attempts: 1,
+        outcome: 'attempt',
+        timestamp: Date.now(),
+        media_uri: null,
+        media_type: null,
+      };
+      Q.insertBoulderLog(log);
+
       set((state) => {
         state.activeSession = session;
-        state.groups = [{ ...group, logs: [] }];
+        state.groups = [{ ...group, logs: [log] }];
       });
     },
 
@@ -113,12 +147,27 @@ export const useSessionStore = create<SessionState>()(
       };
       Q.insertBoulderGroup(group);
 
+      const log: BoulderLog = {
+        id: uuid(),
+        groupId: group.id,
+        gradeRaw: DEFAULT_GRADE.label,
+        normalizedDifficulty: DEFAULT_GRADE.difficulty,
+        rpe: null,
+        attempts: 1,
+        outcome: 'attempt',
+        timestamp: Date.now(),
+        media_uri: null,
+        media_type: null,
+      };
+      Q.insertBoulderLog(log);
+
       set((state) => {
         state.activeSession = session;
-        state.groups = [{ ...group, logs: [] }];
+        state.groups = [{ ...group, logs: [log] }];
         state.restTimerActive = false;
         state.restTimerSeconds = 0;
         state.restTimerMax = 90;
+        state.restTimerTargetTimestampMs = null;
       });
 
       return session.id;
@@ -184,6 +233,7 @@ export const useSessionStore = create<SessionState>()(
         state.restTimerActive = false;
         state.restTimerSeconds = 0;
         state.restTimerMax = firstRest;
+        state.restTimerTargetTimestampMs = null;
       });
 
       return session.id;
@@ -201,6 +251,7 @@ export const useSessionStore = create<SessionState>()(
         state.restTimerActive = false;
         state.restTimerSeconds = 0;
         state.restTimerMax = 90;
+        state.restTimerTargetTimestampMs = null;
       });
     },
 
@@ -223,6 +274,7 @@ export const useSessionStore = create<SessionState>()(
         state.restTimerActive = false;
         state.restTimerSeconds = 0;
         state.restTimerMax = 90;
+        state.restTimerTargetTimestampMs = null;
       });
     },
 
@@ -237,6 +289,7 @@ export const useSessionStore = create<SessionState>()(
         state.restTimerActive = false;
         state.restTimerSeconds = 0;
         state.restTimerMax = 90;
+        state.restTimerTargetTimestampMs = null;
       });
     },
 
@@ -252,6 +305,7 @@ export const useSessionStore = create<SessionState>()(
         state.restTimerActive = false;
         state.restTimerSeconds = 0;
         state.restTimerMax = 90;
+        state.restTimerTargetTimestampMs = null;
       });
     },
 
@@ -358,6 +412,8 @@ export const useSessionStore = create<SessionState>()(
         attempts: 1,
         outcome: 'attempt',
         timestamp: Date.now(),
+        media_uri: null,
+        media_type: null,
       };
       Q.insertBoulderLog(log);
       set((state) => {
@@ -493,28 +549,102 @@ export const useSessionStore = create<SessionState>()(
       });
     },
 
+    updateSetMedia: (groupId, logId, mediaUri, mediaType) => {
+      Q.updateBoulderLogMedia(logId, mediaUri, mediaType);
+      set((state) => {
+        const sg = state.groups.find((g) => g.id === groupId);
+        if (!sg) return;
+        const log = sg.logs.find((l) => l.id === logId);
+        if (log) {
+          log.media_uri = mediaUri;
+          log.media_type = mediaType;
+        }
+      });
+    },
+
+    commitSetGrading: (groupId, logId, data) => {
+      const grade = GRADE_BY_LABEL[data.gradeRaw] || DEFAULT_GRADE;
+      Q.updateBoulderLogGradeAndMedia(
+        logId,
+        data.gradeRaw,
+        grade.difficulty,
+        data.mediaUri,
+        data.mediaType,
+        data.notes
+      );
+      set((state) => {
+        const sg = state.groups.find((g) => g.id === groupId);
+        if (!sg) return;
+        const log = sg.logs.find((l) => l.id === logId);
+        if (log) {
+          log.gradeRaw = data.gradeRaw;
+          log.normalizedDifficulty = grade.difficulty;
+          log.media_uri = data.mediaUri;
+          log.media_type = data.mediaType;
+          log.notes = data.notes ?? log.notes;
+        }
+      });
+    },
+
     triggerRestTimer: (seconds = 90) => {
       set((state) => {
         state.restTimerActive = true;
         state.restTimerSeconds = seconds;
         state.restTimerMax = seconds;
+        state.restTimerTargetTimestampMs = Date.now() + seconds * 1000;
       });
     },
 
     tickRestTimer: () => {
       set((state) => {
-        if (state.restTimerSeconds > 0) {
-          state.restTimerSeconds -= 1;
-        } else {
+        if (!state.restTimerActive || !state.restTimerTargetTimestampMs) {
+          if (state.restTimerSeconds > 0) {
+            state.restTimerSeconds -= 1;
+          } else {
+            state.restTimerActive = false;
+          }
+          return;
+        }
+
+        const remaining = Math.max(
+          0,
+          Math.ceil((state.restTimerTargetTimestampMs - Date.now()) / 1000)
+        );
+        state.restTimerSeconds = remaining;
+        if (remaining <= 0) {
           state.restTimerActive = false;
+          state.restTimerTargetTimestampMs = null;
         }
       });
+    },
+
+    syncRestTimer: () => {
+      let remaining = 0;
+      set((state) => {
+        if (!state.restTimerActive || !state.restTimerTargetTimestampMs) {
+          remaining = state.restTimerSeconds;
+          return;
+        }
+        remaining = Math.max(
+          0,
+          Math.ceil((state.restTimerTargetTimestampMs - Date.now()) / 1000)
+        );
+        if (state.restTimerSeconds !== remaining) {
+          state.restTimerSeconds = remaining;
+        }
+        if (remaining <= 0) {
+          state.restTimerActive = false;
+          state.restTimerTargetTimestampMs = null;
+        }
+      });
+      return remaining;
     },
 
     dismissRestTimer: () => {
       set((state) => {
         state.restTimerActive = false;
         state.restTimerSeconds = 0;
+        state.restTimerTargetTimestampMs = null;
       });
     },
   }))

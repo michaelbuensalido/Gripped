@@ -11,6 +11,9 @@ import {
   ImageBackground,
   StyleSheet,
   Platform,
+  KeyboardAvoidingView,
+  Keyboard,
+  TouchableWithoutFeedback,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
@@ -187,77 +190,84 @@ export function SessionCompletionModal({
       presentationStyle="fullScreen"
       onRequestClose={handleDiscardPress}
     >
-      <View style={{ flex: 1, backgroundColor: '#131316' }}>
-        {/* Speckled mat background */}
-        <ImageBackground
-          source={require('../../assets/speckled_mat_bg.jpg')}
-          style={StyleSheet.absoluteFillObject}
-          imageStyle={{ opacity: 0.18 }}
-          resizeMode="cover"
-        />
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        style={{ flex: 1, backgroundColor: '#131316' }}
+      >
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+          <View style={{ flex: 1 }}>
+            {/* Speckled mat background */}
+            <ImageBackground
+              source={require('../../assets/speckled_mat_bg.jpg')}
+              style={StyleSheet.absoluteFillObject}
+              imageStyle={{ opacity: 0.18 }}
+              resizeMode="cover"
+            />
 
-        {/* ── 1. Header & Dismiss Clean-up ────────────────────────────── */}
-        <View
-          style={{
-            paddingTop: insets.top + 6,
-            paddingBottom: 10,
-            paddingHorizontal: 16,
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            borderBottomWidth: 1,
-            borderBottomColor: 'rgba(255, 255, 255, 0.06)',
-            backgroundColor: 'rgba(19, 19, 22, 0.92)',
-          }}
-        >
-          {/* Top-left: Crisp "✕" close/discard icon (#9A9AA6, 44x44 touch target) */}
-          <TouchableOpacity
-            activeOpacity={0.7}
-            onPress={handleDiscardPress}
-            style={{
-              width: 44,
-              height: 44,
-              alignItems: 'center',
-              justifyContent: 'center',
-              borderRadius: 22,
-            }}
-          >
-            <X size={20} color="#9A9AA6" />
-          </TouchableOpacity>
-
-          {/* Center Title: Small uppercase tracked label: "SESSION RECAP" (Tappable celebration trigger) */}
-          <TouchableOpacity
-            activeOpacity={0.7}
-            onPress={() => {
-              triggerHaptic('success');
-              setConfettiKey((k) => k + 1);
-            }}
-          >
-            <Text
+            {/* ── 1. Header & Dismiss Clean-up ────────────────────────────── */}
+            <View
               style={{
-                fontSize: 12,
-                color: '#8E7CFF',
-                fontWeight: '700',
-                letterSpacing: 1.2,
+                paddingTop: insets.top + 6,
+                paddingBottom: 10,
+                paddingHorizontal: 16,
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                borderBottomWidth: 1,
+                borderBottomColor: 'rgba(255, 255, 255, 0.06)',
+                backgroundColor: 'rgba(19, 19, 22, 0.92)',
               }}
             >
-              SESSION RECAP
-            </Text>
-          </TouchableOpacity>
+              {/* Top-left: Crisp "✕" close/discard icon (#9A9AA6, 44x44 touch target) */}
+              <TouchableOpacity
+                activeOpacity={0.7}
+                onPress={handleDiscardPress}
+                style={{
+                  width: 44,
+                  height: 44,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  borderRadius: 22,
+                }}
+              >
+                <X size={20} color="#9A9AA6" />
+              </TouchableOpacity>
 
-          {/* Top-right: Empty balanced spacer (Save button removed) */}
-          <View style={{ width: 44, height: 44 }} />
-        </View>
+              {/* Center Title: Small uppercase tracked label: "SESSION RECAP" (Tappable celebration trigger) */}
+              <TouchableOpacity
+                activeOpacity={0.7}
+                onPress={() => {
+                  triggerHaptic('success');
+                  setConfettiKey((k) => k + 1);
+                }}
+              >
+                <Text
+                  style={{
+                    fontSize: 12,
+                    color: '#8E7CFF',
+                    fontWeight: '700',
+                    letterSpacing: 1.2,
+                  }}
+                >
+                  SESSION RECAP
+                </Text>
+              </TouchableOpacity>
 
-        {/* ── Main Scrollable Content ─────────────────────────────────── */}
-        <ScrollView
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={{
-            paddingHorizontal: 16,
-            paddingTop: 14,
-            paddingBottom: 24,
-          }}
-        >
+              {/* Top-right: Empty balanced spacer (Save button removed) */}
+              <View style={{ width: 44, height: 44 }} />
+            </View>
+
+            {/* ── Main Scrollable Content ─────────────────────────────────── */}
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+              keyboardDismissMode="on-drag"
+              contentContainerStyle={{
+                paddingHorizontal: 16,
+                paddingTop: 14,
+                paddingBottom: 24,
+              }}
+            >
           {/* ── 2. Workout Headline & Celebration Hero ─────────────────── */}
           <View style={{ alignItems: 'center', marginBottom: 6 }}>
             {/* Large Title: "Thursday Evening Climb" (26pt Bold White, editable with subtle pencil) */}
@@ -702,16 +712,18 @@ export function SessionCompletionModal({
           </TouchableOpacity>
         </View>
 
-        {/* Celebratory Animated Confetti Burst Overlay (Non-blocking worklet animation) */}
-        {visible && confettiKey > 0 && (
-          <ConfettiBurst
-            key={confettiKey}
-            count={42}
-            duration={2500}
-            style={{ top: insets.top }}
-          />
-        )}
-      </View>
+          {/* Celebratory Animated Confetti Burst Overlay (Non-blocking worklet animation) */}
+          {visible && confettiKey > 0 && (
+            <ConfettiBurst
+              key={confettiKey}
+              count={42}
+              duration={2500}
+              style={{ top: insets.top }}
+            />
+          )}
+          </View>
+        </TouchableWithoutFeedback>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }
