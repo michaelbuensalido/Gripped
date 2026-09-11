@@ -45,6 +45,8 @@ import {
   ValidationResult,
   ValidationFailureReason,
 } from '../../services/videoAnalyzer';
+import { useClimbingPoseTracker } from '../../hooks/useClimbingPoseTracker';
+import { PoseSkeletonOverlay } from './PoseSkeletonOverlay';
 
 interface BetaCamModalProps {
   visible: boolean;
@@ -118,6 +120,17 @@ export function BetaCamModal({
   const [isValidating, setIsValidating] = useState(false);
   const [validationResult, setValidationResult] = useState<ValidationResult | null>(null);
   const [manualGradeOverride, setManualGradeOverride] = useState(false);
+
+  // ── On-Device Real-Time Pose & Hold Contact Tracker ─────────────────────────
+  const { poseState, resetTracker } = useClimbingPoseTracker({
+    enabled: visible && !capturedMedia,
+    enableSimulatorSimulation: true,
+    onHandContactChange: (isContacting) => {
+      if (isContacting) {
+        triggerHaptic('light');
+      }
+    },
+  });
 
   // Angle stability detection (switches leveling dot green when held steady)
   const [isStable, setIsStable] = useState(true);
@@ -574,6 +587,7 @@ export function BetaCamModal({
     setValidationResult(null);
     setManualGradeOverride(false);
     setIsValidating(false);
+    resetTracker();
   };
 
   const toggleFacing = () => {
@@ -878,6 +892,9 @@ export function BetaCamModal({
                 </View>
               </View>
             )}
+
+            {/* ── Real-Time Pose Skeleton & Hold Contact Overlay ───────────── */}
+            <PoseSkeletonOverlay poseState={poseState} />
 
             {/* ── Reticle ("Scanning Route") ─────────────────────────────────── */}
             <View style={styles.reticleContainer} pointerEvents="none">
