@@ -50,6 +50,20 @@ export async function extractClimbingKeyframes(
   const t3 = Math.round(totalMs * 0.8);
   const timestampsMs = [t1, t2, t3];
 
+  const isImageFile =
+    videoUri &&
+    (videoUri.endsWith('.jpg') ||
+      videoUri.endsWith('.jpeg') ||
+      videoUri.endsWith('.png') ||
+      videoUri.endsWith('.webp'));
+
+  if (isImageFile) {
+    return {
+      keyframes: [videoUri, videoUri, videoUri],
+      timestampsMs,
+    };
+  }
+
   const keyframes: string[] = [];
 
   for (const time of timestampsMs) {

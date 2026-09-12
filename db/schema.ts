@@ -1,5 +1,4 @@
 import * as SQLite from 'expo-sqlite';
-import { seedDefaultRoutinesIfEmpty } from './routineQueries';
 
 let _db: SQLite.SQLiteDatabase | null = null;
 
@@ -121,6 +120,7 @@ export async function initializeDatabase(): Promise<void> {
   const db = getDatabase();
   runMigrations(db);
   try {
+    const { seedDefaultRoutinesIfEmpty } = require('./routineQueries');
     seedDefaultRoutinesIfEmpty();
   } catch (err) {
     console.error('Failed to seed default routines:', err);

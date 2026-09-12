@@ -1,16 +1,9 @@
-import { useState, useEffect, useRef, useCallback, DependencyList } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo, DependencyList } from 'react';
 import { Platform } from 'react-native';
-import {
-  VisionCameraProxy,
+import type {
   Frame,
-  useFrameProcessor,
-  type ReadonlyFrameProcessor,
+  ReadonlyFrameProcessor,
 } from 'react-native-vision-camera';
-import {
-  Worklets,
-  useSharedValue as useWorkletsSharedValue,
-  useRunOnJS as useWorkletsRunOnJS,
-} from 'react-native-worklets-core';
 
 export interface LandmarkPoint {
   x: number;          // Normalized 0.0 - 1.0 (top-left origin)
@@ -94,16 +87,48 @@ const DEFAULT_SIMULATED_HOLDS: TargetHold[] = [
   { x: 0.52, y: 0.20, radius: 0.075 }, // Top / Finish Hold
 ];
 
-// ── Native Frame Processor Plugin Initialization ──────────────────────────────
+// ── Safe Dynamic Module Resolution for Expo Go vs. Dev Client ─────────────────
+// react-native-vision-camera and react-native-worklets-core contain C++ native JSI modules.
+// If statically imported in Expo Go, they throw uncaught exceptions at module evaluation time.
+// We safely detect if custom native modules are available before loading them.
+const isExpoGo =
+  typeof globalThis !== 'undefined' &&
+  (globalThis as any).expo?.modules?.ExponentConstants?.appOwnership === 'expo';
+
+let visionCameraModule: typeof import('react-native-vision-camera') | null = null;
+let workletsModule: typeof import('react-native-worklets-core') | null = null;
 let nativePosePlugin: any = null;
-try {
-  if (VisionCameraProxy?.initFrameProcessorPlugin) {
-    nativePosePlugin = VisionCameraProxy.initFrameProcessorPlugin('detectClimbingPose', {});
+
+if (!isExpoGo) {
+  try {
+    visionCameraModule = require('react-native-vision-camera');
+  } catch {
+    visionCameraModule = null;
   }
-} catch {
-  // Gracefully handle environments where VisionCamera native JSI bindings are not loaded (e.g. Expo Go)
-  nativePosePlugin = null;
+
+  try {
+    workletsModule = require('react-native-worklets-core');
+  } catch {
+    workletsModule = null;
+  }
+
+  if (visionCameraModule?.VisionCameraProxy?.initFrameProcessorPlugin) {
+    try {
+      nativePosePlugin = visionCameraModule.VisionCameraProxy.initFrameProcessorPlugin(
+        'detectClimbingPose',
+        {}
+      );
+    } catch {
+      nativePosePlugin = null;
+    }
+  }
 }
+
+const hasNativeVisionPipeline = Boolean(
+  visionCameraModule?.useFrameProcessor &&
+  workletsModule?.useSharedValue &&
+  workletsModule?.useRunOnJS
+);
 
 /**
  * Direct worklet invocation of the native ClimbingPoseTrackerPlugin.
@@ -127,27 +152,6 @@ export function detectClimbingPose(frame: Frame): {
  */
 export function logFrameProcessorError(message: string): void {
   console.warn('[PoseTracker][FrameProcessor] Native detection error:', message);
-}
-
-// ── Worklet Fallback Helpers for Expo Go / Simulator ──────────────────────────
-const isWorkletsNative = typeof globalThis !== 'undefined' && (globalThis as any).Worklets != null;
-
-function useSafeSharedValue<T>(initialValue: T) {
-  const fallbackRef = useRef({ value: initialValue });
-  if (isWorkletsNative) {
-    // eslint-disable-next-line react-hooks/rules-of-hooks
-    return useWorkletsSharedValue(initialValue);
-  }
-  return fallbackRef.current;
-}
-
-function useSafeRunOnJS<T extends (...args: any[]) => any>(callback: T, deps: DependencyList) {
-  if (isWorkletsNative) {
-    // eslint-disable-next-line react-hooks/rules-of-hooks
-    return useWorkletsRunOnJS(callback, deps);
-  }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  return useCallback(callback, deps);
 }
 
 /**
@@ -206,17 +210,12 @@ export function evaluateHoldContacts(
   return { isHandOnHold, activeHoldIntersections, contactingHoldIds };
 }
 
-/**
- * Custom Hook: Real-Time On-Device Climbing Pose & Hand-Hold Contact Tracker.
- *
- * Consumes native frame processor frames (Apple Vision on iOS, Google ML Kit on Android)
- * via react-native-vision-camera, or runs kinematic simulation in development/simulator environments.
- */
-export function useClimbingPoseTracker({
+// ── Native Vision Frame Processor Hook Implementation ─────────────────────────
+function useClimbingPoseTrackerNative({
   enabled = true,
   targetHolds = DEFAULT_SIMULATED_HOLDS,
   contactDistanceThreshold = 0.08,
-  minConfidence = 0.2, // Matches native plugin kMinJointConfidence / kMinLandmarkConfidence
+  minConfidence = 0.2,
   enableSimulatorSimulation = false,
   onHandContactChange,
 }: UseClimbingPoseTrackerOptions = {}) {
@@ -225,12 +224,8 @@ export function useClimbingPoseTracker({
   const animationFrameRef = useRef<number | null>(null);
   const lastDiagnosticLogRef = useRef<number>(0);
 
-  // Synchronous update handler with change detection
   const updatePoseState = useCallback(
-    (
-      rawLandmarks: Record<string, LandmarkPoint>,
-      hasClimber: boolean
-    ) => {
+    (rawLandmarks: Record<string, LandmarkPoint>, hasClimber: boolean) => {
       const validLandmarksCount = Object.values(rawLandmarks).filter(
         (pt) => pt && pt.confidence >= minConfidence
       ).length;
@@ -243,7 +238,6 @@ export function useClimbingPoseTracker({
         minConfidence
       );
 
-      // ── Throttled diagnostic logging ──────────────────────────────────────────
       const now = Date.now();
       if (now - lastDiagnosticLogRef.current >= DIAGNOSTIC_LOG_INTERVAL_MS) {
         lastDiagnosticLogRef.current = now;
@@ -277,22 +271,21 @@ export function useClimbingPoseTracker({
     [targetHolds, contactDistanceThreshold, minConfidence, onHandContactChange]
   );
 
-  // ── Throttled Worklet Frame Processor Pipeline ──────────────────────────────
-  // Frame skipping: processes ~10-12 FPS (1 in 3 frames) to prevent ML buffer starvation
-  const frameCount = useSafeSharedValue(0);
+  // Native Worklets frame skipping
+  const frameCount = workletsModule!.useSharedValue(0);
 
-  const safeRunUpdate = useSafeRunOnJS(
+  const safeRunUpdate = workletsModule!.useRunOnJS(
     (landmarks: Record<string, LandmarkPoint>, climberPresent: boolean) => {
       updatePoseState(landmarks, climberPresent);
     },
     [updatePoseState]
   );
 
-  const safeRunError = useSafeRunOnJS((msg: string) => {
+  const safeRunError = workletsModule!.useRunOnJS((msg: string) => {
     logFrameProcessorError(msg);
   }, []);
 
-  const frameProcessor: ReadonlyFrameProcessor = useFrameProcessor(
+  const frameProcessor = visionCameraModule!.useFrameProcessor(
     (frame: Frame) => {
       'worklet';
       if (!enabled) return;
@@ -318,12 +311,129 @@ export function useClimbingPoseTracker({
     [enabled, frameCount, safeRunUpdate, safeRunError]
   );
 
-  // ── Simulator / Demo Kinematic Simulation Loop ─────────────────────────────
-  useEffect(() => {
-    if (!enabled || !enableSimulatorSimulation) {
-      if (!enabled) {
-        setPoseState(DEFAULT_INITIAL_STATE);
+  // Simulation loop fallback if requested
+  useSimulatorSimulation(
+    enabled && enableSimulatorSimulation,
+    updatePoseState,
+    setPoseState,
+    animationFrameRef
+  );
+
+  const resetTracker = useCallback(() => {
+    setPoseState(DEFAULT_INITIAL_STATE);
+    previousContactRef.current = false;
+  }, []);
+
+  return {
+    poseState,
+    updatePoseState,
+    resetTracker,
+    frameProcessor,
+    cameraConfig: RECOMMENDED_CAMERA_CONFIG,
+  };
+}
+
+// ── Expo Go / Web / Simulator Hook Implementation ─────────────────────────────
+function useClimbingPoseTrackerExpoGo({
+  enabled = true,
+  targetHolds = DEFAULT_SIMULATED_HOLDS,
+  contactDistanceThreshold = 0.08,
+  minConfidence = 0.2,
+  enableSimulatorSimulation = false,
+  onHandContactChange,
+}: UseClimbingPoseTrackerOptions = {}) {
+  const [poseState, setPoseState] = useState<PoseTrackingState>(DEFAULT_INITIAL_STATE);
+  const previousContactRef = useRef(false);
+  const animationFrameRef = useRef<number | null>(null);
+  const lastDiagnosticLogRef = useRef<number>(0);
+
+  const updatePoseState = useCallback(
+    (rawLandmarks: Record<string, LandmarkPoint>, hasClimber: boolean) => {
+      const validLandmarksCount = Object.values(rawLandmarks).filter(
+        (pt) => pt && pt.confidence >= minConfidence
+      ).length;
+      const verifiedClimber = hasClimber && validLandmarksCount >= 2;
+
+      const { isHandOnHold, activeHoldIntersections } = evaluateHoldContacts(
+        rawLandmarks,
+        targetHolds,
+        contactDistanceThreshold,
+        minConfidence
+      );
+
+      const now = Date.now();
+      if (now - lastDiagnosticLogRef.current >= DIAGNOSTIC_LOG_INTERVAL_MS) {
+        lastDiagnosticLogRef.current = now;
+        console.log(
+          '[PoseTracker] Tracked joints count:',
+          Object.keys(rawLandmarks).length,
+          '| Confident joints:',
+          validLandmarksCount,
+          '| HasClimber:',
+          verifiedClimber,
+          '| HandOnHold:',
+          verifiedClimber ? isHandOnHold : false
+        );
       }
+
+      setPoseState({
+        hasClimber: verifiedClimber,
+        landmarks: rawLandmarks,
+        isHandOnHold: verifiedClimber ? isHandOnHold : false,
+        activeHoldIntersections: verifiedClimber ? activeHoldIntersections : 0,
+      });
+
+      if (previousContactRef.current !== (verifiedClimber ? isHandOnHold : false)) {
+        previousContactRef.current = verifiedClimber ? isHandOnHold : false;
+        onHandContactChange?.(
+          verifiedClimber ? isHandOnHold : false,
+          verifiedClimber ? activeHoldIntersections : 0
+        );
+      }
+    },
+    [targetHolds, contactDistanceThreshold, minConfidence, onHandContactChange]
+  );
+
+  // Safe dummy frame processor for Expo Go
+  const dummyFrameProcessor = useMemo<ReadonlyFrameProcessor>(
+    () => ({
+      frameProcessor: () => {},
+      type: 'readonly' as const,
+    }),
+    []
+  );
+
+  // Simulation loop for testing & demo in Expo Go / simulator
+  useSimulatorSimulation(
+    enabled && enableSimulatorSimulation,
+    updatePoseState,
+    setPoseState,
+    animationFrameRef
+  );
+
+  const resetTracker = useCallback(() => {
+    setPoseState(DEFAULT_INITIAL_STATE);
+    previousContactRef.current = false;
+  }, []);
+
+  return {
+    poseState,
+    updatePoseState,
+    resetTracker,
+    frameProcessor: dummyFrameProcessor,
+    cameraConfig: RECOMMENDED_CAMERA_CONFIG,
+  };
+}
+
+// ── Reusable Kinematic Climber Simulation ──────────────────────────────────────
+function useSimulatorSimulation(
+  active: boolean,
+  updatePoseState: (landmarks: Record<string, LandmarkPoint>, hasClimber: boolean) => void,
+  setPoseState: React.Dispatch<React.SetStateAction<PoseTrackingState>>,
+  animationFrameRef: React.MutableRefObject<number | null>
+) {
+  useEffect(() => {
+    if (!active) {
       return;
     }
 
@@ -428,18 +538,14 @@ export function useClimbingPoseTracker({
         animationFrameRef.current = null;
       }
     };
-  }, [enabled, enableSimulatorSimulation, updatePoseState]);
+  }, [active, updatePoseState]);
+}
 
-  const resetTracker = useCallback(() => {
-    setPoseState(DEFAULT_INITIAL_STATE);
-    previousContactRef.current = false;
-  }, []);
+// ── Exported Custom Hook ──────────────────────────────────────────────────────
+const useClimbingPoseTrackerSelected = hasNativeVisionPipeline
+  ? useClimbingPoseTrackerNative
+  : useClimbingPoseTrackerExpoGo;
 
-  return {
-    poseState,
-    updatePoseState,
-    resetTracker,
-    frameProcessor,
-    cameraConfig: RECOMMENDED_CAMERA_CONFIG,
-  };
+export function useClimbingPoseTracker(options?: UseClimbingPoseTrackerOptions) {
+  return useClimbingPoseTrackerSelected(options);
 }
