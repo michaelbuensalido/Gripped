@@ -896,7 +896,10 @@ export function BetaCamModal({
             )}
 
             {/* ── Real-Time Pose Skeleton & Hold Contact Overlay ───────────── */}
-            <PoseSkeletonOverlay poseState={poseState} />
+            <PoseSkeletonOverlay
+              poseState={poseState}
+              isFrontCamera={facing === 'front'}
+            />
 
             {/* ── Reticle ("Scanning Route") ─────────────────────────────────── */}
             <View style={styles.reticleContainer} pointerEvents="none">

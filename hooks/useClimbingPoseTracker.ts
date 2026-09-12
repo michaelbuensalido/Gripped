@@ -1,4 +1,16 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, DependencyList } from 'react';
+import { Platform } from 'react-native';
+import {
+  VisionCameraProxy,
+  Frame,
+  useFrameProcessor,
+  type ReadonlyFrameProcessor,
+} from 'react-native-vision-camera';
+import {
+  Worklets,
+  useSharedValue as useWorkletsSharedValue,
+  useRunOnJS as useWorkletsRunOnJS,
+} from 'react-native-worklets-core';
 
 export interface LandmarkPoint {
   x: number;          // Normalized 0.0 - 1.0 (top-left origin)
@@ -50,48 +62,29 @@ const DEFAULT_INITIAL_STATE: PoseTrackingState = {
 
 /**
  * Process every Nth frame from the camera feed.
- *
  * At 30 FPS, skipping 2 of every 3 frames yields ~10 FPS of ML inference.
- * This prevents buffer starvation and thread lag that cause missed detections.
- *
- * Usage in a worklet frame processor (with react-native-worklets-core):
- *
- *   const frameCount = useSharedValue(0);
- *   const frameProcessor = useFrameProcessor((frame) => {
- *     'worklet';
- *     frameCount.value = (frameCount.value + 1) % FRAME_SKIP_INTERVAL;
- *     if (frameCount.value !== 0) return;   // ← skip 2 of 3 frames
- *     try {
- *       const result = detectClimbingPose(frame);
- *       runOnJS(updatePoseState)(result.landmarks, result.hasClimber);
- *     } catch (e) {
- *       runOnJS(logFrameError)(String(e));
- *     }
- *   }, [frameCount]);
+ * This prevents buffer starvation, overheating, and frame processor thread lag.
  */
-export const FRAME_SKIP_INTERVAL = 3; // Process 1 in 3 frames → ~10 FPS at 30 FPS
+export const FRAME_SKIP_INTERVAL = 3; // 1 in 3 frames -> ~10 FPS at 30 FPS input
 
-/**
- * Recommended camera format constraints for reliable pose detection.
- * 4K buffers saturate the ML thread; 720p is the sweet spot for real-time inference.
- */
 export const RECOMMENDED_FRAME_WIDTH  = 720;
 export const RECOMMENDED_FRAME_HEIGHT = 1280;
 
 /**
- * JS-thread error logger for frame processor worklet errors.
- * Call via `runOnJS(logFrameProcessorError)(errorMessage)` from inside a worklet.
- *
- * @param message  String-coerced error from the worklet catch block.
+ * Recommended camera format & pipeline settings for real-time vision processing.
+ * - pixelFormat: 'yuv' on Android, 'rgb' or 'native' on iOS.
+ * - enableBufferCompression: true (keeps memory bandwidth minimal).
  */
-export function logFrameProcessorError(message: string): void {
-  console.warn('[PoseTracker][FrameProcessor] Native detection error:', message);
-}
+export const RECOMMENDED_CAMERA_CONFIG = {
+  pixelFormat: Platform.OS === 'android' ? ('yuv' as const) : ('native' as const),
+  enableBufferCompression: true,
+  fps: 30,
+  targetWidth: RECOMMENDED_FRAME_WIDTH,
+  targetHeight: RECOMMENDED_FRAME_HEIGHT,
+};
 
 // Diagnostic log throttle interval: emit once per 2 seconds to avoid flooding the console.
 const DIAGNOSTIC_LOG_INTERVAL_MS = 2000;
-
-
 
 // Default target holds for climbing wall simulation (Start, Crux, Finish)
 const DEFAULT_SIMULATED_HOLDS: TargetHold[] = [
@@ -100,6 +93,62 @@ const DEFAULT_SIMULATED_HOLDS: TargetHold[] = [
   { x: 0.48, y: 0.42, radius: 0.070 }, // Crux Hold
   { x: 0.52, y: 0.20, radius: 0.075 }, // Top / Finish Hold
 ];
+
+// ── Native Frame Processor Plugin Initialization ──────────────────────────────
+let nativePosePlugin: any = null;
+try {
+  if (VisionCameraProxy?.initFrameProcessorPlugin) {
+    nativePosePlugin = VisionCameraProxy.initFrameProcessorPlugin('detectClimbingPose', {});
+  }
+} catch {
+  // Gracefully handle environments where VisionCamera native JSI bindings are not loaded (e.g. Expo Go)
+  nativePosePlugin = null;
+}
+
+/**
+ * Direct worklet invocation of the native ClimbingPoseTrackerPlugin.
+ */
+export function detectClimbingPose(frame: Frame): {
+  hasClimber: boolean;
+  landmarks: Record<string, LandmarkPoint>;
+} {
+  'worklet';
+  if (nativePosePlugin == null) {
+    throw new Error('Native Frame Processor Plugin "detectClimbingPose" is not loaded.');
+  }
+  return nativePosePlugin.call(frame) as {
+    hasClimber: boolean;
+    landmarks: Record<string, LandmarkPoint>;
+  };
+}
+
+/**
+ * JS-thread error logger for frame processor worklet errors.
+ */
+export function logFrameProcessorError(message: string): void {
+  console.warn('[PoseTracker][FrameProcessor] Native detection error:', message);
+}
+
+// ── Worklet Fallback Helpers for Expo Go / Simulator ──────────────────────────
+const isWorkletsNative = typeof globalThis !== 'undefined' && (globalThis as any).Worklets != null;
+
+function useSafeSharedValue<T>(initialValue: T) {
+  const fallbackRef = useRef({ value: initialValue });
+  if (isWorkletsNative) {
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    return useWorkletsSharedValue(initialValue);
+  }
+  return fallbackRef.current;
+}
+
+function useSafeRunOnJS<T extends (...args: any[]) => any>(callback: T, deps: DependencyList) {
+  if (isWorkletsNative) {
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    return useWorkletsRunOnJS(callback, deps);
+  }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  return useCallback(callback, deps);
+}
 
 /**
  * Calculates Euclidean distance between two normalized 2D points.
@@ -120,7 +169,7 @@ export function evaluateHoldContacts(
   landmarks: Record<string, LandmarkPoint>,
   targetHolds: TargetHold[],
   threshold: number = 0.08,
-  minConfidence: number = 0.25
+  minConfidence: number = 0.20
 ): { isHandOnHold: boolean; activeHoldIntersections: number; contactingHoldIds: (string | number)[] } {
   let isHandOnHold = false;
   let activeHoldIntersections = 0;
@@ -167,14 +216,13 @@ export function useClimbingPoseTracker({
   enabled = true,
   targetHolds = DEFAULT_SIMULATED_HOLDS,
   contactDistanceThreshold = 0.08,
-  minConfidence = 0.2,  // Matches native plugin kMinJointConfidence / kMinLandmarkConfidence
+  minConfidence = 0.2, // Matches native plugin kMinJointConfidence / kMinLandmarkConfidence
   enableSimulatorSimulation = false,
   onHandContactChange,
 }: UseClimbingPoseTrackerOptions = {}) {
   const [poseState, setPoseState] = useState<PoseTrackingState>(DEFAULT_INITIAL_STATE);
   const previousContactRef = useRef(false);
   const animationFrameRef = useRef<number | null>(null);
-  // Tracks the last time we emitted a diagnostic console log (throttled to 1 per 2s)
   const lastDiagnosticLogRef = useRef<number>(0);
 
   // Synchronous update handler with change detection
@@ -196,7 +244,6 @@ export function useClimbingPoseTracker({
       );
 
       // ── Throttled diagnostic logging ──────────────────────────────────────────
-      // Emits once every 2 seconds so the console stays readable during 60fps processing.
       const now = Date.now();
       if (now - lastDiagnosticLogRef.current >= DIAGNOSTIC_LOG_INTERVAL_MS) {
         lastDiagnosticLogRef.current = now;
@@ -230,11 +277,53 @@ export function useClimbingPoseTracker({
     [targetHolds, contactDistanceThreshold, minConfidence, onHandContactChange]
   );
 
+  // ── Throttled Worklet Frame Processor Pipeline ──────────────────────────────
+  // Frame skipping: processes ~10-12 FPS (1 in 3 frames) to prevent ML buffer starvation
+  const frameCount = useSafeSharedValue(0);
+
+  const safeRunUpdate = useSafeRunOnJS(
+    (landmarks: Record<string, LandmarkPoint>, climberPresent: boolean) => {
+      updatePoseState(landmarks, climberPresent);
+    },
+    [updatePoseState]
+  );
+
+  const safeRunError = useSafeRunOnJS((msg: string) => {
+    logFrameProcessorError(msg);
+  }, []);
+
+  const frameProcessor: ReadonlyFrameProcessor = useFrameProcessor(
+    (frame: Frame) => {
+      'worklet';
+      if (!enabled) return;
+
+      // Throttle: process 1 in 3 frames (~10-12 FPS)
+      frameCount.value = (frameCount.value + 1) % FRAME_SKIP_INTERVAL;
+      if (frameCount.value !== 0) return;
+
+      try {
+        if (nativePosePlugin != null) {
+          const result = nativePosePlugin.call(frame) as {
+            hasClimber: boolean;
+            landmarks: Record<string, LandmarkPoint>;
+          };
+          if (result && result.landmarks) {
+            safeRunUpdate(result.landmarks, Boolean(result.hasClimber));
+          }
+        }
+      } catch (err: any) {
+        safeRunError(err?.message ?? String(err));
+      }
+    },
+    [enabled, frameCount, safeRunUpdate, safeRunError]
+  );
+
   // ── Simulator / Demo Kinematic Simulation Loop ─────────────────────────────
-  // Simulates realistic climbing movement when hardware camera is unavailable or in simulator
   useEffect(() => {
     if (!enabled || !enableSimulatorSimulation) {
-      setPoseState(DEFAULT_INITIAL_STATE);
+      if (!enabled) {
+        setPoseState(DEFAULT_INITIAL_STATE);
+      }
       return;
     }
 
@@ -242,21 +331,15 @@ export function useClimbingPoseTracker({
 
     const tick = () => {
       const elapsed = (Date.now() - startTime) / 1000;
-      // Cycle a climbing movement burn every 6 seconds:
-      // Phase 1 (0-2s): Mount wall & grasp start holds
-      // Phase 2 (2-4s): Reach up to crux hold
-      // Phase 3 (4-6s): Match and top out
       const cycle = elapsed % 6.0;
       const progress = cycle / 6.0;
 
-      // Base body position climbing upward
       const baseY = 0.70 - progress * 0.38;
       const sway = Math.sin(cycle * 2.2) * 0.035;
 
       const hipX = 0.50 + sway;
       const hipY = baseY;
 
-      // Left & right hips
       const leftHip: LandmarkPoint = {
         x: Math.max(0.1, Math.min(0.9, hipX - 0.08)),
         y: hipY,
@@ -268,7 +351,6 @@ export function useClimbingPoseTracker({
         confidence: 0.95,
       };
 
-      // Ankles placed on wall holds below hips
       const leftAnkle: LandmarkPoint = {
         x: Math.max(0.1, Math.min(0.9, leftHip.x - 0.05 + Math.sin(cycle * 1.5) * 0.02)),
         y: Math.min(0.92, hipY + 0.22),
@@ -280,19 +362,16 @@ export function useClimbingPoseTracker({
         confidence: 0.90,
       };
 
-      // Hands reaching between holds
-      let leftHandTarget = { x: 0.42, y: 0.72 }; // Start
-      let rightHandTarget = { x: 0.58, y: 0.68 }; // Start
+      let leftHandTarget = { x: 0.42, y: 0.72 };
+      let rightHandTarget = { x: 0.58, y: 0.68 };
 
       if (cycle >= 2.0 && cycle < 4.2) {
-        // Reaching for crux
         const reachT = (cycle - 2.0) / 2.2;
         rightHandTarget = {
           x: 0.58 + (0.48 - 0.58) * Math.min(1.0, reachT * 1.3),
           y: 0.68 + (0.42 - 0.68) * Math.min(1.0, reachT * 1.3),
         };
       } else if (cycle >= 4.2) {
-        // Reaching for finish hold
         const finishT = (cycle - 4.2) / 1.8;
         leftHandTarget = {
           x: 0.42 + (0.50 - 0.42) * Math.min(1.0, finishT * 1.2),
@@ -315,7 +394,6 @@ export function useClimbingPoseTracker({
         confidence: 0.96,
       };
 
-      // Elbows anatomically between hands and shoulders/hips
       const leftElbow: LandmarkPoint = {
         x: (leftWrist.x + leftHip.x) / 2 - 0.06,
         y: (leftWrist.y + leftHip.y) / 2 + 0.04,
@@ -361,5 +439,7 @@ export function useClimbingPoseTracker({
     poseState,
     updatePoseState,
     resetTracker,
+    frameProcessor,
+    cameraConfig: RECOMMENDED_CAMERA_CONFIG,
   };
 }
