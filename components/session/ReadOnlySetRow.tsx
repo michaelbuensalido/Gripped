@@ -1,69 +1,111 @@
 import React from 'react';
 import { View, Text } from 'react-native';
-import { Check, Zap, Video } from 'lucide-react-native';
+import { Check, Zap } from 'lucide-react-native';
 import type { BoulderLog } from '../../types';
-import { GRADE_BY_LABEL } from '../../constants/grades';
 
 interface ReadOnlySetRowProps {
   log: BoulderLog;
   index: number;
 }
 
-function rpeColor(rpe: number): string {
-  if (rpe <= 4) return '#22C55E';
-  if (rpe <= 7) return '#EAB308';
-  return '#EF4444';
-}
+const FAILURE_LABELS: Record<string, string> = {
+  foot_slip: 'Foot Slip',
+  pumped: 'Pumped',
+  beta_error: 'Beta Error',
+  reach_span: 'Reach / Span',
+  grip_strength: 'Grip Strength',
+};
 
 export function ReadOnlySetRow({ log, index }: ReadOnlySetRowProps) {
-  const grade = GRADE_BY_LABEL[log.gradeRaw];
   const isFlash = log.outcome === 'flash';
   const isSend = log.outcome === 'send';
   const isAttempt = log.outcome === 'attempt';
+
+  const rawReason = log.failureReason ?? log.failure_reason;
+  const failureLabel = rawReason ? FAILURE_LABELS[rawReason] ?? rawReason : null;
 
   return (
     <View
       style={{
         borderBottomColor: 'rgba(255, 255, 255, 0.06)',
         borderBottomWidth: 1,
+        paddingVertical: 10,
+        paddingHorizontal: 14,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
       }}
-      className="flex-row items-center py-2.5 px-3 justify-between"
     >
-      {/* Left: Index + Grade */}
-      <View className="flex-row items-center gap-2.5">
-        <Text className="text-muted text-xs font-bold w-5 text-center">{index}</Text>
-        <View
-          style={{ backgroundColor: grade?.color ?? '#2C2C35' }}
-          className="rounded-full px-2.5 py-1 min-w-[44px] items-center justify-center"
+      {/* Left: Index + High-Contrast Monochrome Grade Pill */}
+      <View className="flex-row items-center gap-3">
+        <Text
+          style={{
+            color: '#8A8A98',
+            fontSize: 12,
+            fontWeight: '700',
+            width: 20,
+            textAlign: 'center',
+          }}
         >
-          <Text style={{ color: grade?.textColor ?? '#fff' }} className="text-xs font-black">
+          {index}
+        </Text>
+        <View
+          style={{
+            backgroundColor: '#17171C',
+            borderColor: '#2C2C35',
+            borderWidth: 1,
+            paddingHorizontal: 10,
+            paddingVertical: 4,
+            borderRadius: 8,
+            minWidth: 44,
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <Text
+            style={{
+              color: '#FFFFFF',
+              fontSize: 13,
+              fontWeight: '700',
+            }}
+          >
             {log.gradeRaw}
           </Text>
         </View>
+      </View>
 
-        {/* RPE pill if logged */}
-        {log.rpe != null && (
+      {/* Right: Attempts count + Failure chip + Outcome badge */}
+      <View className="flex-row items-center gap-2 flex-wrap justify-end">
+        {/* Failure reason chip (if attempt has recorded crux failure) */}
+        {failureLabel && (
           <View
-            style={{ backgroundColor: '#16161C', borderColor: '#2C2C35' }}
-            className="px-2 py-0.5 rounded-md border"
+            style={{
+              backgroundColor: 'rgba(142, 124, 255, 0.12)',
+              borderColor: 'rgba(142, 124, 255, 0.3)',
+              borderWidth: 1,
+              borderRadius: 6,
+              paddingHorizontal: 8,
+              paddingVertical: 2.5,
+            }}
           >
-            <Text
-              style={{ color: rpeColor(log.rpe) }}
-              className="text-[11px] font-bold"
-            >
-              RPE {log.rpe}
+            <Text style={{ color: '#8E7CFF', fontSize: 11, fontWeight: '600' }}>
+              {failureLabel}
             </Text>
           </View>
         )}
-      </View>
 
-      {/* Right: Attempts count + Outcome badge + Optional video thumbnail */}
-      <View className="flex-row items-center gap-2">
+        {/* Attempts count */}
         <View
-          style={{ backgroundColor: '#16161C', borderColor: '#2C2C35' }}
-          className="px-2 py-1 rounded-lg border"
+          style={{
+            backgroundColor: '#17171C',
+            borderColor: '#2C2C35',
+            borderWidth: 1,
+            paddingHorizontal: 8,
+            paddingVertical: 4,
+            borderRadius: 8,
+          }}
         >
-          <Text className="text-secondary text-xs font-semibold">
+          <Text style={{ color: '#8A8A98', fontSize: 12, fontWeight: '600' }}>
             {log.attempts} {log.attempts === 1 ? 'att' : 'atts'}
           </Text>
         </View>
@@ -72,15 +114,26 @@ export function ReadOnlySetRow({ log, index }: ReadOnlySetRowProps) {
         {isFlash && (
           <View
             style={{
-              backgroundColor: 'rgba(110, 231, 86, 0.15)',
+              backgroundColor: 'rgba(110, 231, 86, 0.12)',
               borderColor: '#6EE756',
+              borderWidth: 1,
+              paddingHorizontal: 10,
+              paddingVertical: 4,
+              borderRadius: 9999,
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 4,
             }}
-            className="flex-row items-center gap-1 border px-2.5 py-1 rounded-full"
           >
-            <Zap size={12} color="#6EE756" fill="#6EE756" />
+            <Zap size={11} color="#6EE756" fill="#6EE756" />
             <Text
-              style={{ color: '#6EE756' }}
-              className="text-xs font-black uppercase tracking-wider"
+              style={{
+                color: '#6EE756',
+                fontSize: 12,
+                fontWeight: '800',
+                letterSpacing: 0.5,
+              }}
+              className="uppercase"
             >
               Flash
             </Text>
@@ -90,15 +143,26 @@ export function ReadOnlySetRow({ log, index }: ReadOnlySetRowProps) {
         {isSend && (
           <View
             style={{
-              backgroundColor: 'rgba(142, 124, 255, 0.15)',
+              backgroundColor: 'rgba(142, 124, 255, 0.12)',
               borderColor: '#8E7CFF',
+              borderWidth: 1,
+              paddingHorizontal: 10,
+              paddingVertical: 4,
+              borderRadius: 9999,
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 4,
             }}
-            className="flex-row items-center gap-1 border px-2.5 py-1 rounded-full"
           >
             <Check size={12} color="#8E7CFF" strokeWidth={3} />
             <Text
-              style={{ color: '#8E7CFF' }}
-              className="text-xs font-black uppercase tracking-wider"
+              style={{
+                color: '#8E7CFF',
+                fontSize: 12,
+                fontWeight: '800',
+                letterSpacing: 0.5,
+              }}
+              className="uppercase"
             >
               Top
             </Text>
@@ -108,14 +172,20 @@ export function ReadOnlySetRow({ log, index }: ReadOnlySetRowProps) {
         {isAttempt && (
           <View
             style={{
-              backgroundColor: 'rgba(232, 222, 181, 0.12)',
-              borderColor: 'rgba(232, 222, 181, 0.4)',
+              backgroundColor: '#3E3E48',
+              paddingHorizontal: 10,
+              paddingVertical: 4,
+              borderRadius: 9999,
             }}
-            className="border px-2.5 py-1 rounded-full"
           >
             <Text
-              style={{ color: '#E8DEB5' }}
-              className="text-xs font-bold uppercase tracking-wider"
+              style={{
+                color: '#9A9AA6',
+                fontSize: 12,
+                fontWeight: '700',
+                letterSpacing: 0.5,
+              }}
+              className="uppercase"
             >
               Attempt
             </Text>

@@ -17,7 +17,17 @@ interface SessionPyramidChartProps {
 export function SessionPyramidChart({ pyramid }: SessionPyramidChartProps) {
   if (!pyramid || pyramid.length === 0) {
     return (
-      <View className="bg-card mx-4 rounded-2xl p-4 border border-border mb-4 items-center">
+      <View
+        style={{
+          backgroundColor: '#1E1E24',
+          borderColor: '#2C2C35',
+          borderWidth: 1,
+          borderRadius: 20,
+          padding: 16,
+          marginBottom: 16,
+          alignItems: 'center',
+        }}
+      >
         <Text className="text-muted text-xs">No grade data recorded for this session</Text>
       </View>
     );
@@ -29,10 +39,29 @@ export function SessionPyramidChart({ pyramid }: SessionPyramidChartProps) {
   }, 1);
 
   return (
-    <View className="bg-card mx-4 rounded-2xl p-4 border border-border mb-4">
+    <View
+      style={{
+        backgroundColor: '#1E1E24',
+        borderColor: '#2C2C35',
+        borderWidth: 1,
+        borderRadius: 20,
+        padding: 16,
+        marginBottom: 16,
+      }}
+    >
       <View className="flex-row items-center justify-between mb-3">
-        <Text className="text-white font-bold text-base">Session Grade Pyramid</Text>
-        <Text className="text-muted text-xs">Volume per grade</Text>
+        <Text
+          style={{
+            color: '#8A8A98',
+            fontSize: 11,
+            fontWeight: '700',
+            letterSpacing: 0.8,
+          }}
+          className="uppercase"
+        >
+          SESSION GRADE PYRAMID
+        </Text>
+        <Text style={{ color: '#8A8A98', fontSize: 12 }}>Volume per grade</Text>
       </View>
 
       {/* Rows */}

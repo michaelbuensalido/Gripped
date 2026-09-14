@@ -19,10 +19,6 @@ import {
   ArrowLeft,
   Share2,
   MoreVertical,
-  Clock,
-  TrendingUp,
-  Target,
-  Zap,
   RotateCcw,
   Edit3,
   Trash2,
@@ -68,99 +64,6 @@ function formatSessionDate(timestamp: number): string {
   if (isToday) return `Today • ${timeStr}`;
   if (isYesterday) return `Yesterday • ${timeStr}`;
   return `${d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} • ${timeStr}`;
-}
-
-function getRpeDescription(rpe: number): string {
-  if (rpe <= 3) return 'Light';
-  if (rpe <= 6) return 'Moderate';
-  if (rpe <= 8) return 'Hard';
-  return 'Max Effort';
-}
-
-function rpeColor(rpe: number): string {
-  if (rpe <= 4) return '#22C55E';
-  if (rpe <= 7) return '#EAB308';
-  return '#EF4444';
-}
-
-function StatCard({
-  label,
-  sublabel,
-  sublabelColor,
-  value,
-  secondaryValue,
-}: {
-  label: string;
-  sublabel: string;
-  sublabelColor: string;
-  value: string;
-  secondaryValue?: string;
-}) {
-  return (
-    <View
-      style={[
-        FLOATING_CARD_STYLE,
-        {
-          padding: 14,
-          minHeight: 112,
-          justifyContent: 'space-between',
-          borderRadius: 20,
-        },
-      ]}
-      className="flex-1"
-    >
-      {/* Top Label: 11pt, uppercase, 600 weight, #8E8E9A */}
-      <Text
-        style={{
-          color: '#8E8E9A',
-          fontSize: 11,
-          fontWeight: '600',
-          letterSpacing: 0.8,
-        }}
-        className="uppercase"
-      >
-        {label}
-      </Text>
-
-      {/* Middle Colored Label: 13pt, 500 weight */}
-      <Text
-        style={{
-          color: sublabelColor,
-          fontSize: 13,
-          fontWeight: '500',
-          marginTop: 4,
-          marginBottom: 6,
-        }}
-      >
-        {sublabel}
-      </Text>
-
-      {/* Bottom Metric: 24pt, bold */}
-      <View style={{ flexDirection: 'row', alignItems: 'baseline' }}>
-        <Text
-          style={{
-            color: '#FFFFFF',
-            fontSize: 24,
-            fontWeight: '700',
-          }}
-        >
-          {value}
-        </Text>
-        {secondaryValue ? (
-          <Text
-            style={{
-              color: '#8E8E9A',
-              fontSize: 15,
-              fontWeight: '600',
-              marginLeft: 2,
-            }}
-          >
-            {secondaryValue}
-          </Text>
-        ) : null}
-      </View>
-    </View>
-  );
 }
 
 export default function SessionDetailScreen() {
@@ -227,9 +130,6 @@ export default function SessionDetailScreen() {
       text += `🎯 Sends: ${data.kpis.totalSends} / ${data.kpis.totalClimbs}\n`;
       text += `⚡ Flashes: ${data.kpis.totalFlashes} (${data.kpis.flashRate}%)\n`;
       text += `🔥 Hardest Send: ${data.kpis.hardestSend ?? 'None'}\n`;
-      if (data.kpis.avgRpe != null) {
-        text += `💪 Avg RPE: ${data.kpis.avgRpe}/10 (${getRpeDescription(data.kpis.avgRpe)})\n`;
-      }
       if (data.session.notes) {
         text += `\n📝 Notes: ${data.session.notes}\n`;
       }
@@ -305,6 +205,13 @@ export default function SessionDetailScreen() {
 
   const { session, groups, pyramid, kpis } = data;
 
+  // Highest grade attempted / sent across all logs
+  const allLogs = groups.flatMap((g) => g.logs);
+  const sortedAll = [...allLogs].sort(
+    (a, b) => (b.normalizedDifficulty ?? 0) - (a.normalizedDifficulty ?? 0)
+  );
+  const maxAttempt = sortedAll[0]?.gradeRaw ?? kpis.hardestSend ?? '—';
+
   return (
     <ScreenContainer>
       {/* ── Top Bar ────────────────────────────────────────────── */}
@@ -312,140 +219,265 @@ export default function SessionDetailScreen() {
         style={{
           borderBottomColor: '#2C2C35',
           borderBottomWidth: 1,
+          paddingHorizontal: 16,
+          paddingVertical: 12,
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'space-between',
         }}
-        className="flex-row items-center justify-between px-4 py-3"
       >
+        {/* Left: Back arrow in 36x36pt tactile circle */}
         <TouchableOpacity
           onPress={() => router.back()}
           activeOpacity={0.7}
-          className="p-1 -ml-1"
+          style={{
+            width: 36,
+            height: 36,
+            borderRadius: 18,
+            backgroundColor: '#1E1E24',
+            borderWidth: 1,
+            borderColor: '#2C2C35',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
         >
-          <ArrowLeft size={22} color="#FFFFFF" />
+          <ArrowLeft size={20} color="#FFFFFF" />
         </TouchableOpacity>
 
+        {/* Center: Title + Subtitle */}
         <View className="flex-1 mx-3 items-center">
-          <Text className="text-white font-bold text-base" numberOfLines={1}>
-            {session.title || session.gymName || 'Session Details'}
+          <Text
+            style={{
+              color: '#FFFFFF',
+              fontSize: 17,
+              fontWeight: '700',
+              textAlign: 'center',
+            }}
+            numberOfLines={1}
+          >
+            {session.title || session.gymName || 'Climbing Session'}
           </Text>
-          <Text className="text-muted text-xs">
+          <Text
+            style={{
+              color: '#8A8A98',
+              fontSize: 12,
+              marginTop: 2,
+              textAlign: 'center',
+            }}
+            numberOfLines={1}
+          >
             {session.title && session.gymName ? `${session.gymName} • ` : ''}
             {formatSessionDate(session.startTime)}
           </Text>
         </View>
 
-        <View className="flex-row items-center gap-1">
+        {/* Right: 36x36pt tactile action buttons */}
+        <View className="flex-row items-center gap-2">
           <TouchableOpacity
             onPress={handleShare}
             disabled={isSharing}
             activeOpacity={0.7}
-            className="p-2"
+            style={{
+              width: 36,
+              height: 36,
+              borderRadius: 18,
+              backgroundColor: '#1E1E24',
+              borderWidth: 1,
+              borderColor: '#2C2C35',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
           >
             {isSharing ? (
               <ActivityIndicator size="small" color="#8E7CFF" />
             ) : (
-              <Share2 size={19} color="#8E7CFF" />
+              <Share2 size={18} color="#8A8A98" />
             )}
           </TouchableOpacity>
           <TouchableOpacity
             onPress={() => setMenuVisible(true)}
             activeOpacity={0.7}
-            className="p-2"
+            style={{
+              width: 36,
+              height: 36,
+              borderRadius: 18,
+              backgroundColor: '#1E1E24',
+              borderWidth: 1,
+              borderColor: '#2C2C35',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
           >
-            <MoreVertical size={19} color="#8A8A98" />
+            <MoreVertical size={18} color="#8A8A98" />
           </TouchableOpacity>
         </View>
       </View>
 
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingTop: 16, paddingBottom: 180 }}
+        contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 160 }}
       >
-        {/* ── KPI Grid (4 Cards matching Progress TrendCard UI) ─── */}
-        <View className="flex-row gap-3 px-4 mb-3">
-          {/* Card 1: Total Duration */}
-          <StatCard
-            label="TOTAL DURATION"
-            sublabel="Session"
-            sublabelColor="#8E7CFF"
-            value={formatDuration(kpis.durationMs)}
-          />
+        {/* ── Hero Summary Bento Capsule ─────────────────────────── */}
+        <View
+          style={[
+            FLOATING_CARD_STYLE,
+            {
+              backgroundColor: '#1E1E24',
+              borderColor: '#2C2C35',
+              borderWidth: 1,
+              borderRadius: 20,
+              padding: 16,
+              marginBottom: 16,
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+            },
+          ]}
+        >
+          {/* 1. SENDS */}
+          <View className="flex-1 items-center">
+            <Text
+              style={{
+                color: '#FFFFFF',
+                fontSize: 22,
+                fontWeight: '700',
+                letterSpacing: -0.3,
+              }}
+            >
+              {kpis.totalSends}/{kpis.totalClimbs}
+            </Text>
+            <Text
+              style={{
+                color: '#8A8A98',
+                fontSize: 11,
+                fontWeight: '600',
+                letterSpacing: 0.8,
+                marginTop: 4,
+              }}
+              className="uppercase"
+            >
+              SENDS
+            </Text>
+          </View>
 
-          {/* Card 2: Total Sends */}
-          <StatCard
-            label="TOTAL SENDS"
-            sublabel={`${kpis.totalClimbs} ${kpis.totalClimbs === 1 ? 'Route' : 'Routes'}`}
-            sublabelColor="#6EE756"
-            value={`${kpis.totalSends}`}
-            secondaryValue={`/${kpis.totalClimbs}`}
-          />
+          {/* Subtle divider */}
+          <View style={{ width: 1, height: 32, backgroundColor: '#2C2C35' }} />
+
+          {/* 2. MAX ATTEMPT */}
+          <View className="flex-1 items-center">
+            <Text
+              style={{
+                color: '#FFFFFF',
+                fontSize: 22,
+                fontWeight: '700',
+                letterSpacing: -0.3,
+              }}
+            >
+              {maxAttempt}
+            </Text>
+            <Text
+              style={{
+                color: '#8A8A98',
+                fontSize: 11,
+                fontWeight: '600',
+                letterSpacing: 0.8,
+                marginTop: 4,
+              }}
+              className="uppercase"
+            >
+              MAX ATTEMPT
+            </Text>
+          </View>
+
+          {/* Subtle divider */}
+          <View style={{ width: 1, height: 32, backgroundColor: '#2C2C35' }} />
+
+          {/* 3. DURATION */}
+          <View className="flex-1 items-center">
+            <Text
+              style={{
+                color: '#FFFFFF',
+                fontSize: 22,
+                fontWeight: '700',
+                letterSpacing: -0.3,
+              }}
+            >
+              {formatDuration(kpis.durationMs)}
+            </Text>
+            <Text
+              style={{
+                color: '#8A8A98',
+                fontSize: 11,
+                fontWeight: '600',
+                letterSpacing: 0.8,
+                marginTop: 4,
+              }}
+              className="uppercase"
+            >
+              DURATION
+            </Text>
+          </View>
         </View>
 
-        <View className="flex-row gap-3 px-4 mb-4">
-          {/* Card 3: Hardest Send */}
-          <StatCard
-            label="HARDEST SEND"
-            sublabel="Top Grade"
-            sublabelColor="#8E7CFF"
-            value={kpis.hardestSend ?? '—'}
-          />
-
-          {/* Card 4: Flash Rate */}
-          <StatCard
-            label="FLASH RATE"
-            sublabel={`${kpis.totalFlashes} ${kpis.totalFlashes === 1 ? 'Flash' : 'Flashes'}`}
-            sublabelColor="#FFFFFF"
-            value={`${kpis.flashRate}%`}
-          />
-        </View>
-
-        {/* ── Perceived Effort & Notes Card ──────────────────────── */}
-        <View style={FLOATING_CARD_STYLE} className="mx-4 rounded-2xl p-4 mb-4">
+        {/* ── Session Notes Card ─────────────────────────────────── */}
+        <View
+          style={[
+            FLOATING_CARD_STYLE,
+            {
+              backgroundColor: '#1E1E24',
+              borderColor: '#2C2C35',
+              borderWidth: 1,
+              borderRadius: 20,
+              padding: 16,
+              marginBottom: 16,
+            },
+          ]}
+        >
           <View className="flex-row items-center justify-between mb-2">
-            <Text className="text-white font-bold text-sm">Session Notes & Effort</Text>
+            <Text
+              style={{
+                color: '#8A8A98',
+                fontSize: 11,
+                fontWeight: '700',
+                letterSpacing: 0.8,
+              }}
+              className="uppercase"
+            >
+              SESSION NOTES
+            </Text>
             <TouchableOpacity
               onPress={() => setEditModalVisible(true)}
-              className="flex-row items-center gap-1"
+              activeOpacity={0.7}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             >
-              <Edit3 size={13} color="#8E7CFF" />
-              <Text style={{ color: '#8E7CFF' }} className="text-xs font-semibold">Edit</Text>
+              <Text style={{ color: '#8E7CFF', fontSize: 13, fontWeight: '600' }}>Edit</Text>
             </TouchableOpacity>
           </View>
 
-          {/* Effort Pill */}
-          {kpis.avgRpe != null ? (
-            <View className="flex-row items-center gap-2 mb-2">
-              <View
-                style={{ backgroundColor: `${rpeColor(kpis.avgRpe)}20` }}
-                className="px-2.5 py-1 rounded-full border border-border"
-              >
-                <Text
-                  style={{ color: rpeColor(kpis.avgRpe) }}
-                  className="text-xs font-black"
-                >
-                  RPE {kpis.avgRpe} / 10 • {getRpeDescription(kpis.avgRpe)}
-                </Text>
-              </View>
-              <Text className="text-muted text-xs">Average exertion</Text>
-            </View>
-          ) : (
-            <Text className="text-muted text-xs mb-2">No RPE recorded for this workout</Text>
-          )}
-
           {/* Notes text */}
           {session.notes ? (
-            <Text className="text-secondary text-sm leading-5 mt-1">
+            <Text style={{ color: '#9A9AA6', fontSize: 14, lineHeight: 20 }}>
               {session.notes}
             </Text>
           ) : (
-            <Text className="text-muted text-xs italic mt-1">
+            <Text style={{ color: '#8A8A98', fontSize: 13, fontStyle: 'italic' }}>
               No notes logged. Tap Edit to add reflections or crux details.
             </Text>
           )}
 
           {/* Media Attachments */}
           {session.mediaUris && session.mediaUris.length > 0 ? (
-            <View className="mt-3 pt-3 border-t border-border/40">
-              <Text className="text-muted text-[11px] uppercase font-bold tracking-wider mb-2">
+            <View className="mt-3 pt-3 border-t border-[#2C2C35]">
+              <Text
+                style={{
+                  color: '#8A8A98',
+                  fontSize: 11,
+                  fontWeight: '700',
+                  letterSpacing: 0.8,
+                  marginBottom: 8,
+                }}
+                className="uppercase"
+              >
                 Attached Media ({session.mediaUris.length})
               </Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} className="gap-2">
@@ -474,9 +506,19 @@ export default function SessionDetailScreen() {
         <SessionPyramidChart pyramid={pyramid} />
 
         {/* ── Boulder Groups & Sets List ─────────────────────────── */}
-        <View className="px-4 mb-2">
-          <Text className="text-white font-bold text-base">Wall Zones & Climbs</Text>
-          <Text className="text-muted text-xs">
+        <View className="mb-2">
+          <Text
+            style={{
+              color: '#8A8A98',
+              fontSize: 11,
+              fontWeight: '700',
+              letterSpacing: 0.8,
+            }}
+            className="uppercase"
+          >
+            WALL ZONES & CLIMBS
+          </Text>
+          <Text style={{ color: '#8A8A98', fontSize: 12, marginTop: 2 }}>
             {groups.length} zone{groups.length !== 1 ? 's' : ''} • {kpis.totalClimbs} total sets
           </Text>
         </View>
@@ -490,7 +532,7 @@ export default function SessionDetailScreen() {
         ))}
 
         {/* ── Bottom Action Button ───────────────────────────────── */}
-        <View className="px-4 mt-2 mb-6">
+        <View className="mt-2 mb-6">
           <TouchableOpacity
             onPress={handleShare}
             disabled={isSharing}
