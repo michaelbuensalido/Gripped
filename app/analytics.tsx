@@ -18,17 +18,17 @@ import {
   getWallAngleBreakdown,
   getAnalyticsOverview,
   getRecentBoulderLogs,
-  getWeeklyCapsuleData,
+  getRecentOutcomesSummary,
   getGradeVolumeEqualizerData,
   type GradePyramidDataRow,
   type WeeklyVolumeTrendsData,
   type WallAngleBreakdownItem,
   type AnalyticsOverview,
   type RecentBoulderLog,
-  type WeeklyCapsuleOverviewData,
+  type RecentOutcomesSummaryData,
   type GradeVolumeEqualizerData,
 } from '../db/queries';
-import { WeeklyCapsuleBarChart } from '../components/analytics/WeeklyCapsuleBarChart';
+import { OutcomeRingGauge } from '../components/analytics/OutcomeRingGauge';
 import { BentoMetricRow } from '../components/analytics/BentoMetricRow';
 import { VolumeByGradeCard } from '../components/analytics/VolumeByGradeCard';
 import { GradePyramidWidget } from '../components/analytics/GradePyramidWidget';
@@ -63,7 +63,7 @@ export default function AnalyticsScreen() {
   const [isTimeframeModalVisible, setIsTimeframeModalVisible] = useState<boolean>(false);
 
   // Data States
-  const [weeklyCapsule, setWeeklyCapsule] = useState<WeeklyCapsuleOverviewData | null>(null);
+  const [outcomesSummary, setOutcomesSummary] = useState<RecentOutcomesSummaryData | null>(null);
   const [gradeEqualizer, setGradeEqualizer] = useState<GradeVolumeEqualizerData | null>(null);
   const [pyramidData, setPyramidData] = useState<GradePyramidDataRow[]>([]);
   const [volumeTrends, setVolumeTrends] = useState<WeeklyVolumeTrendsData | null>(null);
@@ -85,7 +85,7 @@ export default function AnalyticsScreen() {
     }
 
     try {
-      setWeeklyCapsule(getWeeklyCapsuleData());
+      setOutcomesSummary(getRecentOutcomesSummary(20));
       setGradeEqualizer(getGradeVolumeEqualizerData(queryTf));
       setPyramidData(getGradePyramidData(queryTf));
       setVolumeTrends(getWeeklyVolumeTrends(queryTf));
@@ -169,10 +169,10 @@ export default function AnalyticsScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* ── 3. Hero Card: Weekly Capsule Bar Chart ────────── */}
-        {weeklyCapsule && (
+        {/* ── 3. Hero Card: Send Outcome Ring Gauge ─────────── */}
+        {outcomesSummary && (
           <View style={styles.heroCardMargin}>
-            <WeeklyCapsuleBarChart data={weeklyCapsule} />
+            <OutcomeRingGauge data={outcomesSummary} />
           </View>
         )}
 
