@@ -6,6 +6,9 @@ import {
   Text,
   Platform,
   KeyboardAvoidingView,
+  TouchableWithoutFeedback,
+  Keyboard,
+  Alert,
 } from 'react-native';
 import { useKeepAwake, activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -212,10 +215,23 @@ export default function ActiveSessionScreen() {
   );
 
   const handleDiscardCompletion = useCallback(() => {
-    deactivateKeepAwake('active-session').catch(() => {});
-    discardSession();
-    setShowCompletionModal(false);
-    router.replace('/');
+    Alert.alert(
+      'Discard Session?',
+      'Are you sure you want to discard this session? All logged sends from this workout will be lost.',
+      [
+        { text: 'Keep Climbing', style: 'cancel' },
+        {
+          text: 'Discard',
+          style: 'destructive',
+          onPress: () => {
+            deactivateKeepAwake('active-session').catch(() => {});
+            discardSession();
+            setShowCompletionModal(false);
+            router.replace('/');
+          },
+        },
+      ]
+    );
   }, [discardSession, router]);
 
   /** Dismiss the full-screen session view but keep the session alive in the store */
@@ -242,17 +258,18 @@ export default function ActiveSessionScreen() {
       {/* Sticky header */}
       <SessionHeader onFinish={handleFinish} onMinimize={handleMinimize} />
 
-      {/* Scrollable content with keyboard avoidance */}
+      {/* Scrollable content with keyboard avoidance and tap dismissal */}
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={{ flex: 1 }}
       >
-        <ScrollView
-          contentContainerStyle={{ paddingTop: 16, paddingBottom: 190 }}
-          keyboardShouldPersistTaps="handled"
-          keyboardDismissMode="on-drag"
-          showsVerticalScrollIndicator={false}
-        >
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+          <ScrollView
+            contentContainerStyle={{ paddingTop: 16, paddingBottom: 190 }}
+            keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="on-drag"
+            showsVerticalScrollIndicator={false}
+          >
           {/* Boulder group cards */}
           {groups.map((group, index) => (
             <BoulderGroupCard
@@ -281,6 +298,7 @@ export default function ActiveSessionScreen() {
             <Text className="text-white font-bold text-sm">Add Wall Zone</Text>
           </TouchableOpacity>
         </ScrollView>
+        </TouchableWithoutFeedback>
       </KeyboardAvoidingView>
 
       {/* Floating rest timer overlay */}

@@ -16,8 +16,8 @@ export interface OutcomeRingGaugeProps {
 }
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const RING_SIZE = Math.min(Math.round(SCREEN_WIDTH * 0.48), 196);
-const STROKE_WIDTH = 18;
+const RING_SIZE = Math.min(Math.round(SCREEN_WIDTH * 0.46), 190);
+const STROKE_WIDTH = 20;
 const RADIUS = (RING_SIZE - STROKE_WIDTH) / 2;
 const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
 const CENTER = RING_SIZE / 2;
@@ -72,13 +72,18 @@ export function OutcomeRingGauge({ data, onPress }: OutcomeRingGaugeProps) {
               fy="50%"
               gradientUnits="userSpaceOnUse"
             >
-              <Stop offset="0%" stopColor="#7BF168" stopOpacity="0.08" />
+              <Stop offset="0%" stopColor="#6EE756" stopOpacity="0.08" />
               <Stop offset="45%" stopColor="#8E7CFF" stopOpacity="0.03" />
               <Stop offset="100%" stopColor="#1E1E24" stopOpacity="0" />
             </RadialGradient>
           </Defs>
           <Rect x="0" y="0" width="100%" height="100%" fill="url(#outcomeGlow)" />
         </Svg>
+      </View>
+
+      {/* ── Header: Clean bold title without decorative icons ──── */}
+      <View style={styles.headerRow}>
+        <Text style={styles.cardTitle}>Send Efficiency</Text>
       </View>
 
       {/* ── Content Row: Ring Gauge (Left) + Legend (Right) ─── */}
@@ -121,7 +126,7 @@ export function OutcomeRingGauge({ data, onPress }: OutcomeRingGaugeProps) {
                     strokeWidth={isSelected ? STROKE_WIDTH + 2 : STROKE_WIDTH}
                     strokeDasharray={ring.strokeDasharray}
                     strokeDashoffset={ring.strokeDashoffset}
-                    strokeLinecap="butt"
+                    strokeLinecap="round"
                     opacity={isFaded ? 0.35 : 1}
                     fill="none"
                   />
@@ -202,11 +207,20 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFill,
     borderRadius: 24,
   },
+  headerRow: {
+    marginBottom: 14,
+  },
+  cardTitle: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '700',
+    letterSpacing: -0.2,
+  },
   contentRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-around',
-    paddingVertical: 4,
+    paddingVertical: 2,
   },
   centerTextOverlay: {
     position: 'absolute',
@@ -220,8 +234,8 @@ const styles = StyleSheet.create({
   },
   gradeText: {
     color: '#FFFFFF',
-    fontSize: 42,
-    fontWeight: '800',
+    fontSize: 40,
+    fontWeight: '700',
     letterSpacing: -0.8,
   },
   subtitleText: {
@@ -233,31 +247,31 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   legendContainer: {
-    gap: 16,
-    paddingLeft: 10,
+    gap: 14,
+    paddingLeft: 12,
     justifyContent: 'center',
   },
   legendRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 10,
   },
   legendDot: {
-    width: 14,
-    height: 14,
-    borderRadius: 7,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.5,
     shadowRadius: 4,
     elevation: 2,
   },
   legendDotSelected: {
-    transform: [{ scale: 1.25 }],
+    transform: [{ scale: 1.5 }],
   },
   legendLabel: {
     color: '#FFFFFF',
-    fontSize: 17,
-    fontWeight: '500',
-    letterSpacing: -0.2,
+    fontSize: 14,
+    fontWeight: '600',
+    letterSpacing: -0.1,
   },
 });

@@ -1813,15 +1813,31 @@ export function getRecentOutcomesSummary(limit: number = 20): RecentOutcomesSumm
         ? sorted[mid]
         : Math.round((sorted[mid - 1] + sorted[mid]) / 2);
     medianGrade = medianScore >= 13 ? 'V13+' : `V${Math.max(0, medianScore)}`;
+  } else {
+    // If no recent logs in query, check overall user median grade
+    try {
+      const allRows = db.getAllSync<{ normalized_difficulty: number }>(
+        `SELECT normalized_difficulty FROM boulder_logs WHERE normalized_difficulty IS NOT NULL`
+      );
+      if (allRows.length > 0) {
+        const sorted = allRows.map((r) => r.normalized_difficulty).sort((a, b) => a - b);
+        const mid = Math.floor(sorted.length / 2);
+        const medScore = sorted[mid];
+        medianGrade = medScore >= 13 ? 'V13+' : `V${Math.max(0, medScore)}`;
+        averageGrade = medianGrade;
+      }
+    } catch {
+      // Keep default V7
+    }
   }
 
   let segments: OutcomeSegmentData[];
   if (total === 0) {
     segments = [
-      { label: 'Flash', count: 8, percentage: 40, color: '#7BF168' },
+      { label: 'Flash', count: 8, percentage: 40, color: '#6EE756' },
       { label: 'Top', count: 6, percentage: 30, color: '#8E7CFF' },
-      { label: 'Attempt', count: 4, percentage: 20, color: '#EDE8D0' },
-      { label: 'Fail', count: 2, percentage: 10, color: '#6B6B75' },
+      { label: 'Attempt', count: 4, percentage: 20, color: '#E8DEB5' },
+      { label: 'Fail', count: 2, percentage: 10, color: '#3E3E48' },
     ];
   } else {
     segments = [
@@ -1829,7 +1845,7 @@ export function getRecentOutcomesSummary(limit: number = 20): RecentOutcomesSumm
         label: 'Flash',
         count: flashCount,
         percentage: Math.round((flashCount / total) * 100),
-        color: '#7BF168',
+        color: '#6EE756',
       },
       {
         label: 'Top',
@@ -1841,13 +1857,13 @@ export function getRecentOutcomesSummary(limit: number = 20): RecentOutcomesSumm
         label: 'Attempt',
         count: attemptCount,
         percentage: Math.round((attemptCount / total) * 100),
-        color: '#EDE8D0',
+        color: '#E8DEB5',
       },
       {
         label: 'Fail',
         count: failCount,
         percentage: Math.round((failCount / total) * 100),
-        color: '#6B6B75',
+        color: '#3E3E48',
       },
     ];
   }

@@ -91,7 +91,7 @@ export default function HistoryScreen() {
         {sessions.length === 0 ? (
           <View style={styles.emptyContainer}>
             <EmptyStateCard
-              icon={Calendar}
+              icon={TrendingUp}
               title="No Sessions Logged Yet"
               description="Your past workouts, send pyramids, and gym volume stats will appear here once you log your first burn."
               buttonLabel="Start a Quick Session"

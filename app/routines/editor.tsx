@@ -9,6 +9,8 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
+  TouchableWithoutFeedback,
+  Keyboard,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -169,7 +171,22 @@ export default function RoutineEditorScreen() {
       Alert.alert('Cannot Delete', 'A routine must contain at least one block.');
       return;
     }
-    setBlocks(blocks.filter((b) => b.id !== blockId));
+    const targetBlock = blocks.find((b) => b.id === blockId);
+    Alert.alert(
+      'Delete Workout Block?',
+      `Are you sure you want to delete "${targetBlock?.title || 'this block'}"?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: () => {
+            triggerHaptic('medium');
+            setBlocks(blocks.filter((b) => b.id !== blockId));
+          },
+        },
+      ]
+    );
   };
 
   const handleUpdateBlockTitle = (blockId: string, title: string) => {

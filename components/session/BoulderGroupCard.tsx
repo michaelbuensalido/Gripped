@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { View, Text, TouchableOpacity, TextInput, Keyboard } from 'react-native';
+import { View, Text, TouchableOpacity, TextInput, Keyboard, Alert } from 'react-native';
 import { MoreVertical } from 'lucide-react-native';
 import type { BoulderLog } from '../../types';
 import { useSessionStore } from '../../store/sessionStore';
@@ -78,6 +78,24 @@ export function BoulderGroupCard({
     [groupId, updateGroupRestTimer]
   );
 
+  const handleDeleteBlock = useCallback(() => {
+    Alert.alert(
+      'Delete Workout Block?',
+      `Are you sure you want to delete "${zoneName}" and all of its logged sets?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete Block',
+          style: 'destructive',
+          onPress: () => {
+            triggerHaptic('medium');
+            deleteGroup(groupId);
+          },
+        },
+      ]
+    );
+  }, [zoneName, groupId, deleteGroup]);
+
   const sends = logs.filter((l) => l.outcome === 'send' || l.outcome === 'flash').length;
 
   return (
@@ -129,7 +147,7 @@ export function BoulderGroupCard({
               setShowActionSheet(true);
             }}
             activeOpacity={0.7}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
             style={{
               width: 38,
               height: 38,
@@ -233,7 +251,7 @@ export function BoulderGroupCard({
         onRename={() => setEditing(true)}
         onMoveUp={() => moveGroup(groupId, 'up')}
         onMoveDown={() => moveGroup(groupId, 'down')}
-        onDelete={() => deleteGroup(groupId)}
+        onDelete={handleDeleteBlock}
       />
     </View>
   );

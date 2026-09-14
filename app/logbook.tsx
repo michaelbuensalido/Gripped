@@ -325,7 +325,7 @@ export default function LogbookScreen() {
           <View>
             {sessions.length === 0 ? (
               <EmptyStateCard
-                icon={Calendar}
+                icon={TrendingUp}
                 title="No Sessions Logged Yet"
                 description="Your past workouts, send pyramids, and gym volume stats will appear here once you log your first burn."
                 buttonLabel="Start a Quick Session"

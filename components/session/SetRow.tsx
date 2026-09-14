@@ -154,6 +154,7 @@ export function SetRow({ log, index, groupId }: SetRowProps) {
         <TouchableOpacity
           onPress={() => setGradeSheetOpen(true)}
           activeOpacity={0.8}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           style={{ backgroundColor: grade?.color ?? '#2C2C35' }}
           className="rounded-full px-3 py-1.5 min-w-[46px] items-center justify-center"
         >
@@ -174,6 +175,7 @@ export function SetRow({ log, index, groupId }: SetRowProps) {
             <TouchableOpacity
               onPress={handleRpeDecrement}
               activeOpacity={0.7}
+              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
               className="w-7 h-8 items-center justify-center"
             >
               <Minus size={11} color="#8A8A98" />
@@ -187,6 +189,7 @@ export function SetRow({ log, index, groupId }: SetRowProps) {
             <TouchableOpacity
               onPress={handleRpeIncrement}
               activeOpacity={0.7}
+              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
               className="w-7 h-8 items-center justify-center"
             >
               <Plus size={11} color="#8A8A98" />
@@ -206,6 +209,7 @@ export function SetRow({ log, index, groupId }: SetRowProps) {
             <TouchableOpacity
               onPress={handleDecrement}
               activeOpacity={0.7}
+              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
               className="w-7 h-8 items-center justify-center"
             >
               <Minus size={11} color="#8A8A98" />
@@ -216,6 +220,7 @@ export function SetRow({ log, index, groupId }: SetRowProps) {
             <TouchableOpacity
               onPress={handleIncrement}
               activeOpacity={0.7}
+              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
               className="w-7 h-8 items-center justify-center"
             >
               <Plus size={11} color="#8A8A98" />
@@ -233,6 +238,7 @@ export function SetRow({ log, index, groupId }: SetRowProps) {
                 setPreviewModalOpen(true);
               }}
               activeOpacity={0.8}
+              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
               style={{
                 width: 36,
                 height: 36,
@@ -261,6 +267,7 @@ export function SetRow({ log, index, groupId }: SetRowProps) {
                 setCamModalOpen(true);
               }}
               activeOpacity={0.7}
+              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
               style={{
                 width: 36,
                 height: 36,
@@ -279,6 +286,7 @@ export function SetRow({ log, index, groupId }: SetRowProps) {
           {/* Flash lightning — only visible/tappable once sent */}
           {isSent && (
             <Pressable
+              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
               onPressIn={() => {
                 flashScale.value = withSpring(0.93, { damping: 14, stiffness: 240 });
               }}

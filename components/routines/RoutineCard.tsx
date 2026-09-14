@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { View, Text, TouchableOpacity, Modal, Image } from "react-native";
+import { View, Text, TouchableOpacity, Pressable, Modal, Image } from "react-native";
 import {
   Play,
   MoreVertical,
@@ -13,6 +13,7 @@ import Svg, { Polygon, Path } from "react-native-svg";
 import type { RoutineWithBlocks, RoutineCategory } from "../../types";
 import { GRADE_BY_LABEL } from "../../constants/grades";
 import { FLOATING_CARD_STYLE } from "../../constants/theme";
+import { triggerHaptic } from "../../utils/haptics";
 
 interface RoutineCardProps {
   routine: RoutineWithBlocks;
@@ -187,7 +188,7 @@ export function RoutineCard({
         <TouchableOpacity
           onPress={() => setMenuVisible(true)}
           activeOpacity={0.7}
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
           style={{
             width: 36,
             height: 36,
@@ -314,11 +315,13 @@ export function RoutineCard({
         </View>
       </View>
 
-      {/* ── Bottom Action Button: Wide pill button matching primary action style ───── */}
-      <TouchableOpacity
-        onPress={() => onStart(routine)}
-        activeOpacity={0.85}
-        style={{
+      {/* ── Start Routine CTA Button with tactile compression ──── */}
+      <Pressable
+        onPress={() => {
+          triggerHaptic('medium');
+          onStart(routine);
+        }}
+        style={({ pressed }) => ({
           backgroundColor: "#8E7CFF",
           height: 52,
           borderRadius: 26,
@@ -332,7 +335,9 @@ export function RoutineCard({
           shadowRadius: 10,
           elevation: 5,
           marginTop: 2,
-        }}
+          transform: [{ scale: pressed ? 0.95 : 1 }],
+          opacity: pressed ? 0.92 : 1,
+        })}
       >
         <Play size={15} color="#FFFFFF" fill="#FFFFFF" />
         <Text
@@ -345,7 +350,7 @@ export function RoutineCard({
         >
           START ROUTINE
         </Text>
-      </TouchableOpacity>
+      </Pressable>
 
       {/* ── Context Menu Modal ─────────────────────────────────────── */}
       <Modal

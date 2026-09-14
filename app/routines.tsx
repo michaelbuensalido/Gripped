@@ -4,6 +4,7 @@ import {
   Text,
   ScrollView,
   TouchableOpacity,
+  Pressable,
   Alert,
   Image,
 } from 'react-native';
@@ -137,10 +138,9 @@ export default function RoutinesListScreen() {
 
         {/* ── 2. Top Action Area ("Instant Freestyle Session Launcher") ── */}
         <View style={{ paddingHorizontal: 16, marginBottom: 24 }}>
-          <TouchableOpacity
+          <Pressable
             onPress={handleStartEmpty}
-            activeOpacity={0.85}
-            style={{
+            style={({ pressed }) => ({
               backgroundColor: '#8E7CFF',
               height: 52,
               borderRadius: 26,
@@ -153,7 +153,9 @@ export default function RoutinesListScreen() {
               shadowOpacity: 0.4,
               shadowRadius: 10,
               elevation: 5,
-            }}
+              transform: [{ scale: pressed ? 0.95 : 1 }],
+              opacity: pressed ? 0.92 : 1,
+            })}
           >
             <Zap size={18} color="#FFFFFF" fill="#FFFFFF" />
             <Text
@@ -166,7 +168,7 @@ export default function RoutinesListScreen() {
             >
               START EMPTY SESSION
             </Text>
-          </TouchableOpacity>
+          </Pressable>
 
           {/* Subtext / Helper */}
           <Text
