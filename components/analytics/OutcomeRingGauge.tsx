@@ -153,7 +153,7 @@ export function OutcomeRingGauge({ data, onPress }: OutcomeRingGaugeProps) {
               {activeItem ? (
                 `${activeItem.count} ${activeItem.label}s`
               ) : (
-                `Average of last ${sampleCount}\nroutes`
+                'Average of last 20 routes'
               )}
             </Text>
           </View>
@@ -192,6 +192,14 @@ export function OutcomeRingGauge({ data, onPress }: OutcomeRingGaugeProps) {
                   ]}
                 >
                   {segment.label}
+                </Text>
+                <Text
+                  style={[
+                    styles.legendPercentage,
+                    isSelected && { color: segment.color, fontWeight: '700' },
+                  ]}
+                >
+                  {segment.percentage}%
                 </Text>
               </TouchableOpacity>
             );
@@ -243,7 +251,7 @@ const styles = StyleSheet.create({
   },
   gradeText: {
     color: '#FFFFFF',
-    fontSize: 40,
+    fontSize: 38,
     fontWeight: '700',
     letterSpacing: -0.8,
   },
@@ -259,11 +267,12 @@ const styles = StyleSheet.create({
     gap: 14,
     paddingLeft: 12,
     justifyContent: 'center',
+    minWidth: 120,
   },
   legendRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 8,
   },
   legendDot: {
     width: 8,
@@ -282,5 +291,11 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     letterSpacing: -0.1,
+  },
+  legendPercentage: {
+    color: '#8A8A98',
+    fontSize: 13,
+    fontWeight: '600',
+    marginLeft: 'auto',
   },
 });

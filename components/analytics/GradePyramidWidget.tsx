@@ -11,7 +11,7 @@ export interface GradePyramidWidgetProps {
 export function GradePyramidWidget({
   data,
   pyramid,
-  title = 'ALL-TIME GRADE PYRAMID',
+  title = 'GRADE PYRAMID',
 }: GradePyramidWidgetProps) {
   const rawData = data ?? (pyramid as GradePyramidDataRow[]) ?? [];
   const normalizedRows: GradePyramidDataRow[] = rawData.map((r: any) => ({
@@ -29,14 +29,13 @@ export function GradePyramidWidget({
         (r.attempt_count ?? r.attempt ?? 0),
   }));
 
-  // Find rows with any logged activity (sends or attempts)
+  // Find distinct grades with logged activity
   const rowsWithActivity = normalizedRows.filter(
     (r) => r.total_sends > 0 || r.total_attempts > 0
   );
   const hasData = rowsWithActivity.length > 0;
 
-  // Determine min and max logged grades dynamically:
-  // Filter the Y-axis to only show [minLoggedGrade - 1] to [maxLoggedGrade + 1]
+  // Determine clamped range: [minGrade - 1] to [maxGrade + 1]
   let rangeMin = 3;
   let rangeMax = 7;
   if (hasData) {
@@ -51,20 +50,27 @@ export function GradePyramidWidget({
   for (let diff = rangeMax; diff >= rangeMin; diff--) {
     const existing = normalizedRows.find((r) => r.normalized_difficulty === diff);
     const label = diff >= 13 ? 'V13+' : `V${diff}`;
+    const flashCount = existing?.flash_count ?? 0;
+    const topCount = existing?.top_count ?? 0;
+    const attemptCount = existing?.attempt_count ?? 0;
+    const totalSends = existing?.total_sends ?? flashCount + topCount;
+    const totalBurns = existing?.total_attempts ?? flashCount + topCount + attemptCount;
+
     pyramidDisplayRows.push({
       grade_raw: existing?.grade_raw ?? label,
       normalized_difficulty: diff,
-      flash_count: existing?.flash_count ?? 0,
-      top_count: existing?.top_count ?? 0,
-      attempt_count: existing?.attempt_count ?? 0,
-      total_sends: existing?.total_sends ?? 0,
-      total_attempts: existing?.total_attempts ?? 0,
+      flash_count: flashCount,
+      top_count: topCount,
+      attempt_count: attemptCount,
+      total_sends: totalSends,
+      total_attempts: totalBurns,
     });
   }
 
-  const maxSendsInAnyGrade = Math.max(
+  // Use max total activity (sends + attempts) to scale bar width proportionally
+  const maxTotalAcrossGrades = Math.max(
     1,
-    ...pyramidDisplayRows.map((r) => r.total_sends)
+    ...pyramidDisplayRows.map((r) => r.total_attempts || (r.flash_count + r.top_count + r.attempt_count))
   );
 
   const totalSends = normalizedRows.reduce((acc, r) => acc + r.total_sends, 0);
@@ -82,46 +88,48 @@ export function GradePyramidWidget({
         </View>
       </View>
 
-      {/* ── Dynamic Horizontal Stacked Pyramid ───────────── */}
+      {/* ── Dynamic Clamped Horizontal Stacked Pyramid ───── */}
       <View style={styles.chartContainer}>
         {hasData ? (
           <View style={styles.pyramidList}>
             {pyramidDisplayRows.map((row) => {
-              const hasSends = row.total_sends > 0;
-              const flashPct = hasSends
-                ? (row.flash_count / row.total_sends) * 100
-                : 0;
-              const topPct = hasSends
-                ? (row.top_count / row.total_sends) * 100
-                : 0;
-              const barWidthPercent = hasSends
-                ? Math.max(10, (row.total_sends / maxSendsInAnyGrade) * 100)
+              const rowActivity = row.flash_count + row.top_count + row.attempt_count;
+              const hasActivity = rowActivity > 0 || row.total_sends > 0;
+              const effectiveTotal = Math.max(1, rowActivity);
+
+              const flashPct = (row.flash_count / effectiveTotal) * 100;
+              const topPct = (row.top_count / effectiveTotal) * 100;
+              const attemptPct = (row.attempt_count / effectiveTotal) * 100;
+
+              // Scale total bar width relative to maximum grade volume
+              const barWidthPercent = hasActivity
+                ? Math.max(12, (effectiveTotal / maxTotalAcrossGrades) * 100)
                 : 0;
 
               return (
                 <View key={row.grade_raw} style={styles.rowContainer}>
-                  {/* Grade Label */}
+                  {/* Left: Grade Label (13pt Bold White) */}
                   <View style={styles.gradeLabelContainer}>
                     <Text
                       style={[
                         styles.gradeLabel,
-                        hasSends && styles.gradeLabelActive,
+                        hasActivity && styles.gradeLabelActive,
                       ]}
                     >
                       {row.grade_raw}
                     </Text>
                   </View>
 
-                  {/* Horizontal Bar Track */}
+                  {/* Center: Horizontal Stacked Bar (Height 16pt, borderRadius 4) */}
                   <View style={styles.barTrackContainer}>
-                    {hasSends ? (
+                    {hasActivity ? (
                       <View
                         style={[
                           styles.stackedBar,
                           { width: `${barWidthPercent}%` },
                         ]}
                       >
-                        {/* Flashes (Lime Green #6EE756) */}
+                        {/* Flashes: Green #6EE756 */}
                         {row.flash_count > 0 && (
                           <View
                             style={[
@@ -133,7 +141,7 @@ export function GradePyramidWidget({
                             ]}
                           />
                         )}
-                        {/* Tops (Lavender #8E7CFF) */}
+                        {/* Tops / Redpoints: Lavender #8E7CFF */}
                         {row.top_count > 0 && (
                           <View
                             style={[
@@ -145,22 +153,34 @@ export function GradePyramidWidget({
                             ]}
                           />
                         )}
+                        {/* Attempts / Fails: Dark Slate #3E3E48 */}
+                        {row.attempt_count > 0 && (
+                          <View
+                            style={[
+                              styles.barSlice,
+                              {
+                                width: `${attemptPct}%`,
+                                backgroundColor: '#3E3E48',
+                              },
+                            ]}
+                          />
+                        )}
                       </View>
                     ) : (
-                      // Subtle 2pt dark track for 0-send rows
+                      // Subtle 2pt dark track for 0 activity rows
                       <View style={styles.emptyTrack} />
                     )}
                   </View>
 
-                  {/* Send Count */}
+                  {/* Right: Total Send Count */}
                   <View style={styles.countContainer}>
                     <Text
                       style={[
                         styles.countText,
-                        hasSends && styles.countTextActive,
+                        row.total_sends > 0 && styles.countTextActive,
                       ]}
                     >
-                      {hasSends ? row.total_sends : ''}
+                      {row.total_sends > 0 ? row.total_sends : ''}
                     </Text>
                   </View>
                 </View>
@@ -186,6 +206,10 @@ export function GradePyramidWidget({
         <View style={styles.legendItem}>
           <View style={[styles.legendDot, { backgroundColor: '#8E7CFF' }]} />
           <Text style={styles.legendLabel}>Top</Text>
+        </View>
+        <View style={styles.legendItem}>
+          <View style={[styles.legendDot, { backgroundColor: '#3E3E48' }]} />
+          <Text style={styles.legendLabel}>Attempt</Text>
         </View>
       </View>
     </View>
@@ -227,15 +251,15 @@ const styles = StyleSheet.create({
   rowContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    height: 22,
+    height: 24,
   },
   gradeLabelContainer: {
-    width: 36,
+    width: 38,
     justifyContent: 'center',
   },
   gradeLabel: {
     color: '#5A5A68',
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '700',
   },
   gradeLabelActive: {
@@ -243,18 +267,18 @@ const styles = StyleSheet.create({
   },
   barTrackContainer: {
     flex: 1,
-    height: 14,
+    height: 16,
     justifyContent: 'center',
     marginHorizontal: 8,
   },
   stackedBar: {
-    height: 14,
+    height: 16,
     borderRadius: 4,
     overflow: 'hidden',
     flexDirection: 'row',
   },
   barSlice: {
-    height: 14,
+    height: 16,
   },
   emptyTrack: {
     height: 2,
@@ -269,7 +293,7 @@ const styles = StyleSheet.create({
   },
   countText: {
     color: '#4E4E58',
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '600',
   },
   countTextActive: {

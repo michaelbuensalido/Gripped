@@ -20,9 +20,11 @@ import {
   getRecentBoulderLogs,
   getRecentOutcomesSummary,
   getGradeVolumeEqualizerData,
+  getAngleMasteryBreakdown,
   type GradePyramidDataRow,
   type WeeklyVolumeTrendsData,
   type WallAngleBreakdownItem,
+  type AngleMasteryItem,
   type AnalyticsOverview,
   type RecentBoulderLog,
   type RecentOutcomesSummaryData,
@@ -30,9 +32,8 @@ import {
 } from '../db/queries';
 import { OutcomeRingGauge } from '../components/analytics/OutcomeRingGauge';
 import { BentoMetricRow } from '../components/analytics/BentoMetricRow';
-import { VolumeByGradeCard } from '../components/analytics/VolumeByGradeCard';
 import { GradePyramidWidget } from '../components/analytics/GradePyramidWidget';
-import { TerrainSplitWidget } from '../components/analytics/TerrainSplitWidget';
+import { AngleMasteryWidget } from '../components/analytics/AngleMasteryWidget';
 import { ClimbingHoldGraphic, type HoldType } from '../components/ui/ClimbingHoldGraphic';
 import { ScreenContainer } from '../components/ui/ScreenContainer';
 import { triggerHaptic } from '../utils/haptics';
@@ -70,6 +71,7 @@ export default function AnalyticsScreen() {
   const [pyramidData, setPyramidData] = useState<GradePyramidDataRow[]>([]);
   const [volumeTrends, setVolumeTrends] = useState<WeeklyVolumeTrendsData | null>(null);
   const [wallAngleData, setWallAngleData] = useState<WallAngleBreakdownItem[]>([]);
+  const [angleMasteryData, setAngleMasteryData] = useState<AngleMasteryItem[]>([]);
   const [overview, setOverview] = useState<AnalyticsOverview | null>(null);
   const [recentLogs, setRecentLogs] = useState<RecentBoulderLog[]>([]);
 
@@ -92,6 +94,7 @@ export default function AnalyticsScreen() {
       setPyramidData(getGradePyramidData(queryTf));
       setVolumeTrends(getWeeklyVolumeTrends(queryTf));
       setWallAngleData(getWallAngleBreakdown(queryTf));
+      setAngleMasteryData(getAngleMasteryBreakdown(queryTf));
       setOverview(getAnalyticsOverview(sinceTimestamp));
       setRecentLogs(getRecentBoulderLogs(6));
     } catch (err) {
@@ -149,6 +152,13 @@ export default function AnalyticsScreen() {
           <View style={styles.titleContainer}>
             <Text style={styles.screenTitle}>Analytics &</Text>
             <Text style={styles.screenTitle}>Report</Text>
+            <View style={styles.volumeBadge}>
+              <Text style={styles.volumeBadgeText}>
+                {gradeEqualizer?.totalSends ?? overview?.totalSends ?? 24} Sends{' '}
+                {timeframe === 'weekly' ? 'this week' : timeframe === 'monthly' ? 'this month' : 'all-time'}{' '}
+                • {gradeEqualizer?.trendLabel ?? '▲ 15%'}
+              </Text>
+            </View>
           </View>
 
           <View style={styles.headerActions}>
@@ -189,11 +199,6 @@ export default function AnalyticsScreen() {
           flashRate={overview?.flashRate ?? 38}
         />
 
-        {/* ── 5. Bottom Wide Bento Card: Volume by Grade ────── */}
-        {gradeEqualizer && (
-          <VolumeByGradeCard data={gradeEqualizer} />
-        )}
-
         {/* ── Section Divider: Detailed Analytical Breakdown ─── */}
         <View style={styles.sectionDivider}>
           <Text style={styles.sectionDividerText}>DETAILED PERFORMANCE</Text>
@@ -208,9 +213,9 @@ export default function AnalyticsScreen() {
           />
         </View>
 
-        {/* ── Wall Style & Terrain Split Widget ─────────────── */}
+        {/* ── Terrain & Angle Mastery Widget ─────────────── */}
         <View style={styles.widgetMargin}>
-          <TerrainSplitWidget data={wallAngleData} />
+          <AngleMasteryWidget data={angleMasteryData} />
         </View>
 
         {/* ── Recent Sends Activity Feed ────────────────────── */}
@@ -408,6 +413,22 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     letterSpacing: -0.8,
     lineHeight: 32,
+  },
+  volumeBadge: {
+    backgroundColor: 'rgba(142, 124, 255, 0.12)',
+    borderColor: 'rgba(142, 124, 255, 0.25)',
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    marginTop: 6,
+    alignSelf: 'flex-start',
+  },
+  volumeBadgeText: {
+    color: '#8E7CFF',
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: 0.2,
   },
   headerActions: {
     flexDirection: 'row',
