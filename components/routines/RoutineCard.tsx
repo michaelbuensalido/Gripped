@@ -150,7 +150,7 @@ export function RoutineCard({
         {
           borderRadius: 20,
           padding: 20,
-          marginHorizontal: 16,
+          marginHorizontal: 0,
           marginBottom: 16,
         },
       ]}
@@ -322,28 +322,31 @@ export function RoutineCard({
           onStart(routine);
         }}
         style={({ pressed }) => ({
-          backgroundColor: "#8E7CFF",
-          height: 52,
-          borderRadius: 26,
+          backgroundColor: "#262630",
+          borderWidth: 1,
+          borderColor: "#8E7CFF",
+          paddingVertical: 10,
+          paddingHorizontal: 16,
+          borderRadius: 14,
           flexDirection: "row",
           alignItems: "center",
           justifyContent: "center",
           gap: 8,
-          shadowColor: "#8E7CFF",
-          shadowOffset: { width: 0, height: 4 },
-          shadowOpacity: 0.4,
-          shadowRadius: 10,
-          elevation: 5,
-          marginTop: 2,
+          marginTop: 4,
+          shadowColor: "#000000",
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.3,
+          shadowRadius: 4,
+          elevation: 2,
           transform: [{ scale: pressed ? 0.95 : 1 }],
           opacity: pressed ? 0.92 : 1,
         })}
       >
-        <Play size={15} color="#FFFFFF" fill="#FFFFFF" />
+        <Play size={14} color="#8E7CFF" fill="#8E7CFF" />
         <Text
           style={{
             color: "#FFFFFF",
-            fontSize: 15,
+            fontSize: 14,
             fontWeight: "700",
             letterSpacing: 0.5,
           }}

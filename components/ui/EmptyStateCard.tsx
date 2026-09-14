@@ -51,6 +51,7 @@ export function EmptyStateCard({
 
   const isLime = buttonVariant === 'lime';
   const buttonBg = isLime ? '#6EE756' : '#8E7CFF';
+  const buttonTextColor = isLime ? '#111115' : '#FFFFFF';
 
   return (
     <View
@@ -86,7 +87,9 @@ export function EmptyStateCard({
             },
           ]}
         >
-          <Text style={styles.primaryButtonText}>{buttonLabel}</Text>
+          <Text style={[styles.primaryButtonText, { color: buttonTextColor }]}>
+            {buttonLabel}
+          </Text>
         </Pressable>
 
         {/* Optional Secondary Action */}
