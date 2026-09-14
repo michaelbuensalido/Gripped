@@ -10,8 +10,8 @@ import {
   TouchableWithoutFeedback,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useFocusEffect } from 'expo-router';
-import { Check } from 'lucide-react-native';
+import { useFocusEffect, useRouter } from 'expo-router';
+import { Check, Settings as SettingsIcon } from 'lucide-react-native';
 import {
   getGradePyramidData,
   getWeeklyVolumeTrends,
@@ -34,6 +34,7 @@ import { VolumeByGradeCard } from '../components/analytics/VolumeByGradeCard';
 import { GradePyramidWidget } from '../components/analytics/GradePyramidWidget';
 import { TerrainSplitWidget } from '../components/analytics/TerrainSplitWidget';
 import { ClimbingHoldGraphic, type HoldType } from '../components/ui/ClimbingHoldGraphic';
+import { ScreenContainer } from '../components/ui/ScreenContainer';
 import { triggerHaptic } from '../utils/haptics';
 
 export type TimeframeOption = 'weekly' | 'monthly' | 'all';
@@ -58,6 +59,7 @@ const HOLD_TYPE_LIST: HoldType[] = [
 ];
 
 export default function AnalyticsScreen() {
+  const router = useRouter();
   const insets = useSafeAreaInsets();
   const [timeframe, setTimeframe] = useState<TimeframeOption>('weekly');
   const [isTimeframeModalVisible, setIsTimeframeModalVisible] = useState<boolean>(false);
@@ -133,40 +135,45 @@ export default function AnalyticsScreen() {
   });
 
   return (
-    <View style={styles.container}>
-      {/* ── Canvas Background: #131316 with 18% speckle texture ─ */}
-      <ImageBackground
-        source={require('../assets/speckled_mat_bg.jpg')}
-        style={StyleSheet.absoluteFill}
-        imageStyle={{ opacity: 0.18 }}
-        resizeMode="cover"
-      />
-
+    <ScreenContainer withTopInset={true}>
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{
-          paddingTop: insets.top > 0 ? insets.top + 8 : 20,
-          paddingBottom: 190,
           paddingHorizontal: 16,
+          paddingTop: 8,
+          paddingBottom: 170,
         }}
       >
-        {/* ── 2. Top Header & Timeframe Dropdown Filter Pill ── */}
+        {/* ── Top Header Row: Title + Timeframe Dropdown + Settings Gear ── */}
         <View style={styles.headerRow}>
           <View style={styles.titleContainer}>
             <Text style={styles.screenTitle}>Analytics &</Text>
             <Text style={styles.screenTitle}>Report</Text>
           </View>
 
-          <TouchableOpacity
-            activeOpacity={0.8}
-            onPress={() => {
-              triggerHaptic('light');
-              setIsTimeframeModalVisible(true);
-            }}
-            style={styles.dropdownPill}
-          >
-            <Text style={styles.dropdownPillText}>{timeframeLabel}</Text>
-          </TouchableOpacity>
+          <View style={styles.headerActions}>
+            <TouchableOpacity
+              activeOpacity={0.8}
+              onPress={() => {
+                triggerHaptic('light');
+                setIsTimeframeModalVisible(true);
+              }}
+              style={styles.dropdownPill}
+            >
+              <Text style={styles.dropdownPillText}>{timeframeLabel}</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              activeOpacity={0.8}
+              onPress={() => {
+                triggerHaptic('light');
+                router.push('/settings');
+              }}
+              style={styles.settingsButton}
+            >
+              <SettingsIcon size={20} color="#9A9AA6" />
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* ── 3. Hero Card: Send Outcome Ring Gauge ─────────── */}
@@ -375,7 +382,7 @@ export default function AnalyticsScreen() {
           </View>
         </TouchableWithoutFeedback>
       </Modal>
-    </View>
+    </ScreenContainer>
   );
 }
 
@@ -388,34 +395,49 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-end',
     justifyContent: 'space-between',
-    paddingHorizontal: 4,
     paddingTop: 8,
     paddingBottom: 16,
   },
   titleContainer: {
     flex: 1,
+    paddingRight: 8,
   },
   screenTitle: {
-    fontSize: 30,
+    fontSize: 28,
     fontWeight: '800',
     color: '#FFFFFF',
     letterSpacing: -0.8,
-    lineHeight: 34,
+    lineHeight: 32,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   dropdownPill: {
     backgroundColor: '#1E1E24',
     borderWidth: 1,
     borderColor: '#2C2C35',
     borderRadius: 999,
-    paddingHorizontal: 16,
+    paddingHorizontal: 14,
     paddingVertical: 9,
     alignItems: 'center',
     justifyContent: 'center',
   },
   dropdownPillText: {
     color: '#FFFFFF',
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
+  },
+  settingsButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#1E1E24',
+    borderWidth: 1,
+    borderColor: '#2C2C35',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   heroCardMargin: {
     marginBottom: 0,

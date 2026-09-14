@@ -26,26 +26,35 @@ export function OutcomeRingGauge({ data, onPress }: OutcomeRingGaugeProps) {
   const { segments, averageGrade, totalLogs } = data;
   const [activeSegment, setActiveSegment] = useState<string | null>(null);
 
-  const effectiveTotal = segments.reduce((sum, s) => sum + s.percentage, 0);
+  // Calculate Dasharray & Offsets for continuous contiguous multi-segment ring
+  const totalCount = segments.reduce((sum, s) => sum + (s.count || 0), 0);
+  const totalPct = segments.reduce((sum, s) => sum + (s.percentage || 0), 0);
 
-  // Calculate Dasharray & Offsets for continuous contiguous ring
-  let cumulativePct = 0;
-  const rings = segments
-    .filter((s) => s.percentage > 0)
-    .map((segment) => {
-      // Normalize percentage to sum to 1.0
-      const pct = effectiveTotal > 0 ? segment.percentage / effectiveTotal : 0.25;
-      const strokeDasharray = `${pct * CIRCUMFERENCE} ${CIRCUMFERENCE}`;
-      const strokeDashoffset = -cumulativePct * CIRCUMFERENCE;
-      cumulativePct += pct;
+  let accumulatedLength = 0;
+  const activeSlices = segments.filter((s) =>
+    totalCount > 0 ? (s.count || 0) > 0 : (s.percentage || 0) > 0
+  );
 
-      return {
-        ...segment,
-        strokeDasharray,
-        strokeDashoffset,
-        pct,
-      };
-    });
+  const rings = activeSlices.map((segment) => {
+    const sliceFraction =
+      totalCount > 0
+        ? (segment.count || 0) / totalCount
+        : totalPct > 0
+        ? (segment.percentage || 0) / totalPct
+        : 0.25;
+
+    const sliceLength = sliceFraction * CIRCUMFERENCE;
+    const strokeDashoffset = -accumulatedLength;
+    accumulatedLength += sliceLength;
+
+    return {
+      ...segment,
+      sliceFraction,
+      sliceLength,
+      strokeDasharray: [sliceLength, CIRCUMFERENCE] as [number, number],
+      strokeDashoffset,
+    };
+  });
 
   const activeItem = segments.find((s) => s.label === activeSegment);
 
@@ -126,7 +135,7 @@ export function OutcomeRingGauge({ data, onPress }: OutcomeRingGaugeProps) {
                     strokeWidth={isSelected ? STROKE_WIDTH + 2 : STROKE_WIDTH}
                     strokeDasharray={ring.strokeDasharray}
                     strokeDashoffset={ring.strokeDashoffset}
-                    strokeLinecap="round"
+                    strokeLinecap="butt"
                     opacity={isFaded ? 0.35 : 1}
                     fill="none"
                   />
