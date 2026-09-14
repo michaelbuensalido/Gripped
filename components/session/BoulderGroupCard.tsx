@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { View, Text, TouchableOpacity, TextInput, Keyboard } from 'react-native';
-import { Plus, ChevronDown, ChevronUp, Clock, MoreVertical } from 'lucide-react-native';
+import { MoreVertical } from 'lucide-react-native';
 import type { BoulderLog } from '../../types';
 import { useSessionStore } from '../../store/sessionStore';
 import { SetRow } from './SetRow';
@@ -122,42 +122,23 @@ export function BoulderGroupCard({
             )}
           </View>
 
-          {/* Right actions: 3-dot overflow + collapse chevron */}
-          <View className="flex-row items-center gap-0.5">
-            <TouchableOpacity
-              onPress={() => {
-                triggerHaptic('selection');
-                setShowActionSheet(true);
-              }}
-              activeOpacity={0.7}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              style={{
-                width: 38,
-                height: 38,
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <MoreVertical size={19} color="#9A9AA6" />
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              onPress={() => setCollapsed((c) => !c)}
-              activeOpacity={0.7}
-              style={{
-                width: 32,
-                height: 38,
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              {collapsed ? (
-                <ChevronDown size={18} color="#8A8A98" />
-              ) : (
-                <ChevronUp size={18} color="#8A8A98" />
-              )}
-            </TouchableOpacity>
-          </View>
+          {/* Right actions: 3-dot touch target */}
+          <TouchableOpacity
+            onPress={() => {
+              triggerHaptic('selection');
+              setShowActionSheet(true);
+            }}
+            activeOpacity={0.7}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            style={{
+              width: 38,
+              height: 38,
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <MoreVertical size={19} color="#9A9AA6" />
+          </TouchableOpacity>
         </View>
 
         {/* Inline Block Notes Input */}
@@ -191,11 +172,10 @@ export function BoulderGroupCard({
               setShowRestPicker(true);
             }}
             activeOpacity={0.75}
-            className="flex-row items-center gap-1.5 px-1 py-1 mb-2.5"
+            className="flex-row items-center px-1 py-1 mb-2.5"
           >
-            <Clock size={14} color="#8E7CFF" />
             <Text style={{ color: '#8E7CFF', fontSize: 13, fontWeight: '600' }}>
-              Rest Timer: {formatRestDuration(defaultRestSeconds || 90)}
+              Rest • {formatRestDuration(defaultRestSeconds || 90)}
             </Text>
           </TouchableOpacity>
 
@@ -226,10 +206,11 @@ export function BoulderGroupCard({
               borderColor: '#2C2C35',
               backgroundColor: '#16161C',
             }}
-            className="flex-row items-center justify-center gap-2 mt-2 py-3 rounded-xl border border-dashed"
+            className="flex-row items-center justify-center mt-2 py-3 rounded-xl border border-dashed"
           >
-            <Plus size={15} color="#8E7CFF" strokeWidth={2.5} />
-            <Text style={{ color: '#8E7CFF' }} className="text-sm font-bold">Add Set</Text>
+            <Text style={{ color: '#8E7CFF' }} className="text-sm font-bold tracking-wide">
+              + Add Set
+            </Text>
           </TouchableOpacity>
         </View>
       )}

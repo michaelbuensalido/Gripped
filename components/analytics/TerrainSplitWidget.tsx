@@ -1,6 +1,5 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { Compass, Flame, Mountain, ArrowUp, Shield } from 'lucide-react-native';
 import type { WallAngleBreakdownItem } from '../../db/queries';
 import { triggerHaptic } from '../../utils/haptics';
 
@@ -9,34 +8,15 @@ export interface TerrainSplitWidgetProps {
 }
 
 export function TerrainSplitWidget({ data }: TerrainSplitWidgetProps) {
-  const getStyleIcon = (style: string, color: string) => {
-    switch (style) {
-      case 'Overhang':
-        return <Flame size={14} color={color} />;
-      case 'Slab':
-        return <Mountain size={14} color={color} />;
-      case 'Roof':
-        return <Shield size={14} color={color} />;
-      case 'Vertical':
-      default:
-        return <ArrowUp size={14} color={color} />;
-    }
-  };
-
   return (
     <View style={styles.card}>
       {/* ── Header ────────────────────────────────────────── */}
       <View style={styles.headerRow}>
-        <View style={styles.titleGroup}>
-          <View style={styles.iconCircle}>
-            <Compass size={15} color="#8E7CFF" />
-          </View>
-          <View>
-            <Text style={styles.cardTitle}>WALL STYLE & TERRAIN SPLIT</Text>
-            <Text style={styles.cardSubtitle}>
-              Distribution across wall angles
-            </Text>
-          </View>
+        <View>
+          <Text style={styles.cardTitle}>WALL STYLE & TERRAIN SPLIT</Text>
+          <Text style={styles.cardSubtitle}>
+            Distribution across wall angles
+          </Text>
         </View>
       </View>
 
@@ -50,12 +30,9 @@ export function TerrainSplitWidget({ data }: TerrainSplitWidgetProps) {
               onPress={() => triggerHaptic('selection')}
               style={styles.gridCard}
             >
-              {/* Card Header: Icon + Style Name + Percentage */}
+              {/* Card Header: Style Name + Percentage */}
               <View style={styles.cardHeader}>
-                <View style={styles.styleNameRow}>
-                  {getStyleIcon(item.style, item.color)}
-                  <Text style={styles.styleName}>{item.style}</Text>
-                </View>
+                <Text style={styles.styleName}>{item.style}</Text>
                 <Text style={[styles.percentageText, { color: item.color }]}>
                   {item.percentage}%
                 </Text>
@@ -102,21 +79,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: 16,
   },
-  titleGroup: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  iconCircle: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: 'rgba(142, 124, 255, 0.15)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(142, 124, 255, 0.3)',
-  },
   cardTitle: {
     color: '#FFFFFF',
     fontSize: 13,
@@ -149,11 +111,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     marginBottom: 8,
-  },
-  styleNameRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
   },
   styleName: {
     color: '#FFFFFF',

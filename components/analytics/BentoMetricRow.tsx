@@ -1,6 +1,5 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { Zap, Award } from 'lucide-react-native';
 
 export interface BentoMetricRowProps {
   peakGrade?: string | null;
@@ -26,10 +25,7 @@ export function BentoMetricRow({
         onPress={onPeakGradePress}
         style={styles.card}
       >
-        <View style={styles.cardHeader}>
-          <Text style={styles.cardLabel}>Peak Grade</Text>
-          <Award size={14} color="#8E7CFF" />
-        </View>
+        <Text style={styles.cardLabel}>PEAK GRADE</Text>
 
         <View style={styles.contentRow}>
           <Text style={styles.metricValue}>{displayPeak}</Text>
@@ -51,14 +47,10 @@ export function BentoMetricRow({
         onPress={onFlashRatePress}
         style={styles.card}
       >
-        <View style={styles.cardHeader}>
-          <Text style={styles.cardLabel}>Flash Rate</Text>
-          <Zap size={14} color="#6EE756" />
-        </View>
+        <Text style={styles.cardLabel}>FLASH RATE</Text>
 
         <View style={styles.contentRow}>
           <Text style={styles.metricValue}>{displayRate}</Text>
-          <Text style={styles.badgeText}>Top 1st Burn</Text>
         </View>
 
         {/* Horizontal capsule progress bar on bottom */}
@@ -90,16 +82,13 @@ const styles = StyleSheet.create({
     borderColor: '#2C2C35',
     justifyContent: 'space-between',
   },
-  cardHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 8,
-  },
   cardLabel: {
     color: '#8A8A98',
-    fontSize: 13,
-    fontWeight: '600',
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
+    marginBottom: 8,
   },
   contentRow: {
     flexDirection: 'row',
@@ -109,15 +98,15 @@ const styles = StyleSheet.create({
   },
   metricValue: {
     color: '#FFFFFF',
-    fontSize: 26,
+    fontSize: 28,
     fontWeight: '800',
-    letterSpacing: -0.5,
+    letterSpacing: -0.6,
   },
   equalizerContainer: {
     flexDirection: 'row',
     alignItems: 'flex-end',
     gap: 4,
-    height: 26,
+    height: 28,
     paddingBottom: 2,
   },
   equalizerBar: {
@@ -126,13 +115,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#6EE756',
   },
   cardSublabel: {
-    color: '#6EE756',
-    fontSize: 11,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-    letterSpacing: 0.3,
-  },
-  badgeText: {
     color: '#8A8A98',
     fontSize: 11,
     fontWeight: '600',

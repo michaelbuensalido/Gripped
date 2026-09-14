@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, Dimensions } from 'react-native';
-import { TrendingUp, TrendingDown, BarChart2 } from 'lucide-react-native';
+import { TrendingUp, TrendingDown } from 'lucide-react-native';
 import { BarChart, barDataItem } from 'react-native-gifted-charts';
 import type { WeeklyVolumeTrendsData } from '../../db/queries';
 
@@ -45,16 +45,11 @@ export function VolumeTrendWidget({ data }: VolumeTrendWidgetProps) {
     <View style={styles.card}>
       {/* ── Header ────────────────────────────────────────── */}
       <View style={styles.headerRow}>
-        <View style={styles.titleGroup}>
-          <View style={styles.iconCircle}>
-            <BarChart2 size={15} color="#8E7CFF" />
-          </View>
-          <View>
-            <Text style={styles.cardTitle}>WEEKLY VOLUME TRENDS</Text>
-            <Text style={styles.cardSubtitle}>
-              {totalBurns} burns logged • {totalSends} sends
-            </Text>
-          </View>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.cardTitle}>WEEKLY VOLUME TRENDS</Text>
+          <Text style={styles.cardSubtitle}>
+            {totalBurns} burns logged • {totalSends} sends
+          </Text>
         </View>
 
         {/* Upward Green Trend Indicator Badge */}
@@ -128,22 +123,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     marginBottom: 16,
-  },
-  titleGroup: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    flex: 1,
-  },
-  iconCircle: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: 'rgba(142, 124, 255, 0.15)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(142, 124, 255, 0.3)',
   },
   cardTitle: {
     color: '#FFFFFF',

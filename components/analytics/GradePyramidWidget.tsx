@@ -1,6 +1,4 @@
-import React from 'react';
 import { View, Text, StyleSheet, Dimensions } from 'react-native';
-import { Trophy } from 'lucide-react-native';
 import { BarChart, stackDataItem } from 'react-native-gifted-charts';
 import type { GradePyramidDataRow, GradePyramidAllTimeRow } from '../../db/queries';
 
@@ -83,16 +81,11 @@ export function GradePyramidWidget({
     <View style={styles.card}>
       {/* ── Header ────────────────────────────────────────── */}
       <View style={styles.headerRow}>
-        <View style={styles.titleGroup}>
-          <View style={styles.iconCircle}>
-            <Trophy size={15} color="#8E7CFF" />
-          </View>
-          <View>
-            <Text style={styles.cardTitle}>{title}</Text>
-            <Text style={styles.cardSubtitle}>
-              {totalSends} total sends • {totalFlashes} flashes
-            </Text>
-          </View>
+        <View>
+          <Text style={styles.cardTitle}>{title}</Text>
+          <Text style={styles.cardSubtitle}>
+            {totalSends} total sends • {totalFlashes} flashes
+          </Text>
         </View>
       </View>
 
@@ -158,21 +151,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     marginBottom: 16,
-  },
-  titleGroup: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  iconCircle: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: 'rgba(142, 124, 255, 0.15)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(142, 124, 255, 0.3)',
   },
   cardTitle: {
     color: '#FFFFFF',

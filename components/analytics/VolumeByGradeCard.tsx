@@ -1,6 +1,5 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { Layers } from 'lucide-react-native';
 import type { GradeVolumeEqualizerData } from '../../db/queries';
 
 export interface VolumeByGradeCardProps {
@@ -28,11 +27,7 @@ export function VolumeByGradeCard({
       style={styles.card}
     >
       <View style={styles.headerRow}>
-        <View style={styles.titleGroup}>
-          <Layers size={14} color="#8E7CFF" />
-          <Text style={styles.cardHeader}>Volume by Grade</Text>
-        </View>
-        <Text style={styles.subtext}>Distribution</Text>
+        <Text style={styles.cardHeader}>VOLUME BY GRADE</Text>
       </View>
 
       <View style={styles.valueRow}>
@@ -83,20 +78,12 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: 12,
   },
-  titleGroup: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
   cardHeader: {
     color: '#8A8A98',
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  subtext: {
-    color: '#8A8A98',
     fontSize: 11,
-    fontWeight: '500',
+    fontWeight: '700',
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
   },
   valueRow: {
     flexDirection: 'row',
@@ -110,9 +97,9 @@ const styles = StyleSheet.create({
   },
   metricValue: {
     color: '#FFFFFF',
-    fontSize: 26,
+    fontSize: 28,
     fontWeight: '800',
-    letterSpacing: -0.5,
+    letterSpacing: -0.6,
   },
   trendPill: {
     backgroundColor: '#6EE756',
