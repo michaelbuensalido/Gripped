@@ -1,46 +1,83 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { Trophy, ChevronDown, ChevronUp, Layers } from 'lucide-react-native';
-import type { GradePyramidAllTimeRow } from '../../db/queries';
-import { triggerHaptic } from '../../utils/haptics';
+import React from 'react';
+import { View, Text, StyleSheet, Dimensions } from 'react-native';
+import { Trophy } from 'lucide-react-native';
+import { BarChart, stackDataItem } from 'react-native-gifted-charts';
+import type { GradePyramidDataRow, GradePyramidAllTimeRow } from '../../db/queries';
 
 export interface GradePyramidWidgetProps {
-  pyramid: GradePyramidAllTimeRow[];
+  data?: GradePyramidDataRow[];
+  pyramid?: GradePyramidDataRow[] | GradePyramidAllTimeRow[];
   title?: string;
 }
 
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+
 export function GradePyramidWidget({
+  data,
   pyramid,
-  title = 'GRADE PYRAMID',
+  title = 'ALL-TIME GRADE PYRAMID',
 }: GradePyramidWidgetProps) {
-  const [selectedGrade, setSelectedGrade] = useState<string | null>(null);
+  const rawData = data ?? (pyramid as GradePyramidDataRow[]) ?? [];
+  const normalizedRows: GradePyramidDataRow[] = rawData.map((r: any) => ({
+    grade_raw: r.grade_raw ?? r.gradeRaw ?? 'V0',
+    normalized_difficulty: r.normalized_difficulty ?? r.normalizedDifficulty ?? 0,
+    flash_count: r.flash_count ?? r.flash ?? 0,
+    top_count: r.top_count ?? r.top ?? 0,
+    attempt_count: r.attempt_count ?? r.attempt ?? 0,
+    total_sends: r.total_sends ?? (r.flash_count ?? r.flash ?? 0) + (r.top_count ?? r.top ?? 0),
+    total_attempts:
+      r.total_attempts ??
+      r.totalBurns ??
+      (r.flash_count ?? r.flash ?? 0) +
+        (r.top_count ?? r.top ?? 0) +
+        (r.attempt_count ?? r.attempt ?? 0),
+  }));
 
-  // Filter down to rows that have at least 1 burn, or keep V0–V6 if all empty
-  const hasData = pyramid.some((r) => r.totalBurns > 0);
-
-  // Order highest difficulty at top down to V0 (pyramid structure)
-  const sortedPyramid = [...pyramid].reverse();
-
-  // Trim leading zeros from the top so we don't show empty high grades
-  let firstActiveIdx = 0;
-  for (let i = 0; i < sortedPyramid.length; i++) {
-    if (sortedPyramid[i].totalBurns > 0) {
-      firstActiveIdx = i;
-      break;
-    }
-  }
-
-  const activePyramid = hasData
-    ? sortedPyramid.slice(firstActiveIdx)
-    : sortedPyramid.slice(sortedPyramid.length - 6);
-
-  const maxBurns = Math.max(
-    1,
-    ...activePyramid.map((r) => r.totalBurns)
+  // Sort from V0 upwards to V13+ for horizontal chart display
+  const sortedData = [...normalizedRows].sort(
+    (a, b) => a.normalized_difficulty - b.normalized_difficulty
   );
 
-  const totalAllSends = pyramid.reduce((acc, r) => acc + r.totalSends, 0);
-  const totalAllFlashes = pyramid.reduce((acc, r) => acc + r.flash, 0);
+  // If no burns logged, show a placeholder ladder with 1-burn scale for visual elegance
+  const hasData = sortedData.some((r) => r.total_attempts > 0);
+
+  const totalSends = sortedData.reduce((acc, r) => acc + r.total_sends, 0);
+  const totalFlashes = sortedData.reduce((acc, r) => acc + r.flash_count, 0);
+
+  // Prepare stackData for react-native-gifted-charts
+  const stackData: stackDataItem[] = sortedData.map((row) => {
+    const flash = row.flash_count;
+    const top = row.top_count;
+    const attempt = row.attempt_count;
+
+    return {
+      label: row.grade_raw,
+      labelTextStyle: {
+        color: row.total_sends > 0 ? '#FFFFFF' : '#8A8A98',
+        fontSize: 11,
+        fontWeight: '700',
+      },
+      stacks: [
+        {
+          value: flash,
+          color: '#6EE756',
+          borderRadius: 6,
+        },
+        {
+          value: top,
+          color: '#8E7CFF',
+          borderRadius: 6,
+        },
+        {
+          value: attempt,
+          color: '#3E3E4D',
+          borderRadius: 6,
+        },
+      ],
+    };
+  });
+
+  const chartWidth = Math.max(220, SCREEN_WIDTH - 120);
 
   return (
     <View style={styles.card}>
@@ -48,145 +85,61 @@ export function GradePyramidWidget({
       <View style={styles.headerRow}>
         <View style={styles.titleGroup}>
           <View style={styles.iconCircle}>
-            <Trophy size={14} color="#8E7CFF" />
+            <Trophy size={15} color="#8E7CFF" />
           </View>
           <View>
             <Text style={styles.cardTitle}>{title}</Text>
             <Text style={styles.cardSubtitle}>
-              {totalAllSends} total sends • {totalAllFlashes} flashes
+              {totalSends} total sends • {totalFlashes} flashes
             </Text>
-          </View>
-        </View>
-
-        {/* Legend */}
-        <View style={styles.legendContainer}>
-          <View style={styles.legendItem}>
-            <View style={[styles.legendDot, { backgroundColor: '#6EE756' }]} />
-            <Text style={styles.legendLabel}>Flash</Text>
-          </View>
-          <View style={styles.legendItem}>
-            <View style={[styles.legendDot, { backgroundColor: '#8E7CFF' }]} />
-            <Text style={styles.legendLabel}>Top</Text>
-          </View>
-          <View style={styles.legendItem}>
-            <View style={[styles.legendDot, { backgroundColor: '#3E3E4D' }]} />
-            <Text style={styles.legendLabel}>Attempt</Text>
           </View>
         </View>
       </View>
 
-      {/* ── Pyramid Rows ──────────────────────────────────── */}
-      <View style={styles.rowsContainer}>
-        {activePyramid.map((row) => {
-          const isSelected = selectedGrade === row.gradeRaw;
-          const flash = row.flash;
-          const top = row.top;
-          const attempt = row.attempt;
-          const totalBurns = row.totalBurns;
-          const totalSends = row.totalSends;
+      {/* ── Horizontal Stacked Bar Chart ──────────────────── */}
+      <View style={styles.chartContainer}>
+        {hasData ? (
+          <BarChart
+            horizontal
+            stackData={stackData}
+            barWidth={18}
+            barBorderRadius={6}
+            spacing={14}
+            width={chartWidth}
+            hideRules
+            xAxisThickness={1}
+            xAxisColor="#2C2C35"
+            yAxisThickness={1}
+            yAxisColor="#2C2C35"
+            yAxisTextStyle={styles.axisText}
+            xAxisLabelTextStyle={styles.axisText}
+            isAnimated
+            animationDuration={400}
+          />
+        ) : (
+          <View style={styles.emptyContainer}>
+            <Text style={styles.emptyTitle}>No send data for this timeframe</Text>
+            <Text style={styles.emptySubtitle}>
+              Logged burns and tops will form your pyramid here.
+            </Text>
+          </View>
+        )}
+      </View>
 
-          const barWidthPercent =
-            totalBurns > 0 ? Math.max(8, (totalBurns / maxBurns) * 100) : 4;
-
-          const sendRate =
-            totalBurns > 0 ? Math.round((totalSends / totalBurns) * 100) : 0;
-
-          return (
-            <View key={row.gradeRaw} style={styles.rowWrapper}>
-              <TouchableOpacity
-                activeOpacity={0.7}
-                onPress={() => {
-                  triggerHaptic('selection');
-                  setSelectedGrade(isSelected ? null : row.gradeRaw);
-                }}
-                style={[
-                  styles.rowTouchable,
-                  isSelected && styles.rowTouchableSelected,
-                ]}
-              >
-                {/* Grade Badge */}
-                <View
-                  style={[
-                    styles.gradeBadge,
-                    totalSends > 0 && styles.gradeBadgeActive,
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.gradeBadgeText,
-                      totalSends > 0 && styles.gradeBadgeTextActive,
-                    ]}
-                  >
-                    {row.gradeRaw}
-                  </Text>
-                </View>
-
-                {/* Horizontal Stacked Bar */}
-                <View style={styles.barTrack}>
-                  <View
-                    style={[
-                      styles.barFill,
-                      { width: `${barWidthPercent}%` },
-                    ]}
-                  >
-                    {flash > 0 && (
-                      <View
-                        style={[
-                          styles.segment,
-                          { flex: flash, backgroundColor: '#6EE756' },
-                        ]}
-                      />
-                    )}
-                    {top > 0 && (
-                      <View
-                        style={[
-                          styles.segment,
-                          { flex: top, backgroundColor: '#8E7CFF' },
-                        ]}
-                      />
-                    )}
-                    {attempt > 0 && (
-                      <View
-                        style={[
-                          styles.segment,
-                          { flex: attempt, backgroundColor: '#3E3E4D' },
-                        ]}
-                      />
-                    )}
-                  </View>
-                </View>
-
-                {/* Send Count Badge */}
-                <View style={styles.countContainer}>
-                  <Text
-                    style={[
-                      styles.countPrimary,
-                      totalSends > 0 && styles.countPrimaryActive,
-                    ]}
-                  >
-                    {totalSends}
-                  </Text>
-                  <Text style={styles.countSecondary}>/{totalBurns}</Text>
-                </View>
-              </TouchableOpacity>
-
-              {/* Expanded Detail Pill */}
-              {isSelected && (
-                <View style={styles.expandedPill}>
-                  <View style={styles.expandedStats}>
-                    <Text style={styles.statChipGreen}>{flash}⚡ Flash</Text>
-                    <Text style={styles.statChipPurple}>{top}✓ Top</Text>
-                    <Text style={styles.statChipGray}>{attempt}✗ Fail</Text>
-                    <View style={styles.statDivider} />
-                    <Text style={styles.statRateText}>
-                      {sendRate}% Send Rate
-                    </Text>
-                  </View>
-                </View>
-              )}
-            </View>
-          );
-        })}
+      {/* ── Bottom Legend with Color Indicators ───────────── */}
+      <View style={styles.legendContainer}>
+        <View style={styles.legendItem}>
+          <View style={[styles.legendDot, { backgroundColor: '#6EE756' }]} />
+          <Text style={styles.legendLabel}>Flash</Text>
+        </View>
+        <View style={styles.legendItem}>
+          <View style={[styles.legendDot, { backgroundColor: '#8E7CFF' }]} />
+          <Text style={styles.legendLabel}>Top</Text>
+        </View>
+        <View style={styles.legendItem}>
+          <View style={[styles.legendDot, { backgroundColor: '#3E3E4D' }]} />
+          <Text style={styles.legendLabel}>Attempt</Text>
+        </View>
       </View>
     </View>
   );
@@ -195,14 +148,14 @@ export function GradePyramidWidget({
 const styles = StyleSheet.create({
   card: {
     backgroundColor: '#1E1E24',
-    borderRadius: 24,
+    borderRadius: 20,
     padding: 18,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
+    borderColor: '#2C2C35',
   },
   headerRow: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     justifyContent: 'space-between',
     marginBottom: 16,
   },
@@ -233,142 +186,55 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     marginTop: 2,
   },
+  chartContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 8,
+    overflow: 'hidden',
+  },
+  axisText: {
+    color: '#8A8A98',
+    fontSize: 10,
+    fontWeight: '600',
+  },
+  emptyContainer: {
+    paddingVertical: 36,
+    alignItems: 'center',
+  },
+  emptyTitle: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '700',
+    marginBottom: 4,
+  },
+  emptySubtitle: {
+    color: '#8A8A98',
+    fontSize: 11,
+    textAlign: 'center',
+  },
   legendContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    backgroundColor: '#16161A',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
+    justifyContent: 'center',
+    gap: 20,
+    marginTop: 14,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255, 255, 255, 0.05)',
   },
   legendItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-  },
-  legendDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-  },
-  legendLabel: {
-    color: '#9A9AA6',
-    fontSize: 10,
-    fontWeight: '600',
-  },
-  rowsContainer: {
     gap: 6,
   },
-  rowWrapper: {
-    gap: 4,
+  legendDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
   },
-  rowTouchable: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    paddingVertical: 5,
-    paddingHorizontal: 6,
-    borderRadius: 10,
-  },
-  rowTouchableSelected: {
-    backgroundColor: 'rgba(142, 124, 255, 0.08)',
-  },
-  gradeBadge: {
-    width: 34,
-    height: 24,
-    borderRadius: 6,
-    backgroundColor: '#262630',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.06)',
-  },
-  gradeBadgeActive: {
-    backgroundColor: 'rgba(142, 124, 255, 0.18)',
-    borderColor: 'rgba(142, 124, 255, 0.4)',
-  },
-  gradeBadgeText: {
-    color: '#8A8A98',
-    fontSize: 11,
-    fontWeight: '800',
-  },
-  gradeBadgeTextActive: {
-    color: '#FFFFFF',
-  },
-  barTrack: {
-    flex: 1,
-    height: 16,
-    backgroundColor: 'rgba(255, 255, 255, 0.04)',
-    borderRadius: 5,
-    overflow: 'hidden',
-  },
-  barFill: {
-    height: '100%',
-    flexDirection: 'row',
-    borderRadius: 5,
-    overflow: 'hidden',
-  },
-  segment: {
-    height: '100%',
-  },
-  countContainer: {
-    width: 48,
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    justifyContent: 'flex-end',
-  },
-  countPrimary: {
-    color: '#8A8A98',
-    fontSize: 13,
-    fontWeight: '800',
-  },
-  countPrimaryActive: {
-    color: '#FFFFFF',
-  },
-  countSecondary: {
-    color: '#5C5C68',
-    fontSize: 10,
-    fontWeight: '600',
-    marginLeft: 1,
-  },
-  expandedPill: {
-    backgroundColor: '#16161A',
-    borderRadius: 10,
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(142, 124, 255, 0.2)',
-    marginLeft: 44,
-  },
-  expandedStats: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  statChipGreen: {
-    color: '#6EE756',
-    fontSize: 11,
-    fontWeight: '700',
-  },
-  statChipPurple: {
-    color: '#8E7CFF',
-    fontSize: 11,
-    fontWeight: '700',
-  },
-  statChipGray: {
+  legendLabel: {
     color: '#8A8A98',
     fontSize: 11,
     fontWeight: '600',
-  },
-  statDivider: {
-    width: 1,
-    height: 12,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-  },
-  statRateText: {
-    color: '#FFFFFF',
-    fontSize: 11,
-    fontWeight: '700',
   },
 });

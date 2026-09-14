@@ -9,25 +9,27 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from 'expo-router';
+import Svg, { Circle, Path, Rect } from 'react-native-svg';
+import { BarChart } from 'react-native-gifted-charts';
 import {
+  getGradePyramidData,
+  getWeeklyVolumeTrends,
+  getWallAngleBreakdown,
   getAnalyticsOverview,
-  getGradePyramidAllTime,
-  getMonthlyVolumeStats,
-  getDisciplineSplit,
   getRecentBoulderLogs,
+  type GradePyramidDataRow,
+  type WeeklyVolumeTrendsData,
+  type WallAngleBreakdownItem,
   type AnalyticsOverview,
-  type GradePyramidAllTimeRow,
-  type WeeklyVolumeStat,
-  type DisciplineSplitItem,
   type RecentBoulderLog,
 } from '../db/queries';
 import { GradePyramidWidget } from '../components/analytics/GradePyramidWidget';
-import { MonthlyVolumeWidget } from '../components/analytics/MonthlyVolumeWidget';
-import { DisciplineSplitWidget } from '../components/analytics/DisciplineSplitWidget';
+import { VolumeTrendWidget } from '../components/analytics/VolumeTrendWidget';
+import { TerrainSplitWidget } from '../components/analytics/TerrainSplitWidget';
 import { ClimbingHoldGraphic, type HoldType } from '../components/ui/ClimbingHoldGraphic';
 import { triggerHaptic } from '../utils/haptics';
 
-type TimeframeOption = '30D' | '3M' | 'ALL';
+type TimeframeOption = '30d' | '90d' | 'all';
 
 interface DisplayRoute {
   id: string;
@@ -50,29 +52,29 @@ const HOLD_TYPE_LIST: HoldType[] = [
 
 export default function AnalyticsScreen() {
   const insets = useSafeAreaInsets();
-  const [timeframe, setTimeframe] = useState<TimeframeOption>('ALL');
+  const [timeframe, setTimeframe] = useState<TimeframeOption>('all');
 
+  const [pyramidData, setPyramidData] = useState<GradePyramidDataRow[]>([]);
+  const [volumeTrends, setVolumeTrends] = useState<WeeklyVolumeTrendsData | null>(null);
+  const [wallAngleData, setWallAngleData] = useState<WallAngleBreakdownItem[]>([]);
   const [overview, setOverview] = useState<AnalyticsOverview | null>(null);
-  const [pyramid, setPyramid] = useState<GradePyramidAllTimeRow[]>([]);
-  const [monthlyVolume, setMonthlyVolume] = useState<WeeklyVolumeStat[]>([]);
-  const [disciplineSplit, setDisciplineSplit] = useState<DisciplineSplitItem[]>([]);
   const [recentLogs, setRecentLogs] = useState<RecentBoulderLog[]>([]);
 
   const loadAnalytics = useCallback((tf: TimeframeOption) => {
     let sinceTimestamp: number | undefined;
     const now = Date.now();
 
-    if (tf === '30D') {
+    if (tf === '30d') {
       sinceTimestamp = now - 30 * 24 * 60 * 60 * 1000;
-    } else if (tf === '3M') {
+    } else if (tf === '90d') {
       sinceTimestamp = now - 90 * 24 * 60 * 60 * 1000;
     }
 
     try {
+      setPyramidData(getGradePyramidData(tf));
+      setVolumeTrends(getWeeklyVolumeTrends(tf));
+      setWallAngleData(getWallAngleBreakdown(tf));
       setOverview(getAnalyticsOverview(sinceTimestamp));
-      setPyramid(getGradePyramidAllTime(sinceTimestamp));
-      setMonthlyVolume(getMonthlyVolumeStats(8));
-      setDisciplineSplit(getDisciplineSplit(sinceTimestamp));
       setRecentLogs(getRecentBoulderLogs(6));
     } catch (err) {
       console.error('Failed to load analytics data:', err);
@@ -109,7 +111,7 @@ export default function AnalyticsScreen() {
 
   return (
     <View style={styles.container}>
-      {/* ── Canvas Background with 18% Speckle Mat Overlay ────── */}
+      {/* ── Canvas Background: #131316 with 18% speckle texture ─ */}
       <ImageBackground
         source={require('../assets/speckled_mat_bg.jpg')}
         style={StyleSheet.absoluteFill}
@@ -127,26 +129,26 @@ export default function AnalyticsScreen() {
       >
         {/* ── Screen Header ───────────────────────────────────── */}
         <View style={styles.screenHeader}>
-          <Text style={styles.screenTitle}>Your Progress</Text>
+          <Text style={styles.screenTitle}>Analytics & Trends</Text>
           <Text style={styles.screenSubtitle}>
-            Historical performance & climbing analytics
+            Performance insights from your logged burns
           </Text>
         </View>
 
-        {/* ── Top Timeframe Segmented Control ─────────────────── */}
-        <View style={styles.timeframeSurface}>
+        {/* ── Timeframe Filter: [ 30 Days ] [ 3 Months ] [ All Time ] */}
+        <View style={styles.timeframeContainer}>
           <TouchableOpacity
             activeOpacity={0.8}
-            onPress={() => handleTimeframeChange('30D')}
+            onPress={() => handleTimeframeChange('30d')}
             style={[
-              styles.timeframeTab,
-              timeframe === '30D' && styles.timeframeTabActive,
+              styles.timeframePill,
+              timeframe === '30d' && styles.timeframePillActive,
             ]}
           >
             <Text
               style={[
-                styles.timeframeText,
-                timeframe === '30D' && styles.timeframeTextActive,
+                styles.timeframePillText,
+                timeframe === '30d' && styles.timeframePillTextActive,
               ]}
             >
               30 Days
@@ -155,16 +157,16 @@ export default function AnalyticsScreen() {
 
           <TouchableOpacity
             activeOpacity={0.8}
-            onPress={() => handleTimeframeChange('3M')}
+            onPress={() => handleTimeframeChange('90d')}
             style={[
-              styles.timeframeTab,
-              timeframe === '3M' && styles.timeframeTabActive,
+              styles.timeframePill,
+              timeframe === '90d' && styles.timeframePillActive,
             ]}
           >
             <Text
               style={[
-                styles.timeframeText,
-                timeframe === '3M' && styles.timeframeTextActive,
+                styles.timeframePillText,
+                timeframe === '90d' && styles.timeframePillTextActive,
               ]}
             >
               3 Months
@@ -173,16 +175,16 @@ export default function AnalyticsScreen() {
 
           <TouchableOpacity
             activeOpacity={0.8}
-            onPress={() => handleTimeframeChange('ALL')}
+            onPress={() => handleTimeframeChange('all')}
             style={[
-              styles.timeframeTab,
-              timeframe === 'ALL' && styles.timeframeTabActive,
+              styles.timeframePill,
+              timeframe === 'all' && styles.timeframePillActive,
             ]}
           >
             <Text
               style={[
-                styles.timeframeText,
-                timeframe === 'ALL' && styles.timeframeTextActive,
+                styles.timeframePillText,
+                timeframe === 'all' && styles.timeframePillTextActive,
               ]}
             >
               All Time
@@ -190,9 +192,8 @@ export default function AnalyticsScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* ── KPI Grid ────────────────────────────────────────── */}
+        {/* ── Quick KPI Row ────────────────────────────────────── */}
         <View style={styles.kpiRow}>
-          {/* Card 1: Volume */}
           <View style={styles.kpiCard}>
             <Text style={styles.kpiLabel}>TOTAL BURNS</Text>
             <Text style={styles.kpiSublabel}>Volume</Text>
@@ -201,7 +202,6 @@ export default function AnalyticsScreen() {
             </Text>
           </View>
 
-          {/* Card 2: Flash Rate */}
           <View style={styles.kpiCard}>
             <Text style={styles.kpiLabel}>FLASH RATE</Text>
             <Text style={[styles.kpiSublabel, { color: '#6EE756' }]}>
@@ -212,7 +212,6 @@ export default function AnalyticsScreen() {
             </Text>
           </View>
 
-          {/* Card 3: Hardest Send */}
           <View style={styles.kpiCard}>
             <Text style={styles.kpiLabel}>PEAK GRADE</Text>
             <Text style={[styles.kpiSublabel, { color: '#8E7CFF' }]}>
@@ -224,25 +223,27 @@ export default function AnalyticsScreen() {
           </View>
         </View>
 
-        {/* ── All-Time Grade Pyramid Widget ────────────────────── */}
-        <View style={styles.sectionMargin}>
+        {/* ── Widget 1: All-Time Grade Pyramid ────────────────── */}
+        <View style={styles.widgetMargin}>
           <GradePyramidWidget
-            pyramid={pyramid}
-            title={timeframe === 'ALL' ? 'ALL-TIME GRADE PYRAMID' : 'GRADE PYRAMID'}
+            data={pyramidData}
+            title={timeframe === 'all' ? 'ALL-TIME GRADE PYRAMID' : 'GRADE PYRAMID'}
           />
         </View>
 
-        {/* ── Monthly Volume 8-Week Sparkline Bar Chart ────────── */}
-        <View style={styles.sectionMargin}>
-          <MonthlyVolumeWidget stats={monthlyVolume} />
+        {/* ── Widget 2: Weekly Volume Trends ─────────────────── */}
+        {volumeTrends && (
+          <View style={styles.widgetMargin}>
+            <VolumeTrendWidget data={volumeTrends} />
+          </View>
+        )}
+
+        {/* ── Widget 3: Wall Style & Terrain Split ───────────── */}
+        <View style={styles.widgetMargin}>
+          <TerrainSplitWidget data={wallAngleData} />
         </View>
 
-        {/* ── Wall Angle & Style Split ─────────────────────────── */}
-        <View style={styles.sectionMargin}>
-          <DisciplineSplitWidget disciplines={disciplineSplit} />
-        </View>
-
-        {/* ── Recent Routes Summary ────────────────────────────── */}
+        {/* ── Recent Sends Summary ────────────────────────────── */}
         <View style={styles.recentSection}>
           <Text style={styles.recentSectionTitle}>RECENT SENDS</Text>
           <View style={styles.recentListCard}>
@@ -315,28 +316,28 @@ const styles = StyleSheet.create({
     letterSpacing: -0.5,
   },
   screenSubtitle: {
-    color: '#8A8A98',
+    color: '#9A9AA6',
     fontSize: 13,
     fontWeight: '500',
     marginTop: 3,
   },
-  timeframeSurface: {
+  timeframeContainer: {
     flexDirection: 'row',
     backgroundColor: '#1E1E24',
-    borderRadius: 16,
+    borderRadius: 20,
     padding: 4,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
+    borderColor: '#2C2C35',
   },
-  timeframeTab: {
+  timeframePill: {
     flex: 1,
     paddingVertical: 10,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 12,
+    borderRadius: 16,
   },
-  timeframeTabActive: {
+  timeframePillActive: {
     backgroundColor: '#8E7CFF',
     shadowColor: '#8E7CFF',
     shadowOffset: { width: 0, height: 2 },
@@ -344,12 +345,12 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
     elevation: 3,
   },
-  timeframeText: {
+  timeframePillText: {
     color: '#8A8A98',
     fontSize: 13,
     fontWeight: '600',
   },
-  timeframeTextActive: {
+  timeframePillTextActive: {
     color: '#FFFFFF',
     fontWeight: '800',
   },
@@ -361,15 +362,15 @@ const styles = StyleSheet.create({
   kpiCard: {
     flex: 1,
     backgroundColor: '#1E1E24',
-    borderRadius: 18,
+    borderRadius: 20,
     padding: 12,
     minHeight: 90,
     justifyContent: 'space-between',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.07)',
+    borderColor: '#2C2C35',
   },
   kpiLabel: {
-    color: '#8E8E9A',
+    color: '#8A8A98',
     fontSize: 9,
     fontWeight: '700',
     letterSpacing: 0.8,
@@ -386,7 +387,7 @@ const styles = StyleSheet.create({
     fontSize: 22,
     fontWeight: '800',
   },
-  sectionMargin: {
+  widgetMargin: {
     marginBottom: 16,
   },
   recentSection: {
@@ -403,11 +404,11 @@ const styles = StyleSheet.create({
   },
   recentListCard: {
     backgroundColor: '#1E1E24',
-    borderRadius: 22,
+    borderRadius: 20,
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
+    borderColor: '#2C2C35',
   },
   emptyRecent: {
     alignItems: 'center',
@@ -436,7 +437,7 @@ const styles = StyleSheet.create({
     height: 44,
     borderRadius: 12,
     backgroundColor: '#141418',
-    borderColor: 'rgba(255, 255, 255, 0.08)',
+    borderColor: '#2C2C35',
     borderWidth: 1,
     overflow: 'hidden',
     alignItems: 'center',

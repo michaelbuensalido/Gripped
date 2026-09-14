@@ -423,6 +423,298 @@ export function getGradePyramid(sessionId: string | null, sinceTimestamp?: numbe
   }));
 }
 
+export interface GradePyramidDataRow {
+  grade_raw: string;
+  normalized_difficulty: number;
+  flash_count: number;
+  top_count: number;
+  attempt_count: number;
+  total_sends: number;
+  total_attempts: number;
+}
+
+/** Returns counts grouped by grade_raw (V0 to V13+) split into flash_count, top_count, attempt_count */
+export function getGradePyramidData(
+  timeframe: '30d' | '90d' | 'all' = 'all'
+): GradePyramidDataRow[] {
+  const db = getDatabase();
+  const conditions: string[] = [];
+  const params: number[] = [];
+  const now = Date.now();
+
+  if (timeframe === '30d') {
+    conditions.push('timestamp >= ?');
+    params.push(now - 30 * 24 * 60 * 60 * 1000);
+  } else if (timeframe === '90d') {
+    conditions.push('timestamp >= ?');
+    params.push(now - 90 * 24 * 60 * 60 * 1000);
+  }
+
+  const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+
+  const rows = db.getAllSync<{
+    grade_raw: string;
+    normalized_difficulty: number;
+    flash_count: number;
+    top_count: number;
+    attempt_count: number;
+    total_attempts: number;
+  }>(
+    `SELECT
+       grade_raw,
+       normalized_difficulty,
+       SUM(CASE WHEN outcome = 'flash' THEN 1 ELSE 0 END) AS flash_count,
+       SUM(CASE WHEN outcome IN ('send', 'top') THEN 1 ELSE 0 END) AS top_count,
+       SUM(CASE WHEN outcome = 'attempt' THEN 1 ELSE 0 END) AS attempt_count,
+       COUNT(*) AS total_attempts
+     FROM boulder_logs
+     ${where}
+     GROUP BY grade_raw, normalized_difficulty
+     ORDER BY normalized_difficulty ASC`,
+    params
+  );
+
+  const rowMap = new Map<
+    number,
+    {
+      grade_raw: string;
+      flash_count: number;
+      top_count: number;
+      attempt_count: number;
+      total_attempts: number;
+    }
+  >();
+
+  for (const r of rows) {
+    rowMap.set(r.normalized_difficulty, {
+      grade_raw: r.grade_raw,
+      flash_count: r.flash_count,
+      top_count: r.top_count,
+      attempt_count: r.attempt_count,
+      total_attempts: r.total_attempts,
+    });
+  }
+
+  let maxDiff = 8;
+  for (const r of rows) {
+    if (r.normalized_difficulty > maxDiff) {
+      maxDiff = Math.min(13, r.normalized_difficulty);
+    }
+  }
+
+  const result: GradePyramidDataRow[] = [];
+  for (let diff = 0; diff <= maxDiff; diff++) {
+    const existing = rowMap.get(diff);
+    const flash_count = existing?.flash_count ?? 0;
+    const top_count = existing?.top_count ?? 0;
+    const attempt_count = existing?.attempt_count ?? 0;
+    const grade_raw = existing?.grade_raw ?? (diff >= 13 ? 'V13+' : `V${diff}`);
+
+    result.push({
+      grade_raw,
+      normalized_difficulty: diff,
+      flash_count,
+      top_count,
+      attempt_count,
+      total_sends: flash_count + top_count,
+      total_attempts: existing?.total_attempts ?? (flash_count + top_count + attempt_count),
+    });
+  }
+
+  return result;
+}
+
+export interface WeeklyVolumeTrendsData {
+  weeks: {
+    week_label: string;
+    date_label: string;
+    week_index: number;
+    send_count: number;
+    attempt_count: number;
+    avg_grade: string;
+  }[];
+  trend_percentage: number;
+  trend_direction: 'up' | 'down' | 'flat';
+  trend_label: string;
+}
+
+/** Returns send counts and total attempts aggregated per week for the last 8 weeks */
+export function getWeeklyVolumeTrends(
+  timeframe: '30d' | '90d' | 'all' = 'all'
+): WeeklyVolumeTrendsData {
+  const db = getDatabase();
+  const ONE_WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+  const now = Date.now();
+  const weeksCount = 8;
+  const totalWindowMs = weeksCount * ONE_WEEK_MS;
+  const windowStart = now - totalWindowMs;
+
+  const rows = db.getAllSync<{
+    timestamp: number;
+    outcome: string;
+    attempts: number;
+    normalized_difficulty: number;
+  }>(
+    `SELECT timestamp, outcome, attempts, normalized_difficulty
+     FROM boulder_logs
+     WHERE timestamp >= ?
+     ORDER BY timestamp ASC`,
+    [windowStart]
+  );
+
+  const buckets = Array.from({ length: weeksCount }, () => ({
+    sends: 0,
+    attempts: 0,
+    grades: [] as number[],
+  }));
+
+  for (const log of rows) {
+    const elapsed = log.timestamp - windowStart;
+    const weekIdx = Math.min(
+      weeksCount - 1,
+      Math.max(0, Math.floor(elapsed / ONE_WEEK_MS))
+    );
+    const isSend = log.outcome === 'flash' || log.outcome === 'send' || log.outcome === 'top';
+    if (isSend) {
+      buckets[weekIdx].sends += 1;
+      buckets[weekIdx].grades.push(log.normalized_difficulty);
+    }
+    buckets[weekIdx].attempts += Math.max(1, log.attempts);
+  }
+
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+  const weeks = buckets.map((b, i) => {
+    const weekStart = windowStart + i * ONE_WEEK_MS;
+    const d = new Date(weekStart);
+    const date_label = `${months[d.getMonth()]} ${d.getDate()}`;
+    const avgScore =
+      b.grades.length > 0 ? b.grades.reduce((acc, c) => acc + c, 0) / b.grades.length : 0;
+
+    return {
+      week_label: `W${i + 1}`,
+      date_label,
+      week_index: i,
+      send_count: b.sends,
+      attempt_count: b.attempts,
+      avg_grade: b.grades.length > 0 ? `V${Math.round(avgScore)}` : '—',
+    };
+  });
+
+  const currentWeekBurns = weeks[7]?.attempt_count ?? 0;
+  const prevWeekBurns = weeks[6]?.attempt_count ?? 0;
+
+  let trend_percentage = 0;
+  let trend_direction: 'up' | 'down' | 'flat' = 'flat';
+
+  if (prevWeekBurns > 0) {
+    trend_percentage = Math.round(((currentWeekBurns - prevWeekBurns) / prevWeekBurns) * 100);
+  } else if (currentWeekBurns > 0) {
+    trend_percentage = 100;
+  }
+
+  if (trend_percentage > 0) {
+    trend_direction = 'up';
+  } else if (trend_percentage < 0) {
+    trend_direction = 'down';
+  }
+
+  const sign = trend_percentage > 0 ? '+' : '';
+  const trend_label = `${sign}${trend_percentage}% vs last week`;
+
+  return {
+    weeks,
+    trend_percentage,
+    trend_direction,
+    trend_label,
+  };
+}
+
+export interface WallAngleBreakdownItem {
+  style: 'Overhang' | 'Slab' | 'Vertical' | 'Roof';
+  percentage: number;
+  count: number;
+  color: string;
+}
+
+/** Calculates percentage distribution of wall styles ('Overhang', 'Slab', 'Vertical', 'Roof') */
+export function getWallAngleBreakdown(
+  timeframe: '30d' | '90d' | 'all' = 'all'
+): WallAngleBreakdownItem[] {
+  const db = getDatabase();
+  const conditions: string[] = [];
+  const params: number[] = [];
+  const now = Date.now();
+
+  if (timeframe === '30d') {
+    conditions.push('bl.timestamp >= ?');
+    params.push(now - 30 * 24 * 60 * 60 * 1000);
+  } else if (timeframe === '90d') {
+    conditions.push('bl.timestamp >= ?');
+    params.push(now - 90 * 24 * 60 * 60 * 1000);
+  }
+
+  const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+
+  const rows = db.getAllSync<{
+    log_notes: string | null;
+    zone_name: string | null;
+    group_notes: string | null;
+    outcome: string;
+  }>(
+    `SELECT
+       bl.notes AS log_notes,
+       bg.zone_name,
+       bg.notes AS group_notes,
+       bl.outcome
+     FROM boulder_logs bl
+     JOIN boulder_groups bg ON bl.group_id = bg.id
+     ${where}`,
+    params
+  );
+
+  const counts: Record<'Overhang' | 'Slab' | 'Vertical' | 'Roof', number> = {
+    Overhang: 0,
+    Slab: 0,
+    Vertical: 0,
+    Roof: 0,
+  };
+
+  for (const r of rows) {
+    const text = `${r.log_notes ?? ''} ${r.group_notes ?? ''} ${r.zone_name ?? ''}`.toLowerCase();
+
+    if (text.includes('roof') || text.includes('cave')) {
+      counts.Roof += 1;
+    } else if (text.includes('overhang') || text.includes('steep')) {
+      counts.Overhang += 1;
+    } else if (text.includes('slab')) {
+      counts.Slab += 1;
+    } else {
+      counts.Vertical += 1;
+    }
+  }
+
+  const total = counts.Overhang + counts.Slab + counts.Vertical + counts.Roof;
+
+  if (total === 0) {
+    return [
+      { style: 'Overhang', percentage: 42, count: 0, color: '#8E7CFF' },
+      { style: 'Slab', percentage: 26, count: 0, color: '#6EE756' },
+      { style: 'Vertical', percentage: 20, count: 0, color: '#38BDF8' },
+      { style: 'Roof', percentage: 12, count: 0, color: '#F59E0B' },
+    ];
+  }
+
+  const calcPct = (cnt: number) => Math.round((cnt / total) * 100);
+
+  return [
+    { style: 'Overhang', percentage: calcPct(counts.Overhang), count: counts.Overhang, color: '#8E7CFF' },
+    { style: 'Slab', percentage: calcPct(counts.Slab), count: counts.Slab, color: '#6EE756' },
+    { style: 'Vertical', percentage: calcPct(counts.Vertical), count: counts.Vertical, color: '#38BDF8' },
+    { style: 'Roof', percentage: calcPct(counts.Roof), count: counts.Roof, color: '#F59E0B' },
+  ];
+}
+
 export interface GradePyramidAllTimeRow {
   gradeRaw: string;
   normalizedDifficulty: number;
