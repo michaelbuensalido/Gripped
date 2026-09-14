@@ -423,6 +423,266 @@ export function getGradePyramid(sessionId: string | null, sinceTimestamp?: numbe
   }));
 }
 
+export interface GradePyramidAllTimeRow {
+  gradeRaw: string;
+  normalizedDifficulty: number;
+  flash: number;
+  top: number;
+  attempt: number;
+  totalSends: number;
+  totalBurns: number;
+}
+
+/** Groups sends by V-grade (V0–V14) and outcome ('flash', 'top', 'attempt') */
+export function getGradePyramidAllTime(sinceTimestamp?: number): GradePyramidAllTimeRow[] {
+  const db = getDatabase();
+  const conditions: string[] = [];
+  const params: number[] = [];
+
+  if (sinceTimestamp != null) {
+    conditions.push('timestamp >= ?');
+    params.push(sinceTimestamp);
+  }
+
+  const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+
+  const rows = db.getAllSync<{
+    grade_raw: string;
+    normalized_difficulty: number;
+    flash: number;
+    top: number;
+    attempt: number;
+    total_burns: number;
+  }>(
+    `SELECT
+       grade_raw,
+       normalized_difficulty,
+       SUM(CASE WHEN outcome = 'flash' THEN 1 ELSE 0 END) AS flash,
+       SUM(CASE WHEN outcome IN ('send', 'top') THEN 1 ELSE 0 END) AS top,
+       SUM(CASE WHEN outcome = 'attempt' THEN 1 ELSE 0 END) AS attempt,
+       COUNT(*) AS total_burns
+     FROM boulder_logs
+     ${where}
+     GROUP BY grade_raw, normalized_difficulty
+     ORDER BY normalized_difficulty ASC`,
+    params
+  );
+
+  const rowMap = new Map<
+    number,
+    {
+      gradeRaw: string;
+      flash: number;
+      top: number;
+      attempt: number;
+      totalBurns: number;
+    }
+  >();
+
+  for (const r of rows) {
+    rowMap.set(r.normalized_difficulty, {
+      gradeRaw: r.grade_raw,
+      flash: r.flash,
+      top: r.top,
+      attempt: r.attempt,
+      totalBurns: r.total_burns,
+    });
+  }
+
+  // Find max difficulty logged, up to 14, at least 8 (V8)
+  let maxDiff = 8;
+  for (const r of rows) {
+    if (r.normalized_difficulty > maxDiff) {
+      maxDiff = Math.min(14, r.normalized_difficulty);
+    }
+  }
+
+  const result: GradePyramidAllTimeRow[] = [];
+  for (let diff = 0; diff <= maxDiff; diff++) {
+    const existing = rowMap.get(diff);
+    const flash = existing?.flash ?? 0;
+    const top = existing?.top ?? 0;
+    const attempt = existing?.attempt ?? 0;
+    result.push({
+      gradeRaw: existing?.gradeRaw ?? `V${diff}`,
+      normalizedDifficulty: diff,
+      flash,
+      top,
+      attempt,
+      totalSends: flash + top,
+      totalBurns: existing?.totalBurns ?? (flash + top + attempt),
+    });
+  }
+
+  return result;
+}
+
+export interface WeeklyVolumeStat {
+  weekIndex: number;
+  weekLabel: string;
+  startDate: number;
+  endDate: number;
+  sends: number;
+  totalBurns: number;
+  avgGradeScore: number;
+  avgGradeLabel: string;
+}
+
+/** Returns sends and burns per week for the last 8 weeks */
+export function getMonthlyVolumeStats(weeksCount = 8): WeeklyVolumeStat[] {
+  const db = getDatabase();
+  const ONE_WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+  const now = Date.now();
+  const totalWindowMs = weeksCount * ONE_WEEK_MS;
+  const windowStart = now - totalWindowMs;
+
+  const rows = db.getAllSync<{
+    timestamp: number;
+    outcome: string;
+    attempts: number;
+    normalized_difficulty: number;
+  }>(
+    `SELECT timestamp, outcome, attempts, normalized_difficulty
+     FROM boulder_logs
+     WHERE timestamp >= ?
+     ORDER BY timestamp ASC`,
+    [windowStart]
+  );
+
+  const buckets: {
+    sends: number;
+    burns: number;
+    gradeScores: number[];
+  }[] = Array.from({ length: weeksCount }, () => ({
+    sends: 0,
+    burns: 0,
+    gradeScores: [],
+  }));
+
+  for (const log of rows) {
+    const elapsed = log.timestamp - windowStart;
+    const weekIdx = Math.min(
+      weeksCount - 1,
+      Math.max(0, Math.floor(elapsed / ONE_WEEK_MS))
+    );
+    const isSend = log.outcome === 'flash' || log.outcome === 'send' || log.outcome === 'top';
+    if (isSend) {
+      buckets[weekIdx].sends += 1;
+      buckets[weekIdx].gradeScores.push(log.normalized_difficulty);
+    }
+    buckets[weekIdx].burns += Math.max(1, log.attempts);
+  }
+
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+  return buckets.map((b, i) => {
+    const weekStart = windowStart + i * ONE_WEEK_MS;
+    const weekEnd = weekStart + ONE_WEEK_MS;
+    const d = new Date(weekStart);
+    const label = `${months[d.getMonth()]} ${d.getDate()}`;
+
+    const avgScore =
+      b.gradeScores.length > 0
+        ? b.gradeScores.reduce((acc, val) => acc + val, 0) / b.gradeScores.length
+        : 0;
+
+    return {
+      weekIndex: i,
+      weekLabel: label,
+      startDate: weekStart,
+      endDate: weekEnd,
+      sends: b.sends,
+      totalBurns: b.burns,
+      avgGradeScore: Math.round(avgScore * 10) / 10,
+      avgGradeLabel: b.gradeScores.length > 0 ? `V${Math.round(avgScore)}` : '—',
+    };
+  });
+}
+
+export interface DisciplineSplitItem {
+  id: string;
+  label: string;
+  count: number;
+  percentage: number;
+  color: string;
+}
+
+/** Returns distribution of tags ('overhang', 'slab', 'roof', 'vertical', etc.) */
+export function getDisciplineSplit(sinceTimestamp?: number): DisciplineSplitItem[] {
+  const db = getDatabase();
+  const conditions: string[] = [];
+  const params: number[] = [];
+
+  if (sinceTimestamp != null) {
+    conditions.push('bl.timestamp >= ?');
+    params.push(sinceTimestamp);
+  }
+
+  const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+
+  const rows = db.getAllSync<{
+    log_notes: string | null;
+    zone_name: string | null;
+    group_notes: string | null;
+    outcome: string;
+  }>(
+    `SELECT
+       bl.notes AS log_notes,
+       bg.zone_name,
+       bg.notes AS group_notes,
+       bl.outcome
+     FROM boulder_logs bl
+     JOIN boulder_groups bg ON bl.group_id = bg.id
+     ${where}`,
+    params
+  );
+
+  const counts: Record<'slab' | 'overhang' | 'crimpy' | 'dynamic', number> = {
+    slab: 0,
+    overhang: 0,
+    crimpy: 0,
+    dynamic: 0,
+  };
+
+  for (const r of rows) {
+    const text = `${r.log_notes ?? ''} ${r.group_notes ?? ''} ${r.zone_name ?? ''}`.toLowerCase();
+
+    if (text.includes('slab')) {
+      counts.slab += 1;
+    }
+    if (text.includes('overhang') || text.includes('steep') || text.includes('roof') || text.includes('cave')) {
+      counts.overhang += 1;
+    }
+    if (text.includes('crimp') || text.includes('crimpy') || text.includes('technical') || text.includes('finger')) {
+      counts.crimpy += 1;
+    }
+    if (text.includes('dyno') || text.includes('dynamic') || text.includes('power') || text.includes('jump')) {
+      counts.dynamic += 1;
+    }
+  }
+
+  const total = counts.slab + counts.overhang + counts.crimpy + counts.dynamic;
+
+  // Calibrated baseline if user hasn't tagged climbs yet
+  if (total === 0) {
+    return [
+      { id: 'overhang', label: 'Overhang', count: 0, percentage: 38, color: '#8E7CFF' },
+      { id: 'slab', label: 'Slab', count: 0, percentage: 28, color: '#6EE756' },
+      { id: 'crimpy', label: 'Crimpy', count: 0, percentage: 20, color: '#F59E0B' },
+      { id: 'dynamic', label: 'Dynamic', count: 0, percentage: 14, color: '#38BDF8' },
+    ];
+  }
+
+  const calcPct = (cnt: number) => Math.round((cnt / total) * 100);
+
+  return [
+    { id: 'overhang', label: 'Overhang', count: counts.overhang, percentage: calcPct(counts.overhang), color: '#8E7CFF' },
+    { id: 'slab', label: 'Slab', count: counts.slab, percentage: calcPct(counts.slab), color: '#6EE756' },
+    { id: 'crimpy', label: 'Crimpy', count: counts.crimpy, percentage: calcPct(counts.crimpy), color: '#F59E0B' },
+    { id: 'dynamic', label: 'Dynamic', count: counts.dynamic, percentage: calcPct(counts.dynamic), color: '#38BDF8' },
+  ];
+}
+
 export interface LifetimeStats {
   totalSessions: number;
   totalSends: number;

@@ -104,6 +104,9 @@ function runMigrations(db: SQLite.SQLiteDatabase): void {
   try {
     db.execSync('ALTER TABLE boulder_logs ADD COLUMN notes TEXT;');
   } catch {}
+  try {
+    db.execSync("ALTER TABLE boulder_logs ADD COLUMN style_tags TEXT NOT NULL DEFAULT '[]';");
+  } catch {}
 
   try {
     db.execSync("ALTER TABLE sessions ADD COLUMN title TEXT NOT NULL DEFAULT '';");
