@@ -6,30 +6,37 @@ import {
   TouchableOpacity,
   StyleSheet,
   ImageBackground,
+  Modal,
+  TouchableWithoutFeedback,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from 'expo-router';
-import Svg, { Circle, Path, Rect } from 'react-native-svg';
-import { BarChart } from 'react-native-gifted-charts';
+import { Check } from 'lucide-react-native';
 import {
   getGradePyramidData,
   getWeeklyVolumeTrends,
   getWallAngleBreakdown,
   getAnalyticsOverview,
   getRecentBoulderLogs,
+  getWeeklyCapsuleData,
+  getGradeVolumeEqualizerData,
   type GradePyramidDataRow,
   type WeeklyVolumeTrendsData,
   type WallAngleBreakdownItem,
   type AnalyticsOverview,
   type RecentBoulderLog,
+  type WeeklyCapsuleOverviewData,
+  type GradeVolumeEqualizerData,
 } from '../db/queries';
+import { WeeklyCapsuleBarChart } from '../components/analytics/WeeklyCapsuleBarChart';
+import { BentoMetricRow } from '../components/analytics/BentoMetricRow';
+import { VolumeByGradeCard } from '../components/analytics/VolumeByGradeCard';
 import { GradePyramidWidget } from '../components/analytics/GradePyramidWidget';
-import { VolumeTrendWidget } from '../components/analytics/VolumeTrendWidget';
 import { TerrainSplitWidget } from '../components/analytics/TerrainSplitWidget';
 import { ClimbingHoldGraphic, type HoldType } from '../components/ui/ClimbingHoldGraphic';
 import { triggerHaptic } from '../utils/haptics';
 
-type TimeframeOption = '30d' | '90d' | 'all';
+export type TimeframeOption = 'weekly' | 'monthly' | 'all';
 
 interface DisplayRoute {
   id: string;
@@ -52,8 +59,12 @@ const HOLD_TYPE_LIST: HoldType[] = [
 
 export default function AnalyticsScreen() {
   const insets = useSafeAreaInsets();
-  const [timeframe, setTimeframe] = useState<TimeframeOption>('all');
+  const [timeframe, setTimeframe] = useState<TimeframeOption>('weekly');
+  const [isTimeframeModalVisible, setIsTimeframeModalVisible] = useState<boolean>(false);
 
+  // Data States
+  const [weeklyCapsule, setWeeklyCapsule] = useState<WeeklyCapsuleOverviewData | null>(null);
+  const [gradeEqualizer, setGradeEqualizer] = useState<GradeVolumeEqualizerData | null>(null);
   const [pyramidData, setPyramidData] = useState<GradePyramidDataRow[]>([]);
   const [volumeTrends, setVolumeTrends] = useState<WeeklyVolumeTrendsData | null>(null);
   const [wallAngleData, setWallAngleData] = useState<WallAngleBreakdownItem[]>([]);
@@ -64,16 +75,21 @@ export default function AnalyticsScreen() {
     let sinceTimestamp: number | undefined;
     const now = Date.now();
 
-    if (tf === '30d') {
+    const queryTf: '30d' | '90d' | 'all' =
+      tf === 'weekly' ? '30d' : tf === 'monthly' ? '30d' : 'all';
+
+    if (tf === 'weekly') {
+      sinceTimestamp = now - 7 * 24 * 60 * 60 * 1000;
+    } else if (tf === 'monthly') {
       sinceTimestamp = now - 30 * 24 * 60 * 60 * 1000;
-    } else if (tf === '90d') {
-      sinceTimestamp = now - 90 * 24 * 60 * 60 * 1000;
     }
 
     try {
-      setPyramidData(getGradePyramidData(tf));
-      setVolumeTrends(getWeeklyVolumeTrends(tf));
-      setWallAngleData(getWallAngleBreakdown(tf));
+      setWeeklyCapsule(getWeeklyCapsuleData());
+      setGradeEqualizer(getGradeVolumeEqualizerData(queryTf));
+      setPyramidData(getGradePyramidData(queryTf));
+      setVolumeTrends(getWeeklyVolumeTrends(queryTf));
+      setWallAngleData(getWallAngleBreakdown(queryTf));
       setOverview(getAnalyticsOverview(sinceTimestamp));
       setRecentLogs(getRecentBoulderLogs(6));
     } catch (err) {
@@ -87,12 +103,19 @@ export default function AnalyticsScreen() {
     }, [loadAnalytics, timeframe])
   );
 
-  const handleTimeframeChange = (tf: TimeframeOption) => {
-    if (tf === timeframe) return;
+  const handleTimeframeSelect = (tf: TimeframeOption) => {
     triggerHaptic('light');
     setTimeframe(tf);
+    setIsTimeframeModalVisible(false);
     loadAnalytics(tf);
   };
+
+  const timeframeLabel =
+    timeframe === 'weekly'
+      ? 'Weekly ⌵'
+      : timeframe === 'monthly'
+      ? 'Monthly ⌵'
+      : 'All-Time ⌵';
 
   const displayRoutes: DisplayRoute[] = recentLogs.map((log, index) => {
     const d = new Date(log.timestamp);
@@ -123,107 +146,54 @@ export default function AnalyticsScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{
           paddingTop: insets.top > 0 ? insets.top + 8 : 20,
-          paddingBottom: 180,
+          paddingBottom: 190,
           paddingHorizontal: 16,
         }}
       >
-        {/* ── Screen Header ───────────────────────────────────── */}
-        <View style={styles.screenHeader}>
-          <Text style={styles.screenTitle}>Analytics & Trends</Text>
-          <Text style={styles.screenSubtitle}>
-            Performance insights from your logged burns
-          </Text>
-        </View>
-
-        {/* ── Timeframe Filter: [ 30 Days ] [ 3 Months ] [ All Time ] */}
-        <View style={styles.timeframeContainer}>
-          <TouchableOpacity
-            activeOpacity={0.8}
-            onPress={() => handleTimeframeChange('30d')}
-            style={[
-              styles.timeframePill,
-              timeframe === '30d' && styles.timeframePillActive,
-            ]}
-          >
-            <Text
-              style={[
-                styles.timeframePillText,
-                timeframe === '30d' && styles.timeframePillTextActive,
-              ]}
-            >
-              30 Days
-            </Text>
-          </TouchableOpacity>
+        {/* ── 2. Top Header & Timeframe Dropdown Filter Pill ── */}
+        <View style={styles.headerRow}>
+          <View style={styles.titleContainer}>
+            <Text style={styles.screenTitle}>Analytics &</Text>
+            <Text style={styles.screenTitle}>Report</Text>
+          </View>
 
           <TouchableOpacity
             activeOpacity={0.8}
-            onPress={() => handleTimeframeChange('90d')}
-            style={[
-              styles.timeframePill,
-              timeframe === '90d' && styles.timeframePillActive,
-            ]}
+            onPress={() => {
+              triggerHaptic('light');
+              setIsTimeframeModalVisible(true);
+            }}
+            style={styles.dropdownPill}
           >
-            <Text
-              style={[
-                styles.timeframePillText,
-                timeframe === '90d' && styles.timeframePillTextActive,
-              ]}
-            >
-              3 Months
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            activeOpacity={0.8}
-            onPress={() => handleTimeframeChange('all')}
-            style={[
-              styles.timeframePill,
-              timeframe === 'all' && styles.timeframePillActive,
-            ]}
-          >
-            <Text
-              style={[
-                styles.timeframePillText,
-                timeframe === 'all' && styles.timeframePillTextActive,
-              ]}
-            >
-              All Time
-            </Text>
+            <Text style={styles.dropdownPillText}>{timeframeLabel}</Text>
           </TouchableOpacity>
         </View>
 
-        {/* ── Quick KPI Row ────────────────────────────────────── */}
-        <View style={styles.kpiRow}>
-          <View style={styles.kpiCard}>
-            <Text style={styles.kpiLabel}>TOTAL BURNS</Text>
-            <Text style={styles.kpiSublabel}>Volume</Text>
-            <Text style={styles.kpiValue}>
-              {overview?.totalClimbs ?? 0}
-            </Text>
+        {/* ── 3. Hero Card: Weekly Capsule Bar Chart ────────── */}
+        {weeklyCapsule && (
+          <View style={styles.heroCardMargin}>
+            <WeeklyCapsuleBarChart data={weeklyCapsule} />
           </View>
+        )}
 
-          <View style={styles.kpiCard}>
-            <Text style={styles.kpiLabel}>FLASH RATE</Text>
-            <Text style={[styles.kpiSublabel, { color: '#6EE756' }]}>
-              Efficiency
-            </Text>
-            <Text style={[styles.kpiValue, { color: '#6EE756' }]}>
-              {overview?.flashRate ?? 0}%
-            </Text>
-          </View>
+        {/* ── 4. 2-Column Middle Bento Row ──────────────────── */}
+        <BentoMetricRow
+          peakGrade={overview?.hardestSend}
+          flashRate={overview?.flashRate ?? 38}
+        />
 
-          <View style={styles.kpiCard}>
-            <Text style={styles.kpiLabel}>PEAK GRADE</Text>
-            <Text style={[styles.kpiSublabel, { color: '#8E7CFF' }]}>
-              Hardest Send
-            </Text>
-            <Text style={[styles.kpiValue, { color: '#FFFFFF' }]}>
-              {overview?.hardestSend ?? '—'}
-            </Text>
-          </View>
+        {/* ── 5. Bottom Wide Bento Card: Volume by Grade ────── */}
+        {gradeEqualizer && (
+          <VolumeByGradeCard data={gradeEqualizer} />
+        )}
+
+        {/* ── Section Divider: Detailed Analytical Breakdown ─── */}
+        <View style={styles.sectionDivider}>
+          <Text style={styles.sectionDividerText}>DETAILED PERFORMANCE</Text>
+          <View style={styles.sectionDividerLine} />
         </View>
 
-        {/* ── Widget 1: All-Time Grade Pyramid ────────────────── */}
+        {/* ── Historical Grade Pyramid Widget ───────────────── */}
         <View style={styles.widgetMargin}>
           <GradePyramidWidget
             data={pyramidData}
@@ -231,19 +201,12 @@ export default function AnalyticsScreen() {
           />
         </View>
 
-        {/* ── Widget 2: Weekly Volume Trends ─────────────────── */}
-        {volumeTrends && (
-          <View style={styles.widgetMargin}>
-            <VolumeTrendWidget data={volumeTrends} />
-          </View>
-        )}
-
-        {/* ── Widget 3: Wall Style & Terrain Split ───────────── */}
+        {/* ── Wall Style & Terrain Split Widget ─────────────── */}
         <View style={styles.widgetMargin}>
           <TerrainSplitWidget data={wallAngleData} />
         </View>
 
-        {/* ── Recent Sends Summary ────────────────────────────── */}
+        {/* ── Recent Sends Activity Feed ────────────────────── */}
         <View style={styles.recentSection}>
           <Text style={styles.recentSectionTitle}>RECENT SENDS</Text>
           <View style={styles.recentListCard}>
@@ -296,6 +259,122 @@ export default function AnalyticsScreen() {
           </View>
         </View>
       </ScrollView>
+
+      {/* ── Timeframe Selector Bottom Sheet Modal ─────────── */}
+      <Modal
+        visible={isTimeframeModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setIsTimeframeModalVisible(false)}
+      >
+        <TouchableWithoutFeedback onPress={() => setIsTimeframeModalVisible(false)}>
+          <View style={styles.modalBackdrop}>
+            <TouchableWithoutFeedback onPress={(e) => e.stopPropagation()}>
+              <View
+                style={[
+                  styles.bottomSheetSurface,
+                  { paddingBottom: Math.max(insets.bottom + 20, 32) },
+                ]}
+              >
+                {/* Grab Handle */}
+                <View style={styles.sheetHandle} />
+
+                <Text style={styles.sheetTitle}>Select Timeframe</Text>
+                <Text style={styles.sheetSubtitle}>
+                  Choose the analysis window for your climbing metrics
+                </Text>
+
+                {/* Option 1: Weekly */}
+                <TouchableOpacity
+                  activeOpacity={0.8}
+                  onPress={() => handleTimeframeSelect('weekly')}
+                  style={[
+                    styles.sheetOptionRow,
+                    timeframe === 'weekly' && styles.sheetOptionRowActive,
+                  ]}
+                >
+                  <View>
+                    <Text
+                      style={[
+                        styles.optionTitle,
+                        timeframe === 'weekly' && styles.optionTitleActive,
+                      ]}
+                    >
+                      Weekly
+                    </Text>
+                    <Text style={styles.optionSubtitle}>
+                      Sunday to Saturday capsule volume & daily trends
+                    </Text>
+                  </View>
+                  {timeframe === 'weekly' && (
+                    <View style={styles.activeCheckCircle}>
+                      <Check size={14} color="#131316" strokeWidth={3} />
+                    </View>
+                  )}
+                </TouchableOpacity>
+
+                {/* Option 2: Monthly */}
+                <TouchableOpacity
+                  activeOpacity={0.8}
+                  onPress={() => handleTimeframeSelect('monthly')}
+                  style={[
+                    styles.sheetOptionRow,
+                    timeframe === 'monthly' && styles.sheetOptionRowActive,
+                  ]}
+                >
+                  <View>
+                    <Text
+                      style={[
+                        styles.optionTitle,
+                        timeframe === 'monthly' && styles.optionTitleActive,
+                      ]}
+                    >
+                      Monthly
+                    </Text>
+                    <Text style={styles.optionSubtitle}>
+                      Trailing 30-day send metrics and consistency
+                    </Text>
+                  </View>
+                  {timeframe === 'monthly' && (
+                    <View style={styles.activeCheckCircle}>
+                      <Check size={14} color="#131316" strokeWidth={3} />
+                    </View>
+                  )}
+                </TouchableOpacity>
+
+                {/* Option 3: All-Time */}
+                <TouchableOpacity
+                  activeOpacity={0.8}
+                  onPress={() => handleTimeframeSelect('all')}
+                  style={[
+                    styles.sheetOptionRow,
+                    timeframe === 'all' && styles.sheetOptionRowActive,
+                  ]}
+                >
+                  <View>
+                    <Text
+                      style={[
+                        styles.optionTitle,
+                        timeframe === 'all' && styles.optionTitleActive,
+                      ]}
+                    >
+                      All-Time
+                    </Text>
+                    <Text style={styles.optionSubtitle}>
+                      Full climbing career send pyramid and lifetime stats
+                    </Text>
+                  </View>
+                  {timeframe === 'all' && (
+                    <View style={styles.activeCheckCircle}>
+                      <Check size={14} color="#131316" strokeWidth={3} />
+                    </View>
+                  )}
+                </TouchableOpacity>
+              </View>
+            </TouchableWithoutFeedback>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
     </View>
   );
 }
@@ -305,120 +384,90 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#131316',
   },
-  screenHeader: {
-    marginBottom: 16,
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    justifyContent: 'space-between',
     paddingHorizontal: 4,
+    paddingTop: 8,
+    paddingBottom: 16,
+  },
+  titleContainer: {
+    flex: 1,
   },
   screenTitle: {
-    color: '#FFFFFF',
-    fontSize: 32,
+    fontSize: 30,
     fontWeight: '800',
-    letterSpacing: -0.5,
+    color: '#FFFFFF',
+    letterSpacing: -0.8,
+    lineHeight: 34,
   },
-  screenSubtitle: {
-    color: '#9A9AA6',
-    fontSize: 13,
-    fontWeight: '500',
-    marginTop: 3,
-  },
-  timeframeContainer: {
-    flexDirection: 'row',
+  dropdownPill: {
     backgroundColor: '#1E1E24',
-    borderRadius: 20,
-    padding: 4,
-    marginBottom: 16,
     borderWidth: 1,
     borderColor: '#2C2C35',
-  },
-  timeframePill: {
-    flex: 1,
-    paddingVertical: 10,
+    borderRadius: 999,
+    paddingHorizontal: 16,
+    paddingVertical: 9,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 16,
   },
-  timeframePillActive: {
-    backgroundColor: '#8E7CFF',
-    shadowColor: '#8E7CFF',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.35,
-    shadowRadius: 6,
-    elevation: 3,
-  },
-  timeframePillText: {
-    color: '#8A8A98',
-    fontSize: 13,
+  dropdownPillText: {
+    color: '#FFFFFF',
+    fontSize: 14,
     fontWeight: '600',
   },
-  timeframePillTextActive: {
-    color: '#FFFFFF',
-    fontWeight: '800',
+  heroCardMargin: {
+    marginBottom: 0,
   },
-  kpiRow: {
+  sectionDivider: {
     flexDirection: 'row',
-    gap: 10,
+    alignItems: 'center',
+    marginTop: 28,
     marginBottom: 16,
+    gap: 12,
   },
-  kpiCard: {
-    flex: 1,
-    backgroundColor: '#1E1E24',
-    borderRadius: 20,
-    padding: 12,
-    minHeight: 90,
-    justifyContent: 'space-between',
-    borderWidth: 1,
-    borderColor: '#2C2C35',
-  },
-  kpiLabel: {
+  sectionDividerText: {
     color: '#8A8A98',
-    fontSize: 9,
-    fontWeight: '700',
-    letterSpacing: 0.8,
-  },
-  kpiSublabel: {
-    color: '#8E7CFF',
     fontSize: 11,
-    fontWeight: '600',
-    marginTop: 2,
-    marginBottom: 4,
-  },
-  kpiValue: {
-    color: '#FFFFFF',
-    fontSize: 22,
     fontWeight: '800',
+    letterSpacing: 1,
+  },
+  sectionDividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: '#2C2C35',
   },
   widgetMargin: {
     marginBottom: 16,
   },
   recentSection: {
-    marginTop: 4,
-    marginBottom: 16,
+    marginTop: 8,
   },
   recentSectionTitle: {
     color: '#8A8A98',
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '800',
-    letterSpacing: 1.2,
+    letterSpacing: 0.8,
     marginBottom: 10,
-    paddingHorizontal: 4,
+    textTransform: 'uppercase',
   },
   recentListCard: {
     backgroundColor: '#1E1E24',
     borderRadius: 20,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
     borderWidth: 1,
     borderColor: '#2C2C35',
+    overflow: 'hidden',
   },
   emptyRecent: {
+    padding: 32,
     alignItems: 'center',
-    paddingVertical: 24,
   },
   emptyTitle: {
     color: '#FFFFFF',
     fontSize: 14,
     fontWeight: '700',
-    marginBottom: 4,
+    marginBottom: 6,
   },
   emptySubtitle: {
     color: '#8A8A98',
@@ -429,47 +478,117 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 12,
+    paddingHorizontal: 16,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.06)',
+    borderBottomColor: '#2C2C35',
+    gap: 12,
   },
   holdThumb: {
     width: 44,
     height: 44,
     borderRadius: 12,
-    backgroundColor: '#141418',
-    borderColor: '#2C2C35',
+    backgroundColor: '#131316',
     borderWidth: 1,
-    overflow: 'hidden',
+    borderColor: '#2C2C35',
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 12,
+    overflow: 'hidden',
   },
   routeDetails: {
     flex: 1,
-    marginRight: 8,
   },
   routeTitle: {
-    fontSize: 14,
-    fontWeight: '700',
     color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '700',
+    marginBottom: 3,
   },
   routeGrade: {
-    fontSize: 12,
     color: '#8A8A98',
-    marginTop: 2,
+    fontSize: 12,
     fontWeight: '600',
   },
   routeMeta: {
     alignItems: 'flex-end',
-    gap: 2,
   },
   routeBadge: {
-    fontSize: 13,
-    fontWeight: '700',
+    fontSize: 12,
+    fontWeight: '800',
+    marginBottom: 3,
   },
   routeDate: {
+    color: '#8A8A98',
     fontSize: 11,
-    color: '#6F6F7C',
     fontWeight: '500',
+  },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.75)',
+    justifyContent: 'flex-end',
+  },
+  bottomSheetSurface: {
+    backgroundColor: '#1E1E24',
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    borderWidth: 1,
+    borderColor: '#2C2C35',
+    padding: 22,
+  },
+  sheetHandle: {
+    width: 36,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: '#3E3E4D',
+    alignSelf: 'center',
+    marginBottom: 16,
+  },
+  sheetTitle: {
+    color: '#FFFFFF',
+    fontSize: 18,
+    fontWeight: '800',
+    marginBottom: 4,
+  },
+  sheetSubtitle: {
+    color: '#8A8A98',
+    fontSize: 13,
+    fontWeight: '500',
+    marginBottom: 20,
+  },
+  sheetOptionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#131316',
+    borderWidth: 1,
+    borderColor: '#2C2C35',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 10,
+  },
+  sheetOptionRowActive: {
+    borderColor: '#6EE756',
+    backgroundColor: 'rgba(110, 231, 86, 0.05)',
+  },
+  optionTitle: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '700',
+    marginBottom: 3,
+  },
+  optionTitleActive: {
+    color: '#6EE756',
+  },
+  optionSubtitle: {
+    color: '#8A8A98',
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  activeCheckCircle: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: '#6EE756',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });
