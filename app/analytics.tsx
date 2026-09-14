@@ -144,7 +144,7 @@ export default function AnalyticsScreen() {
         contentContainerStyle={{
           paddingHorizontal: 16,
           paddingTop: 8,
-          paddingBottom: 170,
+          paddingBottom: 180,
         }}
       >
         {/* ── Top Header Row: Title + Timeframe Dropdown + Settings Gear ── */}

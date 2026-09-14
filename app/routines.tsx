@@ -110,7 +110,7 @@ export default function RoutinesListScreen() {
         contentContainerStyle={{
           paddingHorizontal: 16,
           paddingTop: 8,
-          paddingBottom: 160,
+          paddingBottom: 180,
         }}
       >
         {/* ── 1. Top Header Area & Settings Button ────────────── */}

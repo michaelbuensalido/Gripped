@@ -15,8 +15,7 @@ export interface OutcomeRingGaugeProps {
   onPress?: () => void;
 }
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const RING_SIZE = Math.min(Math.round(SCREEN_WIDTH * 0.46), 190);
+const RING_SIZE = 190;
 const STROKE_WIDTH = 20;
 const RADIUS = (RING_SIZE - STROKE_WIDTH) / 2;
 const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
@@ -109,12 +108,12 @@ export function OutcomeRingGauge({ data, onPress }: OutcomeRingGaugeProps) {
           style={{ width: RING_SIZE, height: RING_SIZE }}
         >
           <Svg width={RING_SIZE} height={RING_SIZE}>
-            {/* Background circular track */}
+            {/* Background circular track: #17171C */}
             <Circle
               cx={CENTER}
               cy={CENTER}
               r={RADIUS}
-              stroke="#25252E"
+              stroke="#17171C"
               strokeWidth={STROKE_WIDTH}
               fill="none"
             />
@@ -135,7 +134,7 @@ export function OutcomeRingGauge({ data, onPress }: OutcomeRingGaugeProps) {
                     strokeWidth={isSelected ? STROKE_WIDTH + 2 : STROKE_WIDTH}
                     strokeDasharray={ring.strokeDasharray}
                     strokeDashoffset={ring.strokeDashoffset}
-                    strokeLinecap="butt"
+                    strokeLinecap="round"
                     opacity={isFaded ? 0.35 : 1}
                     fill="none"
                   />
@@ -159,7 +158,7 @@ export function OutcomeRingGauge({ data, onPress }: OutcomeRingGaugeProps) {
           </View>
         </TouchableOpacity>
 
-        {/* ── Legend on the Right ─────────────────────────────── */}
+        {/* ── Legend on the Right (gap-3.5: 14pt) ───────────────── */}
         <View style={styles.legendContainer}>
           {segments.map((segment) => {
             const isSelected = activeSegment === segment.label;
@@ -180,26 +179,28 @@ export function OutcomeRingGauge({ data, onPress }: OutcomeRingGaugeProps) {
                     styles.legendDot,
                     {
                       backgroundColor: segment.color,
-                      shadowColor: segment.color,
                     },
                     isSelected && styles.legendDotSelected,
                   ]}
                 />
-                <Text
-                  style={[
-                    styles.legendLabel,
-                    isSelected && { color: segment.color, fontWeight: '700' },
-                  ]}
-                >
-                  {segment.label}
-                </Text>
-                <Text
-                  style={[
-                    styles.legendPercentage,
-                    isSelected && { color: segment.color, fontWeight: '700' },
-                  ]}
-                >
-                  {segment.percentage}%
+                <Text style={styles.legendText}>
+                  <Text
+                    style={[
+                      styles.legendLabel,
+                      isSelected && { color: segment.color, fontWeight: '700' },
+                    ]}
+                  >
+                    {segment.label}
+                  </Text>
+                  <Text
+                    style={[
+                      styles.legendCountAndPct,
+                      isSelected && { color: segment.color, fontWeight: '700' },
+                    ]}
+                  >
+                    {' • '}
+                    {segment.count} ({segment.percentage}%)
+                  </Text>
                 </Text>
               </TouchableOpacity>
             );
@@ -251,7 +252,7 @@ const styles = StyleSheet.create({
   },
   gradeText: {
     color: '#FFFFFF',
-    fontSize: 38,
+    fontSize: 40,
     fontWeight: '700',
     letterSpacing: -0.8,
   },
@@ -262,12 +263,12 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 16,
     marginTop: 2,
+    maxWidth: 120,
   },
   legendContainer: {
     gap: 14,
     paddingLeft: 12,
     justifyContent: 'center',
-    minWidth: 120,
   },
   legendRow: {
     flexDirection: 'row',
@@ -278,24 +279,23 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.5,
-    shadowRadius: 4,
-    elevation: 2,
   },
   legendDotSelected: {
     transform: [{ scale: 1.5 }],
   },
+  legendText: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
   legendLabel: {
     color: '#FFFFFF',
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
     letterSpacing: -0.1,
   },
-  legendPercentage: {
+  legendCountAndPct: {
     color: '#8A8A98',
-    fontSize: 13,
-    fontWeight: '600',
-    marginLeft: 'auto',
+    fontSize: 12,
+    fontWeight: '500',
   },
 });

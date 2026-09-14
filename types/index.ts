@@ -1,5 +1,12 @@
 export type Outcome = 'flash' | 'send' | 'attempt';
 
+export type FailureReason =
+  | 'foot_slip'
+  | 'pumped'
+  | 'beta_error'
+  | 'reach_span'
+  | 'grip_strength';
+
 export interface Session {
   id: string;
   startTime: number; // unix ms
@@ -32,6 +39,8 @@ export interface BoulderLog {
   media_uri?: string | null;
   media_type?: 'video' | 'photo' | null;
   notes?: string | null;
+  failureReason?: FailureReason | null;
+  failure_reason?: FailureReason | null;
 }
 
 export interface BoulderGroupWithLogs extends BoulderGroup {

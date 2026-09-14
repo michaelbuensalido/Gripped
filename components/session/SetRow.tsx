@@ -14,6 +14,7 @@ import { useSessionStore } from '../../store/sessionStore';
 import { GradeSheet } from './GradeSheet';
 import { BetaCamModal } from './BetaCamModal';
 import { BetaPreviewModal } from './BetaPreviewModal';
+import { FailureTagSelector } from './FailureTagSelector';
 
 interface SetRowProps {
   log: BoulderLog;
@@ -44,6 +45,7 @@ export function SetRow({ log, index, groupId }: SetRowProps) {
   const updateSetMedia  = useSessionStore((s) => s.updateSetMedia);
   const commitSetGrading = useSessionStore((s) => s.commitSetGrading);
   const triggerRestTimer  = useSessionStore((s) => s.triggerRestTimer);
+  const setFailureReason  = useSessionStore((s) => s.setFailureReason);
 
   const grade   = GRADE_BY_LABEL[log.gradeRaw];
   const isSent  = log.outcome === 'send' || log.outcome === 'flash';
@@ -90,7 +92,7 @@ export function SetRow({ log, index, groupId }: SetRowProps) {
     updateRpe(groupId, log.id, current <= 1 ? null : current - 1);
   }, [groupId, log.id, log.rpe, updateRpe]);
 
-  /** Single tap: toggle attempt ↔ send. Distinct haptics for Attempt (light) and Top (medium) */
+  /** Single tap: toggle attempt ↔ send. Distinct haptics for Attempt (light) and Top (medium). Auto-triggers rest timer. */
   const handleSendTap = useCallback(() => {
     const next = isSent ? 'attempt' : 'send';
     if (next === 'attempt') {
@@ -99,13 +101,11 @@ export function SetRow({ log, index, groupId }: SetRowProps) {
       triggerHaptic('medium');
     }
     setOutcome(groupId, log.id, next);
-    if (next !== 'attempt') {
-      const group = useSessionStore.getState().groups.find((g) => g.id === groupId);
-      triggerRestTimer(group?.defaultRestSeconds ?? 90);
-    }
+    const group = useSessionStore.getState().groups.find((g) => g.id === groupId);
+    triggerRestTimer(group?.defaultRestSeconds ?? 180);
   }, [isSent, groupId, log.id, setOutcome, triggerRestTimer]);
 
-  /** Flash toggle: heavy success notification haptic */
+  /** Flash toggle: heavy success notification haptic. Auto-triggers rest timer. */
   const handleFlashLongPress = useCallback(() => {
     const next = isFlash ? 'send' : 'flash';
     if (next === 'flash') {
@@ -115,7 +115,7 @@ export function SetRow({ log, index, groupId }: SetRowProps) {
     }
     setOutcome(groupId, log.id, next);
     const group = useSessionStore.getState().groups.find((g) => g.id === groupId);
-    triggerRestTimer(group?.defaultRestSeconds ?? 90);
+    triggerRestTimer(group?.defaultRestSeconds ?? 180);
   }, [isFlash, groupId, log.id, setOutcome, triggerRestTimer]);
 
   const handleAttachBeta = useCallback(
@@ -339,6 +339,14 @@ export function SetRow({ log, index, groupId }: SetRowProps) {
           </Pressable>
         </View>
       </View>
+
+      {/* Failure Reason Tag Chips: smoothly expanded when marked as 'attempt' */}
+      {log.outcome === 'attempt' && (
+        <FailureTagSelector
+          selectedReason={log.failureReason ?? log.failure_reason ?? null}
+          onSelectReason={(reason) => setFailureReason(groupId, log.id, reason)}
+        />
+      )}
 
       <GradeSheet
         visible={gradeSheetOpen}

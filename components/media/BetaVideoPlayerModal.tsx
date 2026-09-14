@@ -24,6 +24,7 @@ import {
   Sparkles,
 } from 'lucide-react-native';
 import { triggerHaptic } from '../../utils/haptics';
+import type { FailureReason } from '../../types';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -33,12 +34,21 @@ export interface BetaVideoPlayerModalProps {
   gradeRaw?: string;
   zoneName?: string;
   outcome?: 'flash' | 'send' | 'attempt' | string;
+  failureReason?: FailureReason | string | null;
   durationSeconds?: number;
   onClose: () => void;
 }
 
 const SPEED_OPTIONS: number[] = [0.25, 0.5, 1.0];
 const FRAME_DURATION = 1 / 30; // ~0.0333s per frame
+
+const FAILURE_LABELS: Record<string, string> = {
+  foot_slip: 'Foot Slip',
+  pumped: 'Pumped',
+  beta_error: 'Beta Error',
+  reach_span: 'Reach / Span',
+  grip_strength: 'Grip Strength',
+};
 
 function formatTime(seconds: number): string {
   if (isNaN(seconds) || seconds < 0) return '00:00';
@@ -53,6 +63,7 @@ export function BetaVideoPlayerModal({
   gradeRaw = 'V5',
   zoneName = 'Main Wall',
   outcome = 'send',
+  failureReason = null,
   durationSeconds = 15,
   onClose,
 }: BetaVideoPlayerModalProps) {
@@ -208,6 +219,8 @@ export function BetaVideoPlayerModal({
 
   const isFlash = outcome === 'flash';
   const isSent = outcome === 'send' || isFlash;
+  const outcomeText = isFlash ? 'FLASH' : isSent ? 'TOP' : 'ATTEMPT';
+  const failureLabel = failureReason ? (FAILURE_LABELS[failureReason] || failureReason) : null;
   const progressRatio = totalDuration > 0 ? Math.min(1, Math.max(0, currentTime / totalDuration)) : 0;
 
   return (
@@ -240,70 +253,53 @@ export function BetaVideoPlayerModal({
           )}
         </Pressable>
 
-        {/* ── Top Header Controls ────────────────────────────────────────── */}
+        {/* ── Top HUD Bar (pt-12 px-4 flex-row justify-between items-center) ── */}
         <View
           style={[
             styles.topHeader,
-            { paddingTop: Math.max(insets.top + 8, Platform.OS === 'ios' ? 52 : 28) },
+            { paddingTop: Math.max(insets.top + 8, Platform.OS === 'ios' ? 48 : 24) },
             !showControls && styles.hiddenOverlay,
           ]}
           pointerEvents={showControls ? 'auto' : 'none'}
         >
-          {/* Grade Pill & Zone Info */}
-          <View style={styles.headerLeft}>
-            <View style={styles.gradePill}>
-              <Text style={styles.gradePillText}>{gradeRaw}</Text>
-            </View>
-
-            <View style={styles.headerMeta}>
-              <Text style={styles.zoneText} numberOfLines={1}>
-                {zoneName}
-              </Text>
-              <View style={styles.outcomeBadge}>
-                <Text style={styles.outcomeBadgeText}>
-                  {isFlash ? '⚡ FLASH' : isSent ? '✓ SENT' : 'ATTEMPT'}
-                </Text>
-              </View>
-            </View>
+          {/* Left: Grade pill (Surface #1E1E24, border 1px #6EE756, px-3 py-1, rounded-full, text 13pt Bold #6EE756) */}
+          <View style={styles.gradePill}>
+            <Text style={styles.gradePillText}>{gradeRaw} {outcomeText}</Text>
           </View>
 
-          {/* Header Right: Mute & Close */}
-          <View style={styles.headerRight}>
-            {!isImage && (
-              <TouchableOpacity
-                onPress={handleToggleMute}
-                style={styles.iconCircleBtn}
-                activeOpacity={0.8}
-                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              >
-                {isMuted ? <VolumeX size={18} color="#FFFFFF" /> : <Volume2 size={18} color="#6EE756" />}
-              </TouchableOpacity>
-            )}
+          {/* Center: If present, failure tag chip in #8E7CFF (e.g. "Foot Slip") */}
+          {failureLabel ? (
+            <View style={styles.failureChip}>
+              <Text style={styles.failureChipText}>{failureLabel}</Text>
+            </View>
+          ) : (
+            <View style={{ width: 1 }} />
+          )}
 
-            <TouchableOpacity
-              onPress={() => {
-                triggerHaptic('light');
-                onClose();
-              }}
-              style={styles.closeBtn}
-              activeOpacity={0.8}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-            >
-              <X size={20} color="#FFFFFF" />
-            </TouchableOpacity>
-          </View>
+          {/* Right: Close button (36x36pt circle #1E1E24, border 1px #2C2C35, items-center justify-center, icon X in #FFFFFF) */}
+          <TouchableOpacity
+            onPress={() => {
+              triggerHaptic('light');
+              onClose();
+            }}
+            style={styles.closeBtn}
+            activeOpacity={0.8}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <X size={18} color="#FFFFFF" strokeWidth={2.5} />
+          </TouchableOpacity>
         </View>
 
-        {/* ── Bottom Scrubbing & Playback Controller Bar ─────────────────── */}
+        {/* ── Tactile Floating Scrubbing Controls (Bottom: Surface #1E1E24, border 1px #2C2C35, rounded-3xl, p-4, mx-4, mb-8) ── */}
         <View
           style={[
             styles.bottomControlsContainer,
-            { paddingBottom: Math.max(insets.bottom + 12, 28) },
+            { marginBottom: Math.max(insets.bottom + 8, 32) },
             !showControls && styles.hiddenOverlay,
           ]}
           pointerEvents={showControls ? 'auto' : 'none'}
         >
-          {/* 1. Timeline Scrubber Bar */}
+          {/* Scrubber Slider: track #17171C, thumb Lavender #8E7CFF */}
           <Pressable style={styles.scrubberTouchArea} onPress={handleScrub}>
             <View style={styles.scrubberTrack}>
               <View style={[styles.scrubberFill, { width: `${progressRatio * 100}%` }]} />
@@ -311,17 +307,16 @@ export function BetaVideoPlayerModal({
             </View>
           </Pressable>
 
-          {/* Time Readout Row */}
+          {/* Time Readout: 11pt mono #8A8A98 */}
           <View style={styles.timeRow}>
             <Text style={styles.timeText}>{formatTime(currentTime)}</Text>
             <Text style={styles.timeText}>{formatTime(totalDuration)}</Text>
           </View>
 
-          {/* 2. Controls Row: Speed Chips & Frame Step Buttons */}
+          {/* Controls Row: Speed Selector Chips + Frame Stepper Buttons */}
           <View style={styles.controllerRow}>
-            {/* Speed Selector Chips */}
+            {/* Speed Selector Row: chips [ 0.25x ] [ 0.5x ] [ 1.0x ] */}
             <View style={styles.speedRow}>
-              <Text style={styles.speedLabel}>SPEED</Text>
               {SPEED_OPTIONS.map((opt) => {
                 const isActive = speed === opt;
                 return (
@@ -330,6 +325,7 @@ export function BetaVideoPlayerModal({
                     onPress={() => handleSetSpeed(opt)}
                     style={[styles.speedChip, isActive && styles.speedChipActive]}
                     activeOpacity={0.75}
+                    hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}
                   >
                     <Text style={[styles.speedChipText, isActive && styles.speedChipTextActive]}>
                       {opt}x
@@ -339,26 +335,28 @@ export function BetaVideoPlayerModal({
               })}
             </View>
 
-            {/* Frame Step Controls (-1 Frame / Play / +1 Frame) */}
+            {/* Frame Stepper Buttons: [-1 Frame] and [+1 Frame] */}
             <View style={styles.frameStepRow}>
               <TouchableOpacity
                 onPress={handleStepPrevFrame}
                 style={styles.frameStepBtn}
                 activeOpacity={0.75}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
               >
-                <ChevronLeft size={16} color="#FFFFFF" />
-                <Text style={styles.frameStepText}>-1 FR</Text>
+                <ChevronLeft size={14} color="#8A8A98" />
+                <Text style={styles.frameStepText}>-1 Frame</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
                 onPress={handleTogglePlay}
                 style={styles.playPauseMiniBtn}
                 activeOpacity={0.8}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
               >
                 {isPlaying ? (
-                  <Pause size={18} color="#121216" fill="#121216" />
+                  <Pause size={15} color="#0A0A0C" fill="#0A0A0C" />
                 ) : (
-                  <Play size={18} color="#121216" fill="#121216" style={{ marginLeft: 2 }} />
+                  <Play size={15} color="#0A0A0C" fill="#0A0A0C" style={{ marginLeft: 2 }} />
                 )}
               </TouchableOpacity>
 
@@ -366,9 +364,10 @@ export function BetaVideoPlayerModal({
                 onPress={handleStepNextFrame}
                 style={styles.frameStepBtn}
                 activeOpacity={0.75}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
               >
-                <Text style={styles.frameStepText}>+1 FR</Text>
-                <ChevronRight size={16} color="#FFFFFF" />
+                <Text style={styles.frameStepText}>+1 Frame</Text>
+                <ChevronRight size={14} color="#8A8A98" />
               </TouchableOpacity>
             </View>
           </View>
@@ -415,73 +414,43 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingBottom: 16,
-    backgroundColor: 'rgba(10, 10, 12, 0.80)',
-    borderBottomWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.06)',
+    paddingBottom: 12,
     zIndex: 30,
   },
-  headerLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    flex: 1,
-  },
   gradePill: {
-    backgroundColor: '#6EE756', // Lime Green #6EE756
-    paddingHorizontal: 11,
-    paddingVertical: 5,
-    borderRadius: 12,
-    minWidth: 44,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#6EE756',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.35,
-    shadowRadius: 6,
+    backgroundColor: '#1E1E24',
+    borderWidth: 1,
+    borderColor: '#6EE756',
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 999,
   },
   gradePillText: {
-    color: '#0A0A0C',
-    fontSize: 15,
-    fontWeight: '900',
-    letterSpacing: 0.5,
+    color: '#6EE756',
+    fontSize: 13,
+    fontWeight: '700',
+    letterSpacing: 0.3,
   },
-  headerMeta: {
-    flex: 1,
+  failureChip: {
+    backgroundColor: '#1E1E24',
+    borderWidth: 1,
+    borderColor: '#8E7CFF',
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 999,
   },
-  zoneText: {
-    color: '#FFFFFF',
-    fontSize: 15,
+  failureChipText: {
+    color: '#8E7CFF',
+    fontSize: 12,
     fontWeight: '700',
   },
-  outcomeBadge: {
-    alignSelf: 'flex-start',
-    marginTop: 2,
-  },
-  outcomeBadgeText: {
-    color: '#A0A0B0',
-    fontSize: 11,
-    fontWeight: '800',
-    letterSpacing: 0.6,
-  },
-  headerRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  iconCircleBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: 'rgba(255, 255, 255, 0.10)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   closeBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#1E1E24',
+    borderWidth: 1,
+    borderColor: '#2C2C35',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -490,11 +459,12 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: 'rgba(10, 10, 12, 0.88)',
-    borderTopWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
-    paddingHorizontal: 16,
-    paddingTop: 16,
+    backgroundColor: '#1E1E24',
+    borderWidth: 1,
+    borderColor: '#2C2C35',
+    borderRadius: 24,
+    padding: 16,
+    marginHorizontal: 16,
     zIndex: 30,
   },
   scrubberTouchArea: {
@@ -502,19 +472,22 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   scrubberTrack: {
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: 'rgba(255, 255, 255, 0.18)',
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#17171C',
+    borderWidth: 1,
+    borderColor: '#22222A',
     position: 'relative',
+    overflow: 'visible',
   },
   scrubberFill: {
-    height: 4,
-    borderRadius: 2,
+    height: '100%',
+    borderRadius: 3,
     backgroundColor: '#8E7CFF',
   },
   scrubberThumb: {
     position: 'absolute',
-    top: -5,
+    top: -4,
     marginLeft: -7,
     width: 14,
     height: 14,
@@ -527,7 +500,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginTop: 2,
+    marginTop: 4,
     marginBottom: 12,
   },
   timeText: {
@@ -540,34 +513,27 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: 12,
+    gap: 10,
   },
   speedRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
   },
-  speedLabel: {
-    color: '#707080',
-    fontSize: 10,
-    fontWeight: '800',
-    letterSpacing: 0.8,
-    marginRight: 2,
-  },
   speedChip: {
-    paddingHorizontal: 9,
+    paddingHorizontal: 10,
     paddingVertical: 5,
     borderRadius: 12,
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    backgroundColor: '#17171C',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.06)',
+    borderColor: '#22222A',
   },
   speedChipActive: {
-    backgroundColor: '#8E7CFF', // Active pill in #8E7CFF
+    backgroundColor: '#8E7CFF',
     borderColor: '#8E7CFF',
   },
   speedChipText: {
-    color: '#A0A0B0',
+    color: '#8A8A98',
     fontSize: 12,
     fontWeight: '700',
   },
@@ -578,35 +544,30 @@ const styles = StyleSheet.create({
   frameStepRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 6,
   },
   frameStepBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    backgroundColor: '#17171C',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
+    borderColor: '#22222A',
     paddingHorizontal: 8,
     paddingVertical: 6,
     borderRadius: 12,
     gap: 2,
   },
   frameStepText: {
-    color: '#FFFFFF',
-    fontSize: 10,
-    fontWeight: '700',
-    letterSpacing: 0.4,
+    color: '#8A8A98',
+    fontSize: 11,
+    fontWeight: '600',
   },
   playPauseMiniBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#6EE756',
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#8E7CFF',
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#6EE756',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.4,
-    shadowRadius: 6,
   },
 });

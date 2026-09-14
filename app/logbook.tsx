@@ -238,9 +238,9 @@ export default function LogbookScreen() {
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{
-          paddingTop: 12,
-          paddingBottom: 190,
           paddingHorizontal: 16,
+          paddingTop: 8,
+          paddingBottom: 180,
         }}
       >
         {/* ── Top Header ────────────────────────────────────────── */}
@@ -423,7 +423,6 @@ export default function LogbookScreen() {
                             paddingVertical: 4.5,
                           }}
                         >
-                          <Clock size={12} color="#9A9AA6" />
                           <Text style={{ color: '#FFFFFF', fontSize: 12, fontWeight: '600' }}>
                             {formatDuration(s.durationMinutes)}
                           </Text>
@@ -443,7 +442,6 @@ export default function LogbookScreen() {
                             paddingVertical: 4.5,
                           }}
                         >
-                          <TrendingUp size={12} color="#8E7CFF" />
                           <Text style={{ color: '#FFFFFF', fontSize: 12, fontWeight: '600' }}>
                             {s.sendCount} {s.sendCount === 1 ? 'Send' : 'Sends'}
                           </Text>
@@ -816,6 +814,7 @@ export default function LogbookScreen() {
         gradeRaw={activePreviewBeta?.gradeRaw}
         zoneName={activePreviewBeta?.zoneName}
         outcome={activePreviewBeta?.outcome}
+        failureReason={activePreviewBeta?.failureReason}
         durationSeconds={activePreviewBeta?.durationSeconds}
         onClose={() => setActivePreviewBeta(null)}
       />

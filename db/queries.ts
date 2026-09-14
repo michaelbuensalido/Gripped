@@ -1,5 +1,5 @@
 import { getDatabase } from './schema';
-import type { Session, BoulderGroup, BoulderLog } from '../types';
+import type { Session, BoulderGroup, BoulderLog, FailureReason } from '../types';
 
 // ─── Sessions ────────────────────────────────────────────────────────────────
 
@@ -221,8 +221,8 @@ export function insertBoulderLog(log: BoulderLog): void {
   const db = getDatabase();
   db.runSync(
     `INSERT INTO boulder_logs
-       (id, group_id, grade_raw, normalized_difficulty, rpe, attempts, outcome, timestamp, media_uri, media_type, notes)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       (id, group_id, grade_raw, normalized_difficulty, rpe, attempts, outcome, timestamp, media_uri, media_type, notes, failure_reason)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       log.id,
       log.groupId,
@@ -235,6 +235,7 @@ export function insertBoulderLog(log: BoulderLog): void {
       log.media_uri ?? null,
       log.media_type ?? null,
       log.notes ?? null,
+      log.failureReason ?? log.failure_reason ?? null,
     ]
   );
 }
@@ -243,7 +244,7 @@ export function updateBoulderLog(log: BoulderLog): void {
   const db = getDatabase();
   db.runSync(
     `UPDATE boulder_logs
-     SET grade_raw = ?, normalized_difficulty = ?, rpe = ?, attempts = ?, outcome = ?, media_uri = ?, media_type = ?, notes = ?
+     SET grade_raw = ?, normalized_difficulty = ?, rpe = ?, attempts = ?, outcome = ?, media_uri = ?, media_type = ?, notes = ?, failure_reason = ?
      WHERE id = ?`,
     [
       log.gradeRaw,
@@ -254,8 +255,22 @@ export function updateBoulderLog(log: BoulderLog): void {
       log.media_uri ?? null,
       log.media_type ?? null,
       log.notes ?? null,
+      log.failureReason ?? log.failure_reason ?? null,
       log.id,
     ]
+  );
+}
+
+export function updateBoulderLogFailureReason(
+  id: string,
+  failureReason: FailureReason | null
+): void {
+  const db = getDatabase();
+  db.runSync(
+    `UPDATE boulder_logs
+     SET failure_reason = ?
+     WHERE id = ?`,
+    [failureReason, id]
   );
 }
 
@@ -309,6 +324,7 @@ export function getLogsForGroup(groupId: string): BoulderLog[] {
     media_uri?: string | null;
     media_type?: string | null;
     notes?: string | null;
+    failure_reason?: string | null;
   }>(
     `SELECT * FROM boulder_logs WHERE group_id = ? ORDER BY timestamp`,
     [groupId]
@@ -325,6 +341,8 @@ export function getLogsForGroup(groupId: string): BoulderLog[] {
     media_uri: r.media_uri ?? null,
     media_type: (r.media_type as 'video' | 'photo') ?? null,
     notes: r.notes ?? null,
+    failureReason: (r.failure_reason as FailureReason) ?? null,
+    failure_reason: (r.failure_reason as FailureReason) ?? null,
   }));
 }
 
@@ -342,6 +360,7 @@ export function getLogsForSession(sessionId: string): BoulderLog[] {
     media_uri?: string | null;
     media_type?: string | null;
     notes?: string | null;
+    failure_reason?: string | null;
   }>(
     `SELECT bl.* FROM boulder_logs bl
      JOIN boulder_groups bg ON bl.group_id = bg.id
@@ -361,6 +380,8 @@ export function getLogsForSession(sessionId: string): BoulderLog[] {
     media_uri: r.media_uri ?? null,
     media_type: (r.media_type as 'video' | 'photo') ?? null,
     notes: r.notes ?? null,
+    failureReason: (r.failure_reason as FailureReason) ?? null,
+    failure_reason: (r.failure_reason as FailureReason) ?? null,
   }));
 }
 
@@ -1554,6 +1575,7 @@ export interface BetaVaultItem {
   mediaUri?: string | null;
   mediaType?: 'video' | 'photo' | null;
   outcome?: string;
+  failureReason?: FailureReason | null;
   date: string;
 }
 
@@ -1574,8 +1596,9 @@ export function getBetaVaultLogs(): BetaVaultItem[] {
       zone_name: string;
       gym_name: string;
       timestamp: number;
+      failure_reason?: string | null;
     }>(
-      `SELECT bl.id, bl.grade_raw, bl.media_uri, bl.media_type, bl.outcome, bg.zone_name, s.gym_name, bl.timestamp
+      `SELECT bl.id, bl.grade_raw, bl.media_uri, bl.media_type, bl.outcome, bg.zone_name, s.gym_name, bl.timestamp, bl.failure_reason
        FROM boulder_logs bl
        JOIN boulder_groups bg ON bl.group_id = bg.id
        JOIN sessions s ON bg.session_id = s.id
@@ -1594,6 +1617,7 @@ export function getBetaVaultLogs(): BetaVaultItem[] {
         mediaUri: r.media_uri,
         mediaType: (r.media_type as 'video' | 'photo') || 'video',
         outcome: r.outcome,
+        failureReason: (r.failure_reason as FailureReason) ?? null,
         date: d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
       };
     });

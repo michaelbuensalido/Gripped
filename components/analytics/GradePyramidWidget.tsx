@@ -78,14 +78,9 @@ export function GradePyramidWidget({
 
   return (
     <View style={styles.card}>
-      {/* ── Header ────────────────────────────────────────── */}
+      {/* ── Header: 11pt uppercase tracked #8A8A98, font-bold, mb-3 ── */}
       <View style={styles.headerRow}>
-        <View>
-          <Text style={styles.cardTitle}>{title}</Text>
-          <Text style={styles.cardSubtitle}>
-            {totalSends} total sends • {totalFlashes} flashes
-          </Text>
-        </View>
+        <Text style={styles.cardTitle}>{title}</Text>
       </View>
 
       {/* ── Dynamic Clamped Horizontal Stacked Pyramid ───── */}
@@ -108,7 +103,7 @@ export function GradePyramidWidget({
 
               return (
                 <View key={row.grade_raw} style={styles.rowContainer}>
-                  {/* Left: Grade Label (13pt Bold White) */}
+                  {/* Left: Grade Label (13pt Bold White, fixed width 28pt) */}
                   <View style={styles.gradeLabelContainer}>
                     <Text
                       style={[
@@ -120,7 +115,7 @@ export function GradePyramidWidget({
                     </Text>
                   </View>
 
-                  {/* Center: Horizontal Stacked Bar (Height 16pt, borderRadius 4) */}
+                  {/* Center: Horizontal Stacked Bar (Height 16pt, background #17171C, rounded-md) */}
                   <View style={styles.barTrackContainer}>
                     {hasActivity ? (
                       <View
@@ -167,12 +162,12 @@ export function GradePyramidWidget({
                         )}
                       </View>
                     ) : (
-                      // Subtle 2pt dark track for 0 activity rows
+                      // Subtle dark track for 0 activity rows
                       <View style={styles.emptyTrack} />
                     )}
                   </View>
 
-                  {/* Right: Total Send Count */}
+                  {/* Right: Total Send Count (12pt #8A8A98, e.g. "5 sends") */}
                   <View style={styles.countContainer}>
                     <Text
                       style={[
@@ -180,7 +175,9 @@ export function GradePyramidWidget({
                         row.total_sends > 0 && styles.countTextActive,
                       ]}
                     >
-                      {row.total_sends > 0 ? row.total_sends : ''}
+                      {row.total_sends > 0
+                        ? `${row.total_sends} ${row.total_sends === 1 ? 'send' : 'sends'}`
+                        : ''}
                     </Text>
                   </View>
                 </View>
@@ -220,30 +217,22 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: '#1E1E24',
     borderRadius: 20,
-    padding: 18,
+    padding: 16,
     borderWidth: 1,
     borderColor: '#2C2C35',
   },
   headerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 16,
+    marginBottom: 12,
   },
   cardTitle: {
-    color: '#FFFFFF',
-    fontSize: 13,
-    fontWeight: '800',
-    letterSpacing: 1,
-  },
-  cardSubtitle: {
     color: '#8A8A98',
     fontSize: 11,
-    fontWeight: '500',
-    marginTop: 2,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 1.2,
   },
   chartContainer: {
-    paddingVertical: 4,
+    paddingVertical: 2,
   },
   pyramidList: {
     gap: 8,
@@ -254,7 +243,7 @@ const styles = StyleSheet.create({
     height: 24,
   },
   gradeLabelContainer: {
-    width: 38,
+    width: 28,
     justifyContent: 'center',
   },
   gradeLabel: {
@@ -268,12 +257,15 @@ const styles = StyleSheet.create({
   barTrackContainer: {
     flex: 1,
     height: 16,
+    backgroundColor: '#17171C',
+    borderRadius: 6,
+    overflow: 'hidden',
     justifyContent: 'center',
     marginHorizontal: 8,
   },
   stackedBar: {
     height: 16,
-    borderRadius: 4,
+    borderRadius: 6,
     overflow: 'hidden',
     flexDirection: 'row',
   },
@@ -282,12 +274,12 @@ const styles = StyleSheet.create({
   },
   emptyTrack: {
     height: 2,
-    backgroundColor: '#25252E',
+    backgroundColor: '#22222A',
     borderRadius: 1,
     width: '100%',
   },
   countContainer: {
-    width: 24,
+    width: 54,
     alignItems: 'flex-end',
     justifyContent: 'center',
   },
@@ -297,8 +289,8 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   countTextActive: {
-    color: '#FFFFFF',
-    fontWeight: '700',
+    color: '#8A8A98',
+    fontWeight: '600',
   },
   emptyContainer: {
     paddingVertical: 36,

@@ -2,21 +2,26 @@ import React, { useEffect } from 'react';
 import {
   View,
   Text,
-  Modal,
   TouchableOpacity,
+  StyleSheet,
 } from 'react-native';
-import Svg, { Circle } from 'react-native-svg';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withRepeat,
+  withSequence,
+  withTiming,
+  Easing,
+} from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { X as XIcon, SkipForward } from 'lucide-react-native';
+import { X } from 'lucide-react-native';
 import { useSessionStore } from '../../store/sessionStore';
 import { useRestTimer } from '../../hooks/useRestTimer';
+import { triggerHaptic } from '../../utils/haptics';
 
 function pad(n: number): string {
   return n.toString().padStart(2, '0');
 }
-
-const RADIUS = 70;
-const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
 
 export function FloatingRestTimer() {
   // Drive the rest timer tick
@@ -24,103 +29,151 @@ export function FloatingRestTimer() {
 
   const restTimerActive  = useSessionStore((s) => s.restTimerActive);
   const restTimerSeconds = useSessionStore((s) => s.restTimerSeconds);
-  const restTimerMax     = useSessionStore((s) => s.restTimerMax);
   const dismissRestTimer = useSessionStore((s) => s.dismissRestTimer);
   const triggerRestTimer = useSessionStore((s) => s.triggerRestTimer);
+  const insets = useSafeAreaInsets();
 
-  const progress = restTimerMax > 0 ? restTimerSeconds / restTimerMax : 0;
-  const strokeDashoffset = CIRCUMFERENCE * (1 - progress);
+  // Pulse animation for the Lavender dot
+  const pulse = useSharedValue(1);
+
+  useEffect(() => {
+    if (restTimerActive) {
+      pulse.value = withRepeat(
+        withSequence(
+          withTiming(1.3, { duration: 700, easing: Easing.inOut(Easing.ease) }),
+          withTiming(0.9, { duration: 700, easing: Easing.inOut(Easing.ease) })
+        ),
+        -1,
+        true
+      );
+    } else {
+      pulse.value = 1;
+    }
+  }, [restTimerActive, pulse]);
+
+  const pulseStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: pulse.value }],
+    opacity: pulse.value > 1.1 ? 1 : 0.75,
+  }));
+
+  if (!restTimerActive) return null;
 
   const m = Math.floor(restTimerSeconds / 60);
   const s = restTimerSeconds % 60;
 
-  // Color shifts from green → yellow → red as time decreases
-  const ringColor =
-    progress > 0.5 ? '#22C55E' : progress > 0.25 ? '#F59E0B' : '#EF4444';
+  const handleAdd30 = () => {
+    triggerHaptic('light');
+    triggerRestTimer(restTimerSeconds + 30);
+  };
 
-  const insets = useSafeAreaInsets();
+  const handleDismiss = () => {
+    triggerHaptic('light');
+    dismissRestTimer();
+  };
 
   return (
-    <Modal
-      visible={restTimerActive}
-      transparent
-      animationType="fade"
-      onRequestClose={dismissRestTimer}
+    <View
+      style={[
+        styles.container,
+        { bottom: Math.max(insets.bottom + 16, 24) },
+      ]}
+      pointerEvents="box-none"
     >
-      <View className="flex-1 bg-black/70 items-center justify-center">
-        <View
-          style={{ paddingBottom: insets.bottom + 8 }}
-          className="bg-surface rounded-3xl p-8 items-center mx-6 border border-border"
+      <View style={styles.pill}>
+        {/* Pulsing Lavender Dot */}
+        <Animated.View style={[styles.pulseDot, pulseStyle]} />
+
+        {/* Countdown Timer Text: 14pt Bold White */}
+        <Text style={styles.timerText}>
+          REST {pad(m)}:{pad(s)}
+        </Text>
+
+        {/* Quick +30s Add Button */}
+        <TouchableOpacity
+          onPress={handleAdd30}
+          activeOpacity={0.7}
+          hitSlop={{ top: 10, bottom: 10, left: 6, right: 6 }}
+          style={styles.addBtn}
         >
-          <Text className="text-secondary text-sm font-semibold mb-6 uppercase tracking-widest">
-            Rest
-          </Text>
+          <Text style={styles.addBtnText}>+30s</Text>
+        </TouchableOpacity>
 
-          {/* Circular ring */}
-          <View className="items-center justify-center">
-            <Svg width={160} height={160}>
-              {/* Background track */}
-              <Circle
-                cx={80}
-                cy={80}
-                r={RADIUS}
-                stroke="#2E2E2E"
-                strokeWidth={8}
-                fill="none"
-              />
-              {/* Progress arc */}
-              <Circle
-                cx={80}
-                cy={80}
-                r={RADIUS}
-                stroke={ringColor}
-                strokeWidth={8}
-                fill="none"
-                strokeDasharray={`${CIRCUMFERENCE} ${CIRCUMFERENCE}`}
-                strokeDashoffset={strokeDashoffset}
-                strokeLinecap="round"
-                rotation="-90"
-                origin="80, 80"
-              />
-            </Svg>
-            {/* Centered time text */}
-            <View className="absolute items-center">
-              <Text className="text-white text-4xl font-black font-mono">
-                {pad(m)}:{pad(s)}
-              </Text>
-            </View>
-          </View>
-
-          {/* Action buttons */}
-          <View className="flex-row gap-4 mt-8">
-            <TouchableOpacity
-              onPress={dismissRestTimer}
-              activeOpacity={0.8}
-              className="flex-row items-center gap-2 bg-card border border-border px-5 py-3 rounded-xl"
-            >
-              <SkipForward size={16} color="#9CA3AF" />
-              <Text className="text-secondary font-semibold">Skip</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              onPress={() => triggerRestTimer(90)}
-              activeOpacity={0.8}
-              className="flex-row items-center gap-2 bg-accent px-5 py-3 rounded-xl"
-            >
-              <Text className="text-white font-bold">+90s</Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* Dismiss */}
-          <TouchableOpacity
-            onPress={dismissRestTimer}
-            activeOpacity={0.7}
-            className="mt-5"
-          >
-            <XIcon size={20} color="#6B7280" />
-          </TouchableOpacity>
-        </View>
+        {/* Dismiss 'X' Button */}
+        <TouchableOpacity
+          onPress={handleDismiss}
+          activeOpacity={0.7}
+          hitSlop={{ top: 10, bottom: 10, left: 6, right: 10 }}
+          style={styles.closeBtn}
+        >
+          <X size={13} color="#8A8A98" strokeWidth={2.5} />
+        </TouchableOpacity>
       </View>
-    </Modal>
+    </View>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+    zIndex: 999,
+  },
+  pill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#1E1E24',
+    borderWidth: 1,
+    borderColor: '#8E7CFF',
+    borderRadius: 999,
+    paddingHorizontal: 20, // px-5 (20pt)
+    paddingVertical: 10,  // py-2.5 (10pt)
+    gap: 10,
+    shadowColor: '#8E7CFF',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
+    elevation: 8,
+  },
+  pulseDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#8E7CFF',
+    shadowColor: '#8E7CFF',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.8,
+    shadowRadius: 4,
+  },
+  timerText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '700',
+    letterSpacing: 0.4,
+    fontVariant: ['tabular-nums'],
+  },
+  addBtn: {
+    backgroundColor: 'rgba(142, 124, 255, 0.14)',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(142, 124, 255, 0.3)',
+    marginLeft: 2,
+  },
+  addBtnText: {
+    color: '#8E7CFF',
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  closeBtn: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: '#17171C',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 2,
+  },
+});
