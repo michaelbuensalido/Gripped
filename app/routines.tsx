@@ -23,6 +23,7 @@ import type { RoutineWithBlocks } from '../types';
 import { useSessionStore } from '../store/sessionStore';
 import { RoutineCard } from '../components/routines/RoutineCard';
 import { ScreenContainer } from '../components/ui/ScreenContainer';
+import { EmptyStateCard } from '../components/ui/EmptyStateCard';
 import { FLOATING_CARD_STYLE, THEME_COLORS } from '../constants/theme';
 
 export default function RoutinesListScreen() {
@@ -234,79 +235,15 @@ export default function RoutinesListScreen() {
 
         {/* My Routines List / Empty State */}
         {myRoutines.length === 0 ? (
-          <View
-            style={[
-              FLOATING_CARD_STYLE,
-              {
-                marginHorizontal: 16,
-                marginBottom: 24,
-                paddingVertical: 24,
-                paddingHorizontal: 20,
-                alignItems: 'center',
-              },
-            ]}
-          >
-            {/* Unboxed, floating 3D graphic */}
-            <Image
-              source={require('../assets/illustrations/chalk_bag_empty_state.png')}
-              style={{
-                width: 140,
-                height: 80,
-                borderRadius: 16,
-                marginBottom: 14,
-              }}
-              resizeMode="cover"
-            />
-
-            <Text
-              style={{
-                color: '#FFFFFF',
-                fontSize: 17,
-                fontWeight: '700',
-                marginBottom: 6,
-              }}
-            >
-              No custom routines yet
-            </Text>
-            <Text
-              style={{
-                color: '#9A9AA6',
-                fontSize: 13,
-                textAlign: 'center',
-                marginBottom: 20,
-                lineHeight: 18,
-                paddingHorizontal: 10,
-              }}
-            >
-              Build your own structured climbing session with customized grades, burn targets, and rest timers, or duplicate an example template below.
-            </Text>
-
-            {/* Secondary CTA: Floating dark pill with subtle white border and 13pt SemiBold white text */}
-            <TouchableOpacity
+          <View style={{ marginHorizontal: 16, marginBottom: 24 }}>
+            <EmptyStateCard
+              icon={Layers}
+              title="Build Your First Routine"
+              description="Create structured 4x4 endurance drills, limit bouldering circuits, or custom hangboard intervals."
+              buttonLabel="+ Create New Routine"
+              buttonVariant="lavender"
               onPress={() => router.push('/routines/editor')}
-              activeOpacity={0.75}
-              style={{
-                backgroundColor: THEME_COLORS.cardSurface,
-                borderColor: 'rgba(255, 255, 255, 0.14)',
-                borderWidth: 1,
-                paddingHorizontal: 20,
-                paddingVertical: 10,
-                borderRadius: 20,
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: 7,
-                shadowColor: '#000000',
-                shadowOffset: { width: 0, height: 3 },
-                shadowOpacity: 0.3,
-                shadowRadius: 6,
-                elevation: 3,
-              }}
-            >
-              <Plus size={14} color="#FFFFFF" strokeWidth={2.5} />
-              <Text style={{ color: '#FFFFFF', fontSize: 13, fontWeight: '600' }}>
-                Create Custom Routine
-              </Text>
-            </TouchableOpacity>
+            />
           </View>
         ) : (
           myRoutines.map((routine) => (

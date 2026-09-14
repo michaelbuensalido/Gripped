@@ -23,6 +23,7 @@ interface SessionState {
   // actions
   startSession: (gymName: string) => void;
   startEmptySession: (gymName?: string) => string;
+  startQuickSession: (gymName?: string) => string;
   startSessionFromRoutine: (routine: RoutineWithBlocks, gymName?: string) => string;
   finishSession: () => void;
   completeSession: (params: {
@@ -171,6 +172,10 @@ export const useSessionStore = create<SessionState>()(
       });
 
       return session.id;
+    },
+
+    startQuickSession: (gymName = 'Quick Session') => {
+      return get().startEmptySession(gymName);
     },
 
     startSessionFromRoutine: (routine, gymName = 'Gym Session') => {
