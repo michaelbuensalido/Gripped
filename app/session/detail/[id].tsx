@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -11,6 +11,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   Image,
+  ActivityIndicator,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -28,6 +29,8 @@ import {
   X,
   Check,
 } from 'lucide-react-native';
+import { captureRef } from 'react-native-view-shot';
+import * as Sharing from 'expo-sharing';
 import {
   getSessionDetail,
   updateSessionNotes,
@@ -40,6 +43,8 @@ import { ReadOnlyBoulderGroup } from '../../../components/session/ReadOnlyBoulde
 import { SessionPyramidChart } from '../../../components/session/SessionPyramidChart';
 import { FLOATING_CARD_STYLE } from '../../../constants/theme';
 import { ScreenContainer } from '../../../components/ui/ScreenContainer';
+import { triggerHaptic } from '../../../utils/haptics';
+import { ShareWorkoutCard } from '../../../components/session/ShareWorkoutCard';
 
 function formatDuration(ms: number): string {
   const totalMin = Math.round(ms / 60000);
@@ -168,6 +173,8 @@ export default function SessionDetailScreen() {
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [editGymName, setEditGymName] = useState('');
   const [editNotes, setEditNotes] = useState('');
+  const [isSharing, setIsSharing] = useState(false);
+  const shareCardRef = useRef<View>(null);
 
   const loadData = useCallback(() => {
     if (!id) return;
@@ -184,34 +191,62 @@ export default function SessionDetailScreen() {
   }, [loadData]);
 
   const handleShare = useCallback(async () => {
-    if (!data) return;
-    const dateStr = formatSessionDate(data.session.startTime);
-    const durStr = formatDuration(data.kpis.durationMs);
-    let text = `🧗 CruxLog Workout Summary\n`;
-    text += `📍 ${data.session.gymName || 'Bouldering Session'} • ${dateStr}\n\n`;
-    text += `⏱️ Duration: ${durStr}\n`;
-    text += `🎯 Sends: ${data.kpis.totalSends} / ${data.kpis.totalClimbs}\n`;
-    text += `⚡ Flashes: ${data.kpis.totalFlashes} (${data.kpis.flashRate}%)\n`;
-    text += `🔥 Hardest Send: ${data.kpis.hardestSend ?? 'None'}\n`;
-    if (data.kpis.avgRpe != null) {
-      text += `💪 Avg RPE: ${data.kpis.avgRpe}/10 (${getRpeDescription(data.kpis.avgRpe)})\n`;
-    }
-    if (data.session.notes) {
-      text += `\n📝 Notes: ${data.session.notes}\n`;
-    }
-    if (data.pyramid.length > 0) {
-      text += `\n📊 Grade Breakdown:\n`;
-      for (const r of data.pyramid) {
-        text += `${r.gradeRaw.padEnd(4)}: ${r.flashes}⚡ ${r.sends}✓ ${r.attempts}✗\n`;
-      }
-    }
+    if (!data || isSharing) return;
+    setIsSharing(true);
+    triggerHaptic('medium');
 
     try {
+      if (shareCardRef.current) {
+        const uri = await captureRef(shareCardRef, {
+          format: 'png',
+          quality: 0.95,
+        });
+
+        const isAvailable = await Sharing.isAvailableAsync();
+        if (isAvailable) {
+          await Sharing.shareAsync(uri, {
+            mimeType: 'image/png',
+            dialogTitle: 'Share CruxLog Workout',
+            UTI: 'public.png',
+          });
+          setIsSharing(false);
+          return;
+        }
+      }
+    } catch (err) {
+      console.warn('ViewShot export failed, falling back to text share:', err);
+    }
+
+    // Fallback to text share
+    try {
+      const dateStr = formatSessionDate(data.session.startTime);
+      const durStr = formatDuration(data.kpis.durationMs);
+      let text = `🧗 CruxLog Workout Summary\n`;
+      text += `📍 ${data.session.gymName || 'Bouldering Session'} • ${dateStr}\n\n`;
+      text += `⏱️ Duration: ${durStr}\n`;
+      text += `🎯 Sends: ${data.kpis.totalSends} / ${data.kpis.totalClimbs}\n`;
+      text += `⚡ Flashes: ${data.kpis.totalFlashes} (${data.kpis.flashRate}%)\n`;
+      text += `🔥 Hardest Send: ${data.kpis.hardestSend ?? 'None'}\n`;
+      if (data.kpis.avgRpe != null) {
+        text += `💪 Avg RPE: ${data.kpis.avgRpe}/10 (${getRpeDescription(data.kpis.avgRpe)})\n`;
+      }
+      if (data.session.notes) {
+        text += `\n📝 Notes: ${data.session.notes}\n`;
+      }
+      if (data.pyramid.length > 0) {
+        text += `\n📊 Grade Breakdown:\n`;
+        for (const r of data.pyramid) {
+          text += `${r.gradeRaw.padEnd(4)}: ${r.flashes}⚡ ${r.sends}✓ ${r.attempts}✗\n`;
+        }
+      }
+
       await Share.share({ message: text });
     } catch (e) {
       console.error(e);
+    } finally {
+      setIsSharing(false);
     }
-  }, [data]);
+  }, [data, isSharing]);
 
   const handleResume = useCallback(() => {
     setMenuVisible(false);
@@ -299,8 +334,17 @@ export default function SessionDetailScreen() {
         </View>
 
         <View className="flex-row items-center gap-1">
-          <TouchableOpacity onPress={handleShare} activeOpacity={0.7} className="p-2">
-            <Share2 size={19} color="#8E7CFF" />
+          <TouchableOpacity
+            onPress={handleShare}
+            disabled={isSharing}
+            activeOpacity={0.7}
+            className="p-2"
+          >
+            {isSharing ? (
+              <ActivityIndicator size="small" color="#8E7CFF" />
+            ) : (
+              <Share2 size={19} color="#8E7CFF" />
+            )}
           </TouchableOpacity>
           <TouchableOpacity
             onPress={() => setMenuVisible(true)}
@@ -449,6 +493,7 @@ export default function SessionDetailScreen() {
         <View className="px-4 mt-2 mb-6">
           <TouchableOpacity
             onPress={handleShare}
+            disabled={isSharing}
             activeOpacity={0.85}
             style={{
               backgroundColor: '#8E7CFF',
@@ -462,17 +507,23 @@ export default function SessionDetailScreen() {
             }}
             className="flex-row items-center justify-center gap-2"
           >
-            <Share2 size={18} color="#FFFFFF" />
-            <Text
-              style={{
-                color: '#FFFFFF',
-                fontSize: 15,
-                fontWeight: '700',
-                letterSpacing: 0.5,
-              }}
-            >
-              SHARE WORKOUT SUMMARY
-            </Text>
+            {isSharing ? (
+              <ActivityIndicator size="small" color="#FFFFFF" />
+            ) : (
+              <>
+                <Share2 size={18} color="#FFFFFF" />
+                <Text
+                  style={{
+                    color: '#FFFFFF',
+                    fontSize: 15,
+                    fontWeight: '700',
+                    letterSpacing: 0.5,
+                  }}
+                >
+                  SHARE WORKOUT SUMMARY
+                </Text>
+              </>
+            )}
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -593,6 +644,20 @@ export default function SessionDetailScreen() {
           </View>
         </KeyboardAvoidingView>
       </Modal>
+
+      {/* ── Off-screen 9:16 Instagram Story Card Canvas ───────── */}
+      <View
+        style={{
+          position: 'absolute',
+          top: -9999,
+          left: 0,
+          zIndex: -1,
+        }}
+        pointerEvents="none"
+        collapsable={false}
+      >
+        <ShareWorkoutCard ref={shareCardRef} data={data} />
+      </View>
     </ScreenContainer>
   );
 }

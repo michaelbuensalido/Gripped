@@ -46,7 +46,7 @@ import {
   ValidationFailureReason,
 } from '../../services/videoAnalyzer';
 import { useClimbingPoseTracker } from '../../hooks/useClimbingPoseTracker';
-import { PoseSkeletonOverlay } from './PoseSkeletonOverlay';
+import { ClimberSkeletonOverlay } from './ClimberSkeletonOverlay';
 
 interface BetaCamModalProps {
   visible: boolean;
@@ -911,7 +911,7 @@ export function BetaCamModal({
             )}
 
             {/* ── Real-Time Pose Skeleton & Hold Contact Overlay ───────────── */}
-            <PoseSkeletonOverlay
+            <ClimberSkeletonOverlay
               poseState={poseState}
               isFrontCamera={facing === 'front'}
             />

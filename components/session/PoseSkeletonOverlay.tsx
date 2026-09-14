@@ -312,3 +312,6 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
 });
+
+export { ClimberSkeletonOverlay } from './ClimberSkeletonOverlay';
+

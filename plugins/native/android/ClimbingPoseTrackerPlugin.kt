@@ -61,12 +61,16 @@ class ClimbingPoseTrackerPlugin(proxy: VisionCameraProxy, options: Map<String, A
       val landmarks = mutableMapOf<String, Map<String, Any>>()
 
       val landmarkMappings = listOf(
-        Pair(PoseLandmark.LEFT_WRIST, "leftWrist"),
-        Pair(PoseLandmark.RIGHT_WRIST, "rightWrist"),
+        Pair(PoseLandmark.LEFT_SHOULDER, "leftShoulder"),
+        Pair(PoseLandmark.RIGHT_SHOULDER, "rightShoulder"),
         Pair(PoseLandmark.LEFT_ELBOW, "leftElbow"),
         Pair(PoseLandmark.RIGHT_ELBOW, "rightElbow"),
+        Pair(PoseLandmark.LEFT_WRIST, "leftWrist"),
+        Pair(PoseLandmark.RIGHT_WRIST, "rightWrist"),
         Pair(PoseLandmark.LEFT_HIP, "leftHip"),
         Pair(PoseLandmark.RIGHT_HIP, "rightHip"),
+        Pair(PoseLandmark.LEFT_KNEE, "leftKnee"),
+        Pair(PoseLandmark.RIGHT_KNEE, "rightKnee"),
         Pair(PoseLandmark.LEFT_ANKLE, "leftAnkle"),
         Pair(PoseLandmark.RIGHT_ANKLE, "rightAnkle")
       )

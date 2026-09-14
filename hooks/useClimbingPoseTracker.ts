@@ -12,12 +12,16 @@ export interface LandmarkPoint {
 }
 
 export type ClimbingLandmarkName =
-  | 'leftWrist'
-  | 'rightWrist'
+  | 'leftShoulder'
+  | 'rightShoulder'
   | 'leftElbow'
   | 'rightElbow'
+  | 'leftWrist'
+  | 'rightWrist'
   | 'leftHip'
   | 'rightHip'
+  | 'leftKnee'
+  | 'rightKnee'
   | 'leftAnkle'
   | 'rightAnkle';
 
@@ -39,7 +43,7 @@ export interface UseClimbingPoseTrackerOptions {
   enabled?: boolean;
   targetHolds?: TargetHold[];
   contactDistanceThreshold?: number; // Normalized threshold (default: 0.08 ~ 8% of viewport)
-  minConfidence?: number;            // Minimum landmark confidence (default: 0.2 — lowered for back-body climbing pose)
+  minConfidence?: number;            // Minimum landmark confidence (default: 0.25 — lowered for contorted climbers facing wall)
   enableSimulatorSimulation?: boolean; // Generates realistic kinematic climber motion in simulator/demo
   onHandContactChange?: (isContacting: boolean, contactCount: number) => void;
 }
@@ -215,7 +219,7 @@ function useClimbingPoseTrackerNative({
   enabled = true,
   targetHolds = DEFAULT_SIMULATED_HOLDS,
   contactDistanceThreshold = 0.08,
-  minConfidence = 0.2,
+  minConfidence = 0.25,
   enableSimulatorSimulation = false,
   onHandContactChange,
 }: UseClimbingPoseTrackerOptions = {}) {
@@ -338,7 +342,7 @@ function useClimbingPoseTrackerExpoGo({
   enabled = true,
   targetHolds = DEFAULT_SIMULATED_HOLDS,
   contactDistanceThreshold = 0.08,
-  minConfidence = 0.2,
+  minConfidence = 0.25,
   enableSimulatorSimulation = false,
   onHandContactChange,
 }: UseClimbingPoseTrackerOptions = {}) {
@@ -504,24 +508,50 @@ function useSimulatorSimulation(
         confidence: 0.96,
       };
 
+      const leftShoulder: LandmarkPoint = {
+        x: Math.max(0.1, Math.min(0.9, leftHip.x - 0.04)),
+        y: Math.max(0.1, hipY - 0.22),
+        confidence: 0.94,
+      };
+      const rightShoulder: LandmarkPoint = {
+        x: Math.max(0.1, Math.min(0.9, rightHip.x + 0.04)),
+        y: Math.max(0.1, hipY - 0.22),
+        confidence: 0.94,
+      };
+
+      const leftKnee: LandmarkPoint = {
+        x: (leftHip.x + leftAnkle.x) / 2 - 0.02,
+        y: (leftHip.y + leftAnkle.y) / 2,
+        confidence: 0.92,
+      };
+      const rightKnee: LandmarkPoint = {
+        x: (rightHip.x + rightAnkle.x) / 2 + 0.02,
+        y: (rightHip.y + rightAnkle.y) / 2,
+        confidence: 0.92,
+      };
+
       const leftElbow: LandmarkPoint = {
-        x: (leftWrist.x + leftHip.x) / 2 - 0.06,
-        y: (leftWrist.y + leftHip.y) / 2 + 0.04,
+        x: (leftWrist.x + leftShoulder.x) / 2 - 0.04,
+        y: (leftWrist.y + leftShoulder.y) / 2 + 0.03,
         confidence: 0.92,
       };
       const rightElbow: LandmarkPoint = {
-        x: (rightWrist.x + rightHip.x) / 2 + 0.06,
-        y: (rightWrist.y + rightHip.y) / 2 + 0.04,
+        x: (rightWrist.x + rightShoulder.x) / 2 + 0.04,
+        y: (rightWrist.y + rightShoulder.y) / 2 + 0.03,
         confidence: 0.92,
       };
 
       const landmarks: Record<string, LandmarkPoint> = {
-        leftWrist,
-        rightWrist,
+        leftShoulder,
+        rightShoulder,
         leftElbow,
         rightElbow,
+        leftWrist,
+        rightWrist,
         leftHip,
         rightHip,
+        leftKnee,
+        rightKnee,
         leftAnkle,
         rightAnkle,
       };

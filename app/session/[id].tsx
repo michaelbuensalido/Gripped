@@ -7,7 +7,7 @@ import {
   Platform,
   KeyboardAvoidingView,
 } from 'react-native';
-import { useKeepAwake } from 'expo-keep-awake';
+import { useKeepAwake, activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Plus } from 'lucide-react-native';
 import { useSessionStore } from '../../store/sessionStore';
@@ -58,6 +58,13 @@ export default function ActiveSessionScreen() {
 
   // Keep screen awake while active workout view is mounted ("Mat Mode")
   useKeepAwake();
+
+  useEffect(() => {
+    activateKeepAwakeAsync('active-session').catch(() => {});
+    return () => {
+      deactivateKeepAwake('active-session').catch(() => {});
+    };
+  }, []);
 
   const activeSession = useSessionStore((s) => s.activeSession);
   const groups = useSessionStore((s) => s.groups);
@@ -191,6 +198,7 @@ export default function ActiveSessionScreen() {
       mediaUris: string[];
       endTime: number;
     }) => {
+      deactivateKeepAwake('active-session').catch(() => {});
       const targetId = id || activeSession?.id;
       completeSession(data);
       setShowCompletionModal(false);
@@ -204,6 +212,7 @@ export default function ActiveSessionScreen() {
   );
 
   const handleDiscardCompletion = useCallback(() => {
+    deactivateKeepAwake('active-session').catch(() => {});
     discardSession();
     setShowCompletionModal(false);
     router.replace('/');

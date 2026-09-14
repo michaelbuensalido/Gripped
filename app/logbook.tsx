@@ -21,6 +21,7 @@ import {
   Compass,
 } from 'lucide-react-native';
 import { VideoPlayerView } from '../components/ui/VideoPlayerView';
+import { BetaVideoPlayerModal } from '../components/media/BetaVideoPlayerModal';
 import { ScreenContainer } from '../components/ui/ScreenContainer';
 import { FLOATING_CARD_STYLE, THEME_COLORS } from '../constants/theme';
 import {
@@ -912,167 +913,16 @@ export default function LogbookScreen() {
         )}
       </ScrollView>
 
-      {/* ── Beta Video Playback Modal ─────────────────────────── */}
-      <Modal
-        visible={activePreviewBeta !== null}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setActivePreviewBeta(null)}
-      >
-        <View style={{ flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.85)', justifyContent: 'center', padding: 20 }}>
-          <View
-            style={[
-              FLOATING_CARD_STYLE,
-              {
-                borderRadius: 24,
-                overflow: 'hidden',
-              },
-            ]}
-          >
-            {/* Header */}
-            <View
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                padding: 16,
-                borderBottomWidth: 1,
-                borderBottomColor: 'rgba(255, 255, 255, 0.08)',
-              }}
-            >
-              <View>
-                <Text style={{ color: '#FFFFFF', fontSize: 18, fontWeight: '700' }}>
-                  {activePreviewBeta?.title}
-                </Text>
-                <Text style={{ color: '#9A9AA6', fontSize: 13, marginTop: 2 }}>
-                  {activePreviewBeta?.zoneName} • {activePreviewBeta?.gymName}
-                </Text>
-              </View>
-              <TouchableOpacity
-                activeOpacity={0.7}
-                onPress={() => setActivePreviewBeta(null)}
-                style={{
-                  width: 36,
-                  height: 36,
-                  borderRadius: 18,
-                  backgroundColor: '#16161C',
-                  borderColor: '#2C2C35',
-                  borderWidth: 1,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                <X size={18} color="#FFFFFF" />
-              </TouchableOpacity>
-            </View>
-
-            {/* Video Viewport / Playback */}
-            <View
-              style={{
-                width: '100%',
-                height: 280,
-                backgroundColor: '#121216',
-                position: 'relative',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              {activePreviewBeta && (
-                activePreviewBeta.mediaUri && activePreviewBeta.mediaUri.startsWith('file://') ? (
-                  activePreviewBeta.mediaType === 'photo' ||
-                  activePreviewBeta.mediaUri.endsWith('.jpg') ||
-                  activePreviewBeta.mediaUri.endsWith('.png') ||
-                  activePreviewBeta.mediaUri.endsWith('.jpeg') ? (
-                    <Image
-                      source={{ uri: activePreviewBeta.mediaUri }}
-                      style={{ width: '100%', height: '100%' }}
-                      resizeMode="contain"
-                    />
-                  ) : (
-                    <VideoPlayerView
-                      uri={activePreviewBeta.mediaUri}
-                      style={{ width: '100%', height: '100%' }}
-                      nativeControls
-                      loop
-                      autoPlay
-                    />
-                  )
-                ) : (
-                  <>
-                    <Image
-                      source={
-                        BETA_THUMBNAILS[activePreviewBeta.gradeRaw] ||
-                        require('../assets/holds-images/v6-ripple-effect-square.jpg')
-                      }
-                      style={{ width: '100%', height: '100%', opacity: 0.65 }}
-                      resizeMode="cover"
-                    />
-                    <View
-                      style={{
-                        position: 'absolute',
-                        width: 64,
-                        height: 64,
-                        borderRadius: 32,
-                        backgroundColor: 'rgba(142, 124, 255, 0.9)',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        shadowColor: '#8E7CFF',
-                        shadowOffset: { width: 0, height: 4 },
-                        shadowOpacity: 0.5,
-                        shadowRadius: 10,
-                      }}
-                    >
-                      <Play size={28} color="#FFFFFF" fill="#FFFFFF" style={{ marginLeft: 4 }} />
-                    </View>
-                  </>
-                )
-              )}
-            </View>
-
-            {/* Modal Footer */}
-            <View style={{ padding: 16 }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                  <View
-                    style={{
-                      backgroundColor: '#8E7CFF',
-                      borderRadius: 8,
-                      paddingHorizontal: 9,
-                      paddingVertical: 3,
-                    }}
-                  >
-                    <Text style={{ color: '#FFFFFF', fontSize: 13, fontWeight: '800' }}>
-                      {activePreviewBeta?.gradeRaw}
-                    </Text>
-                  </View>
-                  <Text style={{ color: '#9A9AA6', fontSize: 13, fontWeight: '500' }}>
-                    Recorded {activePreviewBeta?.date}
-                  </Text>
-                </View>
-                <Text style={{ color: '#6EE756', fontSize: 13, fontWeight: '700' }}>
-                  0:{activePreviewBeta?.durationSeconds.toString().padStart(2, '0')} HD
-                </Text>
-              </View>
-
-              <TouchableOpacity
-                activeOpacity={0.85}
-                onPress={() => setActivePreviewBeta(null)}
-                style={{
-                  backgroundColor: '#8E7CFF',
-                  height: 46,
-                  borderRadius: 23,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                <Text style={{ color: '#FFFFFF', fontSize: 15, fontWeight: '700' }}>
-                  Close Playback
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
+      <BetaVideoPlayerModal
+        visible={!!activePreviewBeta}
+        videoUri={activePreviewBeta?.mediaUri || null}
+        gradeRaw={activePreviewBeta?.gradeRaw}
+        zoneName={activePreviewBeta?.zoneName}
+        outcome={activePreviewBeta?.outcome}
+        durationSeconds={activePreviewBeta?.durationSeconds}
+        onClose={() => setActivePreviewBeta(null)}
+      />
     </ScreenContainer>
   );
 }
+

@@ -96,12 +96,16 @@ public class ClimbingPoseTrackerPlugin: FrameProcessorPlugin {
       var landmarks: [String: [String: Any]] = [:]
 
       let jointMap: [(VNHumanBodyPoseObservation.JointName, String)] = [
-        (.leftWrist, "leftWrist"),
-        (.rightWrist, "rightWrist"),
+        (.leftShoulder, "leftShoulder"),
+        (.rightShoulder, "rightShoulder"),
         (.leftElbow, "leftElbow"),
         (.rightElbow, "rightElbow"),
+        (.leftWrist, "leftWrist"),
+        (.rightWrist, "rightWrist"),
         (.leftHip, "leftHip"),
         (.rightHip, "rightHip"),
+        (.leftKnee, "leftKnee"),
+        (.rightKnee, "rightKnee"),
         (.leftAnkle, "leftAnkle"),
         (.rightAnkle, "rightAnkle"),
       ]
