@@ -238,7 +238,7 @@ export function RoutineLaunchCard({
         }}
         style={({ pressed }) => ({
           width: '100%',
-          height: 46,
+          height: 44,
           borderRadius: 12,
           backgroundColor: '#8E7CFF',
           alignItems: 'center',
@@ -256,7 +256,7 @@ export function RoutineLaunchCard({
         <Text
           style={{
             color: '#FFFFFF',
-            fontSize: 15,
+            fontSize: 14,
             fontWeight: '700',
             letterSpacing: 0.2,
           }}

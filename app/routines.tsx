@@ -11,6 +11,8 @@ import { useRouter, useFocusEffect } from 'expo-router';
 import {
   Plus,
   Compass,
+  Zap,
+  ChevronRight,
   Settings as SettingsIcon,
 } from 'lucide-react-native';
 import {
@@ -115,7 +117,7 @@ export default function RoutinesListScreen() {
         contentContainerStyle={{
           paddingHorizontal: 16,
           paddingTop: 12,
-          paddingBottom: 160,
+          paddingBottom: 170,
         }}
       >
         {/* ── 1. Top Header & Settings Button ────────────────── */}
@@ -156,7 +158,7 @@ export default function RoutinesListScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* ── Quick Launch Button ("Start Empty Workout" equivalent) ── */}
+        {/* ── 2. "+ Quick Freestyle Session" Hero Button ────────── */}
         <Pressable
           onPress={() => {
             triggerHaptic('light');
@@ -164,50 +166,73 @@ export default function RoutinesListScreen() {
           }}
           style={({ pressed }) => ({
             width: '100%',
-            height: 50,
-            borderRadius: 12,
+            height: 56,
+            borderRadius: 16,
             backgroundColor: '#1E1E24',
             borderWidth: 1,
             borderColor: '#2C2C35',
+            paddingHorizontal: 16,
             marginBottom: 16,
             flexDirection: 'row',
             alignItems: 'center',
-            justifyContent: 'center',
-            gap: 8,
-            paddingHorizontal: 12,
+            justifyContent: 'space-between',
             transform: [{ scale: pressed ? 0.98 : 1 }],
             opacity: pressed ? 0.92 : 1,
           })}
         >
-          <Text
-            style={{
-              color: '#FFFFFF',
-              fontSize: 15,
-              fontWeight: '600',
-              letterSpacing: -0.2,
-            }}
-          >
-            + Quick Freestyle Session
-          </Text>
-          <Text
-            style={{
-              color: '#8A8A98',
-              fontSize: 12,
-              fontWeight: '400',
-            }}
-            numberOfLines={1}
-          >
-            • Log as you climb • Untracked
-          </Text>
+          {/* Left Group */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 }}>
+            {/* Icon Badge: 36x36pt rounded-xl in Lavender tint */}
+            <View
+              style={{
+                width: 36,
+                height: 36,
+                borderRadius: 12,
+                backgroundColor: 'rgba(142, 124, 255, 0.15)',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <Zap size={18} color="#8E7CFF" />
+            </View>
+
+            {/* Text Column */}
+            <View style={{ flexDirection: 'column', justifyContent: 'center' }}>
+              <Text
+                style={{
+                  color: '#FFFFFF',
+                  fontSize: 15,
+                  fontWeight: '700',
+                  letterSpacing: -0.2,
+                }}
+              >
+                Quick Freestyle Session
+              </Text>
+              <Text
+                style={{
+                  color: '#8A8A98',
+                  fontSize: 12,
+                  fontWeight: '400',
+                  marginTop: 2,
+                }}
+              >
+                Log as you climb • Untracked
+              </Text>
+            </View>
+          </View>
+
+          {/* Right Chevron */}
+          <ChevronRight size={18} color="#5A5A65" />
         </Pressable>
 
-        {/* ── 2. Dual Action Launch Pills ─────────────────────── */}
+        {/* ── 3. Section Header & Dual Action Pills ──────────── */}
         <Text
           style={{
             color: '#8A8A98',
             fontSize: 11,
             fontWeight: '700',
             letterSpacing: 1.2,
+            marginTop: 8,
             marginBottom: 12,
           }}
           className="uppercase"
@@ -235,11 +260,12 @@ export default function RoutinesListScreen() {
               backgroundColor: '#1E1E24',
               borderWidth: 1,
               borderColor: '#2C2C35',
+              paddingHorizontal: 12,
               flexDirection: 'row',
               alignItems: 'center',
               justifyContent: 'center',
               gap: 8,
-              transform: [{ scale: pressed ? 0.98 : 1 }],
+              transform: [{ scale: pressed ? 0.95 : 1 }],
               opacity: pressed ? 0.92 : 1,
             })}
           >
@@ -255,7 +281,7 @@ export default function RoutinesListScreen() {
             </Text>
           </Pressable>
 
-          {/* Right Pill: Beta Templates / Browse Drills */}
+          {/* Right Pill: Browse Drills */}
           <Pressable
             onPress={handleBrowseDrills}
             style={({ pressed }) => ({
@@ -265,11 +291,12 @@ export default function RoutinesListScreen() {
               backgroundColor: '#1E1E24',
               borderWidth: 1,
               borderColor: '#2C2C35',
+              paddingHorizontal: 12,
               flexDirection: 'row',
               alignItems: 'center',
               justifyContent: 'center',
               gap: 8,
-              transform: [{ scale: pressed ? 0.98 : 1 }],
+              transform: [{ scale: pressed ? 0.95 : 1 }],
               opacity: pressed ? 0.92 : 1,
             })}
           >
@@ -286,7 +313,7 @@ export default function RoutinesListScreen() {
           </Pressable>
         </View>
 
-        {/* ── 3. My Routines Section ─────────────────────────── */}
+        {/* ── 4. My Routines Section ─────────────────────────── */}
         <View
           style={{
             flexDirection: 'row',
@@ -346,7 +373,7 @@ export default function RoutinesListScreen() {
           ))
         )}
 
-        {/* ── 4. Example Templates / Community Drills ────────── */}
+        {/* ── 5. Example Templates / Community Drills ────────── */}
         <View
           onLayout={(e) => {
             setDrillsY(e.nativeEvent.layout.y);
