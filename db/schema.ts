@@ -1,5 +1,4 @@
 import * as SQLite from 'expo-sqlite';
-import { seedDefaultRoutinesIfEmpty } from './routineQueries';
 
 let _db: SQLite.SQLiteDatabase | null = null;
 
@@ -40,7 +39,8 @@ export function getDatabase(): SQLite.SQLiteDatabase {
         timestamp             INTEGER NOT NULL,
         media_uri             TEXT,
         media_type            TEXT,
-        notes                 TEXT
+        notes                 TEXT,
+        failure_reason        TEXT
       );
 
       CREATE INDEX IF NOT EXISTS idx_logs_group ON boulder_logs(group_id);
@@ -105,6 +105,12 @@ function runMigrations(db: SQLite.SQLiteDatabase): void {
   try {
     db.execSync('ALTER TABLE boulder_logs ADD COLUMN notes TEXT;');
   } catch {}
+  try {
+    db.execSync("ALTER TABLE boulder_logs ADD COLUMN style_tags TEXT NOT NULL DEFAULT '[]';");
+  } catch {}
+  try {
+    db.execSync('ALTER TABLE boulder_logs ADD COLUMN failure_reason TEXT;');
+  } catch {}
 
   try {
     db.execSync("ALTER TABLE sessions ADD COLUMN title TEXT NOT NULL DEFAULT '';");
@@ -121,6 +127,7 @@ export async function initializeDatabase(): Promise<void> {
   const db = getDatabase();
   runMigrations(db);
   try {
+    const { seedDefaultRoutinesIfEmpty } = require('./routineQueries');
     seedDefaultRoutinesIfEmpty();
   } catch (err) {
     console.error('Failed to seed default routines:', err);

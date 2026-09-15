@@ -19,9 +19,15 @@ import {
   X,
   Plus,
   Compass,
+  Calendar,
+  Bookmark,
 } from 'lucide-react-native';
 import { VideoPlayerView } from '../components/ui/VideoPlayerView';
+import { BetaVideoPlayerModal } from '../components/media/BetaVideoPlayerModal';
 import { ScreenContainer } from '../components/ui/ScreenContainer';
+import { EmptyStateCard } from '../components/ui/EmptyStateCard';
+import { BetaCamModal } from '../components/session/BetaCamModal';
+import { useSessionStore } from '../store/sessionStore';
 import { FLOATING_CARD_STYLE, THEME_COLORS } from '../constants/theme';
 import {
   getAllSessionSummaries,
@@ -141,7 +147,8 @@ export default function LogbookScreen() {
   const [sessions, setSessions] = useState<SessionSummary[]>([]);
   const [projects, setProjects] = useState<ProjectBookItem[]>([]);
   const [betaLogs, setBetaLogs] = useState<BetaVaultItem[]>([]);
-  const [showSampleBeta, setShowSampleBeta] = useState(true);
+  const [showSampleBeta, setShowSampleBeta] = useState(false);
+  const [isBetaCamOpen, setIsBetaCamOpen] = useState(false);
   const [activePreviewBeta, setActivePreviewBeta] = useState<BetaVaultItem | null>(null);
 
   const loadData = useCallback(() => {
@@ -154,6 +161,36 @@ export default function LogbookScreen() {
       console.error('Failed to load logbook data:', err);
     }
   }, []);
+
+  const handleAttachBeta = (
+    mediaUri: string,
+    mediaType: 'video' | 'photo',
+    gradeRaw?: string,
+    notes?: string
+  ) => {
+    setIsBetaCamOpen(false);
+    try {
+      const store = useSessionStore.getState();
+      let sessionId: string;
+      if (store.activeSession) {
+        sessionId = store.activeSession.id;
+      } else {
+        sessionId = store.startQuickSession('Beta Session');
+      }
+      const currentGroups = store.groups;
+      if (currentGroups.length > 0 && currentGroups[0].logs.length > 0) {
+        store.commitSetGrading(currentGroups[0].id, currentGroups[0].logs[0].id, {
+          gradeRaw: gradeRaw || 'V5',
+          mediaUri,
+          mediaType,
+          notes,
+        });
+      }
+      loadData();
+    } catch (e) {
+      console.error('Error committing beta set grading:', e);
+    }
+  };
 
   useFocusEffect(
     useCallback(() => {
@@ -201,9 +238,9 @@ export default function LogbookScreen() {
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{
-          paddingTop: 12,
-          paddingBottom: 190,
           paddingHorizontal: 16,
+          paddingTop: 8,
+          paddingBottom: 180,
         }}
       >
         {/* ── Top Header ────────────────────────────────────────── */}
@@ -287,63 +324,17 @@ export default function LogbookScreen() {
         {activeSegment === 'sessions' && (
           <View>
             {sessions.length === 0 ? (
-              <View
-                style={[
-                  FLOATING_CARD_STYLE,
-                  {
-                    backgroundColor: 'rgba(30, 30, 36, 0.45)',
-                    borderWidth: 1,
-                    borderColor: '#2C2C35',
-                    borderStyle: 'dashed',
-                    borderRadius: 24,
-                    padding: 32,
-                    alignItems: 'center',
-                    marginTop: 10,
-                  },
-                ]}
-              >
-                <Image
-                  source={require('../assets/illustrations/chalk_bag_empty_state.png')}
-                  style={{ width: 120, height: 90, marginBottom: 14 }}
-                  resizeMode="contain"
-                />
-                <Text
-                  style={{
-                    color: '#FFFFFF',
-                    fontSize: 18,
-                    fontWeight: '700',
-                    marginBottom: 6,
-                    textAlign: 'center',
-                  }}
-                >
-                  No Logged Sessions
-                </Text>
-                <Text
-                  style={{
-                    color: '#9A9AA6',
-                    fontSize: 13,
-                    textAlign: 'center',
-                    lineHeight: 18,
-                    marginBottom: 20,
-                  }}
-                >
-                  Complete your first climbing session to view your history and progression here.
-                </Text>
-                <TouchableOpacity
-                  activeOpacity={0.85}
-                  onPress={() => router.push('/session/new')}
-                  style={{
-                    backgroundColor: '#8E7CFF',
-                    paddingHorizontal: 22,
-                    paddingVertical: 12,
-                    borderRadius: 20,
-                  }}
-                >
-                  <Text style={{ color: '#FFFFFF', fontSize: 14, fontWeight: '700' }}>
-                    Start a Session
-                  </Text>
-                </TouchableOpacity>
-              </View>
+              <EmptyStateCard
+                icon={TrendingUp}
+                title="No Sessions Logged Yet"
+                description="Your past workouts, send pyramids, and gym volume stats will appear here once you log your first burn."
+                buttonLabel="Start a Quick Session"
+                buttonVariant="lime"
+                onPress={() => {
+                  const sessionId = useSessionStore.getState().startQuickSession('Quick Session');
+                  router.push(`/session/${sessionId}`);
+                }}
+              />
             ) : (
               sessionsByMonth.map((group) => (
                 <View key={group.monthYear} style={{ marginBottom: 20 }}>
@@ -432,7 +423,6 @@ export default function LogbookScreen() {
                             paddingVertical: 4.5,
                           }}
                         >
-                          <Clock size={12} color="#9A9AA6" />
                           <Text style={{ color: '#FFFFFF', fontSize: 12, fontWeight: '600' }}>
                             {formatDuration(s.durationMinutes)}
                           </Text>
@@ -452,7 +442,6 @@ export default function LogbookScreen() {
                             paddingVertical: 4.5,
                           }}
                         >
-                          <TrendingUp size={12} color="#8E7CFF" />
                           <Text style={{ color: '#FFFFFF', fontSize: 12, fontWeight: '600' }}>
                             {s.sendCount} {s.sendCount === 1 ? 'Send' : 'Sends'}
                           </Text>
@@ -514,48 +503,17 @@ export default function LogbookScreen() {
         {activeSegment === 'projects' && (
           <View>
             {projects.length === 0 ? (
-              <View
-                style={[
-                  FLOATING_CARD_STYLE,
-                  {
-                    backgroundColor: 'rgba(30, 30, 36, 0.45)',
-                    borderWidth: 1,
-                    borderColor: '#2C2C35',
-                    borderStyle: 'dashed',
-                    borderRadius: 24,
-                    padding: 32,
-                    alignItems: 'center',
-                    marginTop: 10,
-                  },
-                ]}
-              >
-                <Image
-                  source={require('../assets/illustrations/chalk_bag_empty_state.png')}
-                  style={{ width: 120, height: 90, marginBottom: 14 }}
-                  resizeMode="contain"
-                />
-                <Text
-                  style={{
-                    color: '#FFFFFF',
-                    fontSize: 18,
-                    fontWeight: '700',
-                    marginBottom: 6,
-                    textAlign: 'center',
-                  }}
-                >
-                  No Unsent Projects
-                </Text>
-                <Text
-                  style={{
-                    color: '#9A9AA6',
-                    fontSize: 13,
-                    textAlign: 'center',
-                    lineHeight: 18,
-                  }}
-                >
-                  Every route you attempted was sent! When you log attempts on tricky climbs, they will appear here as your project queue.
-                </Text>
-              </View>
+              <EmptyStateCard
+                icon={Bookmark}
+                title="No Unsent Projects"
+                description="Every route you attempted was sent! When you log attempts on tricky climbs, they will appear here as your project queue."
+                buttonLabel="Start a Quick Session"
+                buttonVariant="lavender"
+                onPress={() => {
+                  const sessionId = useSessionStore.getState().startQuickSession('Project Session');
+                  router.push(`/session/${sessionId}`);
+                }}
+              />
             ) : (
               projectsByTier.map((tierGroup) => (
                 <View key={tierGroup.tier} style={{ marginBottom: 20 }}>
@@ -676,80 +634,18 @@ export default function LogbookScreen() {
         {activeSegment === 'beta' && (
           <View>
             {displayBetaItems.length === 0 ? (
-              <View
-                style={[
-                  FLOATING_CARD_STYLE,
-                  {
-                    backgroundColor: 'rgba(30, 30, 36, 0.45)',
-                    borderWidth: 1,
-                    borderColor: '#2C2C35',
-                    borderStyle: 'dashed',
-                    borderRadius: 24,
-                    padding: 32,
-                    alignItems: 'center',
-                    marginTop: 10,
-                  },
-                ]}
-              >
-                <View
-                  style={{
-                    width: 72,
-                    height: 72,
-                    borderRadius: 36,
-                    backgroundColor: 'rgba(142, 124, 255, 0.12)',
-                    borderColor: 'rgba(142, 124, 255, 0.25)',
-                    borderWidth: 1,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    marginBottom: 16,
-                  }}
-                >
-                  <Video size={32} color="#8E7CFF" />
-                </View>
-                <Text
-                  style={{
-                    color: '#FFFFFF',
-                    fontSize: 18,
-                    fontWeight: '700',
-                    marginBottom: 6,
-                    textAlign: 'center',
-                  }}
-                >
-                  No Beta Clips Saved
-                </Text>
-                <Text
-                  style={{
-                    color: '#9A9AA6',
-                    fontSize: 13,
-                    textAlign: 'center',
-                    lineHeight: 18,
-                    marginBottom: 20,
-                  }}
-                >
-                  Attach video clips and beta footage to your session logs to review movement and analyze crux sequences.
-                </Text>
-
-                <TouchableOpacity
-                  activeOpacity={0.8}
-                  onPress={() => {
-                    triggerHaptic('light');
-                    setShowSampleBeta(true);
-                  }}
-                  style={{
-                    backgroundColor: THEME_COLORS.cardSurface,
-                    borderColor: THEME_COLORS.cardBorder,
-                    borderTopColor: 'rgba(255, 255, 255, 0.14)',
-                    borderWidth: 1,
-                    paddingHorizontal: 18,
-                    paddingVertical: 10,
-                    borderRadius: 18,
-                  }}
-                >
-                  <Text style={{ color: '#8E7CFF', fontSize: 13, fontWeight: '700' }}>
-                    View Sample Beta Clips
-                  </Text>
-                </TouchableOpacity>
-              </View>
+              <EmptyStateCard
+                icon={Video}
+                title="No Beta Videos Saved"
+                description="Record your burns to analyze crux movements, scrub slow-mo footwork, and track your sends."
+                buttonLabel="Open Set Grader"
+                buttonVariant="lavender"
+                onPress={() => setIsBetaCamOpen(true)}
+                secondaryAction={{
+                  label: 'Explore Sample Beta Clips',
+                  onPress: () => setShowSampleBeta(true),
+                }}
+              />
             ) : (
               <View>
                 {showSampleBeta && (
@@ -912,167 +808,23 @@ export default function LogbookScreen() {
         )}
       </ScrollView>
 
-      {/* ── Beta Video Playback Modal ─────────────────────────── */}
-      <Modal
-        visible={activePreviewBeta !== null}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setActivePreviewBeta(null)}
-      >
-        <View style={{ flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.85)', justifyContent: 'center', padding: 20 }}>
-          <View
-            style={[
-              FLOATING_CARD_STYLE,
-              {
-                borderRadius: 24,
-                overflow: 'hidden',
-              },
-            ]}
-          >
-            {/* Header */}
-            <View
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                padding: 16,
-                borderBottomWidth: 1,
-                borderBottomColor: 'rgba(255, 255, 255, 0.08)',
-              }}
-            >
-              <View>
-                <Text style={{ color: '#FFFFFF', fontSize: 18, fontWeight: '700' }}>
-                  {activePreviewBeta?.title}
-                </Text>
-                <Text style={{ color: '#9A9AA6', fontSize: 13, marginTop: 2 }}>
-                  {activePreviewBeta?.zoneName} • {activePreviewBeta?.gymName}
-                </Text>
-              </View>
-              <TouchableOpacity
-                activeOpacity={0.7}
-                onPress={() => setActivePreviewBeta(null)}
-                style={{
-                  width: 36,
-                  height: 36,
-                  borderRadius: 18,
-                  backgroundColor: '#16161C',
-                  borderColor: '#2C2C35',
-                  borderWidth: 1,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                <X size={18} color="#FFFFFF" />
-              </TouchableOpacity>
-            </View>
+      <BetaVideoPlayerModal
+        visible={!!activePreviewBeta}
+        videoUri={activePreviewBeta?.mediaUri || null}
+        gradeRaw={activePreviewBeta?.gradeRaw}
+        zoneName={activePreviewBeta?.zoneName}
+        outcome={activePreviewBeta?.outcome}
+        failureReason={activePreviewBeta?.failureReason}
+        durationSeconds={activePreviewBeta?.durationSeconds}
+        onClose={() => setActivePreviewBeta(null)}
+      />
 
-            {/* Video Viewport / Playback */}
-            <View
-              style={{
-                width: '100%',
-                height: 280,
-                backgroundColor: '#121216',
-                position: 'relative',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              {activePreviewBeta && (
-                activePreviewBeta.mediaUri && activePreviewBeta.mediaUri.startsWith('file://') ? (
-                  activePreviewBeta.mediaType === 'photo' ||
-                  activePreviewBeta.mediaUri.endsWith('.jpg') ||
-                  activePreviewBeta.mediaUri.endsWith('.png') ||
-                  activePreviewBeta.mediaUri.endsWith('.jpeg') ? (
-                    <Image
-                      source={{ uri: activePreviewBeta.mediaUri }}
-                      style={{ width: '100%', height: '100%' }}
-                      resizeMode="contain"
-                    />
-                  ) : (
-                    <VideoPlayerView
-                      uri={activePreviewBeta.mediaUri}
-                      style={{ width: '100%', height: '100%' }}
-                      nativeControls
-                      loop
-                      autoPlay
-                    />
-                  )
-                ) : (
-                  <>
-                    <Image
-                      source={
-                        BETA_THUMBNAILS[activePreviewBeta.gradeRaw] ||
-                        require('../assets/holds-images/v6-ripple-effect-square.jpg')
-                      }
-                      style={{ width: '100%', height: '100%', opacity: 0.65 }}
-                      resizeMode="cover"
-                    />
-                    <View
-                      style={{
-                        position: 'absolute',
-                        width: 64,
-                        height: 64,
-                        borderRadius: 32,
-                        backgroundColor: 'rgba(142, 124, 255, 0.9)',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        shadowColor: '#8E7CFF',
-                        shadowOffset: { width: 0, height: 4 },
-                        shadowOpacity: 0.5,
-                        shadowRadius: 10,
-                      }}
-                    >
-                      <Play size={28} color="#FFFFFF" fill="#FFFFFF" style={{ marginLeft: 4 }} />
-                    </View>
-                  </>
-                )
-              )}
-            </View>
-
-            {/* Modal Footer */}
-            <View style={{ padding: 16 }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                  <View
-                    style={{
-                      backgroundColor: '#8E7CFF',
-                      borderRadius: 8,
-                      paddingHorizontal: 9,
-                      paddingVertical: 3,
-                    }}
-                  >
-                    <Text style={{ color: '#FFFFFF', fontSize: 13, fontWeight: '800' }}>
-                      {activePreviewBeta?.gradeRaw}
-                    </Text>
-                  </View>
-                  <Text style={{ color: '#9A9AA6', fontSize: 13, fontWeight: '500' }}>
-                    Recorded {activePreviewBeta?.date}
-                  </Text>
-                </View>
-                <Text style={{ color: '#6EE756', fontSize: 13, fontWeight: '700' }}>
-                  0:{activePreviewBeta?.durationSeconds.toString().padStart(2, '0')} HD
-                </Text>
-              </View>
-
-              <TouchableOpacity
-                activeOpacity={0.85}
-                onPress={() => setActivePreviewBeta(null)}
-                style={{
-                  backgroundColor: '#8E7CFF',
-                  height: 46,
-                  borderRadius: 23,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                <Text style={{ color: '#FFFFFF', fontSize: 15, fontWeight: '700' }}>
-                  Close Playback
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
+      <BetaCamModal
+        visible={isBetaCamOpen}
+        onClose={() => setIsBetaCamOpen(false)}
+        onAttach={handleAttachBeta}
+      />
     </ScreenContainer>
   );
 }
+

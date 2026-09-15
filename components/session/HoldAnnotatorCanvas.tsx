@@ -104,6 +104,10 @@ export function HoldAnnotatorCanvas({
   );
   const maxSpanCm = useMemo(() => spanToEstimatedCm(maxSpan), [maxSpan]);
 
+  const hasStart = useMemo(() => markers.some((m) => m.type === 'start'), [markers]);
+  const hasTop = useMemo(() => markers.some((m) => m.type === 'top'), [markers]);
+  const canAnalyze = useMemo(() => markers.length >= 2 && hasStart && hasTop, [markers, hasStart, hasTop]);
+
   // ── Tap to Place or Select Hold Marker ─────────────────────────────────────
   const handleCanvasTap = useCallback(
     (touchX: number, touchY: number) => {
@@ -141,11 +145,13 @@ export function HoldAnnotatorCanvas({
       let label: string | undefined;
 
       if (markers.length === 0) {
-        // First marker is automatically the Start Hold
+        // First marker is automatically the Start Hold (Green #6EE756)
         type = 'start';
         label = 'START';
       } else {
-        label = `#${markers.length + 1}`;
+        // Middle markers are Lavender (#8E7CFF) labeled HOLD
+        type = 'hand';
+        label = 'HOLD';
       }
 
       const newMarker: HoldMarker = {
@@ -163,12 +169,74 @@ export function HoldAnnotatorCanvas({
     [canvasLayout, markers, selectedMarkerId, selectedColor]
   );
 
-  // ── Gesture Definitions (Pinch, Pan, Tap) ─────────────────────────────────
-  const tapGesture = Gesture.Tap()
+  // ── Double Tap to Toggle or Drop TOP Marker ───────────────────────────────
+  const handleCanvasDoubleTap = useCallback(
+    (touchX: number, touchY: number) => {
+      const { width, height } = canvasLayout;
+      if (width <= 0 || height <= 0) return;
+
+      const normalizedX = Math.max(0.02, Math.min(0.98, touchX / width));
+      const normalizedY = Math.max(0.02, Math.min(0.98, touchY / height));
+
+      const hitRadiusNormalized = 34 / Math.min(width, height);
+      const existingIndex = markers.findIndex((m) => {
+        const dx = m.x - normalizedX;
+        const dy = m.y - normalizedY;
+        return Math.sqrt(dx * dx + dy * dy) < hitRadiusNormalized;
+      });
+
+      triggerHaptic('success');
+
+      if (existingIndex !== -1) {
+        // Toggled existing marker to/from TOP
+        setMarkers((prev) =>
+          prev.map((m, idx) => {
+            if (idx !== existingIndex) return m;
+            const isAlreadyTop = m.type === 'top';
+            const newType: HoldType = isAlreadyTop ? 'hand' : 'top';
+            return {
+              ...m,
+              type: newType,
+              label: newType === 'top' ? 'TOP' : 'HOLD',
+            };
+          })
+        );
+        setSelectedMarkerId(markers[existingIndex].id);
+        return;
+      }
+
+      // Dropped a new TOP marker directly on double tap
+      const newMarker: HoldMarker = {
+        id: `hold_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+        x: normalizedX,
+        y: normalizedY,
+        type: 'top',
+        order: markers.length + 1,
+        label: 'TOP',
+        color: selectedColor ? selectedColor.hex : undefined,
+      };
+
+      setMarkers((prev) => [...prev, newMarker]);
+      setSelectedMarkerId(newMarker.id);
+    },
+    [canvasLayout, markers, selectedColor]
+  );
+
+  // ── Gesture Definitions (Pinch, Pan, Tap, DoubleTap) ─────────────────────
+  const doubleTapGesture = Gesture.Tap()
+    .numberOfTaps(2)
+    .maxDuration(300)
+    .onEnd((e) => {
+      runOnJS(handleCanvasDoubleTap)(e.x, e.y);
+    });
+
+  const singleTapGesture = Gesture.Tap()
     .maxDuration(250)
     .onEnd((e) => {
       runOnJS(handleCanvasTap)(e.x, e.y);
     });
+
+  const tapGestures = Gesture.Exclusive(doubleTapGesture, singleTapGesture);
 
   const pinchGesture = Gesture.Pinch()
     .onUpdate((e) => {
@@ -200,7 +268,7 @@ export function HoldAnnotatorCanvas({
       savedTranslateY.value = translateY.value;
     });
 
-  const composedGesture = Gesture.Exclusive(pinchGesture, panGesture, tapGesture);
+  const composedGesture = Gesture.Exclusive(pinchGesture, panGesture, tapGestures);
 
   const animatedImageStyle = useAnimatedStyle(() => ({
     transform: [
@@ -451,12 +519,16 @@ export function HoldAnnotatorCanvas({
               const posY = m.y * canvasLayout.height - 20;
               const isSelected = m.id === selectedMarkerId;
 
+              const isTop = m.type === 'top';
+              const isStart = m.type === 'start';
+              const isCrux = m.type === 'crux';
+
               const markerThemeColor =
-                m.type === 'start'
+                isStart
                   ? '#6EE756'
-                  : m.type === 'top'
-                  ? '#6EE756'
-                  : m.type === 'crux'
+                  : isTop
+                  ? '#F59E0B'
+                  : isCrux
                   ? '#FF5C5C'
                   : m.color || '#8E7CFF';
 
@@ -470,17 +542,17 @@ export function HoldAnnotatorCanvas({
                       top: posY,
                       borderColor: markerThemeColor,
                       backgroundColor:
-                        m.type === 'start'
-                          ? 'rgba(110, 231, 86, 0.28)'
-                          : m.type === 'top'
-                          ? 'rgba(110, 231, 86, 0.35)'
-                          : m.type === 'crux'
-                          ? 'rgba(255, 92, 92, 0.35)'
-                          : 'rgba(142, 124, 255, 0.28)',
+                        isStart
+                          ? 'rgba(110, 231, 86, 0.25)'
+                          : isTop
+                          ? 'rgba(245, 158, 11, 0.30)'
+                          : isCrux
+                          ? 'rgba(255, 92, 92, 0.30)'
+                          : 'rgba(142, 124, 255, 0.25)',
                       shadowColor: markerThemeColor,
                     },
                     isSelected && styles.markerRingSelected,
-                    m.type === 'top' && styles.markerRingTop,
+                    isTop && styles.markerRingTop,
                   ]}
                 >
                   <Text
@@ -488,21 +560,23 @@ export function HoldAnnotatorCanvas({
                       styles.markerLabel,
                       {
                         color:
-                          m.type === 'start' || m.type === 'top'
+                          isStart
                             ? '#6EE756'
-                            : m.type === 'crux'
+                            : isTop
+                            ? '#F59E0B'
+                            : isCrux
                             ? '#FF5C5C'
-                            : '#FFFFFF',
+                            : '#8E7CFF',
                       },
                     ]}
                   >
-                    {m.type === 'start'
-                      ? 'S'
-                      : m.type === 'top'
+                    {isStart
+                      ? 'START'
+                      : isTop
                       ? 'TOP'
-                      : m.type === 'crux'
+                      : isCrux
                       ? 'CRX'
-                      : m.order}
+                      : 'HOLD'}
                   </Text>
                 </View>
               );
@@ -662,21 +736,23 @@ export function HoldAnnotatorCanvas({
           </View>
         )}
 
-        {/* Right: Analyze Route CTA */}
+        {/* Right: Analyze Route CTA (Enabled only when at least 2 holds: Start and Top are tagged) */}
         <TouchableOpacity
           onPress={handleProceedToAnalysis}
           style={[
             styles.analyzeCtaBtn,
-            markers.length === 0 && styles.analyzeCtaBtnDisabled,
+            !canAnalyze && styles.analyzeCtaBtnDisabled,
           ]}
           activeOpacity={0.85}
-          disabled={markers.length === 0}
+          disabled={!canAnalyze}
         >
-          <Sparkles size={16} color="#FFFFFF" style={{ marginRight: 6 }} />
+          <Sparkles size={16} color="#FFFFFF" style={{ marginRight: 8 }} />
           <Text style={styles.analyzeCtaText}>
-            {markers.length === 0
-              ? 'Tag Holds First'
-              : `Analyze Route (${markers.length})`}
+            {!hasStart && markers.length > 0
+              ? 'Tag Start Hold'
+              : !hasTop && markers.length >= 1
+              ? 'Tag Top Hold'
+              : 'ANALYZE ROUTE'}
           </Text>
         </TouchableOpacity>
       </View>
@@ -963,8 +1039,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    height: 44,
-    borderRadius: 14,
+    height: 50,
+    borderRadius: 16,
     backgroundColor: '#8E7CFF',
     shadowColor: '#8E7CFF',
     shadowOffset: { width: 0, height: 4 },
@@ -974,10 +1050,12 @@ const styles = StyleSheet.create({
   analyzeCtaBtnDisabled: {
     backgroundColor: '#2A2A35',
     shadowOpacity: 0,
+    opacity: 0.5,
   },
   analyzeCtaText: {
     color: '#FFFFFF',
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '800',
+    letterSpacing: 0.8,
   },
 });

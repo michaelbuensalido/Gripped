@@ -1,28 +1,40 @@
 import React, { useState, useCallback } from "react";
-import { View, Text, ScrollView, TouchableOpacity, Image } from "react-native";
+import {
+  View,
+  Text,
+  ScrollView,
+  TouchableOpacity,
+  Pressable,
+  Image,
+  Alert,
+} from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter, useFocusEffect } from "expo-router";
 import {
   Bell,
   ChevronDown,
+  ChevronRight,
   Clock,
   Settings as SettingsIcon,
 } from "lucide-react-native";
 import Svg, { Polygon, Path } from "react-native-svg";
-import { THEME_COLORS, FLOATING_CARD_STYLE, FLOATING_CARD_HERO_STYLE } from "../constants/theme";
+import {
+  THEME_COLORS,
+  FLOATING_CARD_STYLE,
+  FLOATING_CARD_HERO_STYLE,
+} from "../constants/theme";
 import { ScreenContainer } from "../components/ui/ScreenContainer";
 import { getHomeStats, type HomeStats } from "../db/queries";
 import { getAllRoutinesWithBlocks } from "../db/routineQueries";
 import { GRADE_BY_LABEL } from "../constants/grades";
 import { useSessionStore } from "../store/sessionStore";
 import type { RoutineWithBlocks } from "../types";
-
-interface RecommendedRoute {
-  id: string;
-  title: string;
-  grade: string;
-  image: any;
-}
+import {
+  RecommendedRouteCard,
+  type RecommendedRoute,
+} from "../components/home/RecommendedRouteCard";
+import { RouteDetailModal } from "../components/home/RouteDetailModal";
+import { triggerHaptic } from "../utils/haptics";
 
 const RECOMMENDED_ROUTES: RecommendedRoute[] = [
   {
@@ -30,45 +42,57 @@ const RECOMMENDED_ROUTES: RecommendedRoute[] = [
     title: "Ripple Effect",
     grade: "V6",
     image: require("../assets/holds-images/v6-ripple-effect-square.jpg"),
+    holdType: "Sloper / Compression",
+    angle: "35° Overhang",
   },
   {
     id: "rec-2",
     title: "Slab Rise",
     grade: "V5",
     image: require("../assets/holds-images/v5-slab-rise.png"),
+    holdType: "Micro Crimp & Balance",
+    angle: "10° Slab",
   },
   {
     id: "rec-3",
     title: "Kars Sloper",
     grade: "V7",
     image: require("../assets/holds-images/v7-kars-sloper.png"),
+    holdType: "Wide Bulbous Pinch",
+    angle: "45° Steep Wall",
   },
   {
     id: "rec-4",
     title: "Poly Edge",
     grade: "V8",
     image: require("../assets/holds-images/v8-poly-edge.png"),
+    holdType: "Geometric Poly Edge",
+    angle: "Roof / Cave",
   },
   {
     id: "rec-5",
     title: "Purple Bulb",
     grade: "V4",
     image: require("../assets/holds-images/v4-purple-sloper.png"),
+    holdType: "Open-Hand Bulb",
+    angle: "25° Overhang",
   },
   {
     id: "rec-6",
     title: "Yellow Pocket",
     grade: "V3",
     image: require("../assets/holds-images/v3-yellow-jug.png"),
+    holdType: "Dual-Finger Pocket",
+    angle: "Vertical Wall",
   },
 ];
 
 /**
- * Solid rock/boulder glyph (not an outline triangle) matching reference mockup
+ * Solid rock/boulder glyph matching reference mockup
  */
 function SolidBoulderIcon({
   size = 22,
-  color = "#8A8A96",
+  color = "#8A8A98",
 }: {
   size?: number;
   color?: string;
@@ -93,6 +117,9 @@ export default function HomeScreen() {
   const [homeStats, setHomeStats] = useState<HomeStats | null>(null);
   const [suggestedRoutine, setSuggestedRoutine] =
     useState<RoutineWithBlocks | null>(null);
+  const [selectedRoute, setSelectedRoute] = useState<RecommendedRoute | null>(
+    null
+  );
 
   useFocusEffect(
     useCallback(() => {
@@ -106,7 +133,7 @@ export default function HomeScreen() {
       } catch (err) {
         console.error("Failed to load home stats:", err);
       }
-    }, []),
+    }, [])
   );
 
   // Compute concise Grade Span for suggested routine
@@ -121,23 +148,50 @@ export default function HomeScreen() {
     return diffA - diffB;
   });
 
-  let routineGradeSpan = "V5-V7A";
+  let routineGradeSpan = "V4 – V7";
   if (sortedGrades.length === 1) {
     routineGradeSpan = sortedGrades[0];
   } else if (sortedGrades.length > 1) {
-    routineGradeSpan = `${sortedGrades[0]}-${sortedGrades[sortedGrades.length - 1]}`;
+    routineGradeSpan = `${sortedGrades[0]} – ${sortedGrades[sortedGrades.length - 1]}`;
   }
 
   const hasActiveSession = Boolean(activeSession || homeStats?.activeSession);
+
+  // Route Detail Actions
+  const handleOpenRoute = (route: RecommendedRoute) => {
+    setSelectedRoute(route);
+  };
+
+  const handleLogSend = (route: RecommendedRoute) => {
+    setSelectedRoute(null);
+    if (hasActiveSession && homeStats?.activeSession) {
+      router.push(`/session/${homeStats.activeSession.id}`);
+    } else {
+      router.push("/session/new");
+    }
+  };
+
+  const handleSaveProject = (route: RecommendedRoute) => {
+    setSelectedRoute(null);
+    Alert.alert(
+      "Project Saved",
+      `"${route.title}" (${route.grade}) has been added to your active projects.`
+    );
+  };
+
+  const handleViewBeta = (route: RecommendedRoute) => {
+    setSelectedRoute(null);
+    router.push("/logbook");
+  };
 
   return (
     <ScreenContainer withTopInset={true}>
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentOffset={{ x: 0, y: 0 }}
         contentContainerStyle={{
+          paddingHorizontal: 16,
           paddingTop: 8,
-          paddingBottom: hasActiveSession ? 170 : 110,
+          paddingBottom: 160,
         }}
       >
         {/* ── 1. Top User Bar ────────────────────────────────── */}
@@ -146,7 +200,6 @@ export default function HomeScreen() {
             flexDirection: "row",
             alignItems: "center",
             justifyContent: "space-between",
-            paddingHorizontal: 16,
             paddingTop: 4,
             paddingBottom: 4,
           }}
@@ -174,7 +227,7 @@ export default function HomeScreen() {
               elevation: 3,
             }}
           >
-            {/* Avatar: Image avatar with subtle lavender/purple border glow */}
+            {/* Avatar */}
             <View
               style={{
                 width: 32,
@@ -196,7 +249,7 @@ export default function HomeScreen() {
               />
             </View>
 
-            {/* Name & Dropdown: "Maya Vong" in crisp 15pt SemiBold text */}
+            {/* Name */}
             <Text
               style={{
                 color: "#FFFFFF",
@@ -207,8 +260,7 @@ export default function HomeScreen() {
               Michael Buensalido
             </Text>
 
-            {/* Subtle chevron-down icon */}
-            <ChevronDown size={14} color="#8A8A96" />
+            <ChevronDown size={14} color="#8A8A98" />
           </TouchableOpacity>
 
           {/* Right actions: Settings gear + Circular bell button */}
@@ -257,7 +309,6 @@ export default function HomeScreen() {
               }}
             >
               <Bell size={18} color="#FFFFFF" />
-              {/* Small lavender/purple badge dot in top-right corner */}
               <View
                 style={{
                   position: "absolute",
@@ -275,12 +326,12 @@ export default function HomeScreen() {
           </View>
         </View>
 
-        {/* ── 2. Headline & Target Grade (Directly below user bar) */}
-        <View style={{ paddingHorizontal: 16, marginTop: 18, marginBottom: 8 }}>
+        {/* ── 2. Greeting & Target Grade Sync ────────────────── */}
+        <View style={{ marginTop: 18, marginBottom: 8 }}>
           <Text
             style={{
               color: "#FFFFFF",
-              fontSize: 30,
+              fontSize: 28,
               fontWeight: "700",
               letterSpacing: -0.5,
             }}
@@ -289,8 +340,8 @@ export default function HomeScreen() {
           </Text>
         </View>
 
-        {/* Grade Badge: Small rounded pill (cornerRadius: 12pt), #6EE756, 14pt bold #111115 text */}
-        <View style={{ paddingHorizontal: 16, marginBottom: 14 }}>
+        {/* Grade Badge: V-Scale pill in Lime Green #6EE756 */}
+        <View style={{ marginBottom: 16 }}>
           <View
             style={{
               backgroundColor: "#6EE756",
@@ -313,116 +364,112 @@ export default function HomeScreen() {
                 letterSpacing: 0.5,
               }}
             >
-              {homeStats?.hardestSend ?? "7A"}
+              {homeStats?.hardestSend ?? "V7"}
             </Text>
           </View>
         </View>
 
-        {/* ── 3. 3-Column Quick Stats Row ────────────────────── */}
+        {/* ── 3. Metric Strip Grammar & Contrast Cleanup ─────── */}
         <View
           style={{
             flexDirection: "row",
             justifyContent: "space-between",
             gap: 10,
-            paddingHorizontal: 16,
-            marginBottom: 16,
+            marginBottom: 20,
           }}
         >
-          {/* Card 1: Total Sends / Subtitle "FINISHED ROUTES" */}
+          {/* Card 1: COMPLETED */}
           <View
-            style={[
-              FLOATING_CARD_STYLE,
-              {
-                borderRadius: 16,
-                padding: 13,
-                flex: 1,
-              },
-            ]}
+            style={{
+              flex: 1,
+              backgroundColor: "#1E1E24",
+              borderWidth: 1,
+              borderColor: "#2C2C35",
+              borderRadius: 14,
+              padding: 13,
+            }}
           >
             <Text style={{ color: "#FFFFFF", fontSize: 24, fontWeight: "700" }}>
               {homeStats?.totalSends ?? 0}
             </Text>
             <Text
               style={{
-                color: "#7A7A88",
+                color: "#8A8A98",
                 fontSize: 10,
                 fontWeight: "700",
-                letterSpacing: 0.6,
+                letterSpacing: 0.8,
                 marginTop: 4,
-                lineHeight: 13,
               }}
               className="uppercase"
             >
-              FINISHED{"\n"}ROUTES
+              COMPLETED
             </Text>
           </View>
 
-          {/* Card 2: Active Session (1/0) / Subtitle "ACTIVE ROUTES" */}
+          {/* Card 2: PROJECTS */}
           <View
-            style={[
-              FLOATING_CARD_STYLE,
-              {
-                borderRadius: 16,
-                padding: 13,
-                flex: 1,
-              },
-            ]}
+            style={{
+              flex: 1,
+              backgroundColor: "#1E1E24",
+              borderWidth: 1,
+              borderColor: "#2C2C35",
+              borderRadius: 14,
+              padding: 13,
+            }}
           >
             <Text style={{ color: "#FFFFFF", fontSize: 24, fontWeight: "700" }}>
-              {hasActiveSession ? 1 : 0}
+              {homeStats?.totalProjects ?? 3}
             </Text>
             <Text
               style={{
-                color: "#7A7A88",
+                color: "#8A8A98",
                 fontSize: 10,
                 fontWeight: "700",
-                letterSpacing: 0.6,
+                letterSpacing: 0.8,
                 marginTop: 4,
-                lineHeight: 13,
               }}
               className="uppercase"
             >
-              ACTIVE{"\n"}ROUTES
+              PROJECTS
             </Text>
           </View>
 
-          {/* Card 3: Total Flashes / Subtitle "FLASHES ROUTES" */}
+          {/* Card 3: FLASHES */}
           <View
-            style={[
-              FLOATING_CARD_STYLE,
-              {
-                borderRadius: 16,
-                padding: 13,
-                flex: 1,
-              },
-            ]}
+            style={{
+              flex: 1,
+              backgroundColor: "#1E1E24",
+              borderWidth: 1,
+              borderColor: "#2C2C35",
+              borderRadius: 14,
+              padding: 13,
+            }}
           >
             <Text style={{ color: "#FFFFFF", fontSize: 24, fontWeight: "700" }}>
               {homeStats?.totalFlashes ?? 0}
             </Text>
             <Text
               style={{
-                color: "#7A7A88",
+                color: "#8A8A98",
                 fontSize: 10,
                 fontWeight: "700",
-                letterSpacing: 0.6,
+                letterSpacing: 0.8,
                 marginTop: 4,
-                lineHeight: 13,
               }}
               className="uppercase"
             >
-              FLASHES{"\n"}ROUTES
+              FLASHES
             </Text>
           </View>
         </View>
 
-        {/* ── 4. "Today's Session" Card Refinements ──────────── */}
+        {/* ── 4. "Today's Session" Hero Card ─────────────────── */}
         <View
           style={[
             FLOATING_CARD_HERO_STYLE,
             {
               padding: 20,
-              marginHorizontal: 16,
+              marginHorizontal: 0,
               marginTop: 0,
               marginBottom: 20,
             },
@@ -453,7 +500,6 @@ export default function HomeScreen() {
             <View
               style={{ flexDirection: "row", alignItems: "center", gap: 6 }}
             >
-              {/* Left active lavender dot */}
               <View
                 style={{
                   width: 8,
@@ -462,7 +508,6 @@ export default function HomeScreen() {
                   backgroundColor: "#8E7CFF",
                 }}
               />
-              {/* Dot 2 */}
               <View
                 style={{
                   width: 8,
@@ -471,7 +516,6 @@ export default function HomeScreen() {
                   backgroundColor: "#2E2E36",
                 }}
               />
-              {/* Dot 3 */}
               <View
                 style={{
                   width: 8,
@@ -483,7 +527,7 @@ export default function HomeScreen() {
             </View>
           </View>
 
-          {/* Route & Type: Solid rock glyph + Grade Span or Active Gym Name */}
+          {/* Route & Type */}
           <View
             style={{
               flexDirection: "row",
@@ -492,7 +536,7 @@ export default function HomeScreen() {
               marginBottom: 6,
             }}
           >
-            <SolidBoulderIcon size={22} color="#8A8A96" />
+            <SolidBoulderIcon size={22} color="#8A8A98" />
             <Text
               style={{
                 color: "#FFFFFF",
@@ -508,7 +552,7 @@ export default function HomeScreen() {
             </Text>
           </View>
 
-          {/* Meta: "Category • Title" + Time "Duration XX min" or "Active" */}
+          {/* Meta */}
           <View
             style={{
               flexDirection: "row",
@@ -549,7 +593,7 @@ export default function HomeScreen() {
             </View>
           </View>
 
-          {/* Action Button: Full width, #8E7CFF, height 52pt, cornerRadius 26pt */}
+          {/* Action Button */}
           <TouchableOpacity
             activeOpacity={0.85}
             onPress={() => {
@@ -590,112 +634,130 @@ export default function HomeScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* ── 5. Recommended Routes Carousel ─────────────────── */}
-        <View style={{ marginBottom: 12 }}>
-          {/* Section Header: "RECOMMENDED ROUTES" in 12pt uppercase tracked text (#8A8A96). No "See All". */}
-          <View style={{ paddingHorizontal: 16, marginBottom: 12 }}>
-            <Text
-              style={{
-                color: "#8A8A96",
-                fontSize: 12,
-                fontWeight: "700",
-                letterSpacing: 1.2,
-              }}
-              className="uppercase"
-            >
-              RECOMMENDED ROUTES
-            </Text>
-          </View>
+        {/* ── 5. Active Project Mini-Banner ───────────────────── */}
+        <View style={{ marginBottom: 22 }}>
+          <Text
+            style={{
+              color: "#8A8A98",
+              fontSize: 11,
+              fontWeight: "700",
+              letterSpacing: 1.2,
+              marginBottom: 8,
+            }}
+            className="uppercase"
+          >
+            CURRENT PROJECT
+          </Text>
 
-          {/* Carousel: Square ~156x170pt cards sitting directly on dark textured card surface */}
+          <Pressable
+            onPress={() => {
+              triggerHaptic("light");
+              if (hasActiveSession && homeStats?.activeSession) {
+                router.push(`/session/${homeStats.activeSession.id}`);
+              } else {
+                router.push("/session/new");
+              }
+            }}
+            style={({ pressed }) => ({
+              backgroundColor: "#1E1E24",
+              borderWidth: 1,
+              borderColor: "#2C2C35",
+              borderRadius: 16,
+              padding: 14,
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "space-between",
+              transform: [{ scale: pressed ? 0.98 : 1 }],
+              opacity: pressed ? 0.92 : 1,
+            })}
+          >
+            {/* Left: V-grade badge */}
+            <View
+              style={{
+                backgroundColor: "#17171C",
+                borderWidth: 1,
+                borderColor: "#8E7CFF",
+                paddingHorizontal: 10,
+                paddingVertical: 4,
+                borderRadius: 8,
+                marginRight: 12,
+              }}
+            >
+              <Text
+                style={{
+                  color: "#8E7CFF",
+                  fontSize: 13,
+                  fontWeight: "700",
+                }}
+              >
+                {homeStats?.activeProject?.grade ?? "V7"}
+              </Text>
+            </View>
+
+            {/* Center: Project name & burns */}
+            <View style={{ flex: 1, paddingRight: 8 }}>
+              <Text
+                style={{
+                  color: "#FFFFFF",
+                  fontSize: 13,
+                  fontWeight: "600",
+                }}
+                numberOfLines={1}
+              >
+                {homeStats?.activeProject
+                  ? `${homeStats.activeProject.title} • ${homeStats.activeProject.burns} Burns logged`
+                  : "Cave Roof Project • 4 Burns logged"}
+              </Text>
+            </View>
+
+            {/* Right: Action chevron */}
+            <ChevronRight size={18} color="#5A5A65" />
+          </Pressable>
+        </View>
+
+        {/* ── 6. Recommended Routes Carousel ─────────────────── */}
+        <View style={{ marginBottom: 12 }}>
+          {/* Section Header */}
+          <Text
+            style={{
+              color: "#8A8A98",
+              fontSize: 11,
+              fontWeight: "700",
+              letterSpacing: 1.2,
+              marginBottom: 12,
+            }}
+            className="uppercase"
+          >
+            RECOMMENDED ROUTES
+          </Text>
+
+          {/* Carousel */}
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
-            contentContainerStyle={{ paddingHorizontal: 16, gap: 12 }}
+            contentContainerStyle={{ gap: 12, paddingRight: 16 }}
+            style={{ marginHorizontal: -16, paddingLeft: 16 }}
           >
             {RECOMMENDED_ROUTES.map((route) => (
-              <TouchableOpacity
+              <RecommendedRouteCard
                 key={route.id}
-                activeOpacity={0.85}
-                onPress={() => router.push("/session/new")}
-                style={[
-                  FLOATING_CARD_STYLE,
-                  {
-                    width: 154,
-                    height: 168,
-                    borderRadius: 20,
-                    padding: 8,
-                    justifyContent: "space-between",
-                    position: "relative",
-                  },
-                ]}
-              >
-                {/* Hold Graphic: 3D volume sitting directly on dark surface */}
-                <View
-                  style={{
-                    width: "100%",
-                    height: 114,
-                    borderRadius: 14,
-                    overflow: "hidden",
-                    backgroundColor: "rgba(18, 18, 22, 0.6)",
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                >
-                  <Image
-                    source={route.image}
-                    style={{
-                      width: "100%",
-                      height: "100%",
-                    }}
-                    resizeMode="cover"
-                  />
-                </View>
-
-                {/* Top Row: Translucent grade pill on top left ("V6", "V5") */}
-                <View
-                  style={{
-                    position: "absolute",
-                    top: 14,
-                    left: 14,
-                    backgroundColor: "rgba(20, 20, 26, 0.75)",
-                    borderColor: "rgba(255, 255, 255, 0.16)",
-                    borderWidth: 1,
-                    borderRadius: 10,
-                    paddingHorizontal: 9,
-                    paddingVertical: 2.5,
-                  }}
-                >
-                  <Text
-                    style={{
-                      color: "#FFFFFF",
-                      fontSize: 12,
-                      fontWeight: "700",
-                    }}
-                  >
-                    {route.grade}
-                  </Text>
-                </View>
-
-                {/* Bottom label: Route title ("Ripple Effect", "Slab Rise") in 14pt SemiBold white */}
-                <View style={{ paddingHorizontal: 4, paddingBottom: 4 }}>
-                  <Text
-                    style={{
-                      color: "#FFFFFF",
-                      fontSize: 14,
-                      fontWeight: "600",
-                      textAlign: "left",
-                    }}
-                    numberOfLines={1}
-                  >
-                    {route.title}
-                  </Text>
-                </View>
-              </TouchableOpacity>
+                route={route}
+                onPress={handleOpenRoute}
+              />
             ))}
           </ScrollView>
         </View>
       </ScrollView>
+
+      {/* ── Route Detail Quick Actions Bottom Sheet ──────────── */}
+      <RouteDetailModal
+        visible={Boolean(selectedRoute)}
+        route={selectedRoute}
+        onClose={() => setSelectedRoute(null)}
+        onLogSend={handleLogSend}
+        onSaveProject={handleSaveProject}
+        onViewBeta={handleViewBeta}
+      />
     </ScreenContainer>
   );
 }

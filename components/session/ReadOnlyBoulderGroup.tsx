@@ -1,6 +1,5 @@
 import React from 'react';
 import { View, Text } from 'react-native';
-import { Layers } from 'lucide-react-native';
 import type { BoulderLog } from '../../types';
 import { ReadOnlySetRow } from './ReadOnlySetRow';
 import { FLOATING_CARD_STYLE } from '../../constants/theme';
@@ -14,30 +13,55 @@ export function ReadOnlyBoulderGroup({ zoneName, logs }: ReadOnlyBoulderGroupPro
   const sends = logs.filter((l) => l.outcome === 'send' || l.outcome === 'flash').length;
 
   return (
-    <View style={FLOATING_CARD_STYLE} className="rounded-2xl mx-4 mb-4 overflow-hidden">
+    <View
+      style={[
+        FLOATING_CARD_STYLE,
+        {
+          backgroundColor: '#1E1E24',
+          borderColor: '#2C2C35',
+          borderWidth: 1,
+          borderRadius: 20,
+          overflow: 'hidden',
+          marginBottom: 16,
+        },
+      ]}
+    >
       {/* Header */}
       <View
         style={{
           borderBottomColor: '#2C2C35',
           borderBottomWidth: 1,
-          backgroundColor: 'rgba(22, 22, 28, 0.6)',
+          backgroundColor: '#17171C',
+          paddingHorizontal: 16,
+          paddingVertical: 12,
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'space-between',
         }}
-        className="flex-row items-center justify-between px-4 py-3"
       >
-        <View className="flex-row items-center gap-2">
-          <Layers size={16} color="#8E7CFF" />
-          <Text className="text-white font-bold text-base">{zoneName}</Text>
-        </View>
+        <Text
+          style={{
+            color: '#8A8A98',
+            fontSize: 12,
+            fontWeight: '700',
+            letterSpacing: 0.8,
+          }}
+          className="uppercase"
+        >
+          {zoneName}
+        </Text>
         <View
           style={{
-            backgroundColor: '#16161C',
+            backgroundColor: '#1E1E24',
             borderColor: '#2C2C35',
             borderWidth: 1,
+            paddingHorizontal: 10,
+            paddingVertical: 3,
+            borderRadius: 9999,
           }}
-          className="px-2.5 py-1 rounded-full"
         >
-          <Text className="text-secondary text-xs font-semibold">
-            <Text className="text-white font-bold">{sends}</Text>/{logs.length} sends
+          <Text style={{ color: '#8A8A98', fontSize: 12, fontWeight: '600' }}>
+            <Text style={{ color: '#FFFFFF', fontWeight: '700' }}>{sends}</Text>/{logs.length} sends
           </Text>
         </View>
       </View>

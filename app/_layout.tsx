@@ -111,7 +111,9 @@ function TabLayout() {
 
       {/* Hidden screens — no tab entries, full-screen layout */}
       <Tabs.Screen name="settings" options={{ href: null, tabBarStyle: { display: 'none' } }} />
+      <Tabs.Screen name="history" options={{ href: null, tabBarStyle: { display: 'none' } }} />
       <Tabs.Screen name="session/new" options={{ href: null, tabBarStyle: { display: 'none' } }} />
+      <Tabs.Screen name="session/camera" options={{ href: null, tabBarStyle: { display: 'none' } }} />
       <Tabs.Screen name="session/[id]" options={{ href: null, tabBarStyle: { display: 'none' } }} />
       <Tabs.Screen name="session/detail/[id]" options={{ href: null, tabBarStyle: { display: 'none' } }} />
       <Tabs.Screen name="routines/editor" options={{ href: null, tabBarStyle: { display: 'none' } }} />

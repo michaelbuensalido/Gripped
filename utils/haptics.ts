@@ -62,6 +62,20 @@ export async function triggerHaptic(
 }
 
 /**
+ * Triggers a distinctive double-impact feedback when the rest timer begins.
+ * Heavy impact followed closely by a medium impact.
+ */
+export async function triggerRestTimerStart(): Promise<void> {
+  if (!isHapticsEnabled) return;
+  try {
+    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+    setTimeout(() => {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+    }, 120);
+  } catch {}
+}
+
+/**
  * Triggers a distinctive triple-pulse tactile alert for rest timer completion.
  * Success notification followed by heavy and medium impacts.
  */

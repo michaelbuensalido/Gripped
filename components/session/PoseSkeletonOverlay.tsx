@@ -80,9 +80,9 @@ export function PoseSkeletonOverlay({
           { x: pt.x, y: pt.y },
           width,
           height,
+          isFrontCamera,
           frameWidth,
-          frameHeight,
-          isFrontCamera
+          frameHeight
         );
         result[key] = { ...screen, confidence: pt.confidence };
       }
@@ -312,3 +312,6 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
 });
+
+export { ClimberSkeletonOverlay } from './ClimberSkeletonOverlay';
+

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -9,9 +9,10 @@ import {
   Dimensions,
 } from 'react-native';
 import { VideoPlayerView } from '../ui/VideoPlayerView';
-import { X, Trash2, RotateCcw, Check, Film, Camera } from 'lucide-react-native';
+import { X, Trash2, RotateCcw, Check, Film, Camera, Maximize2 } from 'lucide-react-native';
 import { triggerHaptic } from '../../utils/haptics';
 import type { Outcome } from '../../types';
+import { BetaVideoPlayerModal } from '../media/BetaVideoPlayerModal';
 
 interface BetaPreviewModalProps {
   visible: boolean;
@@ -36,6 +37,8 @@ export function BetaPreviewModal({
   onRetake,
   onDelete,
 }: BetaPreviewModalProps) {
+  const [fullScreenOpen, setFullScreenOpen] = useState(false);
+
   if (!visible || !mediaUri) return null;
 
   const isSent = outcome === 'send' || outcome === 'flash';
@@ -103,13 +106,26 @@ export function BetaPreviewModal({
           {/* Media Viewport */}
           <View style={styles.viewport}>
             {mediaType === 'video' ? (
-              <VideoPlayerView
-                uri={mediaUri}
-                style={StyleSheet.absoluteFill}
-                nativeControls
-                loop
-                autoPlay
-              />
+              <>
+                <VideoPlayerView
+                  uri={mediaUri}
+                  style={StyleSheet.absoluteFill}
+                  nativeControls
+                  loop
+                  autoPlay
+                />
+                <TouchableOpacity
+                  onPress={() => {
+                    triggerHaptic('light');
+                    setFullScreenOpen(true);
+                  }}
+                  style={styles.fullscreenBadge}
+                  activeOpacity={0.8}
+                >
+                  <Maximize2 size={13} color="#FFFFFF" />
+                  <Text style={styles.fullscreenBadgeText}>Slow-Mo Scrub</Text>
+                </TouchableOpacity>
+              </>
             ) : (
               <Image
                 source={{ uri: mediaUri }}
@@ -150,6 +166,15 @@ export function BetaPreviewModal({
           </View>
         </View>
       </View>
+
+      <BetaVideoPlayerModal
+        visible={fullScreenOpen}
+        videoUri={mediaUri}
+        gradeRaw={gradeRaw}
+        zoneName={`Set #${setIndex}`}
+        outcome={outcome}
+        onClose={() => setFullScreenOpen(false)}
+      />
     </Modal>
   );
 }
@@ -288,5 +313,26 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 14,
     fontWeight: '700',
+  },
+  fullscreenBadge: {
+    position: 'absolute',
+    top: 12,
+    right: 12,
+    backgroundColor: 'rgba(142, 124, 255, 0.9)',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.25)',
+    zIndex: 10,
+  },
+  fullscreenBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.3,
   },
 });

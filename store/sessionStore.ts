@@ -2,9 +2,10 @@ import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
 import 'react-native-get-random-values';
 import { v4 as uuid } from 'uuid';
-import type { Session, BoulderGroup, BoulderLog, Outcome, RoutineWithBlocks } from '../types';
+import type { Session, BoulderGroup, BoulderLog, Outcome, RoutineWithBlocks, FailureReason } from '../types';
 import { DEFAULT_GRADE, GRADE_BY_LABEL } from '../constants/grades';
 import * as Q from '../db/queries';
+import { triggerRestTimerStart } from '../utils/haptics';
 
 interface GroupWithLogs extends BoulderGroup {
   logs: BoulderLog[];
@@ -23,6 +24,7 @@ interface SessionState {
   // actions
   startSession: (gymName: string) => void;
   startEmptySession: (gymName?: string) => string;
+  startQuickSession: (gymName?: string) => string;
   startSessionFromRoutine: (routine: RoutineWithBlocks, gymName?: string) => string;
   finishSession: () => void;
   completeSession: (params: {
@@ -69,6 +71,11 @@ interface SessionState {
       mediaType: 'video' | 'photo';
       notes?: string;
     }
+  ) => void;
+  setFailureReason: (
+    groupId: string,
+    logId: string,
+    reason: FailureReason | null
   ) => void;
 
   triggerRestTimer: (seconds?: number) => void;
@@ -171,6 +178,10 @@ export const useSessionStore = create<SessionState>()(
       });
 
       return session.id;
+    },
+
+    startQuickSession: (gymName = 'Quick Session') => {
+      return get().startEmptySession(gymName);
     },
 
     startSessionFromRoutine: (routine, gymName = 'Gym Session') => {
@@ -586,7 +597,21 @@ export const useSessionStore = create<SessionState>()(
       });
     },
 
+    setFailureReason: (groupId, logId, reason) => {
+      Q.updateBoulderLogFailureReason(logId, reason);
+      set((state) => {
+        const sg = state.groups.find((g) => g.id === groupId);
+        if (!sg) return;
+        const log = sg.logs.find((l) => l.id === logId);
+        if (log) {
+          log.failureReason = reason;
+          log.failure_reason = reason;
+        }
+      });
+    },
+
     triggerRestTimer: (seconds = 90) => {
+      triggerRestTimerStart().catch(() => {});
       set((state) => {
         state.restTimerActive = true;
         state.restTimerSeconds = seconds;

@@ -9,6 +9,8 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
+  TouchableWithoutFeedback,
+  Keyboard,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -16,12 +18,7 @@ import { v4 as uuid } from 'uuid';
 import {
   ArrowLeft,
   Check,
-  Plus,
   Trash2,
-  Timer,
-  Tag,
-  Minus,
-  Layers,
 } from 'lucide-react-native';
 import type {
   RoutineWithBlocks,
@@ -32,6 +29,7 @@ import { GRADE_BY_LABEL } from '../../constants/grades';
 import { GradeSheet } from '../../components/session/GradeSheet';
 import { StyleTagPickerModal } from '../../components/routines/StyleTagPickerModal';
 import { CustomRestModal } from '../../components/routines/CustomRestModal';
+import { PlannedBoulderRow } from '../../components/routines/PlannedBoulderRow';
 import { triggerHaptic } from '../../utils/haptics';
 import {
   getRoutineById,
@@ -41,22 +39,19 @@ import {
 import { ScreenContainer } from '../../components/ui/ScreenContainer';
 import { FLOATING_CARD_STYLE, THEME_COLORS } from '../../constants/theme';
 
-const CATEGORIES: RoutineCategory[] = [
-  'Strength',
-  'Power Endurance',
-  'Volume',
-  'Technique',
-  'Projecting',
-  'Other',
+const CATEGORY_PILLS: { label: string; value: RoutineCategory }[] = [
+  { label: 'Strength', value: 'Strength' },
+  { label: 'Power End.', value: 'Power Endurance' },
+  { label: 'Volume', value: 'Volume' },
+  { label: 'Technique', value: 'Technique' },
+  { label: 'Project', value: 'Projecting' },
+  { label: 'Other', value: 'Other' },
 ];
 
-const REST_PRESETS = [45, 60, 90, 120, 180, 240, 300];
+const CYCLE_PRESETS = [45, 60, 90, 120, 180];
 
-function formatRestDisplay(sec: number): string {
-  const m = Math.floor(sec / 60);
-  const s = sec % 60;
-  if (m > 0 && s > 0) return `${sec}s (${m}m ${s}s)`;
-  if (m > 0) return `${sec}s (${m}m)`;
+function formatCompactRest(sec: number): string {
+  if (sec >= 60 && sec % 60 === 0) return `${sec / 60}m`;
   return `${sec}s`;
 }
 
@@ -169,7 +164,22 @@ export default function RoutineEditorScreen() {
       Alert.alert('Cannot Delete', 'A routine must contain at least one block.');
       return;
     }
-    setBlocks(blocks.filter((b) => b.id !== blockId));
+    const targetBlock = blocks.find((b) => b.id === blockId);
+    Alert.alert(
+      'Delete Workout Block?',
+      `Are you sure you want to delete "${targetBlock?.title || 'this block'}"?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: () => {
+            triggerHaptic('medium');
+            setBlocks(blocks.filter((b) => b.id !== blockId));
+          },
+        },
+      ]
+    );
   };
 
   const handleUpdateBlockTitle = (blockId: string, title: string) => {
@@ -180,6 +190,16 @@ export default function RoutineEditorScreen() {
     setBlocks(
       blocks.map((b) => (b.id === blockId ? { ...b, defaultRestSeconds: rest } : b))
     );
+  };
+
+  const handleCycleBlockRest = (blockId: string, currentRest: number) => {
+    triggerHaptic('selection');
+    const currentIndex = CYCLE_PRESETS.indexOf(currentRest);
+    const nextRest =
+      currentIndex !== -1
+        ? CYCLE_PRESETS[(currentIndex + 1) % CYCLE_PRESETS.length]
+        : 60;
+    handleUpdateBlockRest(blockId, nextRest);
   };
 
   // Boulder management
@@ -406,104 +426,58 @@ export default function RoutineEditorScreen() {
         <ScrollView
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
-          contentContainerStyle={{ paddingTop: 16, paddingBottom: 180 }}
+          contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 160 }}
         >
           {/* ── Metadata Section ───────────────────────────────────── */}
           <View
             style={[
               FLOATING_CARD_STYLE,
               {
+                backgroundColor: '#1E1E24',
+                borderColor: '#2C2C35',
+                borderWidth: 1,
                 borderRadius: 20,
                 padding: 16,
-                marginHorizontal: 16,
-                marginBottom: 20,
+                marginBottom: 16,
               },
             ]}
           >
-            <Text
-              style={{
-                color: '#8A8A98',
-                fontSize: 11,
-                fontWeight: '700',
-                letterSpacing: 0.8,
-                marginBottom: 6,
-              }}
-              className="uppercase"
-            >
-              Routine Title *
-            </Text>
+            {/* Title Input: Minimal borderless input: "Routine Name" (20pt Bold White, placeholderTextColor "#5A5A65") */}
             <TextInput
               value={title}
               onChangeText={setTitle}
-              placeholder="e.g. 4x4 Power Endurance, Tuesday Projects"
-              placeholderTextColor="#555562"
+              placeholder="Routine Name"
+              placeholderTextColor="#5A5A65"
               style={{
                 color: '#FFFFFF',
-                fontSize: 17,
+                fontSize: 20,
                 fontWeight: '700',
-                marginBottom: 14,
-                paddingBottom: 6,
-                borderBottomWidth: 1,
-                borderBottomColor: '#2C2C35',
+                marginBottom: 12,
+                padding: 0,
               }}
             />
 
-            <Text
-              style={{
-                color: '#8A8A98',
-                fontSize: 11,
-                fontWeight: '700',
-                letterSpacing: 0.8,
-                marginBottom: 6,
-              }}
-              className="uppercase"
+            {/* Category Strip (Horizontal Scroll / Compact Row) */}
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{ gap: 8, paddingVertical: 2, marginBottom: 12 }}
             >
-              Description (Optional)
-            </Text>
-            <TextInput
-              value={description}
-              onChangeText={setDescription}
-              placeholder="Brief explanation of session goals or strategy..."
-              placeholderTextColor="#555562"
-              multiline
-              numberOfLines={2}
-              style={{
-                color: '#FFFFFF',
-                fontSize: 13.5,
-                lineHeight: 18,
-                marginBottom: 14,
-                paddingBottom: 6,
-                borderBottomWidth: 1,
-                borderBottomColor: '#2C2C35',
-              }}
-            />
-
-            {/* Category Chips */}
-            <Text
-              style={{
-                color: '#8A8A98',
-                fontSize: 11,
-                fontWeight: '700',
-                letterSpacing: 0.8,
-                marginBottom: 8,
-              }}
-              className="uppercase"
-            >
-              Category
-            </Text>
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 14 }}>
-              {CATEGORIES.map((cat) => {
-                const isSelected = category === cat;
+              {CATEGORY_PILLS.map((item) => {
+                const isSelected = category === item.value;
                 return (
                   <TouchableOpacity
-                    key={cat}
-                    onPress={() => setCategory(cat)}
+                    key={item.value}
+                    onPress={() => {
+                      triggerHaptic('selection');
+                      setCategory(item.value);
+                    }}
                     activeOpacity={0.75}
                     style={{
                       borderRadius: 14,
                       paddingHorizontal: 12,
                       paddingVertical: 6,
-                      backgroundColor: isSelected ? '#8E7CFF' : '#141418',
+                      backgroundColor: isSelected ? 'rgba(142, 124, 255, 0.15)' : '#17171C',
                       borderColor: isSelected ? '#8E7CFF' : '#2C2C35',
                       borderWidth: 1,
                     }}
@@ -511,18 +485,18 @@ export default function RoutineEditorScreen() {
                     <Text
                       style={{
                         fontSize: 12,
-                        fontWeight: '700',
-                        color: isSelected ? '#FFFFFF' : '#9A9AA6',
+                        fontWeight: '600',
+                        color: isSelected ? '#8E7CFF' : '#8A8A98',
                       }}
                     >
-                      {cat}
+                      {item.label}
                     </Text>
                   </TouchableOpacity>
                 );
               })}
-            </View>
+            </ScrollView>
 
-            {/* Estimated Duration */}
+            {/* Duration & Description Row: Collapse into a clean inline metadata row: "Est. Duration: 60m" (#8A8A98, 12pt) */}
             <View
               style={{
                 flexDirection: 'row',
@@ -533,50 +507,68 @@ export default function RoutineEditorScreen() {
                 borderTopColor: '#2C2C35',
               }}
             >
-              <Text
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+                <Text style={{ color: '#8A8A98', fontSize: 12, fontWeight: '500' }}>
+                  Est. Duration:
+                </Text>
+                <TextInput
+                  value={estimatedMinutes}
+                  onChangeText={setEstimatedMinutes}
+                  keyboardType="numeric"
+                  placeholder="60"
+                  placeholderTextColor="#5A5A65"
+                  style={{
+                    color: '#8A8A98',
+                    fontSize: 12,
+                    fontWeight: '600',
+                    minWidth: 24,
+                    padding: 0,
+                    textAlign: 'center',
+                  }}
+                />
+                <Text style={{ color: '#8A8A98', fontSize: 12, fontWeight: '500' }}>
+                  m
+                </Text>
+              </View>
+
+              <TextInput
+                value={description}
+                onChangeText={setDescription}
+                placeholder="Focus or notes..."
+                placeholderTextColor="#5A5A65"
                 style={{
                   color: '#8A8A98',
-                  fontSize: 11,
-                  fontWeight: '700',
-                  letterSpacing: 0.8,
-                }}
-                className="uppercase"
-              >
-                Estimated Duration (mins)
-              </Text>
-              <TextInput
-                value={estimatedMinutes}
-                onChangeText={setEstimatedMinutes}
-                keyboardType="numeric"
-                style={{
-                  color: '#8E7CFF',
-                  fontSize: 16,
-                  fontWeight: '700',
+                  fontSize: 12,
+                  fontWeight: '500',
                   textAlign: 'right',
-                  width: 60,
+                  flex: 1,
+                  marginLeft: 16,
+                  padding: 0,
                 }}
+                numberOfLines={1}
               />
             </View>
           </View>
 
-          {/* ── Climbing Blocks ────────────────────────────────────── */}
+          {/* ── Climbing Blocks Section Header ───────────────────────── */}
           <View
             style={{
-              paddingHorizontal: 16,
               marginBottom: 12,
               flexDirection: 'row',
               alignItems: 'center',
               justifyContent: 'space-between',
             }}
           >
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-              <Layers size={16} color="#8E7CFF" />
-              <Text style={{ color: '#FFFFFF', fontSize: 16, fontWeight: '700' }}>
-                Climbing Blocks
-              </Text>
-            </View>
-            <Text style={{ color: '#8A8A98', fontSize: 12 }}>
-              {blocks.length} {blocks.length === 1 ? 'block' : 'blocks'}
+            <Text
+              style={{
+                color: '#8A8A98',
+                fontSize: 11,
+                fontWeight: '700',
+                letterSpacing: 0.8,
+              }}
+              className="uppercase"
+            >
+              CLIMBING BLOCKS • {blocks.length} {blocks.length === 1 ? 'BLOCK' : 'BLOCKS'}
             </Text>
           </View>
 
@@ -586,9 +578,11 @@ export default function RoutineEditorScreen() {
               style={[
                 FLOATING_CARD_STYLE,
                 {
+                  backgroundColor: '#1E1E24',
+                  borderColor: '#2C2C35',
+                  borderWidth: 1,
                   borderRadius: 20,
                   padding: 16,
-                  marginHorizontal: 16,
                   marginBottom: 16,
                 },
               ]}
@@ -599,394 +593,137 @@ export default function RoutineEditorScreen() {
                   flexDirection: 'row',
                   alignItems: 'center',
                   justifyContent: 'space-between',
-                  paddingBottom: 10,
+                  paddingBottom: 12,
+                  marginBottom: 12,
                   borderBottomWidth: 1,
                   borderBottomColor: '#2C2C35',
-                  marginBottom: 12,
                 }}
               >
-                <View style={{ flex: 1, marginRight: 8 }}>
-                  <TextInput
-                    value={block.title}
-                    onChangeText={(text) => handleUpdateBlockTitle(block.id, text)}
-                    placeholder={`Block ${bIdx + 1} Name`}
-                    placeholderTextColor="#555562"
-                    style={{
-                      color: '#FFFFFF',
-                      fontSize: 16,
-                      fontWeight: '700',
+                {/* Left: Editable block title */}
+                <TextInput
+                  value={block.title}
+                  onChangeText={(text) => handleUpdateBlockTitle(block.id, text)}
+                  placeholder={`Block ${bIdx + 1} Name`}
+                  placeholderTextColor="#5A5A65"
+                  style={{
+                    color: '#FFFFFF',
+                    fontSize: 16,
+                    fontWeight: '700',
+                    flex: 1,
+                    marginRight: 8,
+                    padding: 0,
+                  }}
+                />
+
+                {/* Right: Compact Rest Pill + Delete Block Button */}
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <TouchableOpacity
+                    onPress={() => handleCycleBlockRest(block.id, block.defaultRestSeconds)}
+                    onLongPress={() => {
+                      triggerHaptic('medium');
+                      setActiveBlockForCustomRest({
+                        blockId: block.id,
+                        title: block.title,
+                        seconds: block.defaultRestSeconds,
+                      });
                     }}
-                  />
-                </View>
-
-                <TouchableOpacity
-                  onPress={() => handleDeleteBlock(block.id)}
-                  activeOpacity={0.7}
-                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                  style={{
-                    width: 32,
-                    height: 32,
-                    borderRadius: 16,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
-                >
-                  <Trash2 size={16} color="#FF5C5C" />
-                </TouchableOpacity>
-              </View>
-
-              {/* ── Rest Interval Row ───────────────────────────────── */}
-              <View style={{ marginBottom: 14 }}>
-                {/* Header: Label "REST BETWEEN BURNS" + formatted current value */}
-                <View
-                  style={{
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    marginBottom: 8,
-                  }}
-                >
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                    <Timer size={13} color="#8E7CFF" />
-                    <Text
-                      style={{
-                        color: '#8A8A98',
-                        fontSize: 12,
-                        fontWeight: '700',
-                        letterSpacing: 0.8,
-                      }}
-                      className="uppercase"
-                    >
-                      Rest Between Burns
-                    </Text>
-                  </View>
-                  <Text
+                    activeOpacity={0.7}
+                    hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}
                     style={{
-                      color: '#8E7CFF',
-                      fontSize: 12,
-                      fontWeight: '700',
+                      backgroundColor: '#17171C',
+                      borderColor: '#2C2C35',
+                      borderWidth: 1,
+                      paddingHorizontal: 12,
+                      paddingVertical: 6,
+                      borderRadius: 8,
                     }}
                   >
-                    {formatRestDisplay(block.defaultRestSeconds)}
-                  </Text>
-                </View>
+                    <Text style={{ color: '#8A8A98', fontSize: 12, fontWeight: '600' }}>
+                      Rest: <Text style={{ color: '#FFFFFF', fontWeight: '700' }}>{formatCompactRest(block.defaultRestSeconds)}</Text>
+                    </Text>
+                  </TouchableOpacity>
 
-                {/* Quick-select pill row: Scrollable chips (#1E1E24 surface, 1px border #2C2C35) */}
-                <ScrollView
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  contentContainerStyle={{ gap: 6, alignItems: 'center', paddingVertical: 2 }}
-                >
-                  {REST_PRESETS.map((sec) => {
-                    const isSelected = block.defaultRestSeconds === sec;
-                    return (
-                      <TouchableOpacity
-                        key={sec}
-                        onPress={() => {
-                          triggerHaptic('selection');
-                          handleUpdateBlockRest(block.id, sec);
-                        }}
-                        activeOpacity={0.75}
-                        style={{
-                          paddingHorizontal: 12,
-                          paddingVertical: 6,
-                          borderRadius: 14,
-                          backgroundColor: isSelected ? '#8E7CFF' : THEME_COLORS.cardSurface,
-                          borderColor: isSelected ? '#8E7CFF' : THEME_COLORS.cardBorder,
-                          borderTopColor: isSelected ? '#8E7CFF' : 'rgba(255, 255, 255, 0.14)',
-                          borderWidth: 1,
-                          shadowColor: isSelected ? '#8E7CFF' : 'transparent',
-                          shadowOffset: { width: 0, height: 2 },
-                          shadowOpacity: isSelected ? 0.35 : 0,
-                          shadowRadius: 4,
-                          elevation: isSelected ? 2 : 0,
-                        }}
-                      >
-                        <Text
-                          style={{
-                            fontSize: 12,
-                            fontWeight: isSelected ? '700' : '600',
-                            color: isSelected ? '#FFFFFF' : '#9A9AA6',
-                          }}
-                        >
-                          {sec >= 120 && sec % 60 === 0 ? `${sec / 60}m` : `${sec}s`}
-                        </Text>
-                      </TouchableOpacity>
-                    );
-                  })}
-
-                  {/* Custom option pill */}
-                  {(() => {
-                    const isCustomActive = !REST_PRESETS.includes(block.defaultRestSeconds);
-                    return (
-                      <TouchableOpacity
-                        onPress={() => {
-                          triggerHaptic('selection');
-                          setActiveBlockForCustomRest({
-                            blockId: block.id,
-                            title: block.title,
-                            seconds: block.defaultRestSeconds,
-                          });
-                        }}
-                        activeOpacity={0.75}
-                        style={{
-                          paddingHorizontal: 12,
-                          paddingVertical: 6,
-                          borderRadius: 14,
-                          backgroundColor: isCustomActive ? '#8E7CFF' : THEME_COLORS.cardSurface,
-                          borderColor: isCustomActive ? '#8E7CFF' : THEME_COLORS.cardBorder,
-                          borderTopColor: isCustomActive ? '#8E7CFF' : 'rgba(255, 255, 255, 0.14)',
-                          borderWidth: 1,
-                          flexDirection: 'row',
-                          alignItems: 'center',
-                          gap: 4,
-                          shadowColor: isCustomActive ? '#8E7CFF' : 'transparent',
-                          shadowOffset: { width: 0, height: 2 },
-                          shadowOpacity: isCustomActive ? 0.35 : 0,
-                          shadowRadius: 4,
-                          elevation: isCustomActive ? 2 : 0,
-                        }}
-                      >
-                        <Text
-                          style={{
-                            fontSize: 12,
-                            fontWeight: isCustomActive ? '700' : '600',
-                            color: isCustomActive ? '#FFFFFF' : '#9A9AA6',
-                          }}
-                        >
-                          {isCustomActive ? `${block.defaultRestSeconds}s` : 'Custom...'}
-                        </Text>
-                      </TouchableOpacity>
-                    );
-                  })()}
-                </ScrollView>
-              </View>
-
-              {/* Boulders List Header */}
-              <View
-                style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  paddingHorizontal: 4,
-                  paddingBottom: 4,
-                  gap: 8,
-                }}
-              >
-                <Text style={{ color: '#8A8A98', fontSize: 10, width: 20, textAlign: 'center' }}>#</Text>
-                <Text style={{ color: '#8A8A98', fontSize: 10, width: 48, textAlign: 'center' }}>Grade</Text>
-                <Text style={{ color: '#8A8A98', fontSize: 10, width: 72, textAlign: 'center' }}>Attempts</Text>
-                <Text style={{ color: '#8A8A98', fontSize: 10, flex: 1, textAlign: 'right', paddingRight: 8 }}>
-                  Styles / Tags
-                </Text>
-              </View>
-
-              {/* Boulders Rows */}
-              {block.boulders.map((boulder, boIdx) => {
-                const gradeDef = GRADE_BY_LABEL[boulder.gradeRaw];
-                return (
-                  <View
-                    key={boulder.id}
+                  <TouchableOpacity
+                    onPress={() => handleDeleteBlock(block.id)}
+                    activeOpacity={0.7}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                     style={{
-                      flexDirection: 'row',
+                      width: 36,
+                      height: 36,
+                      borderRadius: 8,
                       alignItems: 'center',
-                      paddingVertical: 8,
-                      paddingHorizontal: 4,
-                      borderBottomWidth: 1,
-                      borderBottomColor: 'rgba(255, 255, 255, 0.05)',
-                      gap: 8,
+                      justifyContent: 'center',
                     }}
                   >
-                    {/* Index */}
-                    <Text style={{ color: '#8A8A98', fontSize: 12, fontWeight: '700', width: 20, textAlign: 'center' }}>
-                      {boIdx + 1}
-                    </Text>
+                    <Trash2 size={16} color="#FF5C5C" />
+                  </TouchableOpacity>
+                </View>
+              </View>
 
-                    {/* Grade Pill Button */}
-                    <TouchableOpacity
-                      onPress={() =>
-                        setActiveBoulderForGrade({
-                          blockId: block.id,
-                          boulderId: boulder.id,
-                          gradeRaw: boulder.gradeRaw,
-                        })
-                      }
-                      activeOpacity={0.75}
-                      style={{
-                        backgroundColor: gradeDef?.color ?? '#374151',
-                        borderRadius: 12,
-                        paddingHorizontal: 10,
-                        paddingVertical: 4,
-                        minWidth: 48,
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                      }}
-                    >
-                      <Text
-                        style={{
-                          color: gradeDef?.textColor ?? '#FFFFFF',
-                          fontSize: 12,
-                          fontWeight: '800',
-                        }}
-                      >
-                        {boulder.gradeRaw}
-                      </Text>
-                    </TouchableOpacity>
-
-                    {/* Attempts Stepper */}
-                    <View
-                      style={{
-                        flexDirection: 'row',
-                        alignItems: 'center',
-                        backgroundColor: '#141418',
-                        borderRadius: 8,
-                        borderColor: '#2C2C35',
-                        borderWidth: 1,
-                        overflow: 'hidden',
-                      }}
-                    >
-                      <TouchableOpacity
-                        onPress={() => handleAttemptsChange(block.id, boulder.id, -1)}
-                        style={{ width: 24, height: 28, alignItems: 'center', justifyContent: 'center' }}
-                      >
-                        <Minus size={10} color="#9CA3AF" />
-                      </TouchableOpacity>
-                      <Text
-                        style={{
-                          color: '#FFFFFF',
-                          fontWeight: '700',
-                          fontSize: 12,
-                          width: 24,
-                          textAlign: 'center',
-                        }}
-                      >
-                        {boulder.targetAttempts}
-                      </Text>
-                      <TouchableOpacity
-                        onPress={() => handleAttemptsChange(block.id, boulder.id, 1)}
-                        style={{ width: 24, height: 28, alignItems: 'center', justifyContent: 'center' }}
-                      >
-                        <Plus size={10} color="#9CA3AF" />
-                      </TouchableOpacity>
-                    </View>
-
-                    {/* Style Tags Trigger */}
-                    <TouchableOpacity
-                      onPress={() =>
-                        setActiveBoulderForTags({
-                          blockId: block.id,
-                          boulderId: boulder.id,
-                          tags: boulder.styleTags,
-                        })
-                      }
-                      activeOpacity={0.7}
-                      style={{
-                        flex: 1,
-                        flexDirection: 'row',
-                        alignItems: 'center',
-                        justifyContent: 'flex-end',
-                        gap: 4,
-                        flexWrap: 'wrap',
-                      }}
-                    >
-                      {boulder.styleTags.length === 0 ? (
-                        <View
-                          style={{
-                            flexDirection: 'row',
-                            alignItems: 'center',
-                            gap: 4,
-                            backgroundColor: '#141418',
-                            paddingHorizontal: 8,
-                            paddingVertical: 4,
-                            borderRadius: 6,
-                            borderColor: '#2C2C35',
-                            borderWidth: 1,
-                          }}
-                        >
-                          <Tag size={10} color="#8A8A98" />
-                          <Text style={{ color: '#8A8A98', fontSize: 10, fontWeight: '600' }}>
-                            + Style
-                          </Text>
-                        </View>
-                      ) : (
-                        boulder.styleTags.map((tag) => (
-                          <View
-                            key={tag}
-                            style={{
-                              backgroundColor: 'rgba(142, 124, 255, 0.15)',
-                              borderColor: 'rgba(142, 124, 255, 0.3)',
-                              borderWidth: 1,
-                              paddingHorizontal: 6,
-                              paddingVertical: 2,
-                              borderRadius: 6,
-                            }}
-                          >
-                            <Text style={{ color: '#8E7CFF', fontSize: 9, fontWeight: '700' }}>
-                              {tag}
-                            </Text>
-                          </View>
-                        ))
-                      )}
-                    </TouchableOpacity>
-
-                    {/* Delete Boulder */}
-                    <TouchableOpacity
-                      onPress={() => handleDeleteBoulder(block.id, boulder.id)}
-                      activeOpacity={0.7}
-                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                      style={{ padding: 4 }}
-                    >
-                      <Trash2 size={14} color="#8A8A98" />
-                    </TouchableOpacity>
-                  </View>
-                );
-              })}
+              {/* Boulders List using PlannedBoulderRow */}
+              {block.boulders.map((boulder) => (
+                <PlannedBoulderRow
+                  key={boulder.id}
+                  boulder={boulder}
+                  onPressGrade={() =>
+                    setActiveBoulderForGrade({
+                      blockId: block.id,
+                      boulderId: boulder.id,
+                      gradeRaw: boulder.gradeRaw,
+                    })
+                  }
+                  onPressStyle={() =>
+                    setActiveBoulderForTags({
+                      blockId: block.id,
+                      boulderId: boulder.id,
+                      tags: boulder.styleTags,
+                    })
+                  }
+                  onAttemptsChange={(delta) => handleAttemptsChange(block.id, boulder.id, delta)}
+                  onDelete={() => handleDeleteBoulder(block.id, boulder.id)}
+                />
+              ))}
 
               {/* Add Planned Boulder Button */}
               <TouchableOpacity
                 onPress={() => handleAddBoulder(block.id)}
                 activeOpacity={0.75}
                 style={{
-                  marginTop: 12,
-                  paddingVertical: 10,
-                  borderRadius: 12,
-                  borderStyle: 'dashed',
-                  borderWidth: 1.2,
+                  backgroundColor: '#17171C',
                   borderColor: '#2C2C35',
-                  flexDirection: 'row',
+                  borderWidth: 1,
+                  borderStyle: 'dashed',
+                  borderRadius: 12,
+                  height: 42,
                   alignItems: 'center',
                   justifyContent: 'center',
-                  gap: 6,
+                  marginTop: 4,
                 }}
               >
-                <Plus size={13} color="#9A9AA6" />
-                <Text style={{ color: '#9A9AA6', fontSize: 12, fontWeight: '700' }}>
-                  Add Planned Boulder
+                <Text style={{ color: '#8E7CFF', fontSize: 13, fontWeight: '600' }}>
+                  + Add Boulder
                 </Text>
               </TouchableOpacity>
             </View>
           ))}
 
           {/* Add Block Button */}
-          <View style={{ paddingHorizontal: 16, marginTop: 4, marginBottom: 32 }}>
+          <View style={{ marginTop: 2, marginBottom: 32 }}>
             <TouchableOpacity
               onPress={handleAddBlock}
               activeOpacity={0.8}
               style={{
-                paddingVertical: 14,
-                borderRadius: 20,
-                borderStyle: 'dashed',
-                borderWidth: 1.2,
-                borderColor: 'rgba(142, 124, 255, 0.45)',
-                backgroundColor: 'rgba(142, 124, 255, 0.05)',
-                flexDirection: 'row',
+                backgroundColor: '#1E1E24',
+                borderColor: '#2C2C35',
+                borderWidth: 1,
+                borderRadius: 16,
+                height: 48,
                 alignItems: 'center',
                 justifyContent: 'center',
-                gap: 8,
               }}
             >
-              <Plus size={16} color="#8E7CFF" />
-              <Text style={{ color: '#8E7CFF', fontSize: 14, fontWeight: '700' }}>
-                Add Climbing Block
+              <Text style={{ color: '#FFFFFF', fontSize: 14, fontWeight: '700' }}>
+                + Add Climbing Block
               </Text>
             </TouchableOpacity>
           </View>

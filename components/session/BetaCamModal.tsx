@@ -46,7 +46,7 @@ import {
   ValidationFailureReason,
 } from '../../services/videoAnalyzer';
 import { useClimbingPoseTracker } from '../../hooks/useClimbingPoseTracker';
-import { PoseSkeletonOverlay } from './PoseSkeletonOverlay';
+import { ClimberSkeletonOverlay } from './ClimberSkeletonOverlay';
 
 interface BetaCamModalProps {
   visible: boolean;
@@ -135,6 +135,14 @@ export function BetaCamModal({
   });
 
   // Angle stability detection (switches leveling dot green when held steady)
+  const isMountedRef = useRef(true);
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
+
   const [isStable, setIsStable] = useState(true);
   const lastAngleRef = useRef(wallAngle.angleDegrees);
   const stabilityTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -407,7 +415,9 @@ export function BetaCamModal({
           await processVideoValidation(video.uri, recordingSeconds || 10);
         }
       }
-    } catch (err) {
+    } catch (err: any) {
+      if (!isMountedRef.current || !visible) return;
+      if (err?.message?.includes('CameraUnmountedException')) return;
       console.warn('Camera recordAsync error (simulator fallback available):', err);
       handleMockCapture('video');
     }
@@ -426,7 +436,9 @@ export function BetaCamModal({
       } else {
         handleMockCapture('video');
       }
-    } catch (err) {
+    } catch (err: any) {
+      if (!isMountedRef.current || !visible) return;
+      if (err?.message?.includes('CameraUnmountedException')) return;
       console.warn('Camera stopRecording error:', err);
       handleMockCapture('video');
     }
@@ -452,11 +464,14 @@ export function BetaCamModal({
       } else {
         await handleMockCapture('photo');
       }
-    } catch (err) {
+    } catch (err: any) {
+      if (!isMountedRef.current || !visible) return;
       console.warn('Camera takePictureAsync error (simulator fallback available):', err);
       await handleMockCapture('photo');
     } finally {
-      setIsProcessing(false);
+      if (isMountedRef.current) {
+        setIsProcessing(false);
+      }
     }
   };
 
@@ -896,7 +911,10 @@ export function BetaCamModal({
             )}
 
             {/* ── Real-Time Pose Skeleton & Hold Contact Overlay ───────────── */}
-            <PoseSkeletonOverlay poseState={poseState} />
+            <ClimberSkeletonOverlay
+              poseState={poseState}
+              isFrontCamera={facing === 'front'}
+            />
 
             {/* ── Reticle ("Scanning Route") ─────────────────────────────────── */}
             <View style={styles.reticleContainer} pointerEvents="none">

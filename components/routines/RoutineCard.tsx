@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { View, Text, TouchableOpacity, Modal, Image } from "react-native";
+import { View, Text, TouchableOpacity, Pressable, Modal, Image } from "react-native";
 import {
   Play,
   MoreVertical,
@@ -13,6 +13,7 @@ import Svg, { Polygon, Path } from "react-native-svg";
 import type { RoutineWithBlocks, RoutineCategory } from "../../types";
 import { GRADE_BY_LABEL } from "../../constants/grades";
 import { FLOATING_CARD_STYLE } from "../../constants/theme";
+import { triggerHaptic } from "../../utils/haptics";
 
 interface RoutineCardProps {
   routine: RoutineWithBlocks;
@@ -149,7 +150,7 @@ export function RoutineCard({
         {
           borderRadius: 20,
           padding: 20,
-          marginHorizontal: 16,
+          marginHorizontal: 0,
           marginBottom: 16,
         },
       ]}
@@ -187,7 +188,7 @@ export function RoutineCard({
         <TouchableOpacity
           onPress={() => setMenuVisible(true)}
           activeOpacity={0.7}
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
           style={{
             width: 36,
             height: 36,
@@ -314,38 +315,46 @@ export function RoutineCard({
         </View>
       </View>
 
-      {/* ── Bottom Action Button: Wide pill button matching primary action style ───── */}
-      <TouchableOpacity
-        onPress={() => onStart(routine)}
-        activeOpacity={0.85}
-        style={{
-          backgroundColor: "#8E7CFF",
-          height: 52,
-          borderRadius: 26,
+      {/* ── Start Routine CTA Button with tactile compression ──── */}
+      <Pressable
+        onPress={() => {
+          triggerHaptic('medium');
+          onStart(routine);
+        }}
+        style={({ pressed }) => ({
+          backgroundColor: "#262630",
+          borderWidth: 1,
+          borderColor: "#2C2C35",
+          paddingVertical: 10,
+          paddingHorizontal: 16,
+          borderRadius: 12,
           flexDirection: "row",
           alignItems: "center",
-          justifyContent: "center",
+          alignSelf: "flex-start",
           gap: 8,
-          shadowColor: "#8E7CFF",
-          shadowOffset: { width: 0, height: 4 },
-          shadowOpacity: 0.4,
-          shadowRadius: 10,
-          elevation: 5,
-          marginTop: 2,
-        }}
+          marginTop: 4,
+          shadowColor: "#000000",
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.2,
+          shadowRadius: 3,
+          elevation: 2,
+          transform: [{ scale: pressed ? 0.95 : 1 }],
+          opacity: pressed ? 0.92 : 1,
+        })}
       >
-        <Play size={15} color="#FFFFFF" fill="#FFFFFF" />
+        <Play size={13} color="#8E7CFF" fill="#8E7CFF" />
         <Text
           style={{
             color: "#FFFFFF",
-            fontSize: 15,
+            fontSize: 13,
             fontWeight: "700",
             letterSpacing: 0.5,
           }}
+          className="uppercase"
         >
           START ROUTINE
         </Text>
-      </TouchableOpacity>
+      </Pressable>
 
       {/* ── Context Menu Modal ─────────────────────────────────────── */}
       <Modal
