@@ -29,6 +29,9 @@ export interface BoulderLog {
   attempts: number;
   outcome: Outcome;          // 'flash' | 'send' | 'attempt'
   timestamp: number;         // unix ms
+  media_uri?: string | null;
+  media_type?: 'video' | 'photo' | null;
+  notes?: string | null;
 }
 
 export interface BoulderGroupWithLogs extends BoulderGroup {

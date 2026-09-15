@@ -37,7 +37,10 @@ export function getDatabase(): SQLite.SQLiteDatabase {
         rpe                   INTEGER,
         attempts              INTEGER NOT NULL DEFAULT 1,
         outcome               TEXT    NOT NULL DEFAULT 'attempt',
-        timestamp             INTEGER NOT NULL
+        timestamp             INTEGER NOT NULL,
+        media_uri             TEXT,
+        media_type            TEXT,
+        notes                 TEXT
       );
 
       CREATE INDEX IF NOT EXISTS idx_logs_group ON boulder_logs(group_id);
@@ -84,43 +87,34 @@ export function getDatabase(): SQLite.SQLiteDatabase {
 
 function runMigrations(db: SQLite.SQLiteDatabase): void {
   try {
-    const tableInfo = db.getAllSync<{ name: string }>('PRAGMA table_info(boulder_groups);');
-    const hasCol = tableInfo.some((c) => c.name === 'default_rest_seconds');
-    if (!hasCol) {
-      db.execSync('ALTER TABLE boulder_groups ADD COLUMN default_rest_seconds INTEGER NOT NULL DEFAULT 90;');
-    }
-    const hasNotes = tableInfo.some((c) => c.name === 'notes');
-    if (!hasNotes) {
-      db.execSync("ALTER TABLE boulder_groups ADD COLUMN notes TEXT NOT NULL DEFAULT '';");
-    }
-  } catch (err) {
-    console.warn('Migration boulder_groups warning:', err);
-  }
+    db.execSync('ALTER TABLE boulder_groups ADD COLUMN default_rest_seconds INTEGER NOT NULL DEFAULT 90;');
+  } catch {}
+  try {
+    db.execSync("ALTER TABLE boulder_groups ADD COLUMN notes TEXT NOT NULL DEFAULT '';");
+  } catch {}
 
   try {
-    const logsInfo = db.getAllSync<{ name: string }>('PRAGMA table_info(boulder_logs);');
-    const hasRpe = logsInfo.some((c) => c.name === 'rpe');
-    if (!hasRpe) {
-      db.execSync('ALTER TABLE boulder_logs ADD COLUMN rpe INTEGER;');
-    }
-  } catch (err) {
-    console.warn('Migration boulder_logs rpe warning:', err);
-  }
+    db.execSync('ALTER TABLE boulder_logs ADD COLUMN rpe INTEGER;');
+  } catch {}
+  try {
+    db.execSync('ALTER TABLE boulder_logs ADD COLUMN media_uri TEXT;');
+  } catch {}
+  try {
+    db.execSync('ALTER TABLE boulder_logs ADD COLUMN media_type TEXT;');
+  } catch {}
+  try {
+    db.execSync('ALTER TABLE boulder_logs ADD COLUMN notes TEXT;');
+  } catch {}
 
   try {
-    const sessInfo = db.getAllSync<{ name: string }>('PRAGMA table_info(sessions);');
-    if (!sessInfo.some((c) => c.name === 'title')) {
-      db.execSync("ALTER TABLE sessions ADD COLUMN title TEXT NOT NULL DEFAULT '';");
-    }
-    if (!sessInfo.some((c) => c.name === 'rpe')) {
-      db.execSync('ALTER TABLE sessions ADD COLUMN rpe INTEGER;');
-    }
-    if (!sessInfo.some((c) => c.name === 'media_uris')) {
-      db.execSync("ALTER TABLE sessions ADD COLUMN media_uris TEXT NOT NULL DEFAULT '[]';");
-    }
-  } catch (err) {
-    console.warn('Migration sessions columns warning:', err);
-  }
+    db.execSync("ALTER TABLE sessions ADD COLUMN title TEXT NOT NULL DEFAULT '';");
+  } catch {}
+  try {
+    db.execSync('ALTER TABLE sessions ADD COLUMN rpe INTEGER;');
+  } catch {}
+  try {
+    db.execSync("ALTER TABLE sessions ADD COLUMN media_uris TEXT NOT NULL DEFAULT '[]';");
+  } catch {}
 }
 
 export async function initializeDatabase(): Promise<void> {

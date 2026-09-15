@@ -5,6 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ChevronUp, Trash2 } from 'lucide-react-native';
 import { useSessionStore, selectTotalSends } from '../../store/sessionStore';
 import { useSessionTimer } from '../../hooks/useSessionTimer';
+import { useRestTimer } from '../../hooks/useRestTimer';
 import { triggerHaptic } from '../../utils/haptics';
 
 function pad(n: number): string {
@@ -54,6 +55,9 @@ export function ActiveSessionMiniBar() {
   const router = useRouter();
   const pathname = usePathname();
   const insets = useSafeAreaInsets();
+
+  // Drive global rest timer countdown when away from full session screen
+  useRestTimer();
 
   const activeSession = useSessionStore((s) => s.activeSession);
   const groups = useSessionStore((s) => s.groups);

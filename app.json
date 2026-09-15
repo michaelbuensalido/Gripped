@@ -8,7 +8,7 @@
     "userInterfaceStyle": "dark",
     "scheme": "cruxlog",
     "splash": {
-      "image": "./assets/splash.png",
+      "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
       "backgroundColor": "#0F0F0F"
     },
@@ -18,7 +18,7 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
+        "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundColor": "#0F0F0F"
       },
       "package": "com.cruxlog.app"
@@ -32,6 +32,13 @@
           "useSQLCipher": false
         }
       ],
+      [
+        "react-native-vision-camera",
+        {
+          "cameraPermissionText": "CruxLog needs camera access to detect climbing holds and human pose in real time."
+        }
+      ],
+      "./plugins/withClimbingPoseTracker",
       "expo-asset"
     ],
     "experiments": {

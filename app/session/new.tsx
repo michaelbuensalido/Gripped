@@ -45,6 +45,21 @@ export default function NewSessionScreen() {
       return;
     }
 
+    if (startEmpty === '1') {
+      const sessionId = startEmptySession('Gym Session');
+      router.replace(`/session/${sessionId}`);
+      return;
+    }
+
+    if (testRoutine === '1') {
+      const routines = getAllRoutinesWithBlocks();
+      if (routines.length > 0) {
+        const sessionId = startSessionFromRoutine(routines[0], routines[0].title);
+        router.replace(`/session/${sessionId}`);
+        return;
+      }
+    }
+
     if (hasLaunchedRef.current) return;
 
     if (routineId) {
@@ -54,17 +69,6 @@ export default function NewSessionScreen() {
         const sessionId = startSessionFromRoutine(routine, routine.title);
         router.replace(`/session/${sessionId}`);
       }
-    } else if (testRoutine === '1') {
-      hasLaunchedRef.current = true;
-      const routines = getAllRoutinesWithBlocks();
-      if (routines.length > 0) {
-        const sessionId = startSessionFromRoutine(routines[0], routines[0].title);
-        router.replace(`/session/${sessionId}`);
-      }
-    } else if (startEmpty === '1') {
-      hasLaunchedRef.current = true;
-      const sessionId = startEmptySession('Gym Session');
-      router.replace(`/session/${sessionId}`);
     }
   }, [routineId, startEmpty, testRoutine, wrapUp, startSessionFromRoutine, startEmptySession, router]);
 

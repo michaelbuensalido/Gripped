@@ -24,7 +24,7 @@ export function ScreenContainer({
       {/* ── Textured Speckled Gym Mat Background Layer with Subdued Opacity ── */}
       <ImageBackground
         source={require('../../assets/speckled_mat_bg.jpg')}
-        style={StyleSheet.absoluteFillObject}
+        style={StyleSheet.absoluteFill}
         imageStyle={{ opacity: 0.22 }}
         resizeMode="cover"
       />

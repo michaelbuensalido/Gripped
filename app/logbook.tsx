@@ -20,6 +20,7 @@ import {
   Plus,
   Compass,
 } from 'lucide-react-native';
+import { VideoPlayerView } from '../components/ui/VideoPlayerView';
 import { ScreenContainer } from '../components/ui/ScreenContainer';
 import { FLOATING_CARD_STYLE, THEME_COLORS } from '../constants/theme';
 import {
@@ -789,7 +790,11 @@ export default function LogbookScreen() {
                       >
                         {/* Background Thumbnail */}
                         <Image
-                          source={thumb}
+                          source={
+                            beta.mediaUri && beta.mediaType === 'photo'
+                              ? { uri: beta.mediaUri }
+                              : thumb
+                          }
                           style={{
                             position: 'absolute',
                             top: 0,
@@ -811,25 +816,41 @@ export default function LogbookScreen() {
                           }}
                         />
 
-                        {/* Top Row: Grade Pill */}
-                        <View
-                          style={{
-                            backgroundColor: beta.gradeRaw === 'V7' || beta.gradeRaw === 'V8' ? '#6EE756' : '#8E7CFF',
-                            alignSelf: 'flex-start',
-                            borderRadius: 8,
-                            paddingHorizontal: 8,
-                            paddingVertical: 3,
-                          }}
-                        >
-                          <Text
+                        {/* Top Row: Grade Pill + Type Badge */}
+                        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+                          <View
                             style={{
-                              color: beta.gradeRaw === 'V7' || beta.gradeRaw === 'V8' ? '#111115' : '#FFFFFF',
-                              fontSize: 12,
-                              fontWeight: '800',
+                              backgroundColor: beta.gradeRaw === 'V7' || beta.gradeRaw === 'V8' ? '#6EE756' : '#8E7CFF',
+                              borderRadius: 8,
+                              paddingHorizontal: 8,
+                              paddingVertical: 3,
                             }}
                           >
-                            {beta.gradeRaw}
-                          </Text>
+                            <Text
+                              style={{
+                                color: beta.gradeRaw === 'V7' || beta.gradeRaw === 'V8' ? '#111115' : '#FFFFFF',
+                                fontSize: 12,
+                                fontWeight: '800',
+                              }}
+                            >
+                              {beta.gradeRaw}
+                            </Text>
+                          </View>
+
+                          <View
+                            style={{
+                              backgroundColor: 'rgba(18, 18, 24, 0.75)',
+                              borderRadius: 6,
+                              paddingHorizontal: 6,
+                              paddingVertical: 2,
+                              borderWidth: 1,
+                              borderColor: 'rgba(255, 255, 255, 0.12)',
+                            }}
+                          >
+                            <Text style={{ color: '#8E7CFF', fontSize: 9, fontWeight: '700' }}>
+                              {beta.mediaType === 'photo' ? 'PHOTO' : 'VIDEO'}
+                            </Text>
+                          </View>
                         </View>
 
                         {/* Center: Play Icon Overlay */}
@@ -945,11 +966,11 @@ export default function LogbookScreen() {
               </TouchableOpacity>
             </View>
 
-            {/* Video Viewport Mock */}
+            {/* Video Viewport / Playback */}
             <View
               style={{
                 width: '100%',
-                height: 240,
+                height: 280,
                 backgroundColor: '#121216',
                 position: 'relative',
                 alignItems: 'center',
@@ -957,29 +978,55 @@ export default function LogbookScreen() {
               }}
             >
               {activePreviewBeta && (
-                <Image
-                  source={BETA_THUMBNAILS[activePreviewBeta.gradeRaw] || require('../assets/holds-images/v6-ripple-effect-square.jpg')}
-                  style={{ width: '100%', height: '100%', opacity: 0.6 }}
-                  resizeMode="cover"
-                />
+                activePreviewBeta.mediaUri && activePreviewBeta.mediaUri.startsWith('file://') ? (
+                  activePreviewBeta.mediaType === 'photo' ||
+                  activePreviewBeta.mediaUri.endsWith('.jpg') ||
+                  activePreviewBeta.mediaUri.endsWith('.png') ||
+                  activePreviewBeta.mediaUri.endsWith('.jpeg') ? (
+                    <Image
+                      source={{ uri: activePreviewBeta.mediaUri }}
+                      style={{ width: '100%', height: '100%' }}
+                      resizeMode="contain"
+                    />
+                  ) : (
+                    <VideoPlayerView
+                      uri={activePreviewBeta.mediaUri}
+                      style={{ width: '100%', height: '100%' }}
+                      nativeControls
+                      loop
+                      autoPlay
+                    />
+                  )
+                ) : (
+                  <>
+                    <Image
+                      source={
+                        BETA_THUMBNAILS[activePreviewBeta.gradeRaw] ||
+                        require('../assets/holds-images/v6-ripple-effect-square.jpg')
+                      }
+                      style={{ width: '100%', height: '100%', opacity: 0.65 }}
+                      resizeMode="cover"
+                    />
+                    <View
+                      style={{
+                        position: 'absolute',
+                        width: 64,
+                        height: 64,
+                        borderRadius: 32,
+                        backgroundColor: 'rgba(142, 124, 255, 0.9)',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        shadowColor: '#8E7CFF',
+                        shadowOffset: { width: 0, height: 4 },
+                        shadowOpacity: 0.5,
+                        shadowRadius: 10,
+                      }}
+                    >
+                      <Play size={28} color="#FFFFFF" fill="#FFFFFF" style={{ marginLeft: 4 }} />
+                    </View>
+                  </>
+                )
               )}
-              <View
-                style={{
-                  position: 'absolute',
-                  width: 64,
-                  height: 64,
-                  borderRadius: 32,
-                  backgroundColor: 'rgba(142, 124, 255, 0.9)',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  shadowColor: '#8E7CFF',
-                  shadowOffset: { width: 0, height: 4 },
-                  shadowOpacity: 0.5,
-                  shadowRadius: 10,
-                }}
-              >
-                <Play size={28} color="#FFFFFF" fill="#FFFFFF" style={{ marginLeft: 4 }} />
-              </View>
             </View>
 
             {/* Modal Footer */}

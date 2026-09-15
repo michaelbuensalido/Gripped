@@ -60,3 +60,21 @@ export async function triggerHaptic(
     // Graceful fallback on devices/simulators where haptics are not supported
   }
 }
+
+/**
+ * Triggers a distinctive triple-pulse tactile alert for rest timer completion.
+ * Success notification followed by heavy and medium impacts.
+ */
+export async function triggerRestTimerAlert(): Promise<void> {
+  if (!isHapticsEnabled) return;
+  try {
+    await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    setTimeout(() => {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy).catch(() => {});
+    }, 150);
+    setTimeout(() => {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+    }, 300);
+  } catch {}
+}
+

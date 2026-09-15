@@ -1,26 +1,59 @@
 import { useEffect, useRef } from 'react';
+import { AppState, AppStateStatus } from 'react-native';
 import { useSessionStore } from '../store/sessionStore';
+import { triggerRestTimerAlert } from '../utils/haptics';
+import { playRestTimerChime } from '../utils/sound';
 
 /**
- * Drives the global rest timer — ticks the store every second while active.
- * Mount this once at the session root.
+ * Drives the global rest timer — ticks the store using target timestamp calculations
+ * to guarantee drift-free timing across background transitions.
+ * Fires a triple-pulse tactile sequence and audio chime on timer completion.
  */
 export function useRestTimer(): void {
   const restTimerActive = useSessionStore((s) => s.restTimerActive);
-  const tickRestTimer = useSessionStore((s) => s.tickRestTimer);
+  const restTimerTarget = useSessionStore((s) => s.restTimerTargetTimestampMs);
+  const syncRestTimer = useSessionStore((s) => s.syncRestTimer);
+
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const hasAlertedRef = useRef(false);
 
   useEffect(() => {
     if (restTimerActive) {
-      intervalRef.current = setInterval(tickRestTimer, 1000);
+      hasAlertedRef.current = false;
+
+      const checkTime = () => {
+        const remaining = syncRestTimer();
+        if (remaining <= 0 && !hasAlertedRef.current) {
+          hasAlertedRef.current = true;
+          triggerRestTimerAlert();
+          playRestTimerChime();
+        }
+      };
+
+      // Initial sync
+      checkTime();
+      intervalRef.current = setInterval(checkTime, 500);
+
+      // Immediate sync upon returning from background/locked state
+      const subscription = AppState.addEventListener('change', (nextAppState: AppStateStatus) => {
+        if (nextAppState === 'active') {
+          checkTime();
+        }
+      });
+
+      return () => {
+        if (intervalRef.current) {
+          clearInterval(intervalRef.current);
+          intervalRef.current = null;
+        }
+        subscription.remove();
+      };
     } else {
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
         intervalRef.current = null;
       }
     }
-    return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
-    };
-  }, [restTimerActive, tickRestTimer]);
+  }, [restTimerActive, syncRestTimer, restTimerTarget]);
 }
+
