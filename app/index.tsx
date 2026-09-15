@@ -33,7 +33,7 @@ import {
   RecommendedRouteCard,
   type RecommendedRoute,
 } from "../components/home/RecommendedRouteCard";
-import { RouteDetailModal } from "../components/home/RouteDetailModal";
+import { RouteDetailBottomSheet } from "../components/home/RouteDetailBottomSheet";
 import { triggerHaptic } from "../utils/haptics";
 
 const RECOMMENDED_ROUTES: RecommendedRoute[] = [
@@ -786,7 +786,7 @@ export default function HomeScreen() {
       </ScrollView>
 
       {/* ── Route Detail Quick Actions Bottom Sheet ──────────── */}
-      <RouteDetailModal
+      <RouteDetailBottomSheet
         visible={Boolean(selectedRoute)}
         route={selectedRoute}
         onClose={() => setSelectedRoute(null)}
