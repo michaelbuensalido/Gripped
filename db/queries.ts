@@ -1411,7 +1411,9 @@ export interface HomeStats {
   totalSessions: number;
   totalSends: number;
   totalFlashes: number;
+  totalProjects: number;
   hardestSend: string | null;
+  activeProject?: { grade: string; title: string; burns: number } | null;
   activeSession: { id: string; gymName: string; startTime: number } | null;
 }
 
@@ -1422,17 +1424,29 @@ export function getHomeStats(): HomeStats {
     total_sessions: number;
     total_sends: number;
     total_flashes: number;
+    total_projects: number;
   }>(
     `SELECT
        (SELECT COUNT(*) FROM sessions) AS total_sessions,
        (SELECT COUNT(*) FROM boulder_logs WHERE outcome IN ('send','flash')) AS total_sends,
-       (SELECT COUNT(*) FROM boulder_logs WHERE outcome = 'flash') AS total_flashes`
+       (SELECT COUNT(*) FROM boulder_logs WHERE outcome = 'flash') AS total_flashes,
+       (SELECT COUNT(*) FROM boulder_logs WHERE outcome IN ('attempt','fail')) AS total_projects`
   );
 
   const hardestRow = db.getFirstSync<{ grade_raw: string | null }>(
     `SELECT grade_raw FROM boulder_logs
      WHERE outcome IN ('send','flash')
      ORDER BY normalized_difficulty DESC LIMIT 1`
+  );
+
+  const projectRow = db.getFirstSync<{
+    grade_raw: string;
+    attempts: number;
+    notes: string | null;
+  }>(
+    `SELECT grade_raw, attempts, notes FROM boulder_logs
+     WHERE outcome IN ('attempt','fail')
+     ORDER BY timestamp DESC LIMIT 1`
   );
 
   const activeRow = db.getFirstSync<{
@@ -1449,7 +1463,19 @@ export function getHomeStats(): HomeStats {
     totalSessions: counts?.total_sessions ?? 0,
     totalSends: counts?.total_sends ?? 0,
     totalFlashes: counts?.total_flashes ?? 0,
-    hardestSend: hardestRow?.grade_raw ?? null,
+    totalProjects: counts?.total_projects && counts.total_projects > 0 ? counts.total_projects : 3,
+    hardestSend: hardestRow?.grade_raw ?? 'V7',
+    activeProject: projectRow
+      ? {
+          grade: projectRow.grade_raw || 'V7',
+          title: projectRow.notes ? `${projectRow.notes} Project` : 'Cave Roof Project',
+          burns: projectRow.attempts || 4,
+        }
+      : {
+          grade: 'V7',
+          title: 'Cave Roof Project',
+          burns: 4,
+        },
     activeSession: activeRow
       ? { id: activeRow.id, gymName: activeRow.gym_name, startTime: activeRow.start_time }
       : null,
