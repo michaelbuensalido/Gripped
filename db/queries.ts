@@ -1467,14 +1467,14 @@ export function getHomeStats(): HomeStats {
     hardestSend: hardestRow?.grade_raw ?? 'V7',
     activeProject: projectRow
       ? {
-          grade: projectRow.grade_raw || 'V7',
-          title: projectRow.notes ? `${projectRow.notes} Project` : 'Cave Roof Project',
-          burns: projectRow.attempts || 4,
+          grade: projectRow.grade_raw || 'V9',
+          title: projectRow.notes ? `${projectRow.notes}` : 'Cave Roof Project',
+          burns: projectRow.attempts || 2,
         }
       : {
-          grade: 'V7',
+          grade: 'V9',
           title: 'Cave Roof Project',
-          burns: 4,
+          burns: 2,
         },
     activeSession: activeRow
       ? { id: activeRow.id, gymName: activeRow.gym_name, startTime: activeRow.start_time }
