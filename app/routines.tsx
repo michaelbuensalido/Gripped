@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -7,11 +7,10 @@ import {
   Pressable,
   Alert,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, useFocusEffect } from 'expo-router';
 import {
   Plus,
-  Layers,
+  Compass,
   Settings as SettingsIcon,
 } from 'lucide-react-native';
 import {
@@ -21,15 +20,14 @@ import {
 } from '../db/routineQueries';
 import type { RoutineWithBlocks } from '../types';
 import { useSessionStore } from '../store/sessionStore';
-import { RoutineCard } from '../components/routines/RoutineCard';
-import { StartEmptySessionCard } from '../components/routines/StartEmptySessionCard';
+import { RoutineLaunchCard } from '../components/routines/RoutineLaunchCard';
 import { ScreenContainer } from '../components/ui/ScreenContainer';
-import { THEME_COLORS } from '../constants/theme';
 import { triggerHaptic } from '../utils/haptics';
 
 export default function RoutinesListScreen() {
   const router = useRouter();
-  const insets = useSafeAreaInsets();
+  const scrollViewRef = useRef<ScrollView>(null);
+  const [drillsY, setDrillsY] = useState(0);
 
   const [routines, setRoutines] = useState<RoutineWithBlocks[]>([]);
   const startEmptySession = useSessionStore((s) => s.startEmptySession);
@@ -102,58 +100,51 @@ export default function RoutinesListScreen() {
     );
   };
 
+  const handleBrowseDrills = () => {
+    triggerHaptic('light');
+    if (drillsY > 0) {
+      scrollViewRef.current?.scrollTo({ y: drillsY - 20, animated: true });
+    }
+  };
+
   return (
     <ScreenContainer withTopInset={true}>
       <ScrollView
+        ref={scrollViewRef}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{
           paddingHorizontal: 16,
-          paddingTop: 8,
+          paddingTop: 12,
           paddingBottom: 160,
         }}
       >
-        {/* ── 1. Top Header Area & Settings Button ────────────── */}
+        {/* ── 1. Top Header & Settings Button ────────────────── */}
         <View
           style={{
             flexDirection: 'row',
-            alignItems: 'flex-start',
+            alignItems: 'center',
             justifyContent: 'space-between',
-            paddingTop: 6,
-            marginBottom: 20,
+            marginBottom: 16,
           }}
         >
-          <View style={{ flex: 1, paddingRight: 12 }}>
-            <Text
-              style={{
-                color: '#FFFFFF',
-                fontSize: 28,
-                fontWeight: '700',
-                letterSpacing: -0.5,
-              }}
-            >
-              Training Routines
-            </Text>
+          <Text
+            style={{
+              color: '#FFFFFF',
+              fontSize: 26,
+              fontWeight: '700',
+              letterSpacing: -0.5,
+            }}
+          >
+            Training
+          </Text>
 
-            <Text
-              style={{
-                color: '#8A8A98',
-                fontSize: 13,
-                fontWeight: '400',
-                marginTop: 4,
-              }}
-            >
-              Structured climbing workouts & templates
-            </Text>
-          </View>
-
-          {/* Settings Gear Button */}
           <TouchableOpacity
             activeOpacity={0.8}
             onPress={() => router.push('/settings')}
             style={{
-              width: 42,
-              height: 42,
-              borderRadius: 21,
+              width: 38,
+              height: 38,
+              borderRadius: 19,
               backgroundColor: '#1E1E24',
               borderWidth: 1,
               borderColor: '#2C2C35',
@@ -161,12 +152,139 @@ export default function RoutinesListScreen() {
               justifyContent: 'center',
             }}
           >
-            <SettingsIcon size={20} color="#9A9AA6" />
+            <SettingsIcon size={18} color="#8A8A98" />
           </TouchableOpacity>
         </View>
 
-        {/* ── 2. "Start Empty Session" Tactile Quick-Start Card ── */}
-        <StartEmptySessionCard onPress={handleStartEmpty} />
+        {/* ── Quick Launch Button ("Start Empty Workout" equivalent) ── */}
+        <Pressable
+          onPress={() => {
+            triggerHaptic('light');
+            handleStartEmpty();
+          }}
+          style={({ pressed }) => ({
+            width: '100%',
+            height: 50,
+            borderRadius: 12,
+            backgroundColor: '#1E1E24',
+            borderWidth: 1,
+            borderColor: '#2C2C35',
+            marginBottom: 16,
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 8,
+            paddingHorizontal: 12,
+            transform: [{ scale: pressed ? 0.98 : 1 }],
+            opacity: pressed ? 0.92 : 1,
+          })}
+        >
+          <Text
+            style={{
+              color: '#FFFFFF',
+              fontSize: 15,
+              fontWeight: '600',
+              letterSpacing: -0.2,
+            }}
+          >
+            + Quick Freestyle Session
+          </Text>
+          <Text
+            style={{
+              color: '#8A8A98',
+              fontSize: 12,
+              fontWeight: '400',
+            }}
+            numberOfLines={1}
+          >
+            • Log as you climb • Untracked
+          </Text>
+        </Pressable>
+
+        {/* ── 2. Dual Action Launch Pills ─────────────────────── */}
+        <Text
+          style={{
+            color: '#8A8A98',
+            fontSize: 11,
+            fontWeight: '700',
+            letterSpacing: 1.2,
+            marginBottom: 12,
+          }}
+          className="uppercase"
+        >
+          ROUTINES & DRILLS
+        </Text>
+
+        <View
+          style={{
+            flexDirection: 'row',
+            gap: 12,
+            marginBottom: 24,
+          }}
+        >
+          {/* Left Pill: + New Routine */}
+          <Pressable
+            onPress={() => {
+              triggerHaptic('light');
+              router.push('/routines/editor');
+            }}
+            style={({ pressed }) => ({
+              flex: 1,
+              height: 46,
+              borderRadius: 12,
+              backgroundColor: '#1E1E24',
+              borderWidth: 1,
+              borderColor: '#2C2C35',
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 8,
+              transform: [{ scale: pressed ? 0.98 : 1 }],
+              opacity: pressed ? 0.92 : 1,
+            })}
+          >
+            <Plus size={16} color="#8E7CFF" strokeWidth={2.5} />
+            <Text
+              style={{
+                color: '#FFFFFF',
+                fontSize: 14,
+                fontWeight: '600',
+              }}
+            >
+              New Routine
+            </Text>
+          </Pressable>
+
+          {/* Right Pill: Beta Templates / Browse Drills */}
+          <Pressable
+            onPress={handleBrowseDrills}
+            style={({ pressed }) => ({
+              flex: 1,
+              height: 46,
+              borderRadius: 12,
+              backgroundColor: '#1E1E24',
+              borderWidth: 1,
+              borderColor: '#2C2C35',
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 8,
+              transform: [{ scale: pressed ? 0.98 : 1 }],
+              opacity: pressed ? 0.92 : 1,
+            })}
+          >
+            <Compass size={16} color="#8A8A98" />
+            <Text
+              style={{
+                color: '#FFFFFF',
+                fontSize: 14,
+                fontWeight: '600',
+              }}
+            >
+              Browse Drills
+            </Text>
+          </Pressable>
+        </View>
 
         {/* ── 3. My Routines Section ─────────────────────────── */}
         <View
@@ -180,7 +298,7 @@ export default function RoutinesListScreen() {
           <Text
             style={{
               color: '#8A8A98',
-              fontSize: 12,
+              fontSize: 11,
               fontWeight: '700',
               letterSpacing: 1.2,
             }}
@@ -188,131 +306,36 @@ export default function RoutinesListScreen() {
           >
             MY ROUTINES ({myRoutines.length})
           </Text>
-
-          {/* "+ New Routine" Button */}
-          <TouchableOpacity
-            onPress={() => router.push('/routines/editor')}
-            activeOpacity={0.75}
-            style={{
-              backgroundColor: THEME_COLORS.cardSurface,
-              borderColor: THEME_COLORS.cardBorder,
-              borderTopColor: 'rgba(255, 255, 255, 0.14)',
-              borderWidth: 1,
-              borderRadius: 16,
-              paddingHorizontal: 12,
-              paddingVertical: 5,
-              flexDirection: 'row',
-              alignItems: 'center',
-              gap: 5,
-              shadowColor: '#000',
-              shadowOffset: { width: 0, height: 2 },
-              shadowOpacity: 0.25,
-              shadowRadius: 4,
-              elevation: 2,
-            }}
-          >
-            <Plus size={13} color="#8E7CFF" strokeWidth={2.5} />
-            <Text style={{ color: '#8E7CFF', fontSize: 12, fontWeight: '700' }}>
-              New Routine
-            </Text>
-          </TouchableOpacity>
         </View>
 
         {/* My Routines List / Empty State */}
         {myRoutines.length === 0 ? (
           <View
             style={{
-              backgroundColor: '#1E1E24',
+              backgroundColor: '#17171C',
               borderWidth: 1,
+              borderStyle: 'dashed',
               borderColor: '#2C2C35',
-              borderRadius: 20,
-              padding: 24,
+              borderRadius: 12,
+              padding: 16,
               alignItems: 'center',
               marginBottom: 24,
             }}
           >
-            {/* 56x56pt container, surface #17171C, border 1px #2C2C35, rounded-2xl */}
-            <View
-              style={{
-                width: 56,
-                height: 56,
-                borderRadius: 16,
-                backgroundColor: '#17171C',
-                borderWidth: 1,
-                borderColor: '#2C2C35',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <Layers size={24} color="#8E7CFF" strokeWidth={1.8} />
-            </View>
-
-            {/* Text: 17pt Bold White, text-center, mt-3, mb-1 */}
-            <Text
-              style={{
-                fontSize: 17,
-                fontWeight: '700',
-                color: '#FFFFFF',
-                textAlign: 'center',
-                marginTop: 12,
-                marginBottom: 4,
-                letterSpacing: -0.2,
-              }}
-            >
-              Build Your First Routine
-            </Text>
-
-            {/* Description: 13pt #8A8A98, text-center, leading-relaxed, px-2, mb-5 */}
             <Text
               style={{
                 fontSize: 13,
                 color: '#8A8A98',
                 textAlign: 'center',
-                lineHeight: 19,
-                paddingHorizontal: 8,
+                lineHeight: 18,
               }}
             >
-              Create structured 4x4 endurance drills, limit bouldering circuits, or custom hangboard intervals.
+              No custom routines yet. Build your first drill or launch a community template below.
             </Text>
-
-            {/* Prominent Solid Primary Pill Button */}
-            <Pressable
-              onPress={() => {
-                triggerHaptic('light');
-                router.push('/routines/editor');
-              }}
-              style={({ pressed }) => ({
-                height: 46,
-                borderRadius: 23,
-                backgroundColor: '#8E7CFF',
-                paddingHorizontal: 24,
-                alignItems: 'center',
-                justifyContent: 'center',
-                marginTop: 16,
-                shadowColor: '#8E7CFF',
-                shadowOffset: { width: 0, height: 3 },
-                shadowOpacity: 0.35,
-                shadowRadius: 6,
-                elevation: 3,
-                transform: [{ scale: pressed ? 0.95 : 1 }],
-                opacity: pressed ? 0.92 : 1,
-              })}
-            >
-              <Text
-                style={{
-                  color: '#FFFFFF',
-                  fontSize: 14,
-                  fontWeight: '700',
-                  letterSpacing: 0.2,
-                }}
-              >
-                + Create First Routine
-              </Text>
-            </Pressable>
           </View>
         ) : (
           myRoutines.map((routine) => (
-            <RoutineCard
+            <RoutineLaunchCard
               key={routine.id}
               routine={routine}
               onStart={handleStartRoutine}
@@ -323,28 +346,31 @@ export default function RoutinesListScreen() {
           ))
         )}
 
-        {/* ── 4. Example Templates Section ───────────────────── */}
+        {/* ── 4. Example Templates / Community Drills ────────── */}
         <View
+          onLayout={(e) => {
+            setDrillsY(e.nativeEvent.layout.y);
+          }}
           style={{
-            marginTop: 4,
+            marginTop: 8,
             marginBottom: 12,
           }}
         >
           <Text
             style={{
               color: '#8A8A98',
-              fontSize: 12,
+              fontSize: 11,
               fontWeight: '700',
               letterSpacing: 1.2,
             }}
             className="uppercase"
           >
-            EXAMPLE TEMPLATES ({exampleTemplates.length})
+            COMMUNITY & BENCHMARK DRILLS ({exampleTemplates.length})
           </Text>
         </View>
 
         {exampleTemplates.map((routine) => (
-          <RoutineCard
+          <RoutineLaunchCard
             key={routine.id}
             routine={routine}
             onStart={handleStartRoutine}
