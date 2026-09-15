@@ -324,32 +324,33 @@ export function RoutineCard({
         style={({ pressed }) => ({
           backgroundColor: "#262630",
           borderWidth: 1,
-          borderColor: "#8E7CFF",
+          borderColor: "#2C2C35",
           paddingVertical: 10,
           paddingHorizontal: 16,
-          borderRadius: 14,
+          borderRadius: 12,
           flexDirection: "row",
           alignItems: "center",
-          justifyContent: "center",
+          alignSelf: "flex-start",
           gap: 8,
           marginTop: 4,
           shadowColor: "#000000",
           shadowOffset: { width: 0, height: 2 },
-          shadowOpacity: 0.3,
-          shadowRadius: 4,
+          shadowOpacity: 0.2,
+          shadowRadius: 3,
           elevation: 2,
           transform: [{ scale: pressed ? 0.95 : 1 }],
           opacity: pressed ? 0.92 : 1,
         })}
       >
-        <Play size={14} color="#8E7CFF" fill="#8E7CFF" />
+        <Play size={13} color="#8E7CFF" fill="#8E7CFF" />
         <Text
           style={{
             color: "#FFFFFF",
-            fontSize: 14,
+            fontSize: 13,
             fontWeight: "700",
             letterSpacing: 0.5,
           }}
+          className="uppercase"
         >
           START ROUTINE
         </Text>

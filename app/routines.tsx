@@ -11,10 +11,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, useFocusEffect } from 'expo-router';
 import {
   Plus,
-  Zap,
   Layers,
   Settings as SettingsIcon,
-  ChevronRight,
 } from 'lucide-react-native';
 import {
   getAllRoutinesWithBlocks,
@@ -24,6 +22,7 @@ import {
 import type { RoutineWithBlocks } from '../types';
 import { useSessionStore } from '../store/sessionStore';
 import { RoutineCard } from '../components/routines/RoutineCard';
+import { StartEmptySessionCard } from '../components/routines/StartEmptySessionCard';
 import { ScreenContainer } from '../components/ui/ScreenContainer';
 import { THEME_COLORS } from '../constants/theme';
 import { triggerHaptic } from '../utils/haptics';
@@ -110,7 +109,7 @@ export default function RoutinesListScreen() {
         contentContainerStyle={{
           paddingHorizontal: 16,
           paddingTop: 8,
-          paddingBottom: 180,
+          paddingBottom: 160,
         }}
       >
         {/* ── 1. Top Header Area & Settings Button ────────────── */}
@@ -167,65 +166,7 @@ export default function RoutinesListScreen() {
         </View>
 
         {/* ── 2. "Start Empty Session" Tactile Quick-Start Card ── */}
-        <Pressable
-          onPress={() => {
-            triggerHaptic('light');
-            handleStartEmpty();
-          }}
-          style={({ pressed }) => ({
-            backgroundColor: '#1E1E24',
-            borderWidth: 1,
-            borderColor: '#2C2C35',
-            borderRadius: 16,
-            padding: 16,
-            marginBottom: 24,
-            flexDirection: 'row',
-            alignItems: 'center',
-            transform: [{ scale: pressed ? 0.98 : 1 }],
-            opacity: pressed ? 0.92 : 1,
-          })}
-        >
-          {/* Left: 40x40pt rounded-xl badge in Lavender tint with Zap icon */}
-          <View
-            style={{
-              width: 40,
-              height: 40,
-              borderRadius: 12,
-              backgroundColor: 'rgba(142, 124, 255, 0.15)',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <Zap size={20} color="#8E7CFF" fill="#8E7CFF" />
-          </View>
-
-          {/* Center: Title & Subtitle */}
-          <View style={{ flex: 1, marginLeft: 14, marginRight: 8 }}>
-            <Text
-              style={{
-                color: '#FFFFFF',
-                fontSize: 16,
-                fontWeight: '700',
-                letterSpacing: -0.2,
-              }}
-            >
-              Start Empty Session
-            </Text>
-            <Text
-              style={{
-                color: '#8A8A98',
-                fontSize: 12,
-                fontWeight: '400',
-                marginTop: 2,
-              }}
-            >
-              Freestyle climb • Log as you go
-            </Text>
-          </View>
-
-          {/* Right: Subtle chevron */}
-          <ChevronRight size={18} color="#5A5A65" />
-        </Pressable>
+        <StartEmptySessionCard onPress={handleStartEmpty} />
 
         {/* ── 3. My Routines Section ─────────────────────────── */}
         <View
@@ -284,7 +225,7 @@ export default function RoutinesListScreen() {
               backgroundColor: '#1E1E24',
               borderWidth: 1,
               borderColor: '#2C2C35',
-              borderRadius: 16,
+              borderRadius: 20,
               padding: 24,
               alignItems: 'center',
               marginBottom: 24,
@@ -329,25 +270,25 @@ export default function RoutinesListScreen() {
                 textAlign: 'center',
                 lineHeight: 19,
                 paddingHorizontal: 8,
-                marginBottom: 20,
               }}
             >
               Create structured 4x4 endurance drills, limit bouldering circuits, or custom hangboard intervals.
             </Text>
 
-            {/* Prominent Solid Pill Button */}
+            {/* Prominent Solid Primary Pill Button */}
             <Pressable
               onPress={() => {
                 triggerHaptic('light');
                 router.push('/routines/editor');
               }}
               style={({ pressed }) => ({
-                height: 44,
-                borderRadius: 22,
+                height: 46,
+                borderRadius: 23,
                 backgroundColor: '#8E7CFF',
                 paddingHorizontal: 24,
                 alignItems: 'center',
                 justifyContent: 'center',
+                marginTop: 16,
                 shadowColor: '#8E7CFF',
                 shadowOffset: { width: 0, height: 3 },
                 shadowOpacity: 0.35,
@@ -365,7 +306,7 @@ export default function RoutinesListScreen() {
                   letterSpacing: 0.2,
                 }}
               >
-                + Create Routine
+                + Create First Routine
               </Text>
             </Pressable>
           </View>
