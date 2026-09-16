@@ -14,6 +14,7 @@ import {
   Zap,
   ChevronRight,
   Settings as SettingsIcon,
+  Layers,
 } from 'lucide-react-native';
 import {
   getAllRoutinesWithBlocks,
@@ -23,6 +24,7 @@ import {
 import type { RoutineWithBlocks } from '../types';
 import { useSessionStore } from '../store/sessionStore';
 import { RoutineLaunchCard } from '../components/routines/RoutineLaunchCard';
+import { EmptyStateCard } from '../components/ui/EmptyStateCard';
 import { ScreenContainer } from '../components/ui/ScreenContainer';
 import { triggerHaptic } from '../utils/haptics';
 
@@ -132,7 +134,7 @@ export default function RoutinesListScreen() {
           <Text
             style={{
               color: '#FFFFFF',
-              fontSize: 26,
+              fontSize: 28,
               fontWeight: '700',
               letterSpacing: -0.5,
             }}
@@ -166,12 +168,11 @@ export default function RoutinesListScreen() {
           }}
           style={({ pressed }) => ({
             width: '100%',
-            height: 56,
-            borderRadius: 16,
+            borderRadius: 20,
             backgroundColor: '#1E1E24',
             borderWidth: 1,
             borderColor: '#2C2C35',
-            paddingHorizontal: 16,
+            padding: 16,
             marginBottom: 16,
             flexDirection: 'row',
             alignItems: 'center',
@@ -182,18 +183,18 @@ export default function RoutinesListScreen() {
         >
           {/* Left Group */}
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 }}>
-            {/* Icon Badge: 36x36pt rounded-xl in Lavender tint */}
+            {/* Icon Badge: 40x40pt rounded-xl in Lavender tint */}
             <View
               style={{
-                width: 36,
-                height: 36,
+                width: 40,
+                height: 40,
                 borderRadius: 12,
                 backgroundColor: 'rgba(142, 124, 255, 0.15)',
                 alignItems: 'center',
                 justifyContent: 'center',
               }}
             >
-              <Zap size={18} color="#8E7CFF" />
+              <Zap size={20} color="#8E7CFF" />
             </View>
 
             {/* Text Column */}
@@ -337,28 +338,15 @@ export default function RoutinesListScreen() {
 
         {/* My Routines List / Empty State */}
         {myRoutines.length === 0 ? (
-          <View
-            style={{
-              backgroundColor: '#17171C',
-              borderWidth: 1,
-              borderStyle: 'dashed',
-              borderColor: '#2C2C35',
-              borderRadius: 12,
-              padding: 16,
-              alignItems: 'center',
-              marginBottom: 24,
-            }}
-          >
-            <Text
-              style={{
-                fontSize: 13,
-                color: '#8A8A98',
-                textAlign: 'center',
-                lineHeight: 18,
-              }}
-            >
-              No custom routines yet. Build your first drill or launch a community template below.
-            </Text>
+          <View style={{ marginBottom: 24 }}>
+            <EmptyStateCard
+              icon={Layers}
+              title="No Custom Routines"
+              description="Build your first drill to log structured training, or launch a community template below."
+              buttonLabel="Create Routine"
+              buttonVariant="lavender"
+              onPress={() => router.push('/routines/editor')}
+            />
           </View>
         ) : (
           myRoutines.map((routine) => (

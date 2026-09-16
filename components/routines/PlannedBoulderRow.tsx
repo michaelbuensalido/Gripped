@@ -175,8 +175,8 @@ export function PlannedBoulderRow({
         activeOpacity={0.7}
         hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         style={{
-          width: 36,
-          height: 36,
+          width: 40,
+          height: 40,
           alignItems: 'center',
           justifyContent: 'center',
           marginLeft: 4,

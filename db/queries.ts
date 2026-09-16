@@ -1305,6 +1305,7 @@ export interface SessionSummary extends Session {
   gradesSent: string[];
   hardestGrade: string | null;
   durationMinutes: number;
+  hasMedia: boolean;
 }
 
 export function getAllSessionSummaries(): SessionSummary[] {
@@ -1320,6 +1321,7 @@ export function getAllSessionSummaries(): SessionSummary[] {
       .sort((a, b) => parseInt(b.replace('V', ''), 10) - parseInt(a.replace('V', ''), 10))
       .slice(0, 5);
     const durationMinutes = s.endTime ? Math.max(1, Math.round((s.endTime - s.startTime) / 60000)) : 0;
+    const hasMedia = logs.some((l) => l.media_uri !== null && l.media_uri !== undefined);
     return {
       ...s,
       sendCount: sent.length,
@@ -1327,6 +1329,7 @@ export function getAllSessionSummaries(): SessionSummary[] {
       gradesSent: uniqueGrades,
       hardestGrade,
       durationMinutes,
+      hasMedia,
     };
   });
 }

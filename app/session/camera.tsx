@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { BetaCamModal } from '../../components/session/BetaCamModal';
+import { BetaCameraRecorder } from '../../components/media/BetaCameraRecorder';
 import { useSessionStore } from '../../store/sessionStore';
 
 export default function CameraScreen() {
@@ -45,7 +45,7 @@ export default function CameraScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: '#000000' }}>
-      <BetaCamModal
+      <BetaCameraRecorder
         visible={isOpen}
         onClose={handleClose}
         onAttach={handleAttach}

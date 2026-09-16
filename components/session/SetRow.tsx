@@ -12,7 +12,7 @@ import type { BoulderLog } from '../../types';
 import { GRADE_BY_LABEL } from '../../constants/grades';
 import { useSessionStore } from '../../store/sessionStore';
 import { GradeSheet } from './GradeSheet';
-import { BetaCamModal } from './BetaCamModal';
+import { BetaCameraRecorder } from '../media/BetaCameraRecorder';
 import { BetaPreviewModal } from './BetaPreviewModal';
 import { FailureTagSelector } from './FailureTagSelector';
 
@@ -20,16 +20,6 @@ interface SetRowProps {
   log: BoulderLog;
   index: number;
   groupId: string;
-}
-
-const RPE_MIN = 1;
-const RPE_MAX = 10;
-
-/** Color that shifts green → yellow → red as RPE increases */
-function rpeColor(rpe: number): string {
-  if (rpe <= 4) return '#22C55E';
-  if (rpe <= 7) return '#EAB308';
-  return '#EF4444';
 }
 
 export function SetRow({ log, index, groupId }: SetRowProps) {
@@ -80,18 +70,6 @@ export function SetRow({ log, index, groupId }: SetRowProps) {
     decrementAttempts(groupId, log.id);
   }, [groupId, log.id, decrementAttempts]);
 
-  const handleRpeIncrement = useCallback(() => {
-    triggerHaptic('light');
-    const next = Math.min((log.rpe ?? 0) + 1, RPE_MAX);
-    updateRpe(groupId, log.id, next);
-  }, [groupId, log.id, log.rpe, updateRpe]);
-
-  const handleRpeDecrement = useCallback(() => {
-    triggerHaptic('light');
-    const current = log.rpe ?? 0;
-    updateRpe(groupId, log.id, current <= 1 ? null : current - 1);
-  }, [groupId, log.id, log.rpe, updateRpe]);
-
   /** Single tap: toggle attempt ↔ send. Distinct haptics for Attempt (light) and Top (medium). Auto-triggers rest timer. */
   const handleSendTap = useCallback(() => {
     const next = isSent ? 'attempt' : 'send';
@@ -119,7 +97,7 @@ export function SetRow({ log, index, groupId }: SetRowProps) {
   }, [isFlash, groupId, log.id, setOutcome, triggerRestTimer]);
 
   const handleAttachBeta = useCallback(
-    (uri: string, type: 'video' | 'photo', gradeRaw?: string, notes?: string) => {
+    (uri: string, type: 'video' | 'photo', gradeRaw?: string, notes?: string, outcome?: string, failureReason?: string) => {
       if (gradeRaw) {
         commitSetGrading(groupId, log.id, {
           gradeRaw,
@@ -130,8 +108,14 @@ export function SetRow({ log, index, groupId }: SetRowProps) {
       } else {
         updateSetMedia(groupId, log.id, uri, type);
       }
+      if (outcome) {
+        setOutcome(groupId, log.id, outcome as any);
+      }
+      if (failureReason) {
+        setFailureReason(groupId, log.id, failureReason as any);
+      }
     },
-    [groupId, log.id, commitSetGrading, updateSetMedia]
+    [groupId, log.id, commitSetGrading, updateSetMedia, setOutcome, setFailureReason]
   );
 
   const handleDeleteBeta = useCallback(() => {
@@ -143,94 +127,65 @@ export function SetRow({ log, index, groupId }: SetRowProps) {
   return (
     <>
       <View
-        className={`flex-row items-center py-2.5 px-1 gap-2 rounded-xl ${
+        className={`flex-row items-center justify-between py-2 px-1 rounded-xl mb-1 ${
           isSent ? 'bg-[#16161C]' : ''
         }`}
+        style={{ minHeight: 52 }}
       >
-        {/* ── #Index ─────────────────────────────────────────────────── */}
-        <Text className="text-muted text-xs font-bold w-5 text-center">{index}</Text>
-
-        {/* ── Grade Pill ─────────────────────────────────────────────── */}
-        <TouchableOpacity
-          onPress={() => setGradeSheetOpen(true)}
-          activeOpacity={0.8}
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          style={{ backgroundColor: grade?.color ?? '#2C2C35' }}
-          className="rounded-full px-3 py-1.5 min-w-[46px] items-center justify-center"
-        >
-          <Text style={{ color: grade?.textColor ?? '#fff' }} className="text-sm font-black">
-            {log.gradeRaw}
-          </Text>
-        </TouchableOpacity>
-
-        {/* ── RPE Stepper ────────────────────────────────────────────── */}
-        <View className="flex-col items-center">
-          <Text className="text-muted text-[9px] font-semibold uppercase tracking-wide mb-0.5">
-            RPE
-          </Text>
-          <View
-            style={{ backgroundColor: 'rgba(255, 255, 255, 0.05)', borderColor: 'rgba(255, 255, 255, 0.08)' }}
-            className="flex-row items-center rounded-lg border overflow-hidden"
+        {/* ── Left: Set Number & Grade Pill ──────────────────────────── */}
+        <View className="flex-row items-center gap-2 w-1/3">
+          <Text style={{ fontSize: 12, color: '#8A8A98', fontWeight: 'bold' }}>#{index}</Text>
+          <TouchableOpacity
+            onPress={() => setGradeSheetOpen(true)}
+            activeOpacity={0.8}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            style={{
+              backgroundColor: '#17171C',
+              borderColor: '#2C2C35',
+              borderWidth: 1,
+            }}
+            className="rounded-lg px-2.5 py-1 items-center justify-center"
           >
-            <TouchableOpacity
-              onPress={handleRpeDecrement}
-              activeOpacity={0.7}
-              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-              className="w-7 h-8 items-center justify-center"
-            >
-              <Minus size={11} color="#8A8A98" />
-            </TouchableOpacity>
-            <Text
-              style={{ color: log.rpe ? rpeColor(log.rpe) : '#484852' }}
-              className="text-sm font-black w-6 text-center"
-            >
-              {log.rpe ?? '—'}
+            <Text style={{ color: '#FFFFFF', fontSize: 14, fontWeight: 'bold' }}>
+              {log.gradeRaw}
             </Text>
-            <TouchableOpacity
-              onPress={handleRpeIncrement}
-              activeOpacity={0.7}
-              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-              className="w-7 h-8 items-center justify-center"
-            >
-              <Plus size={11} color="#8A8A98" />
-            </TouchableOpacity>
-          </View>
+          </TouchableOpacity>
         </View>
 
-        {/* ── Attempts Stepper ───────────────────────────────────────── */}
-        <View className="flex-col items-center">
-          <Text className="text-muted text-[9px] font-semibold uppercase tracking-wide mb-0.5">
-            Att
-          </Text>
+        {/* ── Center: Attempts Stepper ───────────────────────────────── */}
+        <View className="flex-row items-center justify-center w-1/3">
           <View
-            style={{ backgroundColor: 'rgba(255, 255, 255, 0.05)', borderColor: 'rgba(255, 255, 255, 0.08)' }}
-            className="flex-row items-center rounded-lg border overflow-hidden"
+            style={{ backgroundColor: '#17171C', borderColor: '#2C2C35', borderWidth: 1 }}
+            className="flex-row items-center rounded-xl overflow-hidden"
           >
             <TouchableOpacity
               onPress={handleDecrement}
               activeOpacity={0.7}
-              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-              className="w-7 h-8 items-center justify-center"
+              style={{ width: 36, height: 36 }}
+              className="items-center justify-center"
             >
-              <Minus size={11} color="#8A8A98" />
+              <Minus size={14} color="#FFFFFF" />
             </TouchableOpacity>
-            <Text className="text-white font-black text-sm w-6 text-center">
-              {log.attempts}
+            <Text
+              style={{ color: '#FFFFFF', fontSize: 13, fontWeight: '600' }}
+              className="px-2 text-center"
+            >
+              {log.attempts} att
             </Text>
             <TouchableOpacity
               onPress={handleIncrement}
               activeOpacity={0.7}
-              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-              className="w-7 h-8 items-center justify-center"
+              style={{ width: 36, height: 36 }}
+              className="items-center justify-center"
             >
-              <Plus size={11} color="#8A8A98" />
+              <Plus size={14} color="#FFFFFF" />
             </TouchableOpacity>
           </View>
         </View>
 
-        {/* ── Beta Cam + Flash + Send Checkbox ────────────────────────── */}
-        <View className="flex-1 flex-row items-center justify-end gap-1.5">
-          {/* Beta Cam Trigger */}
+        {/* ── Right Action Group ─────────────────────────────────────── */}
+        <View className="flex-row items-center justify-end gap-2 w-1/3">
+          {/* Video/Camera Trigger */}
           {log.media_uri ? (
             <TouchableOpacity
               onPress={() => {
@@ -238,26 +193,22 @@ export function SetRow({ log, index, groupId }: SetRowProps) {
                 setPreviewModalOpen(true);
               }}
               activeOpacity={0.8}
-              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
               style={{
-                width: 36,
-                height: 36,
-                borderRadius: 10,
+                width: 40,
+                height: 40,
+                borderRadius: 12,
                 backgroundColor: '#8E7CFF',
                 alignItems: 'center',
                 justifyContent: 'center',
                 borderWidth: 1,
                 borderColor: '#A294FF',
-                shadowColor: '#8E7CFF',
-                shadowOffset: { width: 0, height: 2 },
-                shadowOpacity: 0.35,
-                shadowRadius: 5,
               }}
             >
               {log.media_type === 'photo' ? (
-                <Camera size={15} color="#FFFFFF" />
+                <Camera size={16} color="#FFFFFF" />
               ) : (
-                <Play size={14} color="#FFFFFF" fill="#FFFFFF" style={{ marginLeft: 2 }} />
+                <Play size={15} color="#FFFFFF" fill="#FFFFFF" style={{ marginLeft: 2 }} />
               )}
             </TouchableOpacity>
           ) : (
@@ -267,14 +218,14 @@ export function SetRow({ log, index, groupId }: SetRowProps) {
                 setCamModalOpen(true);
               }}
               activeOpacity={0.7}
-              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
               style={{
-                width: 36,
-                height: 36,
-                borderRadius: 10,
+                width: 40,
+                height: 40,
+                borderRadius: 12,
                 borderWidth: 1,
                 borderColor: '#2C2C35',
-                backgroundColor: 'rgba(255, 255, 255, 0.04)',
+                backgroundColor: '#1E1E24',
                 alignItems: 'center',
                 justifyContent: 'center',
               }}
@@ -283,38 +234,7 @@ export function SetRow({ log, index, groupId }: SetRowProps) {
             </TouchableOpacity>
           )}
 
-          {/* Flash lightning — only visible/tappable once sent */}
-          {isSent && (
-            <Pressable
-              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-              onPressIn={() => {
-                flashScale.value = withSpring(0.93, { damping: 14, stiffness: 240 });
-              }}
-              onPressOut={() => {
-                flashScale.value = withSpring(1.0, { damping: 14, stiffness: 240 });
-              }}
-              onPress={handleFlashLongPress}
-            >
-              <Animated.View
-                style={[
-                  {
-                    backgroundColor: isFlash ? '#6EE756' : 'rgba(255, 255, 255, 0.06)',
-                    borderColor: isFlash ? '#6EE756' : 'rgba(255, 255, 255, 0.10)',
-                  },
-                  flashAnimatedStyle,
-                ]}
-                className="w-9 h-9 rounded-xl items-center justify-center border"
-              >
-                <Zap
-                  size={16}
-                  color={isFlash ? '#FFFFFF' : '#8A8A98'}
-                  fill={isFlash ? '#FFFFFF' : 'none'}
-                />
-              </Animated.View>
-            </Pressable>
-          )}
-
-          {/* Send checkbox with spring scale */}
+          {/* Send Checkmark / Flash Button */}
           <Pressable
             onPressIn={() => {
               sendScale.value = withSpring(0.93, { damping: 14, stiffness: 240 });
@@ -323,18 +243,29 @@ export function SetRow({ log, index, groupId }: SetRowProps) {
               sendScale.value = withSpring(1.0, { damping: 14, stiffness: 240 });
             }}
             onPress={handleSendTap}
+            onLongPress={isSent ? handleFlashLongPress : undefined}
+            delayLongPress={400}
           >
             <Animated.View
               style={[
                 {
-                  backgroundColor: isSent ? (isFlash ? '#6EE756' : '#8E7CFF') : 'transparent',
-                  borderColor: isSent ? (isFlash ? '#6EE756' : '#8E7CFF') : '#2C2C35',
+                  width: 42,
+                  height: 42,
+                  borderRadius: 12,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  backgroundColor: isFlash ? '#6EE756' : isSent ? '#8E7CFF' : '#17171C',
+                  borderColor: isFlash ? '#6EE756' : isSent ? '#8E7CFF' : '#2C2C35',
+                  borderWidth: 1,
                 },
                 sendAnimatedStyle,
               ]}
-              className="w-11 h-11 rounded-xl items-center justify-center border-2"
             >
-              {isSent && <Check size={20} color="#FFFFFF" strokeWidth={3} />}
+              {isFlash ? (
+                <Zap size={20} color="#111115" fill="#111115" />
+              ) : isSent ? (
+                <Check size={20} color="#FFFFFF" strokeWidth={3} />
+              ) : null}
             </Animated.View>
           </Pressable>
         </View>
@@ -355,7 +286,7 @@ export function SetRow({ log, index, groupId }: SetRowProps) {
         onClose={() => setGradeSheetOpen(false)}
       />
 
-      <BetaCamModal
+      <BetaCameraRecorder
         visible={camModalOpen}
         onClose={() => setCamModalOpen(false)}
         onAttach={handleAttachBeta}

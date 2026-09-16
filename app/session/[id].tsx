@@ -18,7 +18,8 @@ import { SessionHeader } from '../../components/session/SessionHeader';
 import { BoulderGroupCard } from '../../components/session/BoulderGroupCard';
 import { FloatingRestTimer } from '../../components/session/FloatingRestTimer';
 import { SessionCompletionModal } from '../../components/session/SessionCompletionModal';
-import { BetaCamModal } from '../../components/session/BetaCamModal';
+import { BetaCameraRecorder } from '../../components/media/BetaCameraRecorder';
+import { attachBetaClipToSet } from '../../services/db/sessionQueries';
 import { BetaPreviewModal } from '../../components/session/BetaPreviewModal';
 import { ValidationFailureReason } from '../../services/videoAnalyzer';
 import { triggerHaptic } from '../../utils/haptics';
@@ -81,6 +82,7 @@ export default function ActiveSessionScreen() {
   const [showCompletionModal, setShowCompletionModal] = useState(false);
   const [pausedEndTime, setPausedEndTime] = useState<number>(Date.now());
   const [testCamOpen, setTestCamOpen] = useState(false);
+  const [activeSetId, setActiveSetId] = useState<string | null>(null);
   const [testPreviewOpen, setTestPreviewOpen] = useState(false);
 
   // Load session if not already in store (e.g. coming back from background)
@@ -156,7 +158,7 @@ export default function ActiveSessionScreen() {
       !!testValidationFailure ||
       testValidationPassed === '1'
     ) {
-      setTestCamOpen(true);
+      setTestCamOpen(true); setActiveSetId(null);;
       setTestPreviewOpen(false);
     } else if (testBetaPreview === '1') {
       setTestCamOpen(false);
@@ -265,7 +267,7 @@ export default function ActiveSessionScreen() {
       >
         <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
           <ScrollView
-            contentContainerStyle={{ paddingTop: 16, paddingBottom: 190 }}
+            contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: 170 }}
             keyboardShouldPersistTaps="handled"
             keyboardDismissMode="on-drag"
             showsVerticalScrollIndicator={false}
@@ -292,7 +294,7 @@ export default function ActiveSessionScreen() {
               borderColor: '#2C2C35',
               backgroundColor: '#1E1E24',
             }}
-            className="flex-row items-center justify-center gap-2 mx-4 h-[52px] rounded-2xl border border-dashed mt-2"
+            className="flex-row items-center justify-center gap-2 h-[52px] rounded-2xl border border-dashed mt-2"
           >
             <Plus size={18} color="#8E7CFF" strokeWidth={2.5} />
             <Text className="text-white font-bold text-sm">Add Wall Zone</Text>
@@ -315,39 +317,21 @@ export default function ActiveSessionScreen() {
       />
 
       {/* Global / Test Beta Cam & Preview Modals */}
-      <BetaCamModal
+      <BetaCameraRecorder
         visible={testCamOpen}
-        autoSimulatorBypass={
-          testBetaCam === '1' ||
-          testBetaReview === '1' ||
-          testSetGrader === '1' ||
-          !!testValidationFailure ||
-          testValidationPassed === '1'
-        }
-        testReview={testBetaReview === '1'}
-        testSetGrader={testSetGrader === '1'}
-        testAngle={testAngle ? Number(testAngle) : undefined}
-        testPickerOpen={testPicker === '1'}
-        testValidationFailure={testValidationFailure as ValidationFailureReason}
-        testValidationPassed={testValidationPassed === '1'}
         onClose={() => setTestCamOpen(false)}
-        onAttach={(uri, type, gradeRaw, notes) => {
-          if (groups.length > 0 && groups[0].logs.length > 0) {
-            if (gradeRaw) {
-              useSessionStore.getState().commitSetGrading(groups[0].id, groups[0].logs[0].id, {
-                gradeRaw,
-                mediaUri: uri,
-                mediaType: type,
-                notes,
-              });
-            } else {
-              useSessionStore.getState().updateSetMedia(groups[0].id, groups[0].logs[0].id, uri, type);
-            }
+        setId={activeSetId}
+        onBetaRecorded={async (videoUri: string, evaluation: any) => {
+          if (activeSetId) {
+            await attachBetaClipToSet(
+              activeSetId,
+              videoUri,
+              evaluation.cruxTimestampMs,
+              evaluation.metrics?.hangTimeSeconds
+            );
           }
           setTestCamOpen(false);
         }}
-        gradeLabel={groups[0]?.logs[0]?.gradeRaw || 'V4'}
-        setIndex={1}
       />
 
       <BetaPreviewModal
@@ -360,7 +344,7 @@ export default function ActiveSessionScreen() {
         onClose={() => setTestPreviewOpen(false)}
         onRetake={() => {
           setTestPreviewOpen(false);
-          setTestCamOpen(true);
+          setTestCamOpen(true); setActiveSetId(null);;
         }}
         onDelete={() => {
           if (groups.length > 0 && groups[0].logs.length > 0) {

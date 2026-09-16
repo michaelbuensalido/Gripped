@@ -230,10 +230,42 @@ function useClimbingPoseTrackerNative({
 
   const updatePoseState = useCallback(
     (rawLandmarks: Record<string, LandmarkPoint>, hasClimber: boolean) => {
+      // 1. Strict confidence & stale state check
       const validLandmarksCount = Object.values(rawLandmarks).filter(
         (pt) => pt && pt.confidence >= minConfidence
       ).length;
-      const verifiedClimber = hasClimber && validLandmarksCount >= 2;
+      
+      // 2. Minimum Keypoints Requirement (require at least 6 joints to render a skeleton)
+      let verifiedClimber = hasClimber && validLandmarksCount >= 6;
+      
+      // Strict Core Anatomical Gate (prevent hallucinating skeletons on random walls)
+      if (verifiedClimber) {
+        const lS = rawLandmarks.leftShoulder?.confidence >= 0.50;
+        const rS = rawLandmarks.rightShoulder?.confidence >= 0.50;
+        const lH = rawLandmarks.leftHip?.confidence >= 0.50;
+        const rH = rawLandmarks.rightHip?.confidence >= 0.50;
+        
+        // Must detect a stable torso (at least one shoulder and one hip with solid confidence)
+        if (!(lS || rS) || !(lH || rH)) {
+          verifiedClimber = false;
+        }
+      }
+
+      // 3. IMMEDIATELY clear state if no verified climber is found
+      if (!verifiedClimber || Object.keys(rawLandmarks).length === 0) {
+        setPoseState({
+          hasClimber: false,
+          landmarks: {},
+          isHandOnHold: false,
+          activeHoldIntersections: 0,
+        });
+        
+        if (previousContactRef.current !== false) {
+          previousContactRef.current = false;
+          onHandContactChange?.(false, 0);
+        }
+        return;
+      }
 
       const { isHandOnHold, activeHoldIntersections } = evaluateHoldContacts(
         rawLandmarks,
@@ -304,8 +336,10 @@ function useClimbingPoseTrackerNative({
             hasClimber: boolean;
             landmarks: Record<string, LandmarkPoint>;
           };
-          if (result && result.landmarks) {
-            safeRunUpdate(result.landmarks, Boolean(result.hasClimber));
+          if (!result || !result.hasClimber || !result.landmarks || Object.keys(result.landmarks).length === 0) {
+            safeRunUpdate({}, false);
+          } else {
+            safeRunUpdate(result.landmarks, true);
           }
         }
       } catch (err: any) {
@@ -353,10 +387,42 @@ function useClimbingPoseTrackerExpoGo({
 
   const updatePoseState = useCallback(
     (rawLandmarks: Record<string, LandmarkPoint>, hasClimber: boolean) => {
+      // 1. Strict confidence & stale state check
       const validLandmarksCount = Object.values(rawLandmarks).filter(
         (pt) => pt && pt.confidence >= minConfidence
       ).length;
-      const verifiedClimber = hasClimber && validLandmarksCount >= 2;
+      
+      // 2. Minimum Keypoints Requirement (require at least 6 joints to render a skeleton)
+      let verifiedClimber = hasClimber && validLandmarksCount >= 6;
+      
+      // Strict Core Anatomical Gate (prevent hallucinating skeletons on random walls)
+      if (verifiedClimber) {
+        const lS = rawLandmarks.leftShoulder?.confidence >= 0.50;
+        const rS = rawLandmarks.rightShoulder?.confidence >= 0.50;
+        const lH = rawLandmarks.leftHip?.confidence >= 0.50;
+        const rH = rawLandmarks.rightHip?.confidence >= 0.50;
+        
+        // Must detect a stable torso (at least one shoulder and one hip with solid confidence)
+        if (!(lS || rS) || !(lH || rH)) {
+          verifiedClimber = false;
+        }
+      }
+
+      // 3. IMMEDIATELY clear state if no verified climber is found
+      if (!verifiedClimber || Object.keys(rawLandmarks).length === 0) {
+        setPoseState({
+          hasClimber: false,
+          landmarks: {},
+          isHandOnHold: false,
+          activeHoldIntersections: 0,
+        });
+        
+        if (previousContactRef.current !== false) {
+          previousContactRef.current = false;
+          onHandContactChange?.(false, 0);
+        }
+        return;
+      }
 
       const { isHandOnHold, activeHoldIntersections } = evaluateHoldContacts(
         rawLandmarks,

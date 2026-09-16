@@ -14,14 +14,21 @@
     },
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.cruxlog.app"
+      "bundleIdentifier": "com.cruxlog.app",
+      "infoPlist": {
+        "NSCameraUsageDescription": "CruxLog needs camera access to detect climbing holds and human pose in real time.",
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundColor": "#0F0F0F"
       },
-      "package": "com.cruxlog.app"
+      "package": "com.cruxlog.app",
+      "permissions": [
+        "android.permission.CAMERA"
+      ]
     },
     "plugins": [
       "expo-router",
@@ -43,6 +50,12 @@
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "0116610b-c5ce-4b15-a456-12aa92533c94"
+      }
     }
   }
 }

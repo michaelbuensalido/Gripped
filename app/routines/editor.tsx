@@ -426,7 +426,7 @@ export default function RoutineEditorScreen() {
         <ScrollView
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
-          contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 160 }}
+          contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: 170 }}
         >
           {/* ── Metadata Section ───────────────────────────────────── */}
           <View
@@ -639,7 +639,7 @@ export default function RoutineEditorScreen() {
                     }}
                   >
                     <Text style={{ color: '#8A8A98', fontSize: 12, fontWeight: '600' }}>
-                      Rest: <Text style={{ color: '#FFFFFF', fontWeight: '700' }}>{formatCompactRest(block.defaultRestSeconds)}</Text>
+                      Rest: <Text style={{ color: '#FFFFFF', fontWeight: '700' }}>{formatCompactRest(block.defaultRestSeconds)}</Text> ⌵
                     </Text>
                   </TouchableOpacity>
 

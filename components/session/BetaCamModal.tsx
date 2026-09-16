@@ -10,15 +10,28 @@ import {
   Dimensions,
   Animated,
 } from 'react-native';
-import {
-  CameraView,
-  useCameraPermissions,
-  useMicrophonePermissions,
-  type CameraType,
-  type FlashMode,
-} from 'expo-camera';
+
+const isExpoGo = typeof globalThis !== 'undefined' && (globalThis as any).expo?.modules?.ExponentConstants?.appOwnership === 'expo';
+
+let VisionCamera: any = null;
+let useCameraDevice: any = () => null;
+let useCameraPermission: any = () => ({ hasPermission: false, requestPermission: async () => false });
+let useMicrophonePermission: any = () => ({ hasPermission: false, requestPermission: async () => false });
+
+if (!isExpoGo) {
+  try {
+    const RNCamera = require('react-native-vision-camera');
+    VisionCamera = RNCamera.Camera;
+    useCameraDevice = RNCamera.useCameraDevice;
+    useCameraPermission = RNCamera.useCameraPermission;
+    useMicrophonePermission = RNCamera.useMicrophonePermission;
+  } catch (e) {}
+}
+
+import { CameraView, useCameraPermissions as useExpoCameraPermissions, useMicrophonePermissions as useExpoMicrophonePermissions } from 'expo-camera';
 import { VideoPlayerView } from '../ui/VideoPlayerView';
 import * as FileSystem from 'expo-file-system/legacy';
+import { setAudioModeAsync } from 'expo-audio';
 import { Asset } from 'expo-asset';
 import {
   X,
@@ -55,7 +68,9 @@ interface BetaCamModalProps {
     mediaUri: string,
     mediaType: 'video' | 'photo',
     gradeRaw?: string,
-    notes?: string
+    notes?: string,
+    outcome?: string,
+    failureReason?: string
   ) => void;
   initialMode?: 'video' | 'photo';
   gradeLabel?: string;
@@ -94,12 +109,17 @@ export function BetaCamModal({
   testValidationPassed = false,
   testSimulateClimber = false,
 }: BetaCamModalProps) {
-  const [cameraPermission, requestCameraPermission] = useCameraPermissions();
-  const [microphonePermission, requestMicrophonePermission] = useMicrophonePermissions();
+  const [expoCameraPerm, requestExpoCameraPerm] = useExpoCameraPermissions();
+  const [expoMicroPerm, requestExpoMicroPerm] = useExpoMicrophonePermissions();
+  const visionCamPerm = useCameraPermission();
+  const visionMicPerm = useMicrophonePermission();
 
+  const hasCameraPermission = !!expoCameraPerm?.granted || !!visionCamPerm?.hasPermission;
+  const hasMicrophonePermission = !!expoMicroPerm?.granted || !!visionMicPerm?.hasPermission;
   const [mode, setMode] = useState<'video' | 'photo'>(initialMode);
-  const [facing, setFacing] = useState<CameraType>('back');
-  const [flash, setFlash] = useState<FlashMode>('off');
+  const [facing, setFacing] = useState<'back' | 'front'>('back');
+  const device = useCameraDevice(facing);
+  const [flash, setFlash] = useState<'on' | 'off'>('off');
 
   const [isRecording, setIsRecording] = useState(false);
   const [recordingSeconds, setRecordingSeconds] = useState(0);
@@ -120,13 +140,53 @@ export function BetaCamModal({
 
   // ── Smart Climbing Validation State ─────────────────────────────────────────
   const [isValidating, setIsValidating] = useState(false);
+
+  useEffect(() => {
+    if (visible) {
+      const setupAudio = async () => {
+        try {
+          await setAudioModeAsync({
+            playsInSilentMode: true,
+            shouldPlayInBackground: false,
+            shouldRouteThroughEarpiece: false,
+            interruptionMode: 'mixWithOthers'
+          });
+        } catch (e) {
+          console.warn('Failed to configure audio:', e);
+        }
+      };
+      setupAudio();
+    }
+  }, [visible]);
   const [validationResult, setValidationResult] = useState<ValidationResult | null>(null);
   const [manualGradeOverride, setManualGradeOverride] = useState(false);
+  const [selectedOutcome, setSelectedOutcome] = useState<string | null>(null);
+  const [selectedFailureReason, setSelectedFailureReason] = useState<string | null>(null);
+  const [isRecordingStarting, setIsRecordingStarting] = useState(false);
+
+  // ── Target Holds for Real-Time Climbing Wall Detection ──────────────────────
+  const targetHoldsToUse = React.useMemo(() => {
+    if (annotationPayload?.markers && annotationPayload.markers.length > 0) {
+      return annotationPayload.markers.map((m) => ({
+        id: m.id,
+        x: m.x,
+        y: m.y,
+        radius: 0.08,
+      }));
+    }
+    return [
+      { x: 0.42, y: 0.72, radius: 0.075, id: 'start-left' },
+      { x: 0.58, y: 0.68, radius: 0.075, id: 'start-right' },
+      { x: 0.48, y: 0.42, radius: 0.080, id: 'crux-hold' },
+      { x: 0.52, y: 0.20, radius: 0.085, id: 'top-finish' },
+    ];
+  }, [annotationPayload?.markers]);
 
   // ── On-Device Real-Time Pose & Hold Contact Tracker ─────────────────────────
-  const { poseState, resetTracker } = useClimbingPoseTracker({
+  const { poseState, resetTracker, frameProcessor } = useClimbingPoseTracker({
     enabled: visible && !capturedMedia,
-    enableSimulatorSimulation: testSimulateClimber,
+    targetHolds: targetHoldsToUse,
+    enableSimulatorSimulation: Boolean(testSimulateClimber),
     onHandContactChange: (isContacting) => {
       if (isContacting) {
         triggerHaptic('light');
@@ -182,7 +242,8 @@ export function BetaCamModal({
     }
   }, [visible, capturedMedia, laserAnim]);
 
-  const cameraRef = useRef<CameraView>(null);
+  const cameraRef = useRef<any>(null);
+  const expoCameraRef = useRef<any>(null);
   const timerIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Sync mode when reopened or when test params change
@@ -388,11 +449,12 @@ export function BetaCamModal({
   // ── Shutter Action (Photo / Video) ──────────────────────────────────────────
 
   const handleStartRecording = async () => {
-    if (isRecording) return;
+    if (isRecording || isRecordingStarting) return;
     try {
+      setIsRecordingStarting(true);
       triggerHaptic('medium');
-      setIsRecording(true);
       setRecordingSeconds(0);
+      setIsRecording(true);
 
       timerIntervalRef.current = setInterval(() => {
         setRecordingSeconds((prev) => {
@@ -404,22 +466,39 @@ export function BetaCamModal({
         });
       }, 1000);
 
-      if (cameraRef.current && cameraPermission?.granted) {
-        const video = await cameraRef.current.recordAsync({
-          maxDuration: MAX_RECORDING_SECONDS,
+      if (isExpoGo && expoCameraRef.current && hasCameraPermission) {
+        expoCameraRef.current.recordAsync({ maxDuration: MAX_RECORDING_SECONDS }).then(async (video: any) => {
+          if (!isMountedRef.current) return;
+          if (video?.uri) {
+            setCapturedAngle(wallAngle.angleDegrees);
+            setCapturedMedia({ uri: video.uri, type: 'video' });
+            await processVideoValidation(video.uri, recordingSeconds || 10);
+          }
+        }).catch((err: any) => {
+          console.warn('Expo camera record error:', err);
+          handleMockCapture('video');
         });
-
-        if (video?.uri) {
-          setCapturedAngle(wallAngle.angleDegrees);
-          setCapturedMedia({ uri: video.uri, type: 'video' });
-          await processVideoValidation(video.uri, recordingSeconds || 10);
-        }
+      } else if (cameraRef.current && hasCameraPermission) {
+        cameraRef.current.startRecording({
+          onRecordingFinished: async (video: any) => {
+            if (!isMountedRef.current) return;
+            const uri = video.path.startsWith('file://') ? video.path : `file://${video.path}`;
+            setCapturedAngle(wallAngle.angleDegrees);
+            setCapturedMedia({ uri, type: 'video' });
+            await processVideoValidation(uri, recordingSeconds || 10);
+          },
+          onRecordingError: (err: any) => {
+            console.warn('Camera startRecording error:', err);
+            handleMockCapture('video');
+          }
+        });
       }
     } catch (err: any) {
       if (!isMountedRef.current || !visible) return;
-      if (err?.message?.includes('CameraUnmountedException')) return;
-      console.warn('Camera recordAsync error (simulator fallback available):', err);
+      console.warn('Camera record setup error:', err);
       handleMockCapture('video');
+    } finally {
+      setIsRecordingStarting(false);
     }
   };
 
@@ -431,7 +510,9 @@ export function BetaCamModal({
     try {
       triggerHaptic('light');
       setCapturedAngle(wallAngle.angleDegrees);
-      if (cameraRef.current && cameraPermission?.granted) {
+      if (isExpoGo && expoCameraRef.current && hasCameraPermission) {
+        expoCameraRef.current.stopRecording();
+      } else if (cameraRef.current && hasCameraPermission) {
         cameraRef.current.stopRecording();
       } else {
         handleMockCapture('video');
@@ -451,13 +532,20 @@ export function BetaCamModal({
       triggerHaptic('medium');
       setIsProcessing(true);
       setCapturedAngle(wallAngle.angleDegrees);
-      if (cameraRef.current && cameraPermission?.granted) {
-        const photo = await cameraRef.current.takePictureAsync({
-          quality: 0.85,
-          skipProcessing: true,
-        });
+      if (isExpoGo && expoCameraRef.current && hasCameraPermission) {
+        const photo = await expoCameraRef.current.takePictureAsync({ quality: 0.85 });
         if (photo?.uri) {
           setCapturedMedia({ uri: photo.uri, type: 'photo' });
+          setShowHoldAnnotator(true);
+          setShowEstimationSheet(false);
+        }
+      } else if (cameraRef.current && hasCameraPermission) {
+        const photo = await cameraRef.current.takePhoto({
+          flash: flash === 'on' ? 'on' : 'off'
+        });
+        const uri = photo.path.startsWith('file://') ? photo.path : `file://${photo.path}`;
+        if (uri) {
+          setCapturedMedia({ uri, type: 'photo' });
           setShowHoldAnnotator(true);
           setShowEstimationSheet(false);
         }
@@ -592,6 +680,45 @@ export function BetaCamModal({
     }
   };
 
+  
+  const handleAttachWithOutcome = async (outcome: string | null, failureReason: string | null) => {
+    if (!capturedMedia) return;
+    setIsProcessing(true);
+    try {
+      const betaDir = `${FileSystem.documentDirectory}beta/`;
+      const dirInfo = await FileSystem.getInfoAsync(betaDir);
+      if (!dirInfo.exists) {
+        await FileSystem.makeDirectoryAsync(betaDir, { intermediates: true });
+      }
+
+      const ext = capturedMedia.type === 'video' ? 'mp4' : 'jpg';
+      const destUri = `${betaDir}beta_${Date.now()}.${ext}`;
+
+      if (capturedMedia.uri.startsWith('file://')) {
+        await FileSystem.copyAsync({
+          from: capturedMedia.uri,
+          to: destUri,
+        });
+        onAttach(destUri, capturedMedia.type, undefined, undefined, outcome?.toLowerCase(), failureReason ?? undefined);
+      } else {
+        onAttach(capturedMedia.uri, capturedMedia.type, undefined, undefined, outcome?.toLowerCase(), failureReason ?? undefined);
+      }
+
+      triggerHaptic('success');
+      setValidationResult(null);
+      setManualGradeOverride(false);
+      onClose();
+    } catch (err) {
+      console.error('Failed to attach beta media:', err);
+      onAttach(capturedMedia.uri, capturedMedia.type, undefined, undefined, outcome?.toLowerCase(), failureReason ?? undefined);
+      setValidationResult(null);
+      setManualGradeOverride(false);
+      onClose();
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
   const handleRetake = () => {
     triggerHaptic('light');
     setCapturedMedia(null);
@@ -614,16 +741,12 @@ export function BetaCamModal({
 
   const toggleFlash = () => {
     triggerHaptic('light');
-    setFlash((prev) => {
-      if (prev === 'off') return 'on';
-      if (prev === 'on') return 'auto';
-      return 'off';
-    });
+    setFlash((prev) => (prev === 'off' ? 'on' : 'off'));
   };
 
   // ── Permission Card ───────────────────────────────────────────────────────
 
-  if (!cameraPermission?.granted && !capturedMedia && !simulatorBypass) {
+  if (!hasCameraPermission && !capturedMedia && !simulatorBypass) {
     return (
       <Modal visible={visible} animationType="slide" transparent={false} onRequestClose={onClose}>
         <View style={styles.container}>
@@ -647,8 +770,16 @@ export function BetaCamModal({
             <TouchableOpacity
               onPress={async () => {
                 triggerHaptic('medium');
-                await requestCameraPermission();
-                await requestMicrophonePermission();
+                try {
+                  await requestExpoCameraPerm();
+                  await requestExpoMicroPerm();
+                  if (!isExpoGo) {
+                    if (visionCamPerm?.requestPermission) await visionCamPerm.requestPermission();
+                    if (visionMicPerm?.requestPermission) await visionMicPerm.requestPermission();
+                  }
+                } catch (e) {
+                  console.warn('Error requesting permissions:', e);
+                }
               }}
               style={styles.primaryBtn}
               activeOpacity={0.85}
@@ -732,7 +863,105 @@ export function BetaCamModal({
             </View>
 
             {/* Bottom Actions */}
-            <View style={styles.reviewFooter}>
+
+            <View style={{
+              backgroundColor: '#1E1E24',
+              borderColor: '#2C2C35',
+              borderWidth: 1,
+              borderRadius: 24,
+              padding: 16,
+              marginHorizontal: 16,
+              marginBottom: 32,
+              position: 'absolute',
+              bottom: 0,
+              left: 0,
+              right: 0,
+              zIndex: 50,
+            }}>
+              <Text style={{ color: '#FFFFFF', fontSize: 16, fontWeight: '700', marginBottom: 12 }}>Mark Outcome for this Clip</Text>
+              
+              <View style={{ flexDirection: 'row', gap: 8, marginBottom: selectedOutcome === 'Attempt' ? 12 : 16 }}>
+                {['Flash', 'Top', 'Attempt'].map((outcome) => {
+                  const isActive = selectedOutcome === outcome;
+                  return (
+                    <TouchableOpacity
+                      key={outcome}
+                      onPress={() => {
+                        triggerHaptic('selection');
+                        setSelectedOutcome(outcome);
+                        if (outcome !== 'Attempt') setSelectedFailureReason(null);
+                      }}
+                      style={{
+                        flex: 1,
+                        height: 40,
+                        backgroundColor: isActive ? (outcome === 'Flash' ? '#6EE756' : outcome === 'Top' ? '#8E7CFF' : '#3E3E48') : '#17171C',
+                        borderRadius: 12,
+                        borderWidth: 1,
+                        borderColor: isActive ? 'transparent' : '#2C2C35',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                    >
+                      <Text style={{
+                        color: isActive ? (outcome === 'Flash' ? '#111115' : '#FFFFFF') : '#9A9AA6',
+                        fontSize: 14,
+                        fontWeight: '700'
+                      }}>{outcome}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+
+              {selectedOutcome === 'Attempt' && (
+                <View style={{ flexDirection: 'row', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
+                  {['Foot Slip', 'Pumped', 'Beta Error'].map((reason) => {
+                    const isActive = selectedFailureReason === reason;
+                    return (
+                      <TouchableOpacity
+                        key={reason}
+                        onPress={() => {
+                          triggerHaptic('light');
+                          setSelectedFailureReason(reason);
+                        }}
+                        style={{
+                          backgroundColor: isActive ? '#3E3E48' : 'transparent',
+                          borderColor: isActive ? '#5A5A65' : '#2C2C35',
+                          borderWidth: 1,
+                          borderRadius: 8,
+                          paddingHorizontal: 12,
+                          paddingVertical: 6,
+                        }}
+                      >
+                        <Text style={{
+                          color: isActive ? '#FFFFFF' : '#9A9AA6',
+                          fontSize: 12,
+                          fontWeight: '600'
+                        }}>{reason}</Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              )}
+
+              <View style={{ flexDirection: 'row', gap: 12 }}>
+                <TouchableOpacity
+                  onPress={handleRetake}
+                  style={{ flex: 1, height: 46, backgroundColor: '#17171C', borderColor: '#2C2C35', borderWidth: 1, borderRadius: 12, alignItems: 'center', justifyContent: 'center' }}
+                >
+                  <Text style={{ color: '#8A8A98', fontSize: 15, fontWeight: '600' }}>Retake</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => {
+                    handleAttachWithOutcome(selectedOutcome, selectedFailureReason);
+                  }}
+                  style={{ flex: 1, height: 46, backgroundColor: '#8E7CFF', borderRadius: 12, alignItems: 'center', justifyContent: 'center' }}
+                >
+                  <Text style={{ color: '#FFFFFF', fontSize: 15, fontWeight: '700' }}>Save Beta</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            <View style={{display: 'none'}}>
               <TouchableOpacity
                 onPress={handleRetake}
                 style={styles.retakeBtn}
@@ -888,15 +1117,30 @@ export function BetaCamModal({
         ) : (
           /* ── State 2: Active Camera Viewport ───────────────────────────── */
           <View style={styles.cameraWrapper}>
-            {cameraPermission?.granted ? (
-              <CameraView
-                ref={cameraRef}
-                style={StyleSheet.absoluteFill}
-                facing={facing}
-                mode={mode === 'video' ? 'video' : 'picture'}
-                flash={flash}
-                onCameraReady={() => setCameraReady(true)}
-              />
+            {hasCameraPermission ? (
+              !isExpoGo && device && VisionCamera ? (
+                <VisionCamera
+                  ref={cameraRef}
+                  style={StyleSheet.absoluteFill}
+                  device={device}
+                  isActive={visible && !capturedMedia}
+                  video={mode === 'video'}
+                  photo={mode === 'photo'}
+                  audio={hasMicrophonePermission}
+                  frameProcessor={frameProcessor}
+                  pixelFormat="yuv"
+                  onInitialized={() => setCameraReady(true)}
+                />
+              ) : (
+                <CameraView
+                  ref={expoCameraRef}
+                  style={StyleSheet.absoluteFill}
+                  facing={facing}
+                  mode={mode === 'video' ? 'video' : 'picture'}
+                  flash={flash}
+                  onCameraReady={() => setCameraReady(true)}
+                />
+              )
             ) : (
               <View style={[StyleSheet.absoluteFill, { backgroundColor: '#0A0A0E', alignItems: 'center', justifyContent: 'center' }]}>
                 <Image
@@ -913,6 +1157,8 @@ export function BetaCamModal({
             {/* ── Real-Time Pose Skeleton & Hold Contact Overlay ───────────── */}
             <ClimberSkeletonOverlay
               poseState={poseState}
+              targetHolds={targetHoldsToUse}
+              showHoldZones={true}
               isFrontCamera={facing === 'front'}
             />
 
@@ -951,8 +1197,8 @@ export function BetaCamModal({
               </View>
             </View>
 
-            {/* ── Top HUD ─────────────────────────────────────────────────── */}
-            <View style={styles.topHud}>
+            {/* ── Minimalist Mat-Ready HUD ─────────────────────────────────────────────────── */}
+            <View style={{ paddingTop: 48, paddingHorizontal: 20, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', zIndex: 10 }}>
               {/* Close Button */}
               <TouchableOpacity
                 onPress={() => {
@@ -961,68 +1207,27 @@ export function BetaCamModal({
                   }
                   onClose();
                 }}
-                style={styles.glassCircleBtn}
+                style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(30,30,36,0.7)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)', alignItems: 'center', justifyContent: 'center' }}
                 activeOpacity={0.7}
               >
-                <X size={20} color="#FFFFFF" />
+                <X size={22} color="#FFFFFF" />
               </TouchableOpacity>
 
-              {/* Mode Toggle: [ Video ] | [ Photo ] */}
-              <View style={styles.modeSegment}>
-                <TouchableOpacity
-                  onPress={() => {
-                    if (isRecording) return;
-                    triggerHaptic('selection');
-                    setMode('video');
-                  }}
-                  style={[styles.modeTab, mode === 'video' && styles.modeTabActive]}
-                  activeOpacity={0.8}
-                >
-                  <VideoIcon
-                    size={14}
-                    color={mode === 'video' ? '#FFFFFF' : '#8A8A98'}
-                    style={{ marginRight: 5 }}
-                  />
-                  <Text
-                    style={[styles.modeTabText, mode === 'video' && styles.modeTabTextActive]}
-                  >
-                    Video
-                  </Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  onPress={() => {
-                    if (isRecording) return;
-                    triggerHaptic('selection');
-                    setMode('photo');
-                  }}
-                  style={[styles.modeTab, mode === 'photo' && styles.modeTabActive]}
-                  activeOpacity={0.8}
-                >
-                  <Camera
-                    size={14}
-                    color={mode === 'photo' ? '#FFFFFF' : '#8A8A98'}
-                    style={{ marginRight: 5 }}
-                  />
-                  <Text
-                    style={[styles.modeTabText, mode === 'photo' && styles.modeTabTextActive]}
-                  >
-                    Photo
-                  </Text>
-                </TouchableOpacity>
+              {/* Active Boulder Context Pill */}
+              <View style={{ backgroundColor: 'rgba(23,23,28,0.8)', borderWidth: 1, borderColor: '#8E7CFF', paddingHorizontal: 14, paddingVertical: 6, borderRadius: 24 }}>
+                <Text style={{ color: '#FFFFFF', fontSize: 13, fontWeight: '700' }}>
+                  {gradeLabel ? `[ ${gradeLabel} • Set ${setIndex ?? 1} ]` : `[ Free Capture ]`}
+                </Text>
               </View>
 
-              {/* Flash Mode Toggle */}
+              {/* Camera Flip Toggle */}
               <TouchableOpacity
-                onPress={toggleFlash}
-                style={styles.glassCircleBtn}
+                onPress={toggleFacing}
+                style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(30,30,36,0.7)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)', alignItems: 'center', justifyContent: 'center' }}
                 activeOpacity={0.7}
+                disabled={isRecording}
               >
-                {flash === 'off' ? (
-                  <ZapOff size={18} color="#8A8A98" />
-                ) : (
-                  <Zap size={18} color={flash === 'on' ? '#F59E0B' : '#6EE756'} />
-                )}
+                <RotateCcw size={20} color={isRecording ? '#555562' : '#FFFFFF'} />
               </TouchableOpacity>
             </View>
 
@@ -1047,68 +1252,52 @@ export function BetaCamModal({
               />
             </TouchableOpacity>
 
-            {/* ── Live Recording HUD (when recording) ──────────────────────── */}
-            {isRecording && (
-              <View style={styles.recordingTimerContainer}>
-                <View style={styles.recordingPill}>
-                  <View style={styles.pulsingDot} />
-                  <Text style={styles.recordingTimerText}>
-                    {formatTime(recordingSeconds)} / 00:45 max
+            {/* ── Live Recording HUD ──────────────────────── */}
+            <View style={{ position: 'absolute', top: 110, width: '100%', alignItems: 'center', zIndex: 10 }}>
+              {isRecording ? (
+                <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(23,23,28,0.8)', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16 }}>
+                  <Animated.View style={[styles.pulsingDot, { backgroundColor: '#FF453A', opacity: laserAnim.interpolate({ inputRange: [0, 0.5, 1], outputRange: [1, 0.4, 1] }) }]} />
+                  <Text style={{ color: '#FFFFFF', fontSize: 14, fontWeight: '700', fontFamily: 'Courier' }}>
+                    {formatTime(recordingSeconds)}
                   </Text>
                 </View>
-              </View>
-            )}
+              ) : (
+                <Text style={{ color: 'rgba(255,255,255,0.7)', fontSize: 13, fontFamily: 'Courier' }}>00:00</Text>
+              )}
+            </View>
+            {isRecording && <Animated.View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 4, backgroundColor: '#FF453A', zIndex: 50, opacity: laserAnim.interpolate({ inputRange: [0, 0.5, 1], outputRange: [1, 0.4, 1] }) }} />}
 
-            {/* ── Bottom HUD ──────────────────────────────────────────────── */}
-            <View style={styles.bottomHud}>
-              {/* Flip camera */}
-              <TouchableOpacity
-                onPress={toggleFacing}
-                style={styles.glassCircleBtnLarge}
-                activeOpacity={0.7}
-                disabled={isRecording}
-              >
-                <RefreshCw size={22} color={isRecording ? '#555562' : '#FFFFFF'} />
-              </TouchableOpacity>
+            {/* ── Bottom Tactile Shutter ──────────────────────────────────────────────── */}
+            <View style={{ position: 'absolute', bottom: 40, width: '100%', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 30, zIndex: 10 }}>
+              {/* Delay Timer Pill */}
+              <View style={{ width: 50, height: 50, borderRadius: 25, backgroundColor: 'rgba(30,30,36,0.7)', alignItems: 'center', justifyContent: 'center' }}>
+                <Text style={{ color: '#FFFFFF', fontSize: 13, fontWeight: '700' }}>0s</Text>
+              </View>
 
               {/* Shutter Button */}
-              <View style={styles.shutterOuterRing}>
-                {mode === 'video' ? (
-                  isRecording ? (
-                    // Stop button: red rounded square
-                    <TouchableOpacity
-                      onPress={handleStopRecording}
-                      activeOpacity={0.8}
-                      style={styles.videoStopShutter}
-                    >
-                      <View style={styles.stopSquare} />
-                    </TouchableOpacity>
-                  ) : (
-                    // Start video button: red circle
-                    <TouchableOpacity
-                      onPress={handleStartRecording}
-                      activeOpacity={0.85}
-                      style={styles.videoStartShutter}
-                    />
-                  )
-                ) : (
-                  // Photo button: lavender ring + white center
+              <View style={{ width: 80, height: 80, borderRadius: 40, borderWidth: 3, borderColor: 'rgba(255, 255, 255, 0.4)', alignItems: 'center', justifyContent: 'center' }}>
+                {isRecording ? (
                   <TouchableOpacity
-                    onPress={handleTakePhoto}
-                    activeOpacity={0.85}
-                    style={styles.photoShutter}
-                    disabled={isProcessing}
+                    onPress={handleStopRecording}
+                    activeOpacity={0.8}
+                    style={{ width: 32, height: 32, backgroundColor: '#FF453A', borderRadius: 8 }}
+                  />
+                ) : (
+                  <TouchableOpacity
+                    onPress={handleStartRecording}
+                    activeOpacity={0.7}
+                    style={{ width: 64, height: 64, backgroundColor: '#FF453A', borderRadius: 32 }}
                   />
                 )}
               </View>
 
-              {/* Mock Capture / Simulator Helper */}
+              {/* Flash / Torch Toggle */}
               <TouchableOpacity
-                onPress={() => handleMockCapture(mode)}
-                style={styles.glassCircleBtnLarge}
+                onPress={toggleFlash}
+                style={{ width: 50, height: 50, borderRadius: 25, backgroundColor: 'rgba(30,30,36,0.7)', alignItems: 'center', justifyContent: 'center' }}
                 activeOpacity={0.7}
               >
-                <Sparkles size={20} color="#8E7CFF" />
+                {flash === 'off' ? <ZapOff size={22} color="#FFFFFF" /> : <Zap size={22} color="#6EE756" />}
               </TouchableOpacity>
             </View>
           </View>
