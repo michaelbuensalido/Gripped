@@ -5,7 +5,7 @@ import { Tabs } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Home, Layers, BarChart2, BookOpen, Settings as SettingsIcon, type LucideIcon } from 'lucide-react-native';
+import { Home, Dumbbell, BarChart2, BookOpen, Settings as SettingsIcon, type LucideIcon } from 'lucide-react-native';
 import { initializeDatabase } from '../db/schema';
 import { FLOATING_ISLAND_STYLE, THEME_COLORS } from '../constants/theme';
 import { ActiveSessionMiniBar } from '../components/session/ActiveSessionMiniBar';
@@ -86,7 +86,7 @@ function TabLayout() {
         options={{
           title: 'Routines',
           tabBarIcon: ({ color, size, focused }) => (
-            <TabIcon Icon={Layers} size={size} color={color} focused={focused} />
+            <TabIcon Icon={Dumbbell} size={size} color={color} focused={focused} />
           ),
         }}
       />

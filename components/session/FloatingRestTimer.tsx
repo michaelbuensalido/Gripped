@@ -73,10 +73,7 @@ export function FloatingRestTimer() {
 
   return (
     <View
-      style={[
-        styles.container,
-        { bottom: Math.max(insets.bottom + 16, 24) },
-      ]}
+      style={styles.container}
       pointerEvents="box-none"
     >
       <View style={styles.pill}>
@@ -115,9 +112,8 @@ export function FloatingRestTimer() {
 const styles = StyleSheet.create({
   container: {
     position: 'absolute',
-    left: 0,
-    right: 0,
-    alignItems: 'center',
+    bottom: 32,
+    alignSelf: 'center',
     zIndex: 999,
   },
   pill: {

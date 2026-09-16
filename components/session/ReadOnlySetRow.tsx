@@ -114,9 +114,7 @@ export function ReadOnlySetRow({ log, index }: ReadOnlySetRowProps) {
         {isFlash && (
           <View
             style={{
-              backgroundColor: 'rgba(110, 231, 86, 0.12)',
-              borderColor: '#6EE756',
-              borderWidth: 1,
+              backgroundColor: '#6EE756',
               paddingHorizontal: 10,
               paddingVertical: 4,
               borderRadius: 9999,
@@ -125,10 +123,10 @@ export function ReadOnlySetRow({ log, index }: ReadOnlySetRowProps) {
               gap: 4,
             }}
           >
-            <Zap size={11} color="#6EE756" fill="#6EE756" />
+            <Zap size={11} color="#111115" fill="#111115" />
             <Text
               style={{
-                color: '#6EE756',
+                color: '#111115',
                 fontSize: 12,
                 fontWeight: '800',
                 letterSpacing: 0.5,
@@ -143,9 +141,7 @@ export function ReadOnlySetRow({ log, index }: ReadOnlySetRowProps) {
         {isSend && (
           <View
             style={{
-              backgroundColor: 'rgba(142, 124, 255, 0.12)',
-              borderColor: '#8E7CFF',
-              borderWidth: 1,
+              backgroundColor: '#8E7CFF',
               paddingHorizontal: 10,
               paddingVertical: 4,
               borderRadius: 9999,
@@ -154,10 +150,10 @@ export function ReadOnlySetRow({ log, index }: ReadOnlySetRowProps) {
               gap: 4,
             }}
           >
-            <Check size={12} color="#8E7CFF" strokeWidth={3} />
+            <Check size={12} color="#FFFFFF" strokeWidth={3} />
             <Text
               style={{
-                color: '#8E7CFF',
+                color: '#FFFFFF',
                 fontSize: 12,
                 fontWeight: '800',
                 letterSpacing: 0.5,

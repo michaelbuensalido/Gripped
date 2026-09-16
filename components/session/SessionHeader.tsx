@@ -4,7 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ChevronDown } from 'lucide-react-native';
 import { useSessionStore, selectTotalSends } from '../../store/sessionStore';
 import { useSessionTimer } from '../../hooks/useSessionTimer';
-import { RestTimerPill } from './RestTimerPill';
+
 
 interface SessionHeaderProps {
   onFinish: () => void;
@@ -65,7 +65,7 @@ export function SessionHeader({ onFinish, onMinimize }: SessionHeaderProps) {
             <Text className="text-white font-bold">{totalSends}</Text> sends
           </Text>
         </View>
-        <RestTimerPill seconds={restTimerSeconds} active={restTimerActive} />
+
       </View>
     </View>
   );

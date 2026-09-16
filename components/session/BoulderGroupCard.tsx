@@ -99,7 +99,7 @@ export function BoulderGroupCard({
   const sends = logs.filter((l) => l.outcome === 'send' || l.outcome === 'flash').length;
 
   return (
-    <View style={FLOATING_CARD_STYLE} className="rounded-2xl mx-4 mb-4 overflow-hidden">
+    <View style={FLOATING_CARD_STYLE} className="rounded-2xl mb-4 overflow-hidden">
       {/* Card header */}
       <View className="px-4 pt-3 pb-2">
         <View className="flex-row items-center justify-between">
@@ -197,19 +197,7 @@ export function BoulderGroupCard({
             </Text>
           </TouchableOpacity>
 
-          {/* Column labels */}
-          {logs.length > 0 && (
-            <View className="flex-row items-center px-1 pb-1 gap-2">
-              <Text className="text-[#8A8A98] text-[10px] w-5 text-center font-bold">#</Text>
-              <Text className="text-[#8A8A98] text-[10px] w-12 text-center font-bold">Grade</Text>
-              <Text className="text-[#8A8A98] text-[10px] w-20 text-center font-bold">RPE</Text>
-              <Text className="text-[#8A8A98] text-[10px] w-20 text-center font-bold">Att</Text>
-              <View className="flex-1 flex-row items-center justify-end gap-1.5">
-                <Text className="text-[#8A8A98] text-[10px] w-9 text-center font-bold">Beta</Text>
-                <Text className="text-[#8A8A98] text-[10px] w-11 text-center font-bold">Send</Text>
-              </View>
-            </View>
-          )}
+
 
           {/* Set rows */}
           {logs.map((log, i) => (

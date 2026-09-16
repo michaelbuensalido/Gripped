@@ -33,7 +33,7 @@ import {
   RecommendedRouteCard,
   type RecommendedRoute,
 } from "../components/home/RecommendedRouteCard";
-import { RouteDetailModal } from "../components/home/RouteDetailModal";
+import { RouteDetailBottomSheet } from "../components/home/RouteDetailBottomSheet";
 import { triggerHaptic } from "../utils/haptics";
 
 const RECOMMENDED_ROUTES: RecommendedRoute[] = [
@@ -635,20 +635,22 @@ export default function HomeScreen() {
         </View>
 
         {/* ── 5. Active Project Mini-Banner ───────────────────── */}
-        <View style={{ marginBottom: 22 }}>
+        <View style={{ marginBottom: 24 }}>
+          {/* Section Header */}
           <Text
             style={{
               color: "#8A8A98",
               fontSize: 11,
               fontWeight: "700",
               letterSpacing: 1.2,
-              marginBottom: 8,
+              marginBottom: 10,
             }}
             className="uppercase"
           >
             CURRENT PROJECT
           </Text>
 
+          {/* Card Container */}
           <Pressable
             onPress={() => {
               triggerHaptic("light");
@@ -659,11 +661,14 @@ export default function HomeScreen() {
               }
             }}
             style={({ pressed }) => ({
+              width: "100%",
+              minHeight: 58,
               backgroundColor: "#1E1E24",
               borderWidth: 1,
               borderColor: "#2C2C35",
               borderRadius: 16,
-              padding: 14,
+              paddingHorizontal: 16,
+              paddingVertical: 12,
               flexDirection: "row",
               alignItems: "center",
               justifyContent: "space-between",
@@ -671,46 +676,77 @@ export default function HomeScreen() {
               opacity: pressed ? 0.92 : 1,
             })}
           >
-            {/* Left: V-grade badge */}
+            {/* Left Sub-Group */}
             <View
               style={{
-                backgroundColor: "#17171C",
-                borderWidth: 1,
-                borderColor: "#8E7CFF",
-                paddingHorizontal: 10,
-                paddingVertical: 4,
-                borderRadius: 8,
-                marginRight: 12,
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 14,
+                flex: 1,
+                marginRight: 8,
               }}
             >
-              <Text
+              {/* Grade Badge */}
+              <View
                 style={{
-                  color: "#8E7CFF",
-                  fontSize: 13,
-                  fontWeight: "700",
+                  backgroundColor: "#17171C",
+                  borderWidth: 1,
+                  borderColor: "#8E7CFF",
+                  borderRadius: 8,
+                  paddingHorizontal: 10,
+                  paddingVertical: 4,
+                  alignItems: "center",
+                  justifyContent: "center",
                 }}
               >
-                {homeStats?.activeProject?.grade ?? "V7"}
-              </Text>
-            </View>
+                <Text
+                  style={{
+                    color: "#8E7CFF",
+                    fontSize: 13,
+                    fontWeight: "700",
+                    textAlign: "center",
+                  }}
+                >
+                  {homeStats?.activeProject?.grade ?? "V9"}
+                </Text>
+              </View>
 
-            {/* Center: Project name & burns */}
-            <View style={{ flex: 1, paddingRight: 8 }}>
-              <Text
+              {/* Text Column */}
+              <View
                 style={{
-                  color: "#FFFFFF",
-                  fontSize: 13,
-                  fontWeight: "600",
+                  flexDirection: "column",
+                  justifyContent: "center",
+                  flex: 1,
                 }}
-                numberOfLines={1}
               >
-                {homeStats?.activeProject
-                  ? `${homeStats.activeProject.title} • ${homeStats.activeProject.burns} Burns logged`
-                  : "Cave Roof Project • 4 Burns logged"}
-              </Text>
+                <Text
+                  style={{
+                    color: "#FFFFFF",
+                    fontSize: 15,
+                    fontWeight: "700",
+                    letterSpacing: -0.2,
+                  }}
+                  numberOfLines={1}
+                >
+                  {homeStats?.activeProject?.title ?? "Cave Roof Project"}
+                </Text>
+                <Text
+                  style={{
+                    color: "#8A8A98",
+                    fontSize: 12,
+                    fontWeight: "400",
+                    marginTop: 2,
+                  }}
+                  numberOfLines={1}
+                >
+                  {homeStats?.activeProject
+                    ? `${homeStats.activeProject.burns} Burns logged • In Progress`
+                    : "2 Burns logged • In Progress"}
+                </Text>
+              </View>
             </View>
 
-            {/* Right: Action chevron */}
+            {/* Right: Chevron */}
             <ChevronRight size={18} color="#5A5A65" />
           </Pressable>
         </View>
@@ -750,7 +786,7 @@ export default function HomeScreen() {
       </ScrollView>
 
       {/* ── Route Detail Quick Actions Bottom Sheet ──────────── */}
-      <RouteDetailModal
+      <RouteDetailBottomSheet
         visible={Boolean(selectedRoute)}
         route={selectedRoute}
         onClose={() => setSelectedRoute(null)}

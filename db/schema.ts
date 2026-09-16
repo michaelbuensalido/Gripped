@@ -40,7 +40,9 @@ export function getDatabase(): SQLite.SQLiteDatabase {
         media_uri             TEXT,
         media_type            TEXT,
         notes                 TEXT,
-        failure_reason        TEXT
+        failure_reason        TEXT,
+        crux_timestamp_ms     INTEGER,
+        hang_time_seconds     INTEGER
       );
 
       CREATE INDEX IF NOT EXISTS idx_logs_group ON boulder_logs(group_id);
@@ -110,6 +112,12 @@ function runMigrations(db: SQLite.SQLiteDatabase): void {
   } catch {}
   try {
     db.execSync('ALTER TABLE boulder_logs ADD COLUMN failure_reason TEXT;');
+  } catch {}
+  try {
+    db.execSync('ALTER TABLE boulder_logs ADD COLUMN crux_timestamp_ms INTEGER;');
+  } catch {}
+  try {
+    db.execSync('ALTER TABLE boulder_logs ADD COLUMN hang_time_seconds INTEGER;');
   } catch {}
 
   try {
