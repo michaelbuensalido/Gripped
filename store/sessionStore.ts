@@ -78,6 +78,9 @@ interface SessionState {
     reason: FailureReason | null
   ) => void;
 
+  conditions: string[];
+  setSessionConditions: (conditions: string[]) => void;
+
   triggerRestTimer: (seconds?: number) => void;
   tickRestTimer: () => void;
   syncRestTimer: () => number;
@@ -90,6 +93,7 @@ export const useSessionStore = create<SessionState>()(
   immer((set, get) => ({
     activeSession: null,
     groups: [],
+    conditions: [],
     restTimerActive: false,
     restTimerSeconds: 0,
     restTimerMax: 90,
@@ -671,6 +675,16 @@ export const useSessionStore = create<SessionState>()(
         state.restTimerSeconds = 0;
         state.restTimerTargetTimestampMs = null;
       });
+    },
+
+    setSessionConditions: (conditions: string[]) => {
+      set((state) => {
+        state.conditions = conditions;
+      });
+      const sessionId = get().activeSession?.id;
+      if (sessionId) {
+        Q.updateSessionConditions(sessionId, conditions);
+      }
     },
   }))
 );

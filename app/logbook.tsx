@@ -1,33 +1,24 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import {
-  View,
-  Text,
-  ScrollView,
-  TouchableOpacity,
-  StyleSheet,
-} from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
-import { TrendingUp, Plus } from 'lucide-react-native';
+import { Plus, Settings as SettingsIcon } from 'lucide-react-native';
 import { ScreenContainer } from '../components/ui/ScreenContainer';
-import { EmptyStateCard } from '../components/ui/EmptyStateCard';
 import { SessionHistoryCard } from '../components/logbook/SessionHistoryCard';
+import { LogbookFilterStrip, type LogbookFilter } from '../components/logbook/LogbookFilterStrip';
 import { useSessionStore } from '../store/sessionStore';
 import { getAllSessionSummaries, type SessionSummary } from '../db/queries';
 import { triggerHaptic } from '../utils/haptics';
 
 function formatMonthYear(timestamp: number): string {
   const d = new Date(timestamp);
-  const months = [
-    'JANUARY', 'FEBRUARY', 'MARCH', 'APRIL', 'MAY', 'JUNE',
-    'JULY', 'AUGUST', 'SEPTEMBER', 'OCTOBER', 'NOVEMBER', 'DECEMBER',
-  ];
+  const months = ['JANUARY', 'FEBRUARY', 'MARCH', 'APRIL', 'MAY', 'JUNE', 'JULY', 'AUGUST', 'SEPTEMBER', 'OCTOBER', 'NOVEMBER', 'DECEMBER'];
   return `${months[d.getMonth()]} ${d.getFullYear()}`;
 }
 
 export default function LogbookScreen() {
   const router = useRouter();
   const [sessions, setSessions] = useState<SessionSummary[]>([]);
+  const [activeFilter, setActiveFilter] = useState<LogbookFilter>('all');
 
   const loadData = useCallback(() => {
     try {
@@ -43,10 +34,27 @@ export default function LogbookScreen() {
     }, [loadData])
   );
 
-  // Group sessions by Month/Year
+  const filteredSessions = useMemo(() => {
+    switch (activeFilter) {
+      case 'sent':
+        return sessions.filter((s) => s.sendCount > 0);
+      case 'video':
+        return sessions.filter((s) => s.hasMedia);
+      case 'v5plus': {
+        return sessions.filter((s) => {
+          if (!s.hardestGrade) return false;
+          const num = parseInt(s.hardestGrade.replace('V', ''), 10);
+          return !isNaN(num) && num >= 5;
+        });
+      }
+      default:
+        return sessions;
+    }
+  }, [sessions, activeFilter]);
+
   const sessionsByMonth = useMemo(() => {
     const groups: { monthYear: string; items: SessionSummary[] }[] = [];
-    sessions.forEach((s) => {
+    filteredSessions.forEach((s) => {
       const my = formatMonthYear(s.startTime);
       let group = groups.find((g) => g.monthYear === my);
       if (!group) {
@@ -56,7 +64,13 @@ export default function LogbookScreen() {
       group.items.push(s);
     });
     return groups;
-  }, [sessions]);
+  }, [filteredSessions]);
+
+  const handleStartQuickSession = () => {
+    triggerHaptic('light');
+    const sessionId = useSessionStore.getState().startQuickSession('Quick Session');
+    router.push(`/session/${sessionId}`);
+  };
 
   return (
     <ScreenContainer withTopInset={true}>
@@ -64,93 +78,79 @@ export default function LogbookScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{
           paddingHorizontal: 16,
-          paddingTop: 12,
-          paddingBottom: 170, // Prevents bottom floating tab overlap
+          paddingTop: 48,
+          paddingBottom: 120,
         }}
       >
-        {/* ── Top Header ────────────────────────────────────────── */}
-        <View style={{ marginBottom: 24 }}>
-          <Text
-            style={{
-              color: '#FFFFFF',
-              fontSize: 34,
-              fontWeight: '700',
-              letterSpacing: -0.5,
-            }}
+        {/* Top Header */}
+        <View className="flex-row items-center justify-between mb-4">
+          <View>
+            <Text className="text-white text-[34px] font-bold tracking-[-0.5px]">Logbook</Text>
+            <Text className="text-[#9A9AA6] text-[14px] mt-1">Your chronological session history</Text>
+          </View>
+          <TouchableOpacity
+            activeOpacity={0.8}
+            onPress={() => { triggerHaptic('light'); router.push('/settings'); }}
+            className="w-[40px] h-[40px] bg-[#19191D] border border-[#27272F] rounded-xl items-center justify-center"
           >
-            Logbook
-          </Text>
-          <Text
-            style={{
-              color: '#9A9AA6',
-              fontSize: 14,
-              marginTop: 4,
-              fontWeight: '400',
-            }}
-          >
-            Your chronological session history
-          </Text>
+            <SettingsIcon size={20} color="#9090A0" />
+          </TouchableOpacity>
         </View>
 
-        {/* ── Sessions History Feed ─────────────────────────── */}
+        {/* Quick-Filter Strip */}
+        <LogbookFilterStrip active={activeFilter} onChange={setActiveFilter} />
+
+        {/* Sessions History Feed */}
         {sessions.length === 0 ? (
-          <EmptyStateCard
-            icon={TrendingUp}
-            title="No Sessions Logged Yet"
-            description="Your past workouts, send pyramids, and gym volume stats will appear here once you log your first burn."
-            buttonLabel="Start a Quick Session"
-            buttonVariant="lime"
-            onPress={() => {
-              const sessionId = useSessionStore.getState().startQuickSession('Quick Session');
-              router.push(`/session/${sessionId}`);
-            }}
-          />
+          <View className="min-h-[160px] border border-dashed border-[#27272F] bg-[#141417] rounded-xl flex-col items-center justify-center p-6">
+            <Text className="text-[12px] font-bold text-[#555562] uppercase tracking-[1.2px]">
+              NO SESSIONS RECORDED
+            </Text>
+            <Text className="text-[13px] text-[#8A8A98] text-center mt-2 mb-6">
+              Your chronologically logged gym sessions, volume stats, and beta clips will populate here.
+            </Text>
+            <TouchableOpacity
+              activeOpacity={0.7}
+              onPress={handleStartQuickSession}
+              className="h-[44px] bg-[#19191D] border border-[#8E7CFF] rounded-lg px-6 items-center justify-center"
+            >
+              <Text className="text-[13px] font-bold text-[#8E7CFF]">START QUICK SESSION</Text>
+            </TouchableOpacity>
+          </View>
+        ) : filteredSessions.length === 0 ? (
+          <View className="items-center py-10 gap-2">
+            <Text className="text-[28px]">🔍</Text>
+            <Text className="text-white text-[15px] font-bold">No sessions match this filter</Text>
+            <Text className="text-[#8A8A98] text-[13px] text-center">Try selecting a different filter above</Text>
+          </View>
         ) : (
           <View>
             <TouchableOpacity
-              onPress={() => {
-                triggerHaptic('light');
-                const sessionId = useSessionStore.getState().startQuickSession('Quick Session');
-                router.push(`/session/${sessionId}`);
-              }}
+              onPress={handleStartQuickSession}
               activeOpacity={0.8}
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                justifyContent: 'center',
-                backgroundColor: '#1E1E24',
-                borderColor: '#2C2C35',
-                borderWidth: 1,
-                borderRadius: 16,
-                height: 52,
-                marginBottom: 24,
-                gap: 8,
-              }}
+              className="h-[44px] flex-row items-center justify-center bg-[#19191D] border border-[#27272F] rounded-lg mb-5 gap-2"
             >
-              <Plus size={18} color="#8E7CFF" strokeWidth={2.5} />
-              <Text style={{ color: '#FFFFFF', fontSize: 15, fontWeight: '700' }}>
-                Start New Session
+              <Plus size={15} color="#8E7CFF" strokeWidth={2.5} />
+              <Text className="text-white text-[13px] font-bold tracking-[0.6px]">
+                NEW SESSION
               </Text>
             </TouchableOpacity>
 
             {sessionsByMonth.map((group) => (
-              <View key={group.monthYear} style={{ marginBottom: 24 }}>
-                <Text
-                  style={{
-                    color: '#8A8A98',
-                    fontSize: 12,
-                    fontWeight: '700',
-                    letterSpacing: 1.2,
-                    marginBottom: 12,
-                    paddingHorizontal: 4,
-                  }}
-                >
+              <View key={group.monthYear} className="mb-6">
+                <Text className="text-[#8A8A98] text-[12px] font-bold tracking-[1.2px] mb-3 px-1">
                   {group.monthYear}
                 </Text>
-
-                {group.items.map((s) => (
-                  <SessionHistoryCard key={s.id} session={s} />
-                ))}
+                
+                <View className="bg-[#19191D] border border-[#27272F] rounded-xl overflow-hidden">
+                  {group.items.map((s, idx) => (
+                    <SessionHistoryCard 
+                      key={s.id} 
+                      session={s} 
+                      isLast={idx === group.items.length - 1} 
+                    />
+                  ))}
+                </View>
               </View>
             ))}
           </View>

@@ -2045,3 +2045,99 @@ export function getRecentOutcomesSummary(limit: number = 20): RecentOutcomesSumm
   };
 }
 
+// ─── Session Conditions ───────────────────────────────────────────────────────
+
+export function updateSessionConditions(id: string, conditions: string[]): void {
+  const db = getDatabase();
+  const json = JSON.stringify(conditions);
+  try {
+    db.runSync(`UPDATE sessions SET conditions = ? WHERE id = ?`, [json, id]);
+  } catch (err) {
+    console.warn('updateSessionConditions failed:', err);
+  }
+}
+
+export function getSessionConditions(id: string): string[] {
+  const db = getDatabase();
+  try {
+    const row = db.getFirstSync<{ conditions: string }>(
+      `SELECT conditions FROM sessions WHERE id = ?`,
+      [id]
+    );
+    if (!row?.conditions) return [];
+    return JSON.parse(row.conditions) as string[];
+  } catch {
+    return [];
+  }
+}
+
+// ─── Failure Breakdown ────────────────────────────────────────────────────────
+
+export interface FailureBreakdownSegment {
+  key: string;
+  label: string;
+  color: string;
+  count: number;
+  percentage: number;
+}
+
+export interface FailureBreakdownData {
+  segments: FailureBreakdownSegment[];
+  totalFailures: number;
+  hasData: boolean;
+}
+
+const FAILURE_DEFINITIONS: { key: string; label: string; color: string }[] = [
+  { key: 'foot_slip',     label: 'Foot Slip',    color: '#FF6B6B' },
+  { key: 'pumped',        label: 'Pumped',        color: '#8E7CFF' },
+  { key: 'beta_error',    label: 'Beta Error',    color: '#5B8FFF' },
+  { key: 'grip_strength', label: 'Grip / Finger', color: '#6EE756' },
+  { key: 'reach_span',    label: 'Reach / Span',  color: '#F0A500' },
+];
+
+export function getFailureBreakdown(sinceTimestamp?: number): FailureBreakdownData {
+  const db = getDatabase();
+
+  let rows: { reason: string; count: number }[] = [];
+  try {
+    if (sinceTimestamp) {
+      rows = db.getAllSync<{ reason: string; count: number }>(
+        `SELECT failure_reason AS reason, COUNT(*) AS count
+         FROM boulder_logs
+         WHERE outcome = 'attempt'
+           AND failure_reason IS NOT NULL
+           AND timestamp >= ?
+         GROUP BY failure_reason`,
+        [sinceTimestamp]
+      );
+    } else {
+      rows = db.getAllSync<{ reason: string; count: number }>(
+        `SELECT failure_reason AS reason, COUNT(*) AS count
+         FROM boulder_logs
+         WHERE outcome = 'attempt'
+           AND failure_reason IS NOT NULL
+         GROUP BY failure_reason`
+      );
+    }
+  } catch (err) {
+    console.warn('getFailureBreakdown failed:', err);
+  }
+
+  const countMap: Record<string, number> = {};
+  for (const row of rows) {
+    countMap[row.reason] = row.count;
+  }
+
+  const total = Object.values(countMap).reduce((s, c) => s + c, 0);
+
+  const segments: FailureBreakdownSegment[] = FAILURE_DEFINITIONS.map((def) => {
+    const count = countMap[def.key] ?? 0;
+    return {
+      ...def,
+      count,
+      percentage: total > 0 ? Math.round((count / total) * 100) : 0,
+    };
+  });
+
+  return { segments, totalFailures: total, hasData: total > 0 };
+}

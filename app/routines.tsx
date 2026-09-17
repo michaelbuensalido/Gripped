@@ -1,38 +1,18 @@
-import React, { useState, useCallback, useRef } from 'react';
-import {
-  View,
-  Text,
-  ScrollView,
-  TouchableOpacity,
-  Pressable,
-  Alert,
-} from 'react-native';
+import React, { useState, useCallback } from 'react';
+import { View, Text, ScrollView, TouchableOpacity, Pressable, Alert } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
-import {
-  Plus,
-  Compass,
-  Zap,
-  ChevronRight,
-  Settings as SettingsIcon,
-  Layers,
-} from 'lucide-react-native';
-import {
-  getAllRoutinesWithBlocks,
-  duplicateRoutine,
-  deleteRoutine,
-} from '../db/routineQueries';
+import { ChevronRight, Settings as SettingsIcon, MoreVertical } from 'lucide-react-native';
+import { getAllRoutinesWithBlocks, duplicateRoutine, deleteRoutine } from '../db/routineQueries';
 import type { RoutineWithBlocks } from '../types';
 import { useSessionStore } from '../store/sessionStore';
 import { RoutineLaunchCard } from '../components/routines/RoutineLaunchCard';
-import { EmptyStateCard } from '../components/ui/EmptyStateCard';
+import { HangboardTimerCard } from '../components/routines/HangboardTimerCard';
 import { ScreenContainer } from '../components/ui/ScreenContainer';
 import { triggerHaptic } from '../utils/haptics';
 
 export default function RoutinesListScreen() {
   const router = useRouter();
-  const scrollViewRef = useRef<ScrollView>(null);
-  const [drillsY, setDrillsY] = useState(0);
-
+  const [activeTab, setActiveTab] = useState<'my_routines' | 'drills'>('my_routines');
   const [routines, setRoutines] = useState<RoutineWithBlocks[]>([]);
   const startEmptySession = useSessionStore((s) => s.startEmptySession);
   const startSessionFromRoutine = useSessionStore((s) => s.startSessionFromRoutine);
@@ -52,7 +32,6 @@ export default function RoutinesListScreen() {
     }, [loadRoutines])
   );
 
-  // Split into Custom vs Default Templates
   const myRoutines = routines.filter((r) => r.isCustom);
   const exampleTemplates = routines.filter((r) => !r.isCustom);
 
@@ -67,10 +46,7 @@ export default function RoutinesListScreen() {
   };
 
   const handleEditRoutine = (routine: RoutineWithBlocks) => {
-    router.push({
-      pathname: '/routines/editor',
-      params: { id: routine.id },
-    });
+    router.push({ pathname: '/routines/editor', params: { id: routine.id } });
   };
 
   const handleDuplicateRoutine = (routineId: string) => {
@@ -104,252 +80,92 @@ export default function RoutinesListScreen() {
     );
   };
 
-  const handleBrowseDrills = () => {
-    triggerHaptic('light');
-    if (drillsY > 0) {
-      scrollViewRef.current?.scrollTo({ y: drillsY - 20, animated: true });
-    }
-  };
+  const displayedRoutines = activeTab === 'my_routines' ? myRoutines : exampleTemplates;
 
   return (
     <ScreenContainer withTopInset={true}>
       <ScrollView
-        ref={scrollViewRef}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{
           paddingHorizontal: 16,
-          paddingTop: 12,
-          paddingBottom: 170,
+          paddingTop: 54,
+          paddingBottom: 120,
         }}
       >
-        {/* ── 1. Top Header & Settings Button ────────────────── */}
-        <View
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            marginBottom: 16,
-          }}
-        >
-          <Text
-            style={{
-              color: '#FFFFFF',
-              fontSize: 28,
-              fontWeight: '700',
-              letterSpacing: -0.5,
-            }}
-          >
-            Training
-          </Text>
-
+        {/* Header Row */}
+        <View className="flex-row items-center justify-between mb-4">
+          <Text className="text-[28px] font-bold text-white tracking-[-0.5px]">Training</Text>
           <TouchableOpacity
             activeOpacity={0.8}
             onPress={() => router.push('/settings')}
-            style={{
-              width: 38,
-              height: 38,
-              borderRadius: 19,
-              backgroundColor: '#1E1E24',
-              borderWidth: 1,
-              borderColor: '#2C2C35',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
+            className="w-[40px] h-[40px] bg-[#19191D] border border-[#27272F] rounded-xl items-center justify-center"
           >
-            <SettingsIcon size={18} color="#8A8A98" />
+            <SettingsIcon size={20} color="#9090A0" />
           </TouchableOpacity>
         </View>
 
-        {/* ── 2. "+ Quick Freestyle Session" Hero Button ────────── */}
+        {/* Quick Freestyle Card */}
         <Pressable
           onPress={() => {
             triggerHaptic('light');
             handleStartEmpty();
           }}
           style={({ pressed }) => ({
-            width: '100%',
-            borderRadius: 20,
-            backgroundColor: '#1E1E24',
-            borderWidth: 1,
-            borderColor: '#2C2C35',
-            padding: 16,
-            marginBottom: 16,
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'space-between',
             transform: [{ scale: pressed ? 0.98 : 1 }],
-            opacity: pressed ? 0.92 : 1,
           })}
+          className="h-[54px] bg-[#19191D] border border-[#27272F] rounded-xl px-4 flex-row items-center justify-between mb-6"
         >
-          {/* Left Group */}
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 }}>
-            {/* Icon Badge: 40x40pt rounded-xl in Lavender tint */}
-            <View
-              style={{
-                width: 40,
-                height: 40,
-                borderRadius: 12,
-                backgroundColor: 'rgba(142, 124, 255, 0.15)',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <Zap size={20} color="#8E7CFF" />
-            </View>
-
-            {/* Text Column */}
-            <View style={{ flexDirection: 'column', justifyContent: 'center' }}>
-              <Text
-                style={{
-                  color: '#FFFFFF',
-                  fontSize: 15,
-                  fontWeight: '700',
-                  letterSpacing: -0.2,
-                }}
-              >
-                Quick Freestyle Session
-              </Text>
-              <Text
-                style={{
-                  color: '#8A8A98',
-                  fontSize: 12,
-                  fontWeight: '400',
-                  marginTop: 2,
-                }}
-              >
-                Log as you climb • Untracked
-              </Text>
-            </View>
+          <View className="flex-col justify-center">
+            <Text className="text-white text-[14px] font-bold">Quick Freestyle Session</Text>
+            <Text className="text-[#9090A0] text-[12px]">Log burns as you climb • Untracked</Text>
           </View>
-
-          {/* Right Chevron */}
-          <ChevronRight size={18} color="#5A5A65" />
+          <ChevronRight size={16} color="#555562" />
         </Pressable>
 
-        {/* ── 3. Section Header & Dual Action Pills ──────────── */}
-        <Text
-          style={{
-            color: '#8A8A98',
-            fontSize: 11,
-            fontWeight: '700',
-            letterSpacing: 1.2,
-            marginTop: 8,
-            marginBottom: 12,
-          }}
-          className="uppercase"
-        >
-          ROUTINES & DRILLS
-        </Text>
+        {/* Hangboard Protocol */}
+        <HangboardTimerCard />
 
-        <View
-          style={{
-            flexDirection: 'row',
-            gap: 12,
-            marginBottom: 24,
-          }}
-        >
-          {/* Left Pill: + New Routine */}
-          <Pressable
+        {/* Sub-Navigation Bar */}
+        <View className="h-[40px] bg-[#141417] border border-[#22222A] rounded-xl p-1 flex-row mb-4">
+          <TouchableOpacity
             onPress={() => {
-              triggerHaptic('light');
-              router.push('/routines/editor');
+              triggerHaptic('selection');
+              setActiveTab('my_routines');
             }}
-            style={({ pressed }) => ({
-              flex: 1,
-              height: 46,
-              borderRadius: 12,
-              backgroundColor: '#1E1E24',
-              borderWidth: 1,
-              borderColor: '#2C2C35',
-              paddingHorizontal: 12,
-              flexDirection: 'row',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 8,
-              transform: [{ scale: pressed ? 0.95 : 1 }],
-              opacity: pressed ? 0.92 : 1,
-            })}
+            className={`flex-1 items-center justify-center rounded-lg ${
+              activeTab === 'my_routines' ? 'bg-[#1E1E24] border border-[#2C2C35]' : 'border border-transparent'
+            }`}
           >
-            <Plus size={16} color="#8E7CFF" strokeWidth={2.5} />
-            <Text
-              style={{
-                color: '#FFFFFF',
-                fontSize: 14,
-                fontWeight: '600',
-              }}
-            >
-              New Routine
+            <Text className={`text-[12px] ${activeTab === 'my_routines' ? 'font-bold text-white' : 'text-[#8A8A98]'}`}>
+              + New Routine
             </Text>
-          </Pressable>
-
-          {/* Right Pill: Browse Drills */}
-          <Pressable
-            onPress={handleBrowseDrills}
-            style={({ pressed }) => ({
-              flex: 1,
-              height: 46,
-              borderRadius: 12,
-              backgroundColor: '#1E1E24',
-              borderWidth: 1,
-              borderColor: '#2C2C35',
-              paddingHorizontal: 12,
-              flexDirection: 'row',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 8,
-              transform: [{ scale: pressed ? 0.95 : 1 }],
-              opacity: pressed ? 0.92 : 1,
-            })}
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => {
+              triggerHaptic('selection');
+              setActiveTab('drills');
+            }}
+            className={`flex-1 items-center justify-center rounded-lg ${
+              activeTab === 'drills' ? 'bg-[#1E1E24] border border-[#2C2C35]' : 'border border-transparent'
+            }`}
           >
-            <Compass size={16} color="#8A8A98" />
-            <Text
-              style={{
-                color: '#FFFFFF',
-                fontSize: 14,
-                fontWeight: '600',
-              }}
-            >
-              Browse Drills
+            <Text className={`text-[12px] ${activeTab === 'drills' ? 'font-bold text-white' : 'text-[#8A8A98]'}`}>
+              Drills & Templates
             </Text>
-          </Pressable>
+          </TouchableOpacity>
         </View>
 
-        {/* ── 4. My Routines Section ─────────────────────────── */}
-        <View
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            marginBottom: 12,
-          }}
-        >
-          <Text
-            style={{
-              color: '#8A8A98',
-              fontSize: 11,
-              fontWeight: '700',
-              letterSpacing: 1.2,
-            }}
-            className="uppercase"
+        {/* Routine List */}
+        {activeTab === 'my_routines' && myRoutines.length === 0 ? (
+          <TouchableOpacity 
+            onPress={() => router.push('/routines/editor')}
+            activeOpacity={0.7}
+            className="h-[70px] border border-dashed border-[#27272F] rounded-xl flex-row items-center justify-center gap-2 mb-3"
           >
-            MY ROUTINES ({myRoutines.length})
-          </Text>
-        </View>
-
-        {/* My Routines List / Empty State */}
-        {myRoutines.length === 0 ? (
-          <View style={{ marginBottom: 24 }}>
-            <EmptyStateCard
-              icon={Layers}
-              title="No Custom Routines"
-              description="Build your first drill to log structured training, or launch a community template below."
-              buttonLabel="Create Routine"
-              buttonVariant="lavender"
-              onPress={() => router.push('/routines/editor')}
-            />
-          </View>
+            <Text className="text-[13px] font-semibold text-[#8A8A98]">+ Create your first custom routine</Text>
+          </TouchableOpacity>
         ) : (
-          myRoutines.map((routine) => (
+          displayedRoutines.map((routine) => (
             <RoutineLaunchCard
               key={routine.id}
               routine={routine}
@@ -360,40 +176,6 @@ export default function RoutinesListScreen() {
             />
           ))
         )}
-
-        {/* ── 5. Example Templates / Community Drills ────────── */}
-        <View
-          onLayout={(e) => {
-            setDrillsY(e.nativeEvent.layout.y);
-          }}
-          style={{
-            marginTop: 8,
-            marginBottom: 12,
-          }}
-        >
-          <Text
-            style={{
-              color: '#8A8A98',
-              fontSize: 11,
-              fontWeight: '700',
-              letterSpacing: 1.2,
-            }}
-            className="uppercase"
-          >
-            COMMUNITY & BENCHMARK DRILLS ({exampleTemplates.length})
-          </Text>
-        </View>
-
-        {exampleTemplates.map((routine) => (
-          <RoutineLaunchCard
-            key={routine.id}
-            routine={routine}
-            onStart={handleStartRoutine}
-            onEdit={handleEditRoutine}
-            onDuplicate={handleDuplicateRoutine}
-            onDelete={handleDeleteRoutine}
-          />
-        ))}
       </ScrollView>
     </ScreenContainer>
   );

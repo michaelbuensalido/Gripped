@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, TouchableOpacity, Platform } from 'react-native';
 import type { AngleMasteryItem } from '../../db/queries';
 import { triggerHaptic } from '../../utils/haptics';
 
@@ -11,56 +11,50 @@ export function AngleMasteryWidget({ data }: AngleMasteryWidgetProps) {
   const items: AngleMasteryItem[] = data && data.length > 0
     ? data
     : [
-        { angle: 'Overhang', sendRate: 68, totalSends: 17, totalAttempts: 25, color: '#6EE756' },
-        { angle: 'Slab', sendRate: 42, totalSends: 8, totalAttempts: 19, color: '#8E7CFF' },
-        { angle: 'Vertical', sendRate: 55, totalSends: 11, totalAttempts: 20, color: '#8E7CFF' },
+        { angle: 'Overhang', sendRate: 0, totalSends: 0, totalAttempts: 0, color: '#8E7CFF' },
+        { angle: 'Slab', sendRate: 0, totalSends: 0, totalAttempts: 0, color: '#8E7CFF' },
+        { angle: 'Vertical', sendRate: 0, totalSends: 0, totalAttempts: 0, color: '#8E7CFF' },
       ];
 
   return (
-    <View style={styles.card}>
-      {/* ── Header: 15pt Bold White + 12pt subtitle ───────── */}
-      <View style={styles.headerContainer}>
-        <Text style={styles.cardTitle}>Terrain & Angle Mastery</Text>
-        <Text style={styles.cardSubtitle}>
-          Send completion rate by wall profile
-        </Text>
+    <View className="bg-[#19191D] border border-[#27272F] rounded-xl p-4 mt-4">
+      {/* Header */}
+      <View className="mb-3">
+        <Text className="text-white text-[15px] font-bold tracking-[-0.2px]">Terrain & Angle Mastery</Text>
+        <Text className="text-[#8A8A98] text-[12px] font-medium mt-1">Send completion rate by wall profile</Text>
       </View>
 
-      {/* ── 3 Sleek Rows: Overhang, Slab, Vertical ──────────── */}
-      <View style={styles.rowsContainer}>
+      {/* Rows */}
+      <View className="gap-3.5">
         {items.map((item) => {
-          const rateColor = item.sendRate >= 60 ? '#6EE756' : '#8E7CFF';
+          // Force strict 0% if 0 attempts, ignore upstream hallucination
+          const trueRate = item.totalAttempts > 0 ? Math.round((item.totalSends / item.totalAttempts) * 100) : 0;
 
           return (
             <TouchableOpacity
               key={item.angle}
               activeOpacity={0.8}
               onPress={() => triggerHaptic('light')}
-              style={styles.angleRow}
+              className="flex-row items-center"
             >
-              {/* Left: Profile Label: 14pt SemiBold White (width 75pt) */}
-              <View style={styles.angleLabelContainer}>
-                <Text style={styles.angleName}>{item.angle}</Text>
+              {/* Profile Label */}
+              <View className="w-[75px]">
+                <Text className="text-white text-[14px] font-semibold">{item.angle}</Text>
               </View>
 
-              {/* Center: Progress Track: Height 8pt, background #17171C, border 1px #22222A, rounded-full, flex-1 mx-3 */}
-              <View style={styles.progressTrack}>
+              {/* Progress Track */}
+              <View className="flex-1 h-[8px] bg-[#141417] border border-[#22222A] rounded-full overflow-hidden mx-3">
                 <View
-                  style={[
-                    styles.progressFill,
-                    {
-                      width: `${Math.max(6, item.sendRate)}%`,
-                      backgroundColor: rateColor,
-                    },
-                  ]}
+                  className="h-full rounded-full bg-[#8E7CFF]"
+                  style={{ width: `${Math.max(0, trueRate)}%` }}
                 />
               </View>
 
-              {/* Right: Metric Text: 12pt Bold White + #8A8A98 details */}
-              <View style={styles.rateContainer}>
-                <Text style={styles.metricText}>
-                  <Text style={styles.rateWhite}>{item.sendRate}%</Text>
-                  <Text style={styles.rateDetails}>
+              {/* Metric Text */}
+              <View className="items-end min-w-[110px]">
+                <Text className="text-[12px]" style={{ fontVariant: ['tabular-nums'] }}>
+                  <Text className="text-white font-bold">{trueRate}%</Text>
+                  <Text className="text-[#8A8A98] font-medium">
                     {' • '}
                     {item.totalSends}/{item.totalAttempts} sends
                   </Text>
@@ -73,73 +67,3 @@ export function AngleMasteryWidget({ data }: AngleMasteryWidgetProps) {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  card: {
-    backgroundColor: '#1E1E24',
-    borderRadius: 20,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: '#2C2C35',
-    marginTop: 16,
-  },
-  headerContainer: {
-    marginBottom: 12,
-  },
-  cardTitle: {
-    color: '#FFFFFF',
-    fontSize: 15,
-    fontWeight: '700',
-    letterSpacing: -0.2,
-  },
-  cardSubtitle: {
-    color: '#8A8A98',
-    fontSize: 12,
-    fontWeight: '500',
-    marginTop: 2,
-  },
-  rowsContainer: {
-    gap: 14,
-  },
-  angleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  angleLabelContainer: {
-    width: 75,
-  },
-  angleName: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  progressTrack: {
-    flex: 1,
-    height: 8,
-    backgroundColor: '#17171C',
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: '#22222A',
-    overflow: 'hidden',
-    marginHorizontal: 12,
-  },
-  progressFill: {
-    height: '100%',
-    borderRadius: 999,
-  },
-  rateContainer: {
-    alignItems: 'flex-end',
-    minWidth: 110,
-  },
-  metricText: {
-    fontSize: 12,
-  },
-  rateWhite: {
-    color: '#FFFFFF',
-    fontWeight: '700',
-  },
-  rateDetails: {
-    color: '#8A8A98',
-    fontWeight: '500',
-  },
-});

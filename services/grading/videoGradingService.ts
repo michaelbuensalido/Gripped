@@ -23,8 +23,8 @@ export interface GradingEvaluationResult {
   };
 }
 
-const MIN_KEYPOINT_CONFIDENCE = 0.60;
-const REQUIRED_HUMAN_FRAME_RATIO = 0.65;
+const MIN_KEYPOINT_CONFIDENCE = 0.40;
+const REQUIRED_HUMAN_FRAME_RATIO = 0.50;
 const MIN_CLIMBING_DISPLACEMENT_Y = 0.18; // >18% frame vertical translation
 const MIN_CLIMBING_DURATION_MS = 2500;
 

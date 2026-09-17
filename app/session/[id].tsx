@@ -15,6 +15,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Plus } from 'lucide-react-native';
 import { useSessionStore } from '../../store/sessionStore';
 import { SessionHeader } from '../../components/session/SessionHeader';
+import { SessionConditionStrip } from '../../components/session/SessionConditionStrip';
 import { BoulderGroupCard } from '../../components/session/BoulderGroupCard';
 import { FloatingRestTimer } from '../../components/session/FloatingRestTimer';
 import { SessionCompletionModal } from '../../components/session/SessionCompletionModal';
@@ -72,12 +73,14 @@ export default function ActiveSessionScreen() {
 
   const activeSession = useSessionStore((s) => s.activeSession);
   const groups = useSessionStore((s) => s.groups);
+  const conditions = useSessionStore((s) => s.conditions);
   const loadSession = useSessionStore((s) => s.loadSession);
   const startSessionFromRoutine = useSessionStore((s) => s.startSessionFromRoutine);
   const startEmptySession = useSessionStore((s) => s.startEmptySession);
   const addGroup = useSessionStore((s) => s.addGroup);
   const completeSession = useSessionStore((s) => s.completeSession);
   const discardSession = useSessionStore((s) => s.discardSession);
+  const setSessionConditions = useSessionStore((s) => s.setSessionConditions);
 
   const [showCompletionModal, setShowCompletionModal] = useState(false);
   const [pausedEndTime, setPausedEndTime] = useState<number>(Date.now());
@@ -272,6 +275,12 @@ export default function ActiveSessionScreen() {
             keyboardDismissMode="on-drag"
             showsVerticalScrollIndicator={false}
           >
+          {/* Session Condition Tags */}
+          <SessionConditionStrip
+            selected={conditions}
+            onChange={setSessionConditions}
+          />
+
           {/* Boulder group cards */}
           {groups.map((group, index) => (
             <BoulderGroupCard
@@ -291,13 +300,20 @@ export default function ActiveSessionScreen() {
             onPress={handleAddZone}
             activeOpacity={0.8}
             style={{
-              borderColor: '#2C2C35',
-              backgroundColor: '#1E1E24',
+              borderColor: '#27272F',
+              backgroundColor: '#19191D',
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 8,
+              height: 44,
+              borderRadius: 8,
+              borderWidth: 1,
+              marginTop: 8,
             }}
-            className="flex-row items-center justify-center gap-2 h-[52px] rounded-2xl border border-dashed mt-2"
           >
-            <Plus size={18} color="#8E7CFF" strokeWidth={2.5} />
-            <Text className="text-white font-bold text-sm">Add Wall Zone</Text>
+            <Plus size={16} color="#555562" strokeWidth={2.5} />
+            <Text style={{ color: '#555562', fontWeight: '700', fontSize: 12, letterSpacing: 1.2 }}>ADD ZONE</Text>
           </TouchableOpacity>
         </ScrollView>
         </TouchableWithoutFeedback>

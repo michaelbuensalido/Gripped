@@ -30,6 +30,7 @@ export interface PoseTrackingState {
   landmarks: Record<string, LandmarkPoint>;
   isHandOnHold: boolean;
   activeHoldIntersections: number;
+  error?: string | null;
 }
 
 export interface TargetHold {
@@ -101,7 +102,7 @@ const isExpoGo =
 
 let visionCameraModule: typeof import('react-native-vision-camera') | null = null;
 let workletsModule: typeof import('react-native-worklets-core') | null = null;
-let nativePosePlugin: any = null;
+let detectPosePlugin: any = null;
 
 if (!isExpoGo) {
   try {
@@ -118,12 +119,10 @@ if (!isExpoGo) {
 
   if (visionCameraModule?.VisionCameraProxy?.initFrameProcessorPlugin) {
     try {
-      nativePosePlugin = visionCameraModule.VisionCameraProxy.initFrameProcessorPlugin(
-        'detectClimbingPose',
-        {}
-      );
+      // The @scottjgilroy plugin registers as 'detectPose'
+      detectPosePlugin = visionCameraModule.VisionCameraProxy.initFrameProcessorPlugin('detectPose', {});
     } catch {
-      nativePosePlugin = null;
+      detectPosePlugin = null;
     }
   }
 }
@@ -142,10 +141,11 @@ export function detectClimbingPose(frame: Frame): {
   landmarks: Record<string, LandmarkPoint>;
 } {
   'worklet';
-  if (nativePosePlugin == null) {
-    throw new Error('Native Frame Processor Plugin "detectClimbingPose" is not loaded.');
+  if (detectPosePlugin == null) {
+    throw new Error('Native Frame Processor Plugin "detectPose" is not loaded.');
   }
-  return nativePosePlugin.call(frame) as {
+  // The patched plugin returns exactly our expected format
+  return detectPosePlugin.call(frame) as {
     hasClimber: boolean;
     landmarks: Record<string, LandmarkPoint>;
   };
@@ -240,10 +240,10 @@ function useClimbingPoseTrackerNative({
       
       // Strict Core Anatomical Gate (prevent hallucinating skeletons on random walls)
       if (verifiedClimber) {
-        const lS = rawLandmarks.leftShoulder?.confidence >= 0.50;
-        const rS = rawLandmarks.rightShoulder?.confidence >= 0.50;
-        const lH = rawLandmarks.leftHip?.confidence >= 0.50;
-        const rH = rawLandmarks.rightHip?.confidence >= 0.50;
+        const lS = rawLandmarks.leftShoulder?.confidence >= 0.40;
+        const rS = rawLandmarks.rightShoulder?.confidence >= 0.40;
+        const lH = rawLandmarks.leftHip?.confidence >= 0.40;
+        const rH = rawLandmarks.rightHip?.confidence >= 0.40;
         
         // Must detect a stable torso (at least one shoulder and one hip with solid confidence)
         if (!(lS || rS) || !(lH || rH)) {
@@ -331,17 +331,24 @@ function useClimbingPoseTrackerNative({
       if (frameCount.value !== 0) return;
 
       try {
-        if (nativePosePlugin != null) {
-          const result = nativePosePlugin.call(frame) as {
-            hasClimber: boolean;
-            landmarks: Record<string, LandmarkPoint>;
+        if (detectPosePlugin != null) {
+          const result = detectPosePlugin.call(frame) as {
+            hasClimber?: boolean;
+            landmarks?: Record<string, LandmarkPoint>;
+            error?: string;
           };
+          if (result?.error) {
+            safeRunError(result.error);
+            return;
+          }
           if (!result || !result.hasClimber || !result.landmarks || Object.keys(result.landmarks).length === 0) {
             safeRunUpdate({}, false);
           } else {
             safeRunUpdate(result.landmarks, true);
           }
         }
+        // If detectPosePlugin is null, do nothing.
+        // The kinematic simulation fallback loop handles state updates instead.
       } catch (err: any) {
         safeRunError(err?.message ?? String(err));
       }
@@ -349,9 +356,24 @@ function useClimbingPoseTrackerNative({
     [enabled, frameCount, safeRunUpdate, safeRunError]
   );
 
-  // Simulation loop fallback if requested
+  // Auto-enable simulation when no native ML plugin is installed
+  const shouldSimulate = enableSimulatorSimulation || (detectPosePlugin == null);
+
+  useEffect(() => {
+    if (detectPosePlugin == null) {
+      console.warn(
+        '[PoseTracker] ⚠️  No native ML pose plugin found (detectPose).',
+        'Auto-enabling kinematic simulation fallback.',
+        'To enable real AI detection, install a VisionCamera Frame Processor Plugin with ML Kit Pose Detection.'
+      );
+    } else {
+      console.log('[PoseTracker] ✅ Native ML pose plugin loaded successfully.');
+    }
+  }, []);
+
+  // Simulation loop fallback if requested or if no ML plugin
   useSimulatorSimulation(
-    enabled && enableSimulatorSimulation,
+    enabled && shouldSimulate,
     updatePoseState,
     setPoseState,
     animationFrameRef
@@ -397,10 +419,10 @@ function useClimbingPoseTrackerExpoGo({
       
       // Strict Core Anatomical Gate (prevent hallucinating skeletons on random walls)
       if (verifiedClimber) {
-        const lS = rawLandmarks.leftShoulder?.confidence >= 0.50;
-        const rS = rawLandmarks.rightShoulder?.confidence >= 0.50;
-        const lH = rawLandmarks.leftHip?.confidence >= 0.50;
-        const rH = rawLandmarks.rightHip?.confidence >= 0.50;
+        const lS = rawLandmarks.leftShoulder?.confidence >= 0.40;
+        const rS = rawLandmarks.rightShoulder?.confidence >= 0.40;
+        const lH = rawLandmarks.leftHip?.confidence >= 0.40;
+        const rH = rawLandmarks.rightHip?.confidence >= 0.40;
         
         // Must detect a stable torso (at least one shoulder and one hip with solid confidence)
         if (!(lS || rS) || !(lH || rH)) {
@@ -473,9 +495,20 @@ function useClimbingPoseTrackerExpoGo({
     []
   );
 
+  // In Expo Go, always enable simulation since there's no native ML inference
+  const shouldSimulate = enableSimulatorSimulation || true;
+
+  useEffect(() => {
+    console.warn(
+      '[PoseTracker] Running in Expo Go — no native ML inference available.',
+      'Auto-enabling kinematic simulation fallback.',
+      'Build a dev client (npx expo run:ios) for real camera AI.'
+    );
+  }, []);
+
   // Simulation loop for testing & demo in Expo Go / simulator
   useSimulatorSimulation(
-    enabled && enableSimulatorSimulation,
+    enabled && shouldSimulate,
     updatePoseState,
     setPoseState,
     animationFrameRef

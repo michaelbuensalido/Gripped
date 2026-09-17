@@ -19,11 +19,23 @@ if (!isExpoGo) {
 }
 
 import React, { useState, useRef, useEffect } from 'react';
-import { View, Text, TouchableOpacity, Modal, StyleSheet, Dimensions } from 'react-native';
+import { View, Text, TouchableOpacity, Modal, StyleSheet, Dimensions, Platform } from 'react-native';
 import { VideoGradingService, GradingEvaluationResult, FramePoseSample } from '../../services/grading/videoGradingService';
 import { SkeletonOverlay, normalizeAspectFillKeypoints } from './SkeletonOverlay';
 import { useClimbingPoseTracker } from '../../hooks/useClimbingPoseTracker';
 import { triggerHaptic } from '../../utils/haptics';
+
+// Check if the native ML pose plugin was loaded (only in dev builds with the VisionCamera plugin)
+let nativePoseAvailable = false;
+if (!isExpoGo) {
+  try {
+    const vc = require('react-native-vision-camera');
+    if (vc?.VisionCameraProxy?.initFrameProcessorPlugin) {
+      const plugin = vc.VisionCameraProxy.initFrameProcessorPlugin('detectPose', {});
+      nativePoseAvailable = plugin != null;
+    }
+  } catch {}
+}
 
 export interface BetaCameraRecorderProps {
   visible: boolean;
@@ -126,39 +138,47 @@ export function BetaCameraRecorder({
 
   if (!visible) return null;
 
-  const validPoints = Object.entries(poseState.landmarks || {}).filter(([name, pt]) => pt.confidence >= 0.60);
-  const hasShoulder = validPoints.some(([name, pt]) => name.includes('shoulder'));
-  const hasHip = validPoints.some(([name, pt]) => name.includes('hip'));
-  const isClimberLocked = validPoints.length >= 8 && hasShoulder && hasHip;
+  const allPoints = Object.entries(poseState.landmarks || {});
+  const validPoints = allPoints.filter(([name, pt]) => pt.confidence >= 0.40);
+  const hasShoulder = validPoints.some(([name]) => name.includes('Shoulder') || name.includes('shoulder'));
+  const hasHip = validPoints.some(([name]) => name.includes('Hip') || name.includes('hip'));
+  const isClimberLocked = validPoints.length >= 5 && (hasShoulder || hasHip);
+  const avgConfidence = validPoints.length > 0
+    ? validPoints.reduce((acc, [, pt]) => acc + pt.confidence, 0) / validPoints.length
+    : 0;
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <View style={styles.container}>
-        {/* Top HUD Bar */}
-        <View style={styles.hudBar}>
+
+        {/* ── Hardware Top Strip ─────────────────────────────────── */}
+        <View style={styles.topStrip}>
+          {/* Left: dismiss */}
           <TouchableOpacity onPress={onClose} style={styles.dismissBtn}>
             <Text style={styles.dismissText}>✕</Text>
           </TouchableOpacity>
 
-          {isRecording ? (
-            <View style={styles.recordingPill}>
-              <View style={styles.dotRed} />
-              <Text style={styles.recordingText}>Recording Kinematics...</Text>
-            </View>
-          ) : isClimberLocked ? (
-            <View style={styles.lockedPill}>
-              <View style={styles.dotGreen} />
-              <Text style={styles.lockedText}>Climber Locked • Tracking Active</Text>
-            </View>
-          ) : (
-            <View style={styles.idlePill}>
-              <View style={styles.dotGray} />
-              <Text style={styles.idleText}>Looking for Climber...</Text>
-            </View>
-          )}
+          {/* Center: status text (monospaced, no pill background) */}
+          <View style={styles.statusGroup}>
+            {isRecording ? (
+              <Text style={styles.statusRec}>● REC</Text>
+            ) : isClimberLocked ? (
+              <Text style={styles.statusLocked}>◉ LOCKED</Text>
+            ) : (
+              <Text style={styles.statusIdle}>◎ STANDBY</Text>
+            )}
+            <Text style={styles.statusSub}>
+              {nativePoseAvailable ? 'ML KIT' : 'SIM'}
+              {'  '}
+              {(avgConfidence * 100).toFixed(0)}% CONF
+            </Text>
+          </View>
+
+          {/* Right: spacer to balance layout */}
+          <View style={{ width: 44 }} />
         </View>
 
-        {/* Camera Preview */}
+        {/* ── Camera Preview ─────────────────────────────────────── */}
         <View style={styles.cameraPreview}>
           {hasCameraPermission ? (
             !isExpoGo && device && VisionCamera ? (
@@ -179,11 +199,9 @@ export function BetaCameraRecorder({
               />
             )
           ) : (
-            <View style={[StyleSheet.absoluteFill, { backgroundColor: '#0A0A0E', alignItems: 'center', justifyContent: 'center', padding: 24 }]}>
-              <Text style={{ color: '#FFFFFF', fontSize: 16, fontWeight: '700', marginBottom: 8, textAlign: 'center' }}>
-                Camera & Microphone Required
-              </Text>
-              <Text style={{ color: '#8A8A98', fontSize: 13, marginBottom: 20, textAlign: 'center' }}>
+            <View style={[StyleSheet.absoluteFill, styles.permissionView]}>
+              <Text style={styles.permTitle}>Camera & Microphone Required</Text>
+              <Text style={styles.permSub}>
                 Enable permissions to record beta and track climbing sequences.
               </Text>
               <TouchableOpacity
@@ -191,29 +209,33 @@ export function BetaCameraRecorder({
                   await requestExpoCameraPerm();
                   await requestExpoMicroPerm();
                 }}
-                style={{ backgroundColor: '#8E7CFF', paddingHorizontal: 20, paddingVertical: 12, borderRadius: 14 }}
+                style={styles.permBtn}
               >
-                <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 14 }}>Enable Permissions</Text>
+                <Text style={styles.permBtnText}>ENABLE PERMISSIONS</Text>
               </TouchableOpacity>
             </View>
           )}
 
-          <SkeletonOverlay 
+          <SkeletonOverlay
             keypoints={
-              normalizeAspectFillKeypoints(
-                Object.entries(poseState.landmarks || {}).map(([name, pt]) => ({
-                  name, x: pt.x, y: pt.y, score: pt.confidence
-                })),
-                720, 1280,
-                screenWidth, screenHeight
-              )
+              nativePoseAvailable
+                ? normalizeAspectFillKeypoints(
+                    Object.entries(poseState.landmarks || {}).map(([name, pt]) => ({
+                      name, x: pt.x, y: pt.y, score: pt.confidence
+                    })),
+                    720, 1280,
+                    screenWidth, screenHeight
+                  )
+                : Object.entries(poseState.landmarks || {}).map(([name, pt]) => ({
+                    name, x: pt.x, y: pt.y, score: pt.confidence
+                  }))
             }
             containerWidth={screenWidth}
             containerHeight={screenHeight}
           />
         </View>
 
-        {/* Shutter controls */}
+        {/* ── Shutter ────────────────────────────────────────────── */}
         <View style={styles.shutterContainer}>
           <TouchableOpacity
             activeOpacity={0.8}
@@ -221,28 +243,30 @@ export function BetaCameraRecorder({
             style={[styles.outerRing, { borderColor: isRecording ? '#FF453A' : '#FFFFFF' }]}
           >
             <View style={[styles.innerCore, {
-              width: isRecording ? 28 : 62,
-              height: isRecording ? 28 : 62,
-              borderRadius: isRecording ? 6 : 31,
+              width: isRecording ? 26 : 60,
+              height: isRecording ? 26 : 60,
+              borderRadius: isRecording ? 6 : 30,
             }]} />
           </TouchableOpacity>
         </View>
 
-        {/* Error Card */}
+        {/* ── Rejection card ─────────────────────────────────────── */}
         {gradingResult && gradingResult.isValidClimb === false && (
           <View style={styles.rejectionOverlay}>
             <View style={styles.rejectionCard}>
-              <Text style={styles.rejectionTitle}>Invalid Beta Clip</Text>
+              <Text style={styles.rejectionTitle}>INVALID BETA CLIP</Text>
               <Text style={styles.rejectionMessage}>
-                {gradingResult.rejectionReason === 'NO_HUMAN_DETECTED' ? 'No climber detected. Frame the sequence clearly.' :
-                 gradingResult.rejectionReason === 'NO_VERTICAL_DISPLACEMENT' ? 'No significant climbing motion detected.' :
-                 'Clip too short. Record the full climb.'}
+                {gradingResult.rejectionReason === 'NO_HUMAN_DETECTED'
+                  ? 'No climber detected. Frame the sequence clearly.'
+                  : gradingResult.rejectionReason === 'NO_VERTICAL_DISPLACEMENT'
+                  ? 'No significant climbing motion detected.'
+                  : 'Clip too short. Record the full climb.'}
               </Text>
-              <TouchableOpacity 
-                onPress={() => setGradingResult(null)} 
+              <TouchableOpacity
+                onPress={() => setGradingResult(null)}
                 style={styles.rejectionBtn}
               >
-                <Text style={styles.rejectionBtnText}>Dismiss & Try Again</Text>
+                <Text style={styles.rejectionBtnText}>DISMISS & RETRY</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -255,14 +279,20 @@ export function BetaCameraRecorder({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#131316',
+    backgroundColor: '#111113',
   },
-  hudBar: {
-    paddingTop: 48,
+
+  // ── Top HUD Strip (full-width, no pills) ──────────────────────────────────
+  topStrip: {
+    paddingTop: 52,
+    paddingBottom: 10,
     paddingHorizontal: 16,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    backgroundColor: 'rgba(17, 17, 19, 0.92)',
+    borderBottomWidth: 1,
+    borderBottomColor: '#27272F',
     zIndex: 50,
     position: 'absolute',
     top: 0,
@@ -272,82 +302,102 @@ const styles = StyleSheet.create({
   dismissBtn: {
     width: 44,
     height: 44,
-    backgroundColor: 'rgba(30, 30, 36, 0.75)',
+    backgroundColor: '#19191D',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
-    borderRadius: 22,
+    borderColor: '#27272F',
+    borderRadius: 6,
     alignItems: 'center',
     justifyContent: 'center',
   },
   dismissText: {
-    color: '#FFFFFF',
-    fontSize: 20,
+    color: '#9090A0',
+    fontSize: 18,
     fontWeight: '600',
   },
-  recordingPill: {
-    backgroundColor: 'rgba(23, 23, 28, 0.9)',
-    borderWidth: 1,
-    borderColor: '#FF453A',
-    borderRadius: 16,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    flexDirection: 'row',
+  statusGroup: {
     alignItems: 'center',
-    gap: 6,
+    flex: 1,
+    gap: 2,
   },
-  recordingText: {
-    color: '#FFFFFF',
-    fontSize: 12,
+  statusRec: {
+    color: '#FF453A',
+    fontSize: 13,
     fontWeight: '700',
+    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+    letterSpacing: 1.6,
   },
-  lockedPill: {
-    backgroundColor: 'rgba(23, 23, 28, 0.9)',
-    borderWidth: 1,
-    borderColor: '#6EE756',
-    borderRadius: 16,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  lockedText: {
+  statusLocked: {
     color: '#6EE756',
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '700',
+    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+    letterSpacing: 1.2,
   },
-  idlePill: {
-    backgroundColor: 'rgba(23, 23, 28, 0.85)',
-    borderWidth: 1,
-    borderColor: '#2C2C35',
-    borderRadius: 16,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
+  statusIdle: {
+    color: '#555562',
+    fontSize: 13,
+    fontWeight: '700',
+    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+    letterSpacing: 1.2,
   },
-  idleText: {
-    color: '#8A8A98',
-    fontSize: 12,
-    fontWeight: '500',
+  statusSub: {
+    color: '#333340',
+    fontSize: 9,
+    fontWeight: '600',
+    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+    letterSpacing: 1.0,
   },
-  dotRed: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#FF453A' },
-  dotGreen: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#6EE756' },
-  dotGray: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#8A8A98' },
+
+  // ── Camera preview ─────────────────────────────────────────────────────────
   cameraPreview: {
     flex: 1,
   },
+
+  // ── Permission screen ──────────────────────────────────────────────────────
+  permissionView: {
+    backgroundColor: '#111113',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 24,
+  },
+  permTitle: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '700',
+    marginBottom: 8,
+    textAlign: 'center',
+    letterSpacing: -0.2,
+  },
+  permSub: {
+    color: '#9090A0',
+    fontSize: 13,
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  permBtn: {
+    backgroundColor: '#8E7CFF',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  permBtnText: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+    fontSize: 13,
+    letterSpacing: 0.8,
+  },
+
+  // ── Shutter ────────────────────────────────────────────────────────────────
   shutterContainer: {
     position: 'absolute',
-    bottom: 60,
+    bottom: 56,
     alignSelf: 'center',
     zIndex: 50,
   },
   outerRing: {
-    width: 78,
-    height: 78,
-    borderRadius: 39,
+    width: 76,
+    height: 76,
+    borderRadius: 38,
     borderWidth: 3,
     alignItems: 'center',
     justifyContent: 'center',
@@ -355,43 +405,46 @@ const styles = StyleSheet.create({
   innerCore: {
     backgroundColor: '#FF453A',
   },
+
+  // ── Rejection card ─────────────────────────────────────────────────────────
   rejectionOverlay: {
     position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.78)',
+    backgroundColor: 'rgba(0, 0, 0, 0.80)',
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 20,
     zIndex: 100,
   },
   rejectionCard: {
-    backgroundColor: '#1E1E24',
-    borderColor: '#2C2C35',
+    backgroundColor: '#19191D',
+    borderColor: '#27272F',
     borderWidth: 1,
-    borderRadius: 20,
+    borderRadius: 12,
     padding: 20,
     width: '100%',
     maxWidth: 360,
     alignItems: 'center',
+    gap: 12,
   },
   rejectionTitle: {
     color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '700',
-    marginBottom: 10,
+    fontSize: 13,
+    fontWeight: '800',
+    letterSpacing: 1.4,
+    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
   },
   rejectionMessage: {
-    color: '#9A9AA6',
+    color: '#9090A0',
     fontSize: 13,
     textAlign: 'center',
-    marginBottom: 20,
   },
   rejectionBtn: {
-    backgroundColor: '#2C2C35',
-    borderRadius: 12,
+    backgroundColor: '#27272F',
+    borderRadius: 8,
     paddingVertical: 10,
     paddingHorizontal: 20,
     alignSelf: 'stretch',
@@ -399,7 +452,9 @@ const styles = StyleSheet.create({
   },
   rejectionBtnText: {
     color: '#FFFFFF',
-    fontSize: 13,
-    fontWeight: '600',
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: 1.0,
   },
 });
+

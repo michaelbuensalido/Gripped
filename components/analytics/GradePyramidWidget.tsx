@@ -115,7 +115,7 @@ export function GradePyramidWidget({
                     </Text>
                   </View>
 
-                  {/* Center: Horizontal Stacked Bar (Height 16pt, background #17171C, rounded-md) */}
+                  {/* Center: Horizontal Stacked Bar (Height 16pt, background #1A1A20, rounded-md) */}
                   <View style={styles.barTrackContainer}>
                     {hasActivity ? (
                       <View
@@ -257,7 +257,7 @@ const styles = StyleSheet.create({
   barTrackContainer: {
     flex: 1,
     height: 16,
-    backgroundColor: '#17171C',
+    backgroundColor: '#1A1A20',
     borderRadius: 6,
     overflow: 'hidden',
     justifyContent: 'center',
@@ -274,7 +274,7 @@ const styles = StyleSheet.create({
   },
   emptyTrack: {
     height: 2,
-    backgroundColor: '#22222A',
+    backgroundColor: '#1A1A20',
     borderRadius: 1,
     width: '100%',
   },

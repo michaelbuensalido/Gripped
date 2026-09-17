@@ -50,7 +50,7 @@ const SKELETON_CONNECTIONS: [string, string][] = [
 ];
 
 const CONTACT_POINTS = new Set(['leftWrist', 'rightWrist', 'leftAnkle', 'rightAnkle']);
-const MIN_CONFIDENCE = 0.60;
+const MIN_CONFIDENCE = 0.40;
 
 interface Props {
   keypoints: Keypoint[];
