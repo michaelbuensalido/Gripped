@@ -1,140 +1,120 @@
-import { ViewStyle, TextStyle } from 'react-native';
+import { ViewStyle, TextStyle, Platform } from 'react-native';
 
 /**
- * Antigravity Neo-Tactile Dark Mode Design Tokens
- * 1:1 System standard aligned with Home and Progress reference screens.
+ * CruxLog Industrial Tactile Design Tokens
+ * Dieter Rams / Teenage Engineering ledger aesthetic.
+ * No gradients. No glows. Function over decoration.
  */
 export const THEME_COLORS = {
   // Background & Surfaces
-  bgMat: '#131316',
-  cardSurface: 'rgba(30, 30, 36, 0.68)',
-  cardSurfaceHero: 'rgba(32, 32, 40, 0.75)',
-  cardSurfaceAlt: 'rgba(36, 36, 44, 0.65)',
-  cardBorder: 'rgba(255, 255, 255, 0.09)',
-  cardBorderSubtle: 'rgba(255, 255, 255, 0.05)',
+  bgMat: '#111113',
+  cardSurface: '#19191D',
+  cardSurfaceHero: '#19191D',
+  cardSurfaceAlt: '#141417',
+  cardBorder: '#27272F',
+  cardBorderSubtle: '#222229',
 
-  // Brand & Accent
+  // Brand & Accent — used for STATE only, never decoration
   lavender: '#8E7CFF',
   brandAccent: '#8E7CFF',
 
   // Outcomes & Status
   flashGreen: '#6EE756',
   softCream: '#E8DEB5',
-  mutedFail: '#484852',
-  error: '#EF4444',
+  mutedFail: '#3E3E48',
+  error: '#FF453A',
 
   // Typography & Text
   textPrimary: '#FFFFFF',
-  textSecondary: '#9A9AA6',
-  sectionHeader: '#8A8A98',
-  textDark: '#111115',
+  textSecondary: '#9090A0',
+  sectionHeader: '#9090A0',
+  textDim: '#555562',
+  textDark: '#111113',
   white: '#FFFFFF',
 
-  // Backward compatibility alias
-  sublabelGray: '#8A8A98',
+  // Backward compatibility aliases
+  sublabelGray: '#9090A0',
 };
 
-/** Standard Floating Card anatomy: Glassy translucent card with subtle light-catching border */
+/** Standard Flat Surface Card — no glows, no glass. Solid and honest. */
 export const FLOATING_CARD_STYLE: ViewStyle = {
-  backgroundColor: 'rgba(30, 30, 36, 0.68)',
-  borderColor: 'rgba(255, 255, 255, 0.09)',
-  borderTopColor: 'rgba(255, 255, 255, 0.16)',
+  backgroundColor: '#19191D',
+  borderColor: '#27272F',
   borderWidth: 1,
-  borderRadius: 20,
-  shadowColor: '#000000',
-  shadowOffset: { width: 0, height: 4 },
-  shadowOpacity: 0.4,
-  shadowRadius: 10,
-  elevation: 5,
+  borderRadius: 12,
 };
 
-/** Elevated Hero Card anatomy: Glassy translucent hero card with top highlight */
+/** Elevated Hero Card — same flat treatment, slightly inset bg */
 export const FLOATING_CARD_HERO_STYLE: ViewStyle = {
-  backgroundColor: 'rgba(32, 32, 40, 0.75)',
-  borderColor: 'rgba(255, 255, 255, 0.10)',
-  borderTopColor: 'rgba(255, 255, 255, 0.20)',
+  backgroundColor: '#19191D',
+  borderColor: '#27272F',
   borderWidth: 1,
-  borderRadius: 24,
-  shadowColor: '#000000',
-  shadowOffset: { width: 0, height: 6 },
-  shadowOpacity: 0.45,
-  shadowRadius: 12,
-  elevation: 6,
+  borderRadius: 12,
 };
 
 /** Floating Island for navigation capsule */
 export const FLOATING_ISLAND_STYLE: ViewStyle = {
-  backgroundColor: 'rgba(22, 22, 28, 0.92)',
-  borderColor: '#2C2C35',
+  backgroundColor: 'rgba(17, 17, 19, 0.95)',
+  borderColor: '#27272F',
   borderWidth: 1,
-  shadowColor: '#000000',
-  shadowOffset: { width: 0, height: 6 },
-  shadowOpacity: 0.45,
-  shadowRadius: 12,
-  elevation: 8,
 };
 
-/** Grade Badge Pill: Solid Lime Green #6EE756 with dark bold #111115 text */
+/** Grade Badge Pill: Sharp lime border, no solid fill */
 export const GRADE_BADGE_CONTAINER_STYLE: ViewStyle = {
-  backgroundColor: '#6EE756',
-  borderRadius: 12,
-  paddingHorizontal: 12,
-  paddingVertical: 3.5,
+  backgroundColor: '#141417',
+  borderRadius: 6,
+  paddingHorizontal: 10,
+  paddingVertical: 3,
   alignSelf: 'flex-start',
-  shadowColor: '#6EE756',
-  shadowOffset: { width: 0, height: 2 },
-  shadowOpacity: 0.35,
-  shadowRadius: 6,
-  elevation: 3,
+  borderWidth: 1,
+  borderColor: '#6EE756',
 };
 
 export const GRADE_BADGE_TEXT_STYLE: TextStyle = {
-  color: '#111115',
-  fontSize: 13,
+  color: '#6EE756',
+  fontSize: 12,
   fontWeight: '700',
   letterSpacing: 0.5,
 };
 
-/** Primary Action Button Style: 50-52pt height, Lavender #8E7CFF, bold white */
+/** Primary Action Button — solid rectangle, no glow shadow */
 export const PRIMARY_BUTTON_STYLE: ViewStyle = {
   backgroundColor: '#8E7CFF',
-  height: 52,
-  borderRadius: 26,
+  height: 44,
+  borderRadius: 8,
   flexDirection: 'row',
   alignItems: 'center',
   justifyContent: 'center',
-  shadowColor: '#8E7CFF',
-  shadowOffset: { width: 0, height: 4 },
-  shadowOpacity: 0.4,
-  shadowRadius: 10,
-  elevation: 5,
 };
 
 export const PRIMARY_BUTTON_TEXT_STYLE: TextStyle = {
   color: '#FFFFFF',
-  fontSize: 15,
+  fontSize: 14,
   fontWeight: '700',
   letterSpacing: 0.5,
 };
 
+/** Monospace clock font — for elapsed timer display */
+export const MONO_FONT_FAMILY = Platform.OS === 'ios' ? 'Menlo' : 'monospace';
+
 /** Typography Presets */
 export const SCREEN_TITLE_STYLE: TextStyle = {
   color: '#FFFFFF',
-  fontSize: 34,
+  fontSize: 28,
   fontWeight: '700',
   letterSpacing: -0.5,
 };
 
 export const SCREEN_SUBTITLE_STYLE: TextStyle = {
-  color: '#9A9AA6',
+  color: '#9090A0',
   fontSize: 14,
   fontWeight: '400',
   marginTop: 4,
 };
 
 export const SECTION_HEADER_STYLE: TextStyle = {
-  color: '#8A8A98',
-  fontSize: 12,
+  color: '#9090A0',
+  fontSize: 11,
   fontWeight: '700',
   letterSpacing: 1.2,
   textTransform: 'uppercase',

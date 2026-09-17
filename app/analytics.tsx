@@ -1,14 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import {
-  View,
-  Text,
-  ScrollView,
-  TouchableOpacity,
-  StyleSheet,
-  ImageBackground,
-  Modal,
-  TouchableWithoutFeedback,
-} from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Modal, TouchableWithoutFeedback, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { Check, Settings as SettingsIcon } from 'lucide-react-native';
@@ -21,6 +12,7 @@ import {
   getRecentOutcomesSummary,
   getGradeVolumeEqualizerData,
   getAngleMasteryBreakdown,
+  getFailureBreakdown,
   type GradePyramidDataRow,
   type WeeklyVolumeTrendsData,
   type WallAngleBreakdownItem,
@@ -29,11 +21,13 @@ import {
   type RecentBoulderLog,
   type RecentOutcomesSummaryData,
   type GradeVolumeEqualizerData,
+  type FailureBreakdownData,
 } from '../db/queries';
 import { OutcomeRingGauge } from '../components/analytics/OutcomeRingGauge';
 import { BentoMetricRow } from '../components/analytics/BentoMetricRow';
 import { GradePyramidWidget } from '../components/analytics/GradePyramidWidget';
 import { AngleMasteryWidget } from '../components/analytics/AngleMasteryWidget';
+import { FailureBreakdownWidget } from '../components/analytics/FailureBreakdownWidget';
 import { ClimbingHoldGraphic, type HoldType } from '../components/ui/ClimbingHoldGraphic';
 import { ScreenContainer } from '../components/ui/ScreenContainer';
 import { triggerHaptic } from '../utils/haptics';
@@ -50,13 +44,7 @@ interface DisplayRoute {
 }
 
 const HOLD_TYPE_LIST: HoldType[] = [
-  'ripple-effect',
-  'slab-rise',
-  'kars-sloper',
-  'poly-edge',
-  'purple-sloper',
-  'yellow-jug',
-  'orange-facet',
+  'ripple-effect', 'slab-rise', 'kars-sloper', 'poly-edge', 'purple-sloper', 'yellow-jug', 'orange-facet',
 ];
 
 export default function AnalyticsScreen() {
@@ -65,7 +53,6 @@ export default function AnalyticsScreen() {
   const [timeframe, setTimeframe] = useState<TimeframeOption>('weekly');
   const [isTimeframeModalVisible, setIsTimeframeModalVisible] = useState<boolean>(false);
 
-  // Data States
   const [outcomesSummary, setOutcomesSummary] = useState<RecentOutcomesSummaryData | null>(null);
   const [gradeEqualizer, setGradeEqualizer] = useState<GradeVolumeEqualizerData | null>(null);
   const [pyramidData, setPyramidData] = useState<GradePyramidDataRow[]>([]);
@@ -74,13 +61,12 @@ export default function AnalyticsScreen() {
   const [angleMasteryData, setAngleMasteryData] = useState<AngleMasteryItem[]>([]);
   const [overview, setOverview] = useState<AnalyticsOverview | null>(null);
   const [recentLogs, setRecentLogs] = useState<RecentBoulderLog[]>([]);
+  const [failureBreakdown, setFailureBreakdown] = useState<FailureBreakdownData | null>(null);
 
   const loadAnalytics = useCallback((tf: TimeframeOption) => {
     let sinceTimestamp: number | undefined;
     const now = Date.now();
-
-    const queryTf: '30d' | '90d' | 'all' =
-      tf === 'weekly' ? '30d' : tf === 'monthly' ? '30d' : 'all';
+    const queryTf: '30d' | '90d' | 'all' = tf === 'weekly' ? '30d' : tf === 'monthly' ? '30d' : 'all';
 
     if (tf === 'weekly') {
       sinceTimestamp = now - 7 * 24 * 60 * 60 * 1000;
@@ -97,6 +83,7 @@ export default function AnalyticsScreen() {
       setAngleMasteryData(getAngleMasteryBreakdown(queryTf));
       setOverview(getAnalyticsOverview(sinceTimestamp));
       setRecentLogs(getRecentBoulderLogs(6));
+      setFailureBreakdown(getFailureBreakdown(sinceTimestamp));
     } catch (err) {
       console.error('Failed to load analytics data:', err);
     }
@@ -115,12 +102,7 @@ export default function AnalyticsScreen() {
     loadAnalytics(tf);
   };
 
-  const timeframeLabel =
-    timeframe === 'weekly'
-      ? 'Weekly ⌵'
-      : timeframe === 'monthly'
-      ? 'Monthly ⌵'
-      : 'All-Time ⌵';
+  const timeframeLabel = timeframe === 'weekly' ? 'Weekly ⌵' : timeframe === 'monthly' ? 'Monthly ⌵' : 'All-Time ⌵';
 
   const displayRoutes: DisplayRoute[] = recentLogs.map((log, index) => {
     const d = new Date(log.timestamp);
@@ -143,91 +125,70 @@ export default function AnalyticsScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{
           paddingHorizontal: 16,
-          paddingTop: 8,
-          paddingBottom: 180,
+          paddingTop: 48,
+          paddingBottom: 120,
         }}
       >
-        {/* ── Top Header Row: Title + Timeframe Dropdown + Settings Gear ── */}
-        <View style={styles.headerRow}>
-          <View style={styles.titleContainer}>
-            <Text style={styles.screenTitle}>Analytics &</Text>
-            <Text style={styles.screenTitle}>Report</Text>
-            <View style={styles.volumeBadge}>
-              <Text style={styles.volumeBadgeText}>
-                {gradeEqualizer?.totalSends ?? overview?.totalSends ?? 24} Sends{' '}
-                {timeframe === 'weekly' ? 'this week' : timeframe === 'monthly' ? 'this month' : 'all-time'}{' '}
-                • {gradeEqualizer?.trendLabel ?? '▲ 15%'}
-              </Text>
-            </View>
-          </View>
+        {/* Header Row */}
+        <View className="flex-row items-center justify-between mb-4">
+          <Text className="text-[24px] font-bold text-white tracking-[-0.8px]" numberOfLines={1}>
+            Analytics & Report
+          </Text>
 
-          <View style={styles.headerActions}>
+          <View className="flex-row items-center gap-2">
             <TouchableOpacity
               activeOpacity={0.8}
-              onPress={() => {
-                triggerHaptic('light');
-                setIsTimeframeModalVisible(true);
-              }}
-              style={styles.dropdownPill}
+              onPress={() => { triggerHaptic('light'); setIsTimeframeModalVisible(true); }}
+              className="bg-[#1E1E24] border border-[#2C2C35] rounded-full px-3.5 py-2 items-center justify-center"
             >
-              <Text style={styles.dropdownPillText}>{timeframeLabel}</Text>
+              <Text className="text-white text-[13px] font-semibold">{timeframeLabel}</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
               activeOpacity={0.8}
-              onPress={() => {
-                triggerHaptic('light');
-                router.push('/settings');
-              }}
-              style={styles.settingsButton}
+              onPress={() => { triggerHaptic('light'); router.push('/settings'); }}
+              className="w-[40px] h-[40px] bg-[#19191D] border border-[#27272F] rounded-xl items-center justify-center"
             >
-              <SettingsIcon size={20} color="#9A9AA6" />
+              <SettingsIcon size={20} color="#9090A0" />
             </TouchableOpacity>
           </View>
         </View>
 
-        {/* ── 3. Hero Card: Send Outcome Ring Gauge ─────────── */}
+        {/* Hero Card */}
         {outcomesSummary && (
-          <View style={styles.heroCardMargin}>
+          <View className="mb-0">
             <OutcomeRingGauge data={outcomesSummary} />
           </View>
         )}
 
-        {/* ── 4. 2-Column Middle Bento Row ──────────────────── */}
-        <BentoMetricRow
-          peakGrade={overview?.hardestSend}
-          flashRate={overview?.flashRate ?? 38}
-        />
+        <BentoMetricRow peakGrade={overview?.hardestSend} flashRate={overview?.flashRate ?? 38} />
 
-        {/* ── Section Divider: Detailed Analytical Breakdown ─── */}
-        <View style={styles.sectionDivider}>
-          <Text style={styles.sectionDividerText}>DETAILED PERFORMANCE</Text>
-          <View style={styles.sectionDividerLine} />
+        {/* Section Divider */}
+        <View className="flex-row items-center gap-3 mt-7 mb-4">
+          <Text className="text-[#8A8A98] text-[11px] font-bold tracking-[1px]">DETAILED PERFORMANCE</Text>
+          <View className="flex-1 h-[1px] bg-[#2C2C35]" />
         </View>
 
-        {/* ── Historical Grade Pyramid Widget ───────────────── */}
-        <View style={styles.widgetMargin}>
-          <GradePyramidWidget
-            data={pyramidData}
-            title={timeframe === 'all' ? 'ALL-TIME GRADE PYRAMID' : 'GRADE PYRAMID'}
-          />
+        <View className="mb-4">
+          <GradePyramidWidget data={pyramidData} title={timeframe === 'all' ? 'ALL-TIME GRADE PYRAMID' : 'GRADE PYRAMID'} />
         </View>
 
-        {/* ── Terrain & Angle Mastery Widget ─────────────── */}
-        <View style={styles.widgetMargin}>
+        <View className="mb-4">
           <AngleMasteryWidget data={angleMasteryData} />
         </View>
 
-        {/* ── Recent Sends Activity Feed ────────────────────── */}
-        <View style={styles.recentSection}>
-          <Text style={styles.recentSectionTitle}>RECENT SENDS</Text>
-          <View style={styles.recentListCard}>
+        <View className="mb-4">
+          <FailureBreakdownWidget data={failureBreakdown} />
+        </View>
+
+        {/* Recent Sends Ledger */}
+        <View className="mt-2">
+          <Text className="text-[#8A8A98] text-[12px] font-bold tracking-[0.8px] mb-2.5 uppercase">RECENT SENDS</Text>
+          <View className="bg-[#19191D] border border-[#27272F] rounded-xl overflow-hidden">
             {displayRoutes.length === 0 ? (
-              <View style={styles.emptyRecent}>
-                <Text style={styles.emptyTitle}>No climbs logged yet</Text>
-                <Text style={styles.emptySubtitle}>
-                  Completed boulders from your sessions will appear here.
-                </Text>
+              <View className="items-center p-8">
+                <Text className="text-white text-[14px] font-bold mb-1.5">No climbs logged yet</Text>
+                <Text className="text-[#8A8A98] text-[12px] text-center">Completed boulders from your sessions will appear here.</Text>
               </View>
             ) : (
               displayRoutes.map((route, idx) => {
@@ -236,33 +197,19 @@ export default function AnalyticsScreen() {
                 const badgeColor = isFlash ? '#6EE756' : '#8E7CFF';
 
                 return (
-                  <View
-                    key={route.id}
-                    style={[
-                      styles.routeRow,
-                      isLast && { borderBottomWidth: 0 },
-                    ]}
-                  >
-                    <View style={styles.holdThumb}>
-                      <ClimbingHoldGraphic
-                        type={route.holdType}
-                        size={44}
-                        borderRadius={12}
-                      />
+                  <View key={route.id} className={`flex-row items-center px-4 py-3 ${!isLast ? 'border-b border-[#22222A]' : ''}`}>
+                    <View className="w-[44px] h-[44px] rounded-xl bg-[#131316] border border-[#2C2C35] items-center justify-center overflow-hidden">
+                      <ClimbingHoldGraphic type={route.holdType} size={44} borderRadius={12} />
                     </View>
 
-                    <View style={styles.routeDetails}>
-                      <Text style={styles.routeTitle} numberOfLines={1}>
-                        {route.title}
-                      </Text>
-                      <Text style={styles.routeGrade}>{route.grade}</Text>
+                    <View className="flex-1 ml-3">
+                      <Text className="text-white text-[13px] font-bold mb-1" numberOfLines={1}>{route.title}</Text>
+                      <Text className="text-[#8A8A98] text-[12px] font-semibold">{route.grade}</Text>
                     </View>
 
-                    <View style={styles.routeMeta}>
-                      <Text style={[styles.routeBadge, { color: badgeColor }]}>
-                        {route.outcome}
-                      </Text>
-                      <Text style={styles.routeDate}>{route.date}</Text>
+                    <View className="items-end">
+                      <Text className="text-[12px] font-bold mb-1" style={{ color: badgeColor, fontVariant: ['tabular-nums'] }}>{route.outcome}</Text>
+                      <Text className="text-[#8A8A98] text-[11px] font-medium" style={{ fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace' }}>{route.date}</Text>
                     </View>
                   </View>
                 );
@@ -272,116 +219,39 @@ export default function AnalyticsScreen() {
         </View>
       </ScrollView>
 
-      {/* ── Timeframe Selector Bottom Sheet Modal ─────────── */}
-      <Modal
-        visible={isTimeframeModalVisible}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setIsTimeframeModalVisible(false)}
-      >
+      {/* Timeframe Selector Modal */}
+      <Modal visible={isTimeframeModalVisible} transparent animationType="fade" onRequestClose={() => setIsTimeframeModalVisible(false)}>
         <TouchableWithoutFeedback onPress={() => setIsTimeframeModalVisible(false)}>
-          <View style={styles.modalBackdrop}>
+          <View className="flex-1 bg-black/75 justify-end">
             <TouchableWithoutFeedback onPress={(e) => e.stopPropagation()}>
-              <View
-                style={[
-                  styles.bottomSheetSurface,
-                  { paddingBottom: Math.max(insets.bottom + 20, 32) },
-                ]}
-              >
-                {/* Grab Handle */}
-                <View style={styles.sheetHandle} />
+              <View className="bg-[#1E1E24] rounded-t-[28px] border border-[#2C2C35] p-6" style={{ paddingBottom: Math.max(insets.bottom + 20, 32) }}>
+                <View className="w-[36px] h-[4px] rounded-full bg-[#3E3E4D] self-center mb-4" />
+                <Text className="text-white text-[18px] font-bold mb-1">Select Timeframe</Text>
+                <Text className="text-[#8A8A98] text-[13px] font-medium mb-5">Choose the analysis window for your climbing metrics</Text>
 
-                <Text style={styles.sheetTitle}>Select Timeframe</Text>
-                <Text style={styles.sheetSubtitle}>
-                  Choose the analysis window for your climbing metrics
-                </Text>
-
-                {/* Option 1: Weekly */}
-                <TouchableOpacity
-                  activeOpacity={0.8}
-                  onPress={() => handleTimeframeSelect('weekly')}
-                  style={[
-                    styles.sheetOptionRow,
-                    timeframe === 'weekly' && styles.sheetOptionRowActive,
-                  ]}
-                >
-                  <View>
-                    <Text
-                      style={[
-                        styles.optionTitle,
-                        timeframe === 'weekly' && styles.optionTitleActive,
-                      ]}
+                {['weekly', 'monthly', 'all'].map((tf) => {
+                  const isActive = timeframe === tf;
+                  const label = tf === 'weekly' ? 'Weekly' : tf === 'monthly' ? 'Monthly' : 'All-Time';
+                  const desc = tf === 'weekly' ? 'Sunday to Saturday capsule volume & daily trends' : tf === 'monthly' ? 'Trailing 30-day send metrics and consistency' : 'Full climbing career send pyramid and lifetime stats';
+                  return (
+                    <TouchableOpacity
+                      key={tf}
+                      activeOpacity={0.8}
+                      onPress={() => handleTimeframeSelect(tf as TimeframeOption)}
+                      className={`flex-row items-center justify-between bg-[#131316] border rounded-2xl p-4 mb-2.5 ${isActive ? 'border-[#6EE756] bg-[#6ee756]/5' : 'border-[#2C2C35]'}`}
                     >
-                      Weekly
-                    </Text>
-                    <Text style={styles.optionSubtitle}>
-                      Sunday to Saturday capsule volume & daily trends
-                    </Text>
-                  </View>
-                  {timeframe === 'weekly' && (
-                    <View style={styles.activeCheckCircle}>
-                      <Check size={14} color="#131316" strokeWidth={3} />
-                    </View>
-                  )}
-                </TouchableOpacity>
-
-                {/* Option 2: Monthly */}
-                <TouchableOpacity
-                  activeOpacity={0.8}
-                  onPress={() => handleTimeframeSelect('monthly')}
-                  style={[
-                    styles.sheetOptionRow,
-                    timeframe === 'monthly' && styles.sheetOptionRowActive,
-                  ]}
-                >
-                  <View>
-                    <Text
-                      style={[
-                        styles.optionTitle,
-                        timeframe === 'monthly' && styles.optionTitleActive,
-                      ]}
-                    >
-                      Monthly
-                    </Text>
-                    <Text style={styles.optionSubtitle}>
-                      Trailing 30-day send metrics and consistency
-                    </Text>
-                  </View>
-                  {timeframe === 'monthly' && (
-                    <View style={styles.activeCheckCircle}>
-                      <Check size={14} color="#131316" strokeWidth={3} />
-                    </View>
-                  )}
-                </TouchableOpacity>
-
-                {/* Option 3: All-Time */}
-                <TouchableOpacity
-                  activeOpacity={0.8}
-                  onPress={() => handleTimeframeSelect('all')}
-                  style={[
-                    styles.sheetOptionRow,
-                    timeframe === 'all' && styles.sheetOptionRowActive,
-                  ]}
-                >
-                  <View>
-                    <Text
-                      style={[
-                        styles.optionTitle,
-                        timeframe === 'all' && styles.optionTitleActive,
-                      ]}
-                    >
-                      All-Time
-                    </Text>
-                    <Text style={styles.optionSubtitle}>
-                      Full climbing career send pyramid and lifetime stats
-                    </Text>
-                  </View>
-                  {timeframe === 'all' && (
-                    <View style={styles.activeCheckCircle}>
-                      <Check size={14} color="#131316" strokeWidth={3} />
-                    </View>
-                  )}
-                </TouchableOpacity>
+                      <View>
+                        <Text className={`text-[15px] font-bold mb-1 ${isActive ? 'text-[#6EE756]' : 'text-white'}`}>{label}</Text>
+                        <Text className="text-[#8A8A98] text-[12px] font-medium">{desc}</Text>
+                      </View>
+                      {isActive && (
+                        <View className="w-[24px] h-[24px] rounded-full bg-[#6EE756] items-center justify-center">
+                          <Check size={14} color="#131316" strokeWidth={3} />
+                        </View>
+                      )}
+                    </TouchableOpacity>
+                  );
+                })}
               </View>
             </TouchableWithoutFeedback>
           </View>
@@ -390,248 +260,3 @@ export default function AnalyticsScreen() {
     </ScreenContainer>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#131316',
-  },
-  headerRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    justifyContent: 'space-between',
-    paddingTop: 8,
-    paddingBottom: 16,
-  },
-  titleContainer: {
-    flex: 1,
-    paddingRight: 8,
-  },
-  screenTitle: {
-    fontSize: 28,
-    fontWeight: '800',
-    color: '#FFFFFF',
-    letterSpacing: -0.8,
-    lineHeight: 32,
-  },
-  volumeBadge: {
-    backgroundColor: 'rgba(142, 124, 255, 0.12)',
-    borderColor: 'rgba(142, 124, 255, 0.25)',
-    borderWidth: 1,
-    borderRadius: 12,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    marginTop: 6,
-    alignSelf: 'flex-start',
-  },
-  volumeBadgeText: {
-    color: '#8E7CFF',
-    fontSize: 12,
-    fontWeight: '700',
-    letterSpacing: 0.2,
-  },
-  headerActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  dropdownPill: {
-    backgroundColor: '#1E1E24',
-    borderWidth: 1,
-    borderColor: '#2C2C35',
-    borderRadius: 999,
-    paddingHorizontal: 14,
-    paddingVertical: 9,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  dropdownPillText: {
-    color: '#FFFFFF',
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  settingsButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#1E1E24',
-    borderWidth: 1,
-    borderColor: '#2C2C35',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  heroCardMargin: {
-    marginBottom: 0,
-  },
-  sectionDivider: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 28,
-    marginBottom: 16,
-    gap: 12,
-  },
-  sectionDividerText: {
-    color: '#8A8A98',
-    fontSize: 11,
-    fontWeight: '800',
-    letterSpacing: 1,
-  },
-  sectionDividerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: '#2C2C35',
-  },
-  widgetMargin: {
-    marginBottom: 16,
-  },
-  recentSection: {
-    marginTop: 8,
-  },
-  recentSectionTitle: {
-    color: '#8A8A98',
-    fontSize: 12,
-    fontWeight: '800',
-    letterSpacing: 0.8,
-    marginBottom: 10,
-    textTransform: 'uppercase',
-  },
-  recentListCard: {
-    backgroundColor: '#1E1E24',
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: '#2C2C35',
-    overflow: 'hidden',
-  },
-  emptyRecent: {
-    padding: 32,
-    alignItems: 'center',
-  },
-  emptyTitle: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '700',
-    marginBottom: 6,
-  },
-  emptySubtitle: {
-    color: '#8A8A98',
-    fontSize: 12,
-    textAlign: 'center',
-  },
-  routeRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#2C2C35',
-    gap: 12,
-  },
-  holdThumb: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    backgroundColor: '#131316',
-    borderWidth: 1,
-    borderColor: '#2C2C35',
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'hidden',
-  },
-  routeDetails: {
-    flex: 1,
-  },
-  routeTitle: {
-    color: '#FFFFFF',
-    fontSize: 13,
-    fontWeight: '700',
-    marginBottom: 3,
-  },
-  routeGrade: {
-    color: '#8A8A98',
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  routeMeta: {
-    alignItems: 'flex-end',
-  },
-  routeBadge: {
-    fontSize: 12,
-    fontWeight: '800',
-    marginBottom: 3,
-  },
-  routeDate: {
-    color: '#8A8A98',
-    fontSize: 11,
-    fontWeight: '500',
-  },
-  modalBackdrop: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.75)',
-    justifyContent: 'flex-end',
-  },
-  bottomSheetSurface: {
-    backgroundColor: '#1E1E24',
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    borderWidth: 1,
-    borderColor: '#2C2C35',
-    padding: 22,
-  },
-  sheetHandle: {
-    width: 36,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: '#3E3E4D',
-    alignSelf: 'center',
-    marginBottom: 16,
-  },
-  sheetTitle: {
-    color: '#FFFFFF',
-    fontSize: 18,
-    fontWeight: '800',
-    marginBottom: 4,
-  },
-  sheetSubtitle: {
-    color: '#8A8A98',
-    fontSize: 13,
-    fontWeight: '500',
-    marginBottom: 20,
-  },
-  sheetOptionRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: '#131316',
-    borderWidth: 1,
-    borderColor: '#2C2C35',
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 10,
-  },
-  sheetOptionRowActive: {
-    borderColor: '#6EE756',
-    backgroundColor: 'rgba(110, 231, 86, 0.05)',
-  },
-  optionTitle: {
-    color: '#FFFFFF',
-    fontSize: 15,
-    fontWeight: '700',
-    marginBottom: 3,
-  },
-  optionTitleActive: {
-    color: '#6EE756',
-  },
-  optionSubtitle: {
-    color: '#8A8A98',
-    fontSize: 12,
-    fontWeight: '500',
-  },
-  activeCheckCircle: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: '#6EE756',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-});

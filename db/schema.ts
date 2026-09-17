@@ -129,6 +129,9 @@ function runMigrations(db: SQLite.SQLiteDatabase): void {
   try {
     db.execSync("ALTER TABLE sessions ADD COLUMN media_uris TEXT NOT NULL DEFAULT '[]';");
   } catch {}
+  try {
+    db.execSync("ALTER TABLE sessions ADD COLUMN conditions TEXT NOT NULL DEFAULT '[]';");
+  } catch {}
 }
 
 export async function initializeDatabase(): Promise<void> {

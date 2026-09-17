@@ -191,7 +191,7 @@ export default function HomeScreen() {
         contentContainerStyle={{
           paddingHorizontal: 16,
           paddingTop: 8,
-          paddingBottom: 160,
+          paddingBottom: 120,
         }}
       >
         {/* ── 1. Top User Bar ────────────────────────────────── */}
