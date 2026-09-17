@@ -1,4 +1,4 @@
-# CruxLog 🧗
+# CruxLog 
 
 CruxLog is a mat-ready, tactile climbing and bouldering ledger. It is designed to track sessions, hangboard routines, grade pyramids, and volume stats with precision and focus.
 
