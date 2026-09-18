@@ -17,7 +17,6 @@ import { useSessionStore } from '../../store/sessionStore';
 import { SessionHeader } from '../../components/session/SessionHeader';
 import { SessionConditionStrip } from '../../components/session/SessionConditionStrip';
 import { BoulderGroupCard } from '../../components/session/BoulderGroupCard';
-import { FloatingRestTimer } from '../../components/session/FloatingRestTimer';
 import { SessionCompletionModal } from '../../components/session/SessionCompletionModal';
 import { BetaCameraRecorder } from '../../components/media/BetaCameraRecorder';
 import { attachBetaClipToSet } from '../../services/db/sessionQueries';
@@ -318,9 +317,6 @@ export default function ActiveSessionScreen() {
         </ScrollView>
         </TouchableWithoutFeedback>
       </KeyboardAvoidingView>
-
-      {/* Floating rest timer overlay */}
-      <FloatingRestTimer />
 
       {/* Post-session completion wrap-up modal */}
       <SessionCompletionModal

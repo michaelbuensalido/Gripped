@@ -221,8 +221,8 @@ export function insertBoulderLog(log: BoulderLog): void {
   const db = getDatabase();
   db.runSync(
     `INSERT INTO boulder_logs
-       (id, group_id, grade_raw, normalized_difficulty, rpe, attempts, outcome, timestamp, media_uri, media_type, notes, failure_reason)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       (id, group_id, grade_raw, normalized_difficulty, rpe, attempts, outcome, timestamp, media_uri, media_type, notes, failure_reason, wall_angle)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       log.id,
       log.groupId,
@@ -236,6 +236,7 @@ export function insertBoulderLog(log: BoulderLog): void {
       log.media_type ?? null,
       log.notes ?? null,
       log.failureReason ?? log.failure_reason ?? null,
+      log.wallAngle ?? null,
     ]
   );
 }
@@ -244,7 +245,7 @@ export function updateBoulderLog(log: BoulderLog): void {
   const db = getDatabase();
   db.runSync(
     `UPDATE boulder_logs
-     SET grade_raw = ?, normalized_difficulty = ?, rpe = ?, attempts = ?, outcome = ?, media_uri = ?, media_type = ?, notes = ?, failure_reason = ?
+     SET grade_raw = ?, normalized_difficulty = ?, rpe = ?, attempts = ?, outcome = ?, media_uri = ?, media_type = ?, notes = ?, failure_reason = ?, wall_angle = ?
      WHERE id = ?`,
     [
       log.gradeRaw,
@@ -256,6 +257,7 @@ export function updateBoulderLog(log: BoulderLog): void {
       log.media_type ?? null,
       log.notes ?? null,
       log.failureReason ?? log.failure_reason ?? null,
+      log.wallAngle ?? null,
       log.id,
     ]
   );
@@ -325,11 +327,12 @@ export function getLogsForGroup(groupId: string): BoulderLog[] {
     media_type?: string | null;
     notes?: string | null;
     failure_reason?: string | null;
+    wall_angle?: string | null;
   }>(
     `SELECT * FROM boulder_logs WHERE group_id = ? ORDER BY timestamp`,
     [groupId]
   );
-  return rows.map((r) => ({
+  return rows.map((r: any) => ({
     id: r.id,
     groupId: r.group_id,
     gradeRaw: r.grade_raw,
@@ -343,6 +346,7 @@ export function getLogsForGroup(groupId: string): BoulderLog[] {
     notes: r.notes ?? null,
     failureReason: (r.failure_reason as FailureReason) ?? null,
     failure_reason: (r.failure_reason as FailureReason) ?? null,
+    wallAngle: (r.wall_angle as any) ?? null,
   }));
 }
 
@@ -361,6 +365,7 @@ export function getLogsForSession(sessionId: string): BoulderLog[] {
     media_type?: string | null;
     notes?: string | null;
     failure_reason?: string | null;
+    wall_angle?: string | null;
   }>(
     `SELECT bl.* FROM boulder_logs bl
      JOIN boulder_groups bg ON bl.group_id = bg.id
@@ -368,7 +373,7 @@ export function getLogsForSession(sessionId: string): BoulderLog[] {
      ORDER BY bl.timestamp`,
     [sessionId]
   );
-  return rows.map((r) => ({
+  return rows.map((r: any) => ({
     id: r.id,
     groupId: r.group_id,
     gradeRaw: r.grade_raw,
@@ -382,6 +387,7 @@ export function getLogsForSession(sessionId: string): BoulderLog[] {
     notes: r.notes ?? null,
     failureReason: (r.failure_reason as FailureReason) ?? null,
     failure_reason: (r.failure_reason as FailureReason) ?? null,
+    wallAngle: (r.wall_angle as any) ?? null,
   }));
 }
 
