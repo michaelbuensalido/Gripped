@@ -119,6 +119,9 @@ function runMigrations(db: SQLite.SQLiteDatabase): void {
   try {
     db.execSync('ALTER TABLE boulder_logs ADD COLUMN hang_time_seconds INTEGER;');
   } catch {}
+  try {
+    db.execSync('ALTER TABLE boulder_logs ADD COLUMN wall_angle TEXT;');
+  } catch {}
 
   try {
     db.execSync("ALTER TABLE sessions ADD COLUMN title TEXT NOT NULL DEFAULT '';");

@@ -61,6 +61,5 @@ export function insertAscent(id: string, sessionId: string, gradeScalar: number,
 
 export function getAscentsForSession(sessionId: string): any[] {
   const database = getDatabase();
-  const statement = database.prepareSync('SELECT * FROM Ascents WHERE sessionId = ? ORDER BY timestamp ASC');
-  return statement.executeSync([sessionId]).getAllSync();
+  return database.getAllSync('SELECT * FROM Ascents WHERE sessionId = ? ORDER BY timestamp ASC', [sessionId]);
 }

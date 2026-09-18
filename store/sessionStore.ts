@@ -64,6 +64,7 @@ interface SessionState {
   cycleOutcome: (groupId: string, logId: string) => void;
   setOutcome: (groupId: string, logId: string, outcome: Outcome) => void;
   updateGrade: (groupId: string, logId: string, gradeRaw: string) => void;
+  updateWallAngle: (groupId: string, logId: string, angle: BoulderLog['wallAngle']) => void;
   updateRpe: (groupId: string, logId: string, rpe: number | null) => void;
   incrementAttempts: (groupId: string, logId: string) => void;
   decrementAttempts: (groupId: string, logId: string) => void;
@@ -363,7 +364,14 @@ export const useSessionStore = create<SessionState>()(
       let ascents: Ascent[] = [];
       try {
         ascents = getAscentsForSession(sessionId);
-      } catch(e) {}
+      } catch(e) {
+        console.error('[sessionStore] loadSession getAscentsForSession failed:', e);
+      }
+      
+      const globalSends = ascents.filter(a => a.status === 'SEND' || a.status === 'FLASH').length;
+      const groupSends = groups.reduce((acc, g) => acc + g.logs.filter(l => l.outcome === 'send' || l.outcome === 'flash').length, 0);
+      liveActivityManager.updateSends(globalSends + groupSends);
+
       set((state) => {
         state.activeSession = session;
         state.groups = groups;
@@ -504,6 +512,12 @@ export const useSessionStore = create<SessionState>()(
         const idx = sg.logs.findIndex((l) => l.id === logId);
         if (idx >= 0) sg.logs[idx].outcome = nextOutcome;
       });
+      
+      const state = get();
+      const globalSends = state.ascents.filter(a => a.status === 'SEND' || a.status === 'FLASH').length;
+      const groupSends = state.groups.reduce((acc, g) => acc + g.logs.filter(l => l.outcome === 'send' || l.outcome === 'flash').length, 0);
+      liveActivityManager.updateSends(globalSends + groupSends);
+
       if (nextOutcome !== 'attempt') {
         get().triggerRestTimer(g.defaultRestSeconds ?? 90);
       }
@@ -523,6 +537,12 @@ export const useSessionStore = create<SessionState>()(
         const idx = sg.logs.findIndex((l) => l.id === logId);
         if (idx >= 0) sg.logs[idx].outcome = outcome;
       });
+      
+      const state = get();
+      const globalSends = state.ascents.filter(a => a.status === 'SEND' || a.status === 'FLASH').length;
+      const groupSends = state.groups.reduce((acc, g) => acc + g.logs.filter(l => l.outcome === 'send' || l.outcome === 'flash').length, 0);
+      liveActivityManager.updateSends(globalSends + groupSends);
+
       if (outcome !== 'attempt') {
         get().triggerRestTimer(g.defaultRestSeconds ?? 90);
       }
@@ -546,6 +566,22 @@ export const useSessionStore = create<SessionState>()(
           sg.logs[idx].gradeRaw = gradeRaw;
           sg.logs[idx].normalizedDifficulty = grade.difficulty;
         }
+      });
+    },
+
+    updateWallAngle: (groupId, logId, angle) => {
+      const { groups } = get();
+      const g = groups.find((g) => g.id === groupId);
+      if (!g) return;
+      const log = g.logs.find((l) => l.id === logId);
+      if (!log) return;
+      const updated = { ...log, wallAngle: angle };
+      Q.updateBoulderLog(updated);
+      set((state) => {
+        const sg = state.groups.find((g) => g.id === groupId);
+        if (!sg) return;
+        const idx = sg.logs.findIndex((l) => l.id === logId);
+        if (idx >= 0) sg.logs[idx].wallAngle = angle;
       });
     },
 
@@ -731,7 +767,7 @@ export const useSessionStore = create<SessionState>()(
 
     // ─── Phase 1: Zero-latency ascent logging ──────────────────────────────────
     logAscent: (gradeScalar, status) => {
-      const { activeSession, ascents } = get();
+      const { activeSession } = get();
       if (!activeSession) return;
 
       const id = uuid();
@@ -749,12 +785,11 @@ export const useSessionStore = create<SessionState>()(
         state.ascents.push({ id, sessionId: activeSession.id, gradeScalar, status, timestamp, isSynced: 0 });
       });
 
-      // Update Live Activity/Dynamic Island if it's a SEND
-      if (status === 'SEND') {
-        const currentAscents = get().ascents;
-        const totalSends = currentAscents.filter(a => a.status === 'SEND').length;
-        liveActivityManager.updateSends(totalSends);
-      }
+      // Sync the unified sends total to Live Activity
+      const state = get();
+      const globalSends = state.ascents.filter(a => a.status === 'SEND' || a.status === 'FLASH').length;
+      const groupSends = state.groups.reduce((acc, g) => acc + g.logs.filter(l => l.outcome === 'send' || l.outcome === 'flash').length, 0);
+      liveActivityManager.updateSends(globalSends + groupSends);
     },
 
     clearAscents: () => {

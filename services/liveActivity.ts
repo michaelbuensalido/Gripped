@@ -54,10 +54,7 @@ class LiveActivityManager {
   private pushState() {
     try {
       const restTarget = this.currentRestTarget ? this.currentRestTarget / 1000 : 0;
-      LiveActivities.updateActivity({
-        sendCount: this.currentSends,
-        restEndTimestamp: restTarget
-      });
+      LiveActivities.updateActivity(this.currentSends, restTarget);
       console.log('[LiveActivity] ✅ updateActivity called — sends:', this.currentSends, 'rest:', restTarget);
     } catch (e) {
       console.warn('[LiveActivity] updateActivity failed', e);

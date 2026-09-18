@@ -1,16 +1,13 @@
 import React, { useEffect, useRef, useCallback } from 'react';
-import { View, Text, TouchableOpacity, Pressable, Animated, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, Pressable, Animated, Alert, StyleSheet } from 'react-native';
 import { useRouter, usePathname } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ChevronUp, Trash2 } from 'lucide-react-native';
+import { Trash2 } from 'lucide-react-native';
 import { useSessionStore, selectTotalSends } from '../../store/sessionStore';
 import { useSessionTimer } from '../../hooks/useSessionTimer';
 import { useRestTimer } from '../../hooks/useRestTimer';
 import { triggerHaptic } from '../../utils/haptics';
 
-function pad(n: number): string {
-  return n.toString().padStart(2, '0');
-}
 
 /** Pulsing green indicator dot for active session */
 function PulsingDot() {
@@ -29,18 +26,10 @@ function PulsingDot() {
 
   return (
     <Animated.View
-      style={{
-        width: 8,
-        height: 8,
-        borderRadius: 4,
-        backgroundColor: '#6EE756',
-        opacity,
-        marginRight: 8,
-        shadowColor: '#6EE756',
-        shadowOffset: { width: 0, height: 0 },
-        shadowOpacity: 0.8,
-        shadowRadius: 4,
-      }}
+      style={[
+        styles.pulsingDot,
+        { opacity }
+      ]}
     />
   );
 }
@@ -64,12 +53,30 @@ export function ActiveSessionMiniBar() {
   const totalSends = useSessionStore(selectTotalSends);
   const restTimerActive = useSessionStore((s) => s.restTimerActive);
   const restTimerSeconds = useSessionStore((s) => s.restTimerSeconds);
+
   const cancelSession = useSessionStore((s) => s.cancelSession);
 
-  const elapsed = useSessionTimer(
+  const elapsedRaw = useSessionTimer(
     activeSession?.startTime ?? null,
     activeSession?.endTime ?? null
   );
+
+  let formattedElapsed = elapsedRaw;
+  const timeParts = elapsedRaw.split(':');
+  if (timeParts.length === 3) {
+    const h = parseInt(timeParts[0], 10);
+    const m = parseInt(timeParts[1], 10);
+    const s = timeParts[2];
+    if (h > 0) {
+      formattedElapsed = `${h}h ${m}m ${s}s`;
+    } else {
+      formattedElapsed = `${m}m ${s}s`;
+    }
+  }
+
+  const restM = Math.floor(restTimerSeconds / 60);
+  const restS = (restTimerSeconds % 60).toString().padStart(2, '0');
+  const formattedRest = `${restM}m ${restS}s`;
 
   const handleDiscardSession = useCallback(() => {
     if (!activeSession) return;
@@ -107,139 +114,128 @@ export function ActiveSessionMiniBar() {
       ? `${groups[0].zoneName} • ${totalSends} ${totalSends === 1 ? 'send' : 'sends'}`
       : `${zoneCount} ${zoneCount === 1 ? 'zone' : 'zones'} • ${totalSends} ${totalSends === 1 ? 'send' : 'sends'}`;
 
-  // Format rest timer
-  const restM = Math.floor(restTimerSeconds / 60);
-  const restS = restTimerSeconds % 60;
-  const restLabel = `⏱ ${pad(restM)}:${pad(restS)}`;
 
-  // Position: float above 64pt tab bar + bottom insets + 8pt gap
-  const tabBarHeight = 64;
-  const tabBarBottom = Math.max(insets.bottom, 16);
-  const bottomPosition = tabBarBottom + tabBarHeight + 8;
+
+  // Position: float above 64pt tab bar (which has bottom: 24) + 16pt gap
+  const bottomPosition = 24 + 64 + 16;
 
   return (
     <TouchableOpacity
-      activeOpacity={0.9}
+      activeOpacity={0.95}
       onPress={() => {
         triggerHaptic('light');
         router.push(`/session/${activeSession.id}`);
       }}
-      style={{
-        position: 'absolute',
-        left: 16,
-        right: 16,
-        bottom: bottomPosition,
-        backgroundColor: 'rgba(28, 28, 35, 0.85)',
-        borderColor: 'rgba(255, 255, 255, 0.10)',
-        borderTopColor: 'rgba(255, 255, 255, 0.20)',
-        borderWidth: 1,
-        borderRadius: 20,
-        paddingHorizontal: 14,
-        paddingVertical: 10,
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        shadowColor: '#000000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.5,
-        shadowRadius: 12,
-        elevation: 10,
-      }}
+      style={[
+        styles.container,
+        { bottom: bottomPosition }
+      ]}
     >
-      {/* Left: pulsing dot + elapsed timer */}
-      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-        <PulsingDot />
-        <Text
-          style={{
-            color: '#FFFFFF',
-            fontSize: 15,
-            fontWeight: '700',
-            fontVariant: ['tabular-nums'],
-            letterSpacing: 0.5,
-          }}
-        >
-          {elapsed}
-        </Text>
+      <View style={styles.leftContent}>
+        <View style={styles.dotContainer}>
+          <PulsingDot />
+        </View>
+        <View style={styles.textContent}>
+          <Text style={styles.elapsedText}>
+            {restTimerActive ? `Rest ${formattedRest}` : `Session ${formattedElapsed}`}
+          </Text>
+          <Text style={styles.summaryText} numberOfLines={1}>
+            {zoneSummary}
+          </Text>
+        </View>
       </View>
 
-      {/* Center: zone count + send tally */}
-      <View style={{ flex: 1, alignItems: 'center', paddingHorizontal: 6 }}>
-        <Text
-          style={{
-            color: '#9A9AA6',
-            fontSize: 12,
-            fontWeight: '500',
-          }}
-          numberOfLines={1}
-        >
-          {zoneSummary}
-        </Text>
-      </View>
+      <View style={styles.rightContent}>
 
-      {/* Right: rest chip + discard button + expand chevron */}
-      <View
-        style={{
-          flexDirection: 'row',
-          alignItems: 'center',
-          gap: 8,
-          justifyContent: 'flex-end',
-        }}
-      >
-        {/* 1. Rest timer chip (if active) */}
-        {restTimerActive && (
-          <View
-            style={{
-              backgroundColor: 'rgba(110, 231, 86, 0.15)',
-              borderColor: 'rgba(110, 231, 86, 0.35)',
-              borderWidth: 1,
-              borderRadius: 10,
-              paddingHorizontal: 7,
-              paddingVertical: 2,
-            }}
-          >
-            <Text
-              style={{
-                color: '#6EE756',
-                fontSize: 11,
-                fontWeight: '700',
-                fontVariant: ['tabular-nums'],
-              }}
-            >
-              {restLabel}
-            </Text>
-          </View>
-        )}
-
-        {/* 2. Delete / Discard Button with isolated touch */}
         <Pressable
           onPress={handleDiscardPress}
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          style={({ pressed }) => ({
-            width: 34,
-            height: 34,
-            borderRadius: 10,
-            backgroundColor: pressed
-              ? 'rgba(255, 92, 92, 0.22)'
-              : 'rgba(255, 92, 92, 0.12)',
-            alignItems: 'center',
-            justifyContent: 'center',
-          })}
+          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+          style={({ pressed }) => [
+            styles.discardButton,
+            pressed ? styles.discardButtonPressed : undefined
+          ]}
         >
-          <Trash2 size={16} color="#FF5C5C" />
+          <Trash2 size={18} color="#FF5C5C" />
         </Pressable>
-
-        {/* 3. Expand Button */}
-        <View
-          style={{
-            width: 24,
-            height: 24,
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-        >
-          <ChevronUp size={20} color="#8E7CFF" />
-        </View>
       </View>
     </TouchableOpacity>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    position: 'absolute',
+    left: 12,
+    right: 12,
+    backgroundColor: 'rgba(32, 32, 40, 0.98)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+    borderRadius: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.6,
+    shadowRadius: 16,
+    elevation: 10,
+  },
+  leftContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  dotContainer: {
+    width: 12,
+    height: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 10,
+  },
+  pulsingDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#6EE756',
+    shadowColor: '#6EE756',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.8,
+    shadowRadius: 4,
+  },
+  textContent: {
+    flex: 1,
+  },
+  elapsedText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '700',
+    fontVariant: ['tabular-nums'],
+    letterSpacing: 0.5,
+    marginBottom: 2,
+  },
+  summaryText: {
+    color: '#9A9AA6',
+    fontSize: 13,
+    fontWeight: '500',
+  },
+  rightContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginLeft: 12,
+  },
+
+  discardButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255, 92, 92, 0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  discardButtonPressed: {
+    backgroundColor: 'rgba(255, 92, 92, 0.2)',
+  },
+});

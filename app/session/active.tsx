@@ -24,12 +24,21 @@ try {
 // ─── Scoreboard ────────────────────────────────────────────────────────────────
 function Scoreboard() {
   const ascents = useSessionStore((s) => s.ascents);
+  const groups = useSessionStore((s) => s.groups);
   const activeSession = useSessionStore((s) => s.activeSession);
 
-  const sends = ascents.filter((a) => a.status === 'SEND').length;
-  const flashes = ascents.filter((a) => a.status === 'FLASH').length;
-  const burns = ascents.filter((a) => a.status === 'ATTEMPT').length;
-  const total = ascents.length;
+  const globalSends = ascents.filter((a) => a.status === 'SEND').length;
+  const globalFlashes = ascents.filter((a) => a.status === 'FLASH').length;
+  const globalBurns = ascents.filter((a) => a.status === 'ATTEMPT').length;
+  
+  const groupSends = groups.reduce((acc, g) => acc + g.logs.filter(l => l.outcome === 'send').length, 0);
+  const groupFlashes = groups.reduce((acc, g) => acc + g.logs.filter(l => l.outcome === 'flash').length, 0);
+  const groupBurns = groups.reduce((acc, g) => acc + g.logs.filter(l => l.outcome === 'attempt').length, 0);
+
+  const sends = globalSends + groupSends;
+  const flashes = globalFlashes + groupFlashes;
+  const burns = globalBurns + groupBurns;
+  const total = ascents.length + groups.reduce((acc, g) => acc + g.logs.length, 0);
 
   // Gravity = ratio of successful tops to total attempts
   const gravity = total > 0 ? ((sends + flashes) / total) * 100 : 0;

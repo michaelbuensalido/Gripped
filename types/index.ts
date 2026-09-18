@@ -41,6 +41,7 @@ export interface BoulderLog {
   notes?: string | null;
   failureReason?: FailureReason | null;
   failure_reason?: FailureReason | null;
+  wallAngle?: 'SLAB' | 'VERT' | 'OVERHANG' | 'CAVE' | null;
 }
 
 export interface BoulderGroupWithLogs extends BoulderGroup {

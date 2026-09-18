@@ -26,9 +26,15 @@ import "../global.css";
 
 function CustomTabBar({ state, descriptors, navigation }: any) {
   // STRICTLY limit the rendered tabs to the 4 core routes
+  const coreRoutes = ["index", "routines", "analytics", "logbook"];
   const visibleRoutes = state.routes.filter((route: any) =>
-    ["index", "routines", "analytics", "logbook"].includes(route.name),
+    coreRoutes.includes(route.name),
   );
+
+  const currentRouteName = state.routes[state.index]?.name;
+  if (!coreRoutes.includes(currentRouteName)) {
+    return null;
+  }
 
   return (
     <View style={styles.tabBarContainer}>
@@ -105,6 +111,9 @@ function CustomTabBar({ state, descriptors, navigation }: any) {
 }
 
 function TabLayout() {
+  const activeSession = useSessionStore((s) => s.activeSession);
+  const isSessionActive = activeSession !== null;
+
   return (
     <Tabs
       tabBar={(props) => <CustomTabBar {...props} />}

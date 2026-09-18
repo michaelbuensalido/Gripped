@@ -45,6 +45,15 @@ export function SetRow({ log, index, groupId }: SetRowProps) {
     [groupId, log.id, updateGrade]
   );
 
+  const updateWallAngle = useSessionStore((s) => s.updateWallAngle);
+
+  const handleAngleSelect = useCallback(() => {
+    triggerHaptic('light');
+    const cycle = [null, 'SLAB', 'VERT', 'OVERHANG', 'CAVE'] as const;
+    const nextIdx = (cycle.indexOf(log.wallAngle ?? null) + 1) % cycle.length;
+    updateWallAngle(groupId, log.id, cycle[nextIdx]);
+  }, [groupId, log.id, log.wallAngle, updateWallAngle]);
+
   const handleIncrement = useCallback(() => {
     triggerHaptic('light');
     incrementAttempts(groupId, log.id);
@@ -56,20 +65,26 @@ export function SetRow({ log, index, groupId }: SetRowProps) {
   }, [groupId, log.id, decrementAttempts]);
 
   const handleSendTap = useCallback(() => {
-    const next = isSent ? 'attempt' : 'send';
-    triggerHaptic(next === 'attempt' ? 'light' : 'medium');
-    setOutcome(groupId, log.id, next);
-    const group = useSessionStore.getState().groups.find((g) => g.id === groupId);
-    triggerRestTimer(group?.defaultRestSeconds ?? 180);
-  }, [isSent, groupId, log.id, setOutcome, triggerRestTimer]);
+    if (isSent) {
+      triggerHaptic('light');
+      setOutcome(groupId, log.id, 'attempt');
+    } else {
+      const outcome = log.attempts === 1 ? 'flash' : 'send';
+      triggerHaptic(outcome === 'flash' ? 'success' : 'medium');
+      setOutcome(groupId, log.id, outcome);
+      const group = useSessionStore.getState().groups.find((g) => g.id === groupId);
+      triggerRestTimer(group?.defaultRestSeconds ?? 180);
+    }
+  }, [isSent, groupId, log.id, log.attempts, setOutcome, triggerRestTimer]);
 
   const handleFlashLongPress = useCallback(() => {
+    if (!isSent) return;
     const next = isFlash ? 'send' : 'flash';
     triggerHaptic(next === 'flash' ? 'success' : 'medium');
     setOutcome(groupId, log.id, next);
     const group = useSessionStore.getState().groups.find((g) => g.id === groupId);
     triggerRestTimer(group?.defaultRestSeconds ?? 180);
-  }, [isFlash, groupId, log.id, setOutcome, triggerRestTimer]);
+  }, [isSent, isFlash, groupId, log.id, setOutcome, triggerRestTimer]);
 
   const handleAttachBeta = useCallback(
     (uri: string, type: 'video' | 'photo', gradeRaw?: string, notes?: string, outcome?: string, failureReason?: string) => {
@@ -104,7 +119,7 @@ export function SetRow({ log, index, groupId }: SetRowProps) {
         </Text>
 
         {/* Grade Badge */}
-        <View className="w-[20%] items-center">
+        <View className="flex-row items-center gap-2 w-[35%]">
           <TouchableOpacity
             onPress={() => setGradeSheetOpen(true)}
             activeOpacity={0.8}
@@ -112,23 +127,38 @@ export function SetRow({ log, index, groupId }: SetRowProps) {
           >
             <Text className="text-white text-[14px] font-bold">{log.gradeRaw}</Text>
           </TouchableOpacity>
+          <TouchableOpacity
+            onPress={handleAngleSelect}
+            activeOpacity={0.8}
+            className={`px-2 py-1.5 rounded-lg border ${
+              log.wallAngle ? 'border-[#8E7CFF] bg-[#141417]' : 'border-[#27272F] bg-[#141417]'
+            }`}
+          >
+            <Text 
+              className={`text-[10px] font-bold tracking-[1px] uppercase ${
+                log.wallAngle ? 'text-[#8E7CFF]' : 'text-[#8A8A98]'
+              }`}
+            >
+              {log.wallAngle === 'OVERHANG' ? 'OVHG' : log.wallAngle || '—'}
+            </Text>
+          </TouchableOpacity>
         </View>
 
         {/* Burns Stepper */}
-        <View className="w-[35%] items-center">
+        <View className="w-[25%] items-center">
           <View className="flex-row items-center bg-[#141417] border border-[#27272F] rounded-lg">
-            <TouchableOpacity onPress={handleDecrement} className="w-[36px] h-[36px] items-center justify-center">
+            <TouchableOpacity onPress={handleDecrement} className="w-[30px] h-[36px] items-center justify-center">
               <Text className="text-[#8A8A98] text-[14px]">−</Text>
             </TouchableOpacity>
-            <Text className="text-white text-[13px] font-semibold px-2">{log.attempts} att</Text>
-            <TouchableOpacity onPress={handleIncrement} className="w-[36px] h-[36px] items-center justify-center">
+            <Text className="text-white text-[13px] font-semibold px-1">{log.attempts} att</Text>
+            <TouchableOpacity onPress={handleIncrement} className="w-[30px] h-[36px] items-center justify-center">
               <Text className="text-[#8A8A98] text-[14px]">+</Text>
             </TouchableOpacity>
           </View>
         </View>
 
         {/* Actions Row */}
-        <View className="w-[35%] flex-row items-center justify-end gap-2">
+        <View className="w-[25%] flex-row items-center justify-end gap-2">
           {log.media_uri ? (
             <TouchableOpacity
               onPress={() => { triggerHaptic('light'); setPreviewModalOpen(true); }}
@@ -157,15 +187,19 @@ export function SetRow({ log, index, groupId }: SetRowProps) {
             delayLongPress={400}
           >
             <Animated.View
-              className={`w-[40px] h-[40px] rounded-lg items-center justify-center border ${
-                isFlash ? 'bg-[#6EE756] border-[#6EE756]' : 
-                isSent ? 'bg-[#8E7CFF] border-[#8E7CFF]' : 
-                'bg-[#141417] border-[#2C2C35]'
-              }`}
-              style={sendAnimStyle}
+              className="w-[40px] h-[40px] rounded-lg items-center justify-center"
+              style={[sendAnimStyle, {
+                backgroundColor: isFlash 
+                  ? 'rgba(110, 231, 86, 0.20)' 
+                  : isSent 
+                  ? 'rgba(142, 124, 255, 0.20)' 
+                  : '#141417',
+                borderColor: isFlash ? '#6EE756' : isSent ? '#8E7CFF' : '#2C2C35',
+                borderWidth: 1,
+              }]}
             >
-              {isFlash ? <Zap size={20} color="#111113" fill="#111113" /> :
-               isSent ? <Check size={20} color="#FFFFFF" strokeWidth={3} /> : null}
+              {isFlash ? <Zap size={18} color="#6EE756" fill="#6EE756" /> :
+               isSent ? <Check size={18} color="#8E7CFF" strokeWidth={3} /> : null}
             </Animated.View>
           </Pressable>
         </View>
