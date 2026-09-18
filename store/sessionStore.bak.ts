@@ -6,17 +6,6 @@ import type { Session, BoulderGroup, BoulderLog, Outcome, RoutineWithBlocks, Fai
 import { DEFAULT_GRADE, GRADE_BY_LABEL } from '../constants/grades';
 import * as Q from '../db/queries';
 import { triggerRestTimerStart } from '../utils/haptics';
-import { insertAscent, getAscentsForSession } from '../services/database';
-import { liveActivityManager } from '../services/liveActivity';
-
-export interface Ascent {
-  id: string;
-  sessionId: string;
-  gradeScalar: number;
-  status: 'SEND' | 'ATTEMPT' | 'FLASH';
-  timestamp: number;
-  isSynced: number;
-}
 
 interface GroupWithLogs extends BoulderGroup {
   logs: BoulderLog[];
@@ -96,11 +85,6 @@ interface SessionState {
   tickRestTimer: () => void;
   syncRestTimer: () => number;
   dismissRestTimer: () => void;
-
-  // ─── Phase 1: Zero-latency ascent logging (Ascents table) ──────────────────
-  ascents: Ascent[];
-  logAscent: (gradeScalar: number, status: 'SEND' | 'ATTEMPT' | 'FLASH') => void;
-  clearAscents: () => void;
 }
 
 const OUTCOME_CYCLE: Outcome[] = ['attempt', 'send', 'flash'];
@@ -110,7 +94,6 @@ export const useSessionStore = create<SessionState>()(
     activeSession: null,
     groups: [],
     conditions: [],
-    ascents: [],
     restTimerActive: false,
     restTimerSeconds: 0,
     restTimerMax: 90,
@@ -125,9 +108,6 @@ export const useSessionStore = create<SessionState>()(
         notes: '',
       };
       Q.insertSession(session);
-
-      // ─── Launch iOS Dynamic Island / Live Activity ───
-      liveActivityManager.startSession(session.id, gymName);
 
       // Create a default group
       const group: BoulderGroup = {
@@ -168,8 +148,6 @@ export const useSessionStore = create<SessionState>()(
         notes: '',
       };
       Q.insertSession(session);
-
-      liveActivityManager.startSession(session.id, gymName);
 
       const group: BoulderGroup = {
         id: uuid(),
@@ -219,8 +197,6 @@ export const useSessionStore = create<SessionState>()(
         notes: routine.description ? `${routine.title} • ${routine.description}` : routine.title,
       };
       Q.insertSession(session);
-
-      liveActivityManager.startSession(session.id, gymName);
 
       const newGroups: GroupWithLogs[] = [];
       const firstRest = routine.blocks[0]?.defaultRestSeconds ?? 90;
@@ -283,7 +259,6 @@ export const useSessionStore = create<SessionState>()(
       if (!activeSession) return;
       const endTime = Date.now();
       Q.finishSession(activeSession.id, endTime);
-      liveActivityManager.endSession();
       // Clear from store so the mini-bar and home CTA reset immediately
       set((state) => {
         state.activeSession = null;
@@ -308,7 +283,6 @@ export const useSessionStore = create<SessionState>()(
         rpe,
         mediaUris
       );
-      liveActivityManager.endSession();
       set((state) => {
         state.activeSession = null;
         state.groups = [];
@@ -324,7 +298,6 @@ export const useSessionStore = create<SessionState>()(
       if (activeSession) {
         Q.deleteSession(activeSession.id);
       }
-      liveActivityManager.endSession();
       set((state) => {
         state.activeSession = null;
         state.groups = [];
@@ -341,7 +314,6 @@ export const useSessionStore = create<SessionState>()(
       if (targetId) {
         Q.deleteSession(targetId);
       }
-      liveActivityManager.endSession();
       set((state) => {
         state.activeSession = null;
         state.groups = [];
@@ -360,14 +332,9 @@ export const useSessionStore = create<SessionState>()(
         ...g,
         logs: Q.getLogsForGroup(g.id),
       }));
-      let ascents: Ascent[] = [];
-      try {
-        ascents = getAscentsForSession(sessionId);
-      } catch(e) {}
       set((state) => {
         state.activeSession = session;
         state.groups = groups;
-        state.ascents = ascents;
       });
     },
 
@@ -649,18 +616,15 @@ export const useSessionStore = create<SessionState>()(
 
     triggerRestTimer: (seconds = 90) => {
       triggerRestTimerStart().catch(() => {});
-      const target = Date.now() + seconds * 1000;
       set((state) => {
         state.restTimerActive = true;
         state.restTimerSeconds = seconds;
         state.restTimerMax = seconds;
-        state.restTimerTargetTimestampMs = target;
+        state.restTimerTargetTimestampMs = Date.now() + seconds * 1000;
       });
-      liveActivityManager.updateRest(target);
     },
 
     tickRestTimer: () => {
-      let expired = false;
       set((state) => {
         if (!state.restTimerActive || !state.restTimerTargetTimestampMs) {
           if (state.restTimerSeconds > 0) {
@@ -679,15 +643,12 @@ export const useSessionStore = create<SessionState>()(
         if (remaining <= 0) {
           state.restTimerActive = false;
           state.restTimerTargetTimestampMs = null;
-          expired = true;
         }
       });
-      if (expired) liveActivityManager.updateRest(null);
     },
 
     syncRestTimer: () => {
       let remaining = 0;
-      let expired = false;
       set((state) => {
         if (!state.restTimerActive || !state.restTimerTargetTimestampMs) {
           remaining = state.restTimerSeconds;
@@ -703,10 +664,8 @@ export const useSessionStore = create<SessionState>()(
         if (remaining <= 0) {
           state.restTimerActive = false;
           state.restTimerTargetTimestampMs = null;
-          expired = true;
         }
       });
-      if (expired) liveActivityManager.updateRest(null);
       return remaining;
     },
 
@@ -716,7 +675,6 @@ export const useSessionStore = create<SessionState>()(
         state.restTimerSeconds = 0;
         state.restTimerTargetTimestampMs = null;
       });
-      liveActivityManager.updateRest(null);
     },
 
     setSessionConditions: (conditions: string[]) => {
@@ -727,39 +685,6 @@ export const useSessionStore = create<SessionState>()(
       if (sessionId) {
         Q.updateSessionConditions(sessionId, conditions);
       }
-    },
-
-    // ─── Phase 1: Zero-latency ascent logging ──────────────────────────────────
-    logAscent: (gradeScalar, status) => {
-      const { activeSession, ascents } = get();
-      if (!activeSession) return;
-
-      const id = uuid();
-      const timestamp = Date.now();
-
-      // Synchronously write to Ascents table (zero-latency, no awaiting)
-      try {
-        insertAscent(id, activeSession.id, gradeScalar, status, timestamp);
-      } catch (e) {
-        console.warn('[logAscent] DB write failed:', e);
-      }
-
-      // Immediately update Zustand so UI re-renders without any network round-trip
-      set((state) => {
-        state.ascents.push({ id, sessionId: activeSession.id, gradeScalar, status, timestamp, isSynced: 0 });
-      });
-
-      // Update Live Activity/Dynamic Island if it's a SEND
-      if (status === 'SEND') {
-        const currentAscents = get().ascents;
-        const totalSends = currentAscents.filter(a => a.status === 'SEND').length;
-        liveActivityManager.updateSends(totalSends);
-      }
-    },
-
-    clearAscents: () => {
-      liveActivityManager.endSession();
-      set((state) => { state.ascents = []; });
     },
   }))
 );
