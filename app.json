@@ -17,7 +17,9 @@
       "bundleIdentifier": "com.cruxlog.app",
       "infoPlist": {
         "NSCameraUsageDescription": "CruxLog needs camera access to detect climbing holds and human pose in real time.",
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSSupportsLiveActivities": true,
+        "NSSupportsLiveActivitiesFrequentUpdates": true
       }
     },
     "android": {
