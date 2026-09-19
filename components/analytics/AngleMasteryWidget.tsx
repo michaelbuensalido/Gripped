@@ -39,11 +39,11 @@ export function AngleMasteryWidget({ data }: AngleMasteryWidgetProps) {
             >
               {/* Profile Label */}
               <View className="w-[75px]">
-                <Text className="text-white text-[14px] font-semibold">{item.angle}</Text>
+                <Text className="text-white text-[13px] font-semibold">{item.angle}</Text>
               </View>
 
               {/* Progress Track */}
-              <View className="flex-1 h-[8px] bg-[#141417] border border-[#22222A] rounded-full overflow-hidden mx-3">
+              <View className="flex-1 h-1.5 bg-[#111113] border border-[#27272F] rounded-full overflow-hidden mx-3">
                 <View
                   className="h-full rounded-full bg-[#8E7CFF]"
                   style={{ width: `${Math.max(0, trueRate)}%` }}
@@ -51,13 +51,9 @@ export function AngleMasteryWidget({ data }: AngleMasteryWidgetProps) {
               </View>
 
               {/* Metric Text */}
-              <View className="items-end min-w-[110px]">
-                <Text className="text-[12px]" style={{ fontVariant: ['tabular-nums'] }}>
-                  <Text className="text-white font-bold">{trueRate}%</Text>
-                  <Text className="text-[#8A8A98] font-medium">
-                    {' • '}
-                    {item.totalSends}/{item.totalAttempts} sends
-                  </Text>
+              <View className="items-end min-w-[70px]">
+                <Text className="text-[#8A8A98] text-[10px] font-medium tracking-[0.5px] uppercase" style={{ fontVariant: ['tabular-nums'] }}>
+                  {item.totalSends}/{item.totalAttempts} ({trueRate}%)
                 </Text>
               </View>
             </TouchableOpacity>

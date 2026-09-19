@@ -45,6 +45,8 @@ interface SessionState {
     rpe: number | null;
     mediaUris: string[];
     endTime?: number;
+    skinState?: string | null;
+    fingerFatigue?: string | null;
   }) => void;
   discardSession: () => void;
   cancelSession: (sessionId?: string) => void;
@@ -55,7 +57,9 @@ interface SessionState {
   updateGroupName: (groupId: string, zoneName: string) => void;
   updateGroupRestTimer: (groupId: string, seconds: number) => void;
   updateGroupNotes: (groupId: string, notes: string) => void;
+  toggleGroupCompletion: (groupId: string) => void;
   moveGroup: (groupId: string, direction: 'up' | 'down') => void;
+  reorderGroups: (groupIds: string[]) => void;
   deleteGroup: (groupId: string) => void;
 
   addLog: (groupId: string) => void;
@@ -296,7 +300,7 @@ export const useSessionStore = create<SessionState>()(
       });
     },
 
-    completeSession: ({ title, notes, gymName, rpe, mediaUris, endTime }) => {
+    completeSession: ({ title, notes, gymName, rpe, mediaUris, endTime, skinState, fingerFatigue }) => {
       const { activeSession } = get();
       if (!activeSession) return;
       const finalEndTime = endTime ?? Date.now();
@@ -307,7 +311,9 @@ export const useSessionStore = create<SessionState>()(
         notes,
         gymName,
         rpe,
-        mediaUris
+        mediaUris,
+        skinState,
+        fingerFatigue
       );
       liveActivityManager.endSession();
       set((state) => {
@@ -426,6 +432,28 @@ export const useSessionStore = create<SessionState>()(
       });
     },
 
+    toggleGroupCompletion: (groupId) => {
+      set((state) => {
+        const g = state.groups.find((g) => g.id === groupId);
+        if (g) {
+          g.isCompleted = !g.isCompleted;
+          Q.updateGroupCompletion(groupId, g.isCompleted);
+        }
+      });
+    },
+
+    reorderGroups: (groupIds) => {
+      set((state) => {
+        const newGroups = groupIds.map((id, index) => {
+          const group = state.groups.find((g) => g.id === id)!;
+          group.order = index;
+          Q.updateGroupOrder(id, index);
+          return group;
+        });
+        state.groups = newGroups;
+      });
+    },
+
     moveGroup: (groupId, direction) => {
       const { groups } = get();
       const index = groups.findIndex((g) => g.id === groupId);
@@ -476,6 +504,8 @@ export const useSessionStore = create<SessionState>()(
         const g = state.groups.find((g) => g.id === groupId);
         if (g) g.logs.push(log);
       });
+      const g = get().groups.find(g => g.id === groupId);
+      if (g) get().triggerRestTimer(g.defaultRestSeconds ?? 90);
     },
 
     updateLog: (groupId, log) => {
@@ -615,6 +645,7 @@ export const useSessionStore = create<SessionState>()(
         const idx = sg.logs.findIndex((l) => l.id === logId);
         if (idx >= 0) sg.logs[idx].attempts += 1;
       });
+      get().triggerRestTimer(g.defaultRestSeconds ?? 90);
     },
 
     decrementAttempts: (groupId, logId) => {

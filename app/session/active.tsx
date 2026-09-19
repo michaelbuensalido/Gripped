@@ -11,6 +11,8 @@ import { useRouter } from 'expo-router';
 import { useSessionStore } from '../../store/sessionStore';
 import { LoggerControls } from '../../components/session/LoggerControls';
 import * as Haptics from 'expo-haptics';
+import DraggableFlatList, { ScaleDecorator } from 'react-native-draggable-flatlist';
+import { Check, GripVertical } from 'lucide-react-native';
 
 // ─── Volume Key Binding ────────────────────────────────────────────────────────
 // Lazily import to avoid crashing if not yet linked (native rebuild required)
@@ -108,6 +110,77 @@ function Scoreboard() {
   );
 }
 
+// ─── Session Checklist ────────────────────────────────────────────────────────
+
+function SessionChecklist() {
+  const groups = useSessionStore((s) => s.groups);
+  const toggleGroupCompletion = useSessionStore((s) => s.toggleGroupCompletion);
+  const reorderGroups = useSessionStore((s) => s.reorderGroups);
+
+  const renderItem = ({ item, drag, isActive }: any) => {
+    const isDone = item.isCompleted;
+
+    return (
+      <ScaleDecorator>
+        <TouchableOpacity
+          activeOpacity={1}
+          onLongPress={drag}
+          onPress={() => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            toggleGroupCompletion(item.id);
+          }}
+          style={[
+            styles.checklistCard,
+            isActive && styles.checklistCardActive,
+            isDone && styles.checklistCardDone,
+          ]}
+        >
+          <View style={styles.checklistCardLeft}>
+            <TouchableOpacity
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                toggleGroupCompletion(item.id);
+              }}
+              style={[styles.checkbox, isDone && styles.checkboxChecked]}
+            >
+              {isDone && <Check size={14} color="#111113" strokeWidth={3} />}
+            </TouchableOpacity>
+            <View>
+              <Text style={[styles.checklistCardTitle, isDone && styles.checklistCardTitleDone]}>
+                {item.zoneName}
+              </Text>
+              <Text style={styles.checklistCardSubtitle}>
+                {item.logs.length} burns planned • {item.defaultRestSeconds}s rest
+              </Text>
+            </View>
+          </View>
+          <View style={styles.dragHandle}>
+            <GripVertical size={20} color="#555562" />
+          </View>
+        </TouchableOpacity>
+      </ScaleDecorator>
+    );
+  };
+
+  if (groups.length === 0) {
+    return <View style={{ flex: 1 }} />;
+  }
+
+  return (
+    <View style={{ flex: 1, paddingHorizontal: 20, paddingTop: 16 }}>
+      <Text style={styles.checklistHeader}>SESSION PLAN</Text>
+      <DraggableFlatList
+        data={groups}
+        onDragEnd={({ data }: { data: any[] }) => reorderGroups(data.map((g: any) => g.id))}
+        keyExtractor={(item: any) => item.id}
+        renderItem={renderItem}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 20 }}
+      />
+    </View>
+  );
+}
+
 // ─── Active Session Screen ──────────────────────────────────────────────────────
 
 export default function ActiveSessionScreen() {
@@ -196,8 +269,8 @@ export default function ActiveSessionScreen() {
       {/* ─── Scoreboard ─────────────────────────────────────────────────── */}
       <Scoreboard />
 
-      {/* ─── Spacer ─────────────────────────────────────────────────────── */}
-      <View style={{ flex: 1 }} />
+      {/* ─── Session Checklist ───────────────────────────────────────────── */}
+      <SessionChecklist />
 
       {/* ─── Gesture Logger ─────────────────────────────────────────────── */}
       <LoggerControls onAttempt={handleAttempt} onSend={handleSend} />
@@ -318,4 +391,75 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '800',
   },
+
+  // Checklist
+  checklistHeader: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#8A8A98',
+    letterSpacing: 1.5,
+    marginBottom: 12,
+  },
+  checklistCard: {
+    backgroundColor: '#19191D',
+    borderWidth: 1,
+    borderColor: '#27272F',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  checklistCardActive: {
+    backgroundColor: '#1E1E24',
+    borderColor: '#3A3A46',
+    transform: [{ scale: 1.02 }],
+    shadowColor: '#000',
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+  },
+  checklistCardDone: {
+    backgroundColor: '#141417',
+    borderColor: '#1E1E24',
+    opacity: 0.6,
+  },
+  checklistCardLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  checkbox: {
+    width: 24,
+    height: 24,
+    borderRadius: 6,
+    borderWidth: 2,
+    borderColor: '#3A3A46',
+    marginRight: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  checkboxChecked: {
+    backgroundColor: '#8E7CFF',
+    borderColor: '#8E7CFF',
+  },
+  checklistCardTitle: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '700',
+    marginBottom: 2,
+  },
+  checklistCardTitleDone: {
+    textDecorationLine: 'line-through',
+    color: '#8A8A98',
+  },
+  checklistCardSubtitle: {
+    color: '#8A8A98',
+    fontSize: 12,
+  },
+  dragHandle: {
+    paddingLeft: 12,
+    paddingVertical: 8,
+  }
 });

@@ -16,6 +16,8 @@ export interface Session {
   title?: string;
   rpe?: number | null;
   mediaUris?: string[];
+  skinState?: string | null;
+  fingerFatigue?: string | null;
 }
 
 export interface BoulderGroup {
@@ -25,6 +27,7 @@ export interface BoulderGroup {
   order: number;
   defaultRestSeconds?: number;
   notes?: string;
+  isCompleted?: boolean;
 }
 
 export interface BoulderLog {

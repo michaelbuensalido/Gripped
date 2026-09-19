@@ -94,16 +94,18 @@ export function completeSessionWrapUp(
   notes: string,
   gymName: string,
   rpe: number | null,
-  mediaUris: string[]
+  mediaUris: string[],
+  skinState?: string | null,
+  fingerFatigue?: string | null
 ): void {
   const db = getDatabase();
   const mediaJson = JSON.stringify(mediaUris);
   try {
     db.runSync(
       `UPDATE sessions 
-       SET end_time = ?, title = ?, notes = ?, gym_name = ?, rpe = ?, media_uris = ?
+       SET end_time = ?, title = ?, notes = ?, gym_name = ?, rpe = ?, media_uris = ?, skin_state = ?, finger_fatigue = ?
        WHERE id = ?`,
-      [endTime, title, notes, gymName, rpe, mediaJson, id]
+      [endTime, title, notes, gymName, rpe, mediaJson, skinState ?? null, fingerFatigue ?? null, id]
     );
   } catch (err) {
     db.runSync(
@@ -122,6 +124,8 @@ function mapSession(row: {
   title?: string;
   rpe?: number | null;
   media_uris?: string;
+  skin_state?: string | null;
+  finger_fatigue?: string | null;
 }): Session {
   let mediaUris: string[] = [];
   if (row.media_uris) {
@@ -140,6 +144,8 @@ function mapSession(row: {
     title: row.title || '',
     rpe: row.rpe ?? null,
     mediaUris,
+    skinState: row.skin_state ?? null,
+    fingerFatigue: row.finger_fatigue ?? null,
   };
 }
 
@@ -149,9 +155,9 @@ export function insertBoulderGroup(group: BoulderGroup): void {
   const db = getDatabase();
   try {
     db.runSync(
-      `INSERT INTO boulder_groups (id, session_id, zone_name, sort_order, default_rest_seconds, notes)
-       VALUES (?, ?, ?, ?, ?, ?)`,
-      [group.id, group.sessionId, group.zoneName, group.order, group.defaultRestSeconds ?? 90, group.notes ?? '']
+      `INSERT INTO boulder_groups (id, session_id, zone_name, sort_order, default_rest_seconds, notes, is_completed)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [group.id, group.sessionId, group.zoneName, group.order, group.defaultRestSeconds ?? 90, group.notes ?? '', group.isCompleted ? 1 : 0]
     );
   } catch {
     db.runSync(
@@ -181,6 +187,15 @@ export function updateGroupNotes(id: string, notes: string): void {
   }
 }
 
+export function updateGroupCompletion(id: string, isCompleted: boolean): void {
+  const db = getDatabase();
+  try {
+    db.runSync(`UPDATE boulder_groups SET is_completed = ? WHERE id = ?`, [isCompleted ? 1 : 0, id]);
+  } catch (err) {
+    console.warn('Failed to update group completion:', err);
+  }
+}
+
 export function deleteBoulderGroup(id: string): void {
   const db = getDatabase();
   db.runSync(`DELETE FROM boulder_logs WHERE group_id = ?`, [id]);
@@ -201,6 +216,7 @@ export function getGroupsForSession(sessionId: string): BoulderGroup[] {
     sort_order: number;
     default_rest_seconds?: number | null;
     notes?: string | null;
+    is_completed?: number | null;
   }>(
     `SELECT * FROM boulder_groups WHERE session_id = ? ORDER BY sort_order`,
     [sessionId]
@@ -212,6 +228,7 @@ export function getGroupsForSession(sessionId: string): BoulderGroup[] {
     order: r.sort_order,
     defaultRestSeconds: r.default_rest_seconds ?? 90,
     notes: r.notes ?? '',
+    isCompleted: Boolean(r.is_completed),
   }));
 }
 
@@ -1171,6 +1188,7 @@ export interface AnalyticsOverview {
     sendPct: number;
     attemptPct: number;
   };
+  peakGradeTrend: number[];
 }
 
 export function getAnalyticsOverview(sinceTimestamp?: number): AnalyticsOverview {
@@ -1225,6 +1243,23 @@ export function getAnalyticsOverview(sinceTimestamp?: number): AnalyticsOverview
   const sendPct = totalClimbs > 0 ? Math.round((redpointSends / totalClimbs) * 100) : 0;
   const attemptPct = totalClimbs > 0 ? Math.max(0, 100 - flashPct - sendPct) : 0;
 
+  let peakGradeTrend: number[] = [];
+  try {
+    const trendRows = db.getAllSync<{ max_diff: number }>(
+      `SELECT MAX(bl.normalized_difficulty) as max_diff
+       FROM boulder_logs bl
+       JOIN boulder_groups bg ON bl.group_id = bg.id
+       ${sessionTimeWhere ? sessionTimeWhere.replace('start_time', 'bg.session_id IN (SELECT id FROM sessions WHERE start_time') + ')' : ''}
+       ${sessionTimeWhere ? "AND" : "WHERE"} bl.outcome IN ('send','flash', 'top')
+       GROUP BY bg.session_id
+       ORDER BY MIN(bl.timestamp) ASC`,
+      params
+    );
+    peakGradeTrend = trendRows.map(r => r.max_diff);
+  } catch (err) {
+    console.warn('peakGradeTrend failed', err);
+  }
+
   return {
     totalSessions,
     totalSends,
@@ -1244,6 +1279,7 @@ export function getAnalyticsOverview(sinceTimestamp?: number): AnalyticsOverview
       sendPct,
       attemptPct,
     },
+    peakGradeTrend,
   };
 }
 
@@ -1904,7 +1940,7 @@ export function getGradeVolumeEqualizerData(
 // ─── Send Outcome Ring Gauge Aggregation ─────────────────────────────────────
 
 export interface OutcomeSegmentData {
-  label: 'Flash' | 'Top' | 'Attempt' | 'Fail';
+  label: 'Flash' | 'Top' | 'Projecting';
   count: number;
   percentage: number;
   color: string;
@@ -1920,7 +1956,7 @@ export interface RecentOutcomesSummaryData {
 }
 
 /**
- * Returns send outcomes (Flash, Top, Attempt, Fail) and average grade
+ * Returns send outcomes (Flash, Top, Projecting) and average grade
  * for the last `limit` completed boulder routes.
  */
 export function getRecentOutcomesSummary(limit: number = 20): RecentOutcomesSummaryData {
@@ -1946,8 +1982,7 @@ export function getRecentOutcomesSummary(limit: number = 20): RecentOutcomesSumm
 
   let flashCount = 0;
   let topCount = 0;
-  let attemptCount = 0;
-  let failCount = 0;
+  let projectingCount = 0;
   const difficulties: number[] = [];
 
   for (const r of rows) {
@@ -1957,12 +1992,8 @@ export function getRecentOutcomesSummary(limit: number = 20): RecentOutcomesSumm
       flashCount++;
     } else if (outcome === 'send' || outcome === 'top') {
       topCount++;
-    } else if (outcome === 'attempt') {
-      attemptCount++;
-    } else if (outcome === 'fail') {
-      failCount++;
     } else {
-      attemptCount++;
+      projectingCount++;
     }
   }
 
@@ -2006,8 +2037,7 @@ export function getRecentOutcomesSummary(limit: number = 20): RecentOutcomesSumm
     segments = [
       { label: 'Flash', count: 8, percentage: 40, color: '#6EE756' },
       { label: 'Top', count: 6, percentage: 30, color: '#8E7CFF' },
-      { label: 'Attempt', count: 4, percentage: 20, color: '#E8DEB5' },
-      { label: 'Fail', count: 2, percentage: 10, color: '#3E3E48' },
+      { label: 'Projecting', count: 6, percentage: 30, color: '#3A3A46' },
     ];
   } else {
     segments = [
@@ -2024,16 +2054,10 @@ export function getRecentOutcomesSummary(limit: number = 20): RecentOutcomesSumm
         color: '#8E7CFF',
       },
       {
-        label: 'Attempt',
-        count: attemptCount,
-        percentage: Math.round((attemptCount / total) * 100),
-        color: '#E8DEB5',
-      },
-      {
-        label: 'Fail',
-        count: failCount,
-        percentage: Math.round((failCount / total) * 100),
-        color: '#3E3E48',
+        label: 'Projecting',
+        count: projectingCount,
+        percentage: Math.round((projectingCount / total) * 100),
+        color: '#3A3A46',
       },
     ];
   }

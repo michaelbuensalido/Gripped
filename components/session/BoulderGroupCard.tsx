@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { View, Text, TouchableOpacity, TextInput, Keyboard, Alert, Platform } from 'react-native';
+import { View, Text, TouchableOpacity, TextInput, Keyboard, Alert, Platform, Pressable, LayoutAnimation } from 'react-native';
 import { MoreVertical } from 'lucide-react-native';
 import type { BoulderLog } from '../../types';
 import { useSessionStore } from '../../store/sessionStore';
@@ -16,6 +16,11 @@ interface BoulderGroupCardProps {
   notes?: string;
   index?: number;
   totalGroups?: number;
+  drag?: () => void;
+  isActive?: boolean;
+  forceCollapse?: boolean;
+  onHoldBegin?: () => void;
+  onHoldEnd?: () => void;
 }
 
 export function BoulderGroupCard({
@@ -26,19 +31,46 @@ export function BoulderGroupCard({
   notes = '',
   index = 0,
   totalGroups = 1,
+  drag,
+  isActive = false,
+  forceCollapse = false,
+  onHoldBegin,
+  onHoldEnd,
 }: BoulderGroupCardProps) {
-  const [collapsed, setCollapsed] = useState(false);
+  const [localCollapsed, setLocalCollapsed] = useState(false);
   const [editing, setEditing] = useState(false);
   const [nameValue, setNameValue] = useState(zoneName);
   const [notesValue, setNotesValue] = useState(notes || '');
   const [showRestPicker, setShowRestPicker] = useState(false);
   const [showActionSheet, setShowActionSheet] = useState(false);
 
+  const collapsed = localCollapsed || forceCollapse;
+  const holdTimeout = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  const hasDraggedRef = React.useRef(false);
+
+  const handlePressIn = useCallback(() => {
+    hasDraggedRef.current = false;
+    holdTimeout.current = setTimeout(() => {
+      onHoldBegin?.();
+    }, 120);
+  }, [onHoldBegin]);
+
+  const handlePressOut = useCallback(() => {
+    if (holdTimeout.current) clearTimeout(holdTimeout.current);
+    if (!hasDraggedRef.current) {
+      onHoldEnd?.();
+    }
+  }, [onHoldEnd]);
+
+  const handleLongPress = useCallback(() => {
+    hasDraggedRef.current = true;
+    drag?.();
+  }, [drag]);
+
   const addLog             = useSessionStore((s) => s.addLog);
   const updateGroupName    = useSessionStore((s) => s.updateGroupName);
   const updateGroupRestTimer = useSessionStore((s) => s.updateGroupRestTimer);
   const updateGroupNotes   = useSessionStore((s) => s.updateGroupNotes);
-  const moveGroup          = useSessionStore((s) => s.moveGroup);
   const deleteGroup        = useSessionStore((s) => s.deleteGroup);
 
   useEffect(() => { setNameValue(zoneName); }, [zoneName]);
@@ -84,46 +116,67 @@ export function BoulderGroupCard({
   const sends = logs.filter((l) => l.outcome === 'send' || l.outcome === 'flash').length;
 
   return (
-    <View className="bg-[#19191D] border border-[#27272F] rounded-xl p-4 mb-4">
+    <Pressable
+      onPressIn={handlePressIn}
+      onPressOut={handlePressOut}
+      onLongPress={handleLongPress}
+      delayLongPress={200}
+      className={`border rounded-xl p-4 mb-4 ${
+        isActive ? 'bg-[#1E1E24] border-[#3A3A46]' : 'bg-[#19191D] border-[#27272F]'
+      }`}
+    >
       {/* Block Header */}
       <View className="flex-row items-center justify-between mb-2">
-        <View className="flex-1 mr-2">
-          {editing ? (
-            <TextInput
-              value={nameValue}
-              onChangeText={setNameValue}
-              onBlur={handleNameSubmit}
-              onSubmitEditing={handleNameSubmit}
-              autoFocus
-              className="text-white text-[17px] font-bold"
-              returnKeyType="done"
-            />
-          ) : (
-            <TouchableOpacity
-              onPress={() => setCollapsed((c) => !c)}
-              activeOpacity={0.75}
-              className="flex-row items-center gap-2"
-            >
-              <Text className="text-white text-[17px] font-bold" numberOfLines={1}>{zoneName}</Text>
-              <View className="bg-[#141417] px-2 py-0.5 rounded-md">
+        <View className="flex-row items-center flex-1 mr-2 gap-3">
+          <View className="flex-1">
+            {editing ? (
+              <TextInput
+                value={nameValue}
+                onChangeText={setNameValue}
+                onBlur={handleNameSubmit}
+                onSubmitEditing={handleNameSubmit}
+                autoFocus
+                className="text-white text-[17px] font-bold"
+                returnKeyType="done"
+              />
+            ) : (
+              <TouchableOpacity
+                onPress={() => {
+                  LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                  setLocalCollapsed((c) => !c);
+                }}
+                activeOpacity={0.75}
+                className="flex-row items-center gap-2"
+              >
                 <Text 
-                  className="text-[#8E7CFF] text-[11px]"
-                  style={{ fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace' }}
+                  className="text-[17px] font-bold flex-shrink text-white"
+                  numberOfLines={1}
                 >
-                  {sends}/{logs.length}
+                  {zoneName}
                 </Text>
-              </View>
-            </TouchableOpacity>
-          )}
+                <View className="bg-[#141417] px-2 py-0.5 rounded-md shrink-0">
+                  <Text 
+                    className="text-[#8E7CFF] text-[11px]"
+                    style={{ fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace' }}
+                  >
+                    {sends}/{logs.length}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            )}
+          </View>
         </View>
 
-        <TouchableOpacity
-          onPress={() => { triggerHaptic('selection'); setShowActionSheet(true); }}
-          activeOpacity={0.7}
-          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-        >
-          <MoreVertical size={18} color="#555562" />
-        </TouchableOpacity>
+        <View className="flex-row items-center gap-1">
+          <TouchableOpacity
+            onPress={() => { triggerHaptic('selection'); setShowActionSheet(true); }}
+            activeOpacity={0.7}
+            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+            className="p-1"
+          >
+            <MoreVertical size={18} color="#555562" />
+          </TouchableOpacity>
+        </View>
       </View>
 
       {!collapsed && (
@@ -188,14 +241,10 @@ export function BoulderGroupCard({
       <BlockActionSheet
         visible={showActionSheet}
         blockName={zoneName}
-        canMoveUp={index > 0}
-        canMoveDown={index < totalGroups - 1}
         onClose={() => setShowActionSheet(false)}
         onRename={() => setEditing(true)}
-        onMoveUp={() => moveGroup(groupId, 'up')}
-        onMoveDown={() => moveGroup(groupId, 'down')}
         onDelete={handleDeleteBlock}
       />
-    </View>
+    </Pressable>
   );
 }

@@ -44,6 +44,8 @@ interface SessionCompletionModalProps {
     rpe: number | null;
     mediaUris: string[];
     endTime: number;
+    skinState?: string | null;
+    fingerFatigue?: string | null;
   }) => void;
   onDiscard: () => void;
 }
@@ -73,15 +75,15 @@ function getRpeHeaderLabel(rpe: number | null): string {
   if (rpe <= 2) desc = 'Very Light';
   else if (rpe <= 4) desc = 'Moderate Pace';
   else if (rpe <= 6) desc = 'Challenging';
-  else if (rpe <= 8) desc = 'Hard Effort';
-  else desc = 'Limit Burn';
-  return `RPE ${rpe} / 10 • ${desc}`;
+  else if (rpe <= 8) desc = 'High Gravity';
+  else desc = 'Maximum Gravity';
+  return `${rpe} / 10 • ${desc}`;
 }
 
 function getRpeDotColor(num: number): string {
   if (num <= 4) return '#22C55E'; // Green (1-4)
   if (num <= 7) return '#F59E0B'; // Amber (5-7)
-  return '#EF4444'; // Red/Purple (8-10)
+  return '#8E7CFF'; // Send Lavender
 }
 
 const SAMPLE_MEDIA_OPTIONS = [
@@ -105,6 +107,8 @@ export function SessionCompletionModal({
   const [notes, setNotes] = useState(activeSession.notes || '');
   const [rpe, setRpe] = useState<number | null>(7);
   const [mediaUris, setMediaUris] = useState<string[]>(activeSession.mediaUris || []);
+  const [skinState, setSkinState] = useState<string | null>(activeSession.skinState || 'Good');
+  const [fingerFatigue, setFingerFatigue] = useState<string | null>(activeSession.fingerFatigue || 'Fresh');
   const [confettiKey, setConfettiKey] = useState(0);
 
   useEffect(() => {
@@ -113,6 +117,8 @@ export function SessionCompletionModal({
       setGymName(activeSession.gymName || 'Boulder World');
       setNotes(activeSession.notes || '');
       setMediaUris(activeSession.mediaUris || []);
+      setSkinState(activeSession.skinState || 'Good');
+      setFingerFatigue(activeSession.fingerFatigue || 'Fresh');
       setConfettiKey((prev) => prev + 1);
       // Fire celebratory success haptic alongside confetti burst
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
@@ -180,6 +186,8 @@ export function SessionCompletionModal({
       rpe,
       mediaUris,
       endTime: pausedEndTime,
+      skinState,
+      fingerFatigue,
     });
   };
 
@@ -433,21 +441,18 @@ export function SessionCompletionModal({
               {hardestSend ? (
                 <View
                   style={{
-                    backgroundColor: '#6EE756',
+                    backgroundColor: 'rgba(110, 231, 86, 0.1)',
+                    borderColor: 'rgba(110, 231, 86, 0.3)',
+                    borderWidth: 1,
                     borderRadius: 12,
                     paddingHorizontal: 12,
                     paddingVertical: 3.5,
-                    shadowColor: '#6EE756',
-                    shadowOffset: { width: 0, height: 2 },
-                    shadowOpacity: 0.35,
-                    shadowRadius: 5,
-                    elevation: 3,
                   }}
                 >
                   <Text
                     style={{
-                      color: '#111115',
-                      fontSize: 14,
+                      color: '#6EE756',
+                      fontSize: 18,
                       fontWeight: '700',
                       letterSpacing: 0.3,
                     }}
@@ -545,7 +550,7 @@ export function SessionCompletionModal({
             )}
           </View>
 
-          {/* ── 5. Dynamic Effort Slider (RPE) ───────────────────────── */}
+          {/* ── 5. Session Gravity Slider ───────────────────────── */}
           <View style={{ marginBottom: 18 }}>
             <View
               style={{
@@ -563,7 +568,7 @@ export function SessionCompletionModal({
                   letterSpacing: 1.2,
                 }}
               >
-                HOW DID IT FEEL?
+                SESSION GRAVITY
               </Text>
               {rpe && (
                 <Text style={{ color: '#8E7CFF', fontSize: 12, fontWeight: '700' }}>
@@ -589,8 +594,8 @@ export function SessionCompletionModal({
                         width: '100%',
                         height: 42,
                         borderRadius: 12,
-                        backgroundColor: isSelected ? '#8E7CFF' : '#1C1C22',
-                        borderColor: isSelected ? '#8E7CFF' : '#2A2A33',
+                        backgroundColor: isSelected ? '#8E7CFF' : '#141417',
+                        borderColor: isSelected ? '#8E7CFF' : '#27272F',
                         borderWidth: 1,
                         alignItems: 'center',
                         justifyContent: 'center',
@@ -628,7 +633,88 @@ export function SessionCompletionModal({
             </View>
           </View>
 
-          {/* ── 6. Notes Input ────────────────────────────────────────── */}
+          {/* ── 6. Skin & Fingers Selectors ────────────────────────── */}
+          <View style={{ marginBottom: 18 }}>
+            <Text
+              style={{
+                color: '#8A8A98',
+                fontSize: 11,
+                fontWeight: '700',
+                letterSpacing: 1.2,
+                marginBottom: 10,
+              }}
+            >
+              SKIN & FINGERS
+            </Text>
+
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 12 }}>
+              {/* Skin State */}
+              <View style={{ flex: 1 }}>
+                <Text style={{ color: '#5A5A65', fontSize: 10, fontWeight: '600', marginBottom: 6, textTransform: 'uppercase' }}>Skin State</Text>
+                <View style={{ flexDirection: 'row', gap: 4 }}>
+                  {['Raw', 'Thin', 'Good'].map((s) => {
+                    const isSelected = skinState === s;
+                    return (
+                      <TouchableOpacity
+                        key={s}
+                        activeOpacity={0.8}
+                        onPress={() => {
+                          triggerHaptic('selection');
+                          setSkinState(s);
+                        }}
+                        style={{
+                          flex: 1,
+                          height: 36,
+                          borderRadius: 8,
+                          backgroundColor: isSelected ? '#8E7CFF' : '#141417',
+                          borderColor: isSelected ? '#8E7CFF' : '#27272F',
+                          borderWidth: 1,
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                        }}
+                      >
+                        <Text style={{ color: isSelected ? '#FFFFFF' : '#8A8A98', fontSize: 12, fontWeight: isSelected ? '700' : '600' }}>{s}</Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              </View>
+
+              {/* Finger Fatigue */}
+              <View style={{ flex: 1 }}>
+                <Text style={{ color: '#5A5A65', fontSize: 10, fontWeight: '600', marginBottom: 6, textTransform: 'uppercase' }}>Finger Fatigue</Text>
+                <View style={{ flexDirection: 'row', gap: 4 }}>
+                  {['Tweaky', 'Pumped', 'Fresh'].map((f) => {
+                    const isSelected = fingerFatigue === f;
+                    return (
+                      <TouchableOpacity
+                        key={f}
+                        activeOpacity={0.8}
+                        onPress={() => {
+                          triggerHaptic('selection');
+                          setFingerFatigue(f);
+                        }}
+                        style={{
+                          flex: 1,
+                          height: 36,
+                          borderRadius: 8,
+                          backgroundColor: isSelected ? '#8E7CFF' : '#141417',
+                          borderColor: isSelected ? '#8E7CFF' : '#27272F',
+                          borderWidth: 1,
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                        }}
+                      >
+                        <Text style={{ color: isSelected ? '#FFFFFF' : '#8A8A98', fontSize: 12, fontWeight: isSelected ? '700' : '600' }}>{f}</Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              </View>
+            </View>
+          </View>
+
+          {/* ── 7. Notes Input ────────────────────────────────────────── */}
           <View style={{ marginBottom: 16 }}>
             <Text
               style={{
@@ -707,7 +793,7 @@ export function SessionCompletionModal({
                 letterSpacing: 0.5,
               }}
             >
-              SAVE & COMPLETE WORKOUT
+              LOG SESSION
             </Text>
           </TouchableOpacity>
         </View>

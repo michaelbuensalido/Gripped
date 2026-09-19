@@ -108,7 +108,9 @@ export function SetRow({ log, index, groupId }: SetRowProps) {
       <TouchableOpacity 
         activeOpacity={0.9} 
         onPress={() => setIsExpanded(!isExpanded)}
-        className="h-[52px] flex-row items-center justify-between border-b border-[#22222A] px-1"
+        className={`h-[52px] flex-row items-center justify-between border-b border-[#22222A] px-2 rounded-lg ${
+          (isFlash || isSent) ? 'bg-[rgba(142,124,255,0.08)]' : ''
+        }`}
       >
         {/* Set Index */}
         <Text 
@@ -189,16 +191,14 @@ export function SetRow({ log, index, groupId }: SetRowProps) {
             <Animated.View
               className="w-[40px] h-[40px] rounded-lg items-center justify-center"
               style={[sendAnimStyle, {
-                backgroundColor: isFlash 
-                  ? 'rgba(110, 231, 86, 0.20)' 
-                  : isSent 
+                backgroundColor: (isFlash || isSent)
                   ? 'rgba(142, 124, 255, 0.20)' 
                   : '#141417',
-                borderColor: isFlash ? '#6EE756' : isSent ? '#8E7CFF' : '#2C2C35',
+                borderColor: (isFlash || isSent) ? '#8E7CFF' : '#2C2C35',
                 borderWidth: 1,
               }]}
             >
-              {isFlash ? <Zap size={18} color="#6EE756" fill="#6EE756" /> :
+              {isFlash ? <Zap size={18} color="#8E7CFF" fill="#8E7CFF" /> :
                isSent ? <Check size={18} color="#8E7CFF" strokeWidth={3} /> : null}
             </Animated.View>
           </Pressable>

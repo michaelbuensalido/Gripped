@@ -26,6 +26,8 @@ import {
 import { OutcomeRingGauge } from '../components/analytics/OutcomeRingGauge';
 import { BentoMetricRow } from '../components/analytics/BentoMetricRow';
 import { GradePyramidWidget } from '../components/analytics/GradePyramidWidget';
+import { ACWRWidget } from '../components/analytics/ACWRWidget';
+import { calculateACWR } from '../services/loadCalculations';
 import { AngleMasteryWidget } from '../components/analytics/AngleMasteryWidget';
 import { FailureBreakdownWidget } from '../components/analytics/FailureBreakdownWidget';
 import { ClimbingHoldGraphic, type HoldType } from '../components/ui/ClimbingHoldGraphic';
@@ -63,6 +65,8 @@ export default function AnalyticsScreen() {
   const [recentLogs, setRecentLogs] = useState<RecentBoulderLog[]>([]);
   const [failureBreakdown, setFailureBreakdown] = useState<FailureBreakdownData | null>(null);
 
+  const [acwrData, setAcwrData] = useState<any>(null);
+
   const loadAnalytics = useCallback((tf: TimeframeOption) => {
     let sinceTimestamp: number | undefined;
     const now = Date.now();
@@ -84,6 +88,7 @@ export default function AnalyticsScreen() {
       setOverview(getAnalyticsOverview(sinceTimestamp));
       setRecentLogs(getRecentBoulderLogs(6));
       setFailureBreakdown(getFailureBreakdown(sinceTimestamp));
+      setAcwrData(calculateACWR());
     } catch (err) {
       console.error('Failed to load analytics data:', err);
     }
@@ -161,7 +166,15 @@ export default function AnalyticsScreen() {
           </View>
         )}
 
-        <BentoMetricRow peakGrade={overview?.hardestSend} flashRate={overview?.flashRate ?? 38} />
+        <BentoMetricRow 
+          peakGrade={overview?.hardestSend} 
+          flashRate={overview?.flashRate ?? 38} 
+          sparklineData={overview?.peakGradeTrend}
+        />
+
+        <View className="mt-4">
+          <ACWRWidget data={acwrData} />
+        </View>
 
         {/* Section Divider */}
         <View className="flex-row items-center gap-3 mt-7 mb-4">
@@ -197,20 +210,20 @@ export default function AnalyticsScreen() {
                 const badgeColor = isFlash ? '#6EE756' : '#8E7CFF';
 
                 return (
-                  <View key={route.id} className={`flex-row items-center px-4 py-3 ${!isLast ? 'border-b border-[#22222A]' : ''}`}>
-                    <View className="w-[44px] h-[44px] rounded-xl bg-[#131316] border border-[#2C2C35] items-center justify-center overflow-hidden">
-                      <ClimbingHoldGraphic type={route.holdType} size={44} borderRadius={12} />
+                  <View key={route.id} className={`flex-row items-center justify-between px-4 py-3 ${!isLast ? 'border-b border-[#27272F]' : ''}`}>
+                    <View className="flex-row items-center flex-1 pr-4">
+                      <View className="bg-[#8E7CFF]/10 px-2 py-0.5 rounded mr-3">
+                        <Text className="text-[#8E7CFF] font-bold text-[13px]">{route.grade}</Text>
+                      </View>
+                      <View className="flex-1">
+                        <Text className="text-white text-[13px] font-bold" numberOfLines={1}>{route.title}</Text>
+                        <Text className="text-[#8A8A98] text-[11px] font-medium uppercase mt-0.5" style={{ color: badgeColor }}>{route.outcome}</Text>
+                      </View>
                     </View>
 
-                    <View className="flex-1 ml-3">
-                      <Text className="text-white text-[13px] font-bold mb-1" numberOfLines={1}>{route.title}</Text>
-                      <Text className="text-[#8A8A98] text-[12px] font-semibold">{route.grade}</Text>
-                    </View>
-
-                    <View className="items-end">
-                      <Text className="text-[12px] font-bold mb-1" style={{ color: badgeColor, fontVariant: ['tabular-nums'] }}>{route.outcome}</Text>
-                      <Text className="text-[#8A8A98] text-[11px] font-medium" style={{ fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace' }}>{route.date}</Text>
-                    </View>
+                    <Text className="text-[10px] text-[#8A8A98] uppercase tracking-[0.5px]" style={{ fontVariant: ['tabular-nums'] }}>
+                      {route.date}
+                    </Text>
                   </View>
                 );
               })
