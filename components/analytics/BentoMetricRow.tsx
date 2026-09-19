@@ -1,9 +1,11 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import Svg, { Polyline } from 'react-native-svg';
 
 export interface BentoMetricRowProps {
   peakGrade?: string | null;
   flashRate?: number;
+  sparklineData?: number[];
   onPeakGradePress?: () => void;
   onFlashRatePress?: () => void;
 }
@@ -11,11 +13,51 @@ export interface BentoMetricRowProps {
 export function BentoMetricRow({
   peakGrade,
   flashRate = 38,
+  sparklineData = [],
   onPeakGradePress,
   onFlashRatePress,
 }: BentoMetricRowProps) {
   const displayPeak = peakGrade || 'V7';
   const displayRate = `${Math.round(flashRate)}%`;
+
+  const renderSparkline = () => {
+    if (!sparklineData || sparklineData.length < 2) {
+      return (
+        <View style={styles.equalizerContainer}>
+          <View style={[styles.equalizerBar, { height: 12 }]} />
+          <View style={[styles.equalizerBar, { height: 24 }]} />
+          <View style={[styles.equalizerBar, { height: 16 }]} />
+        </View>
+      );
+    }
+
+    const width = 48;
+    const height = 24;
+    const maxVal = Math.max(...sparklineData);
+    const minVal = Math.min(...sparklineData);
+    const range = maxVal - minVal || 1;
+
+    const points = sparklineData.map((val, i) => {
+      const x = (i / (sparklineData.length - 1)) * width;
+      const y = height - ((val - minVal) / range) * height;
+      return `${x},${y}`;
+    }).join(' ');
+
+    return (
+      <View style={{ width, height, justifyContent: 'center' }}>
+        <Svg width={width} height={height} viewBox={`0 -2 ${width} ${height + 4}`}>
+          <Polyline
+            points={points}
+            fill="none"
+            stroke="#6EE756"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </Svg>
+      </View>
+    );
+  };
 
   return (
     <View style={styles.container}>
@@ -29,13 +71,7 @@ export function BentoMetricRow({
 
         <View style={styles.contentRow}>
           <Text style={styles.metricValue}>{displayPeak}</Text>
-
-          {/* Mini vertical 3-bar equalizer on right side */}
-          <View style={styles.equalizerContainer}>
-            <View style={[styles.equalizerBar, { height: 12 }]} />
-            <View style={[styles.equalizerBar, { height: 24 }]} />
-            <View style={[styles.equalizerBar, { height: 16 }]} />
-          </View>
+          {renderSparkline()}
         </View>
 
         <Text style={styles.cardSublabel}>Hardest Send</Text>

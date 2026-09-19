@@ -9,9 +9,11 @@ import {
   TouchableWithoutFeedback,
   Keyboard,
   Alert,
+  LayoutAnimation,
 } from 'react-native';
 import { useKeepAwake, activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import DraggableFlatList, { ScaleDecorator } from 'react-native-draggable-flatlist';
 import { Plus } from 'lucide-react-native';
 import { useSessionStore } from '../../store/sessionStore';
 import { SessionHeader } from '../../components/session/SessionHeader';
@@ -86,6 +88,7 @@ export default function ActiveSessionScreen() {
   const [testCamOpen, setTestCamOpen] = useState(false);
   const [activeSetId, setActiveSetId] = useState<string | null>(null);
   const [testPreviewOpen, setTestPreviewOpen] = useState(false);
+  const [isDraggingCards, setIsDraggingCards] = useState(false);
 
   // Load session if not already in store (e.g. coming back from background)
   useEffect(() => {
@@ -268,53 +271,74 @@ export default function ActiveSessionScreen() {
         style={{ flex: 1 }}
       >
         <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
-          <ScrollView
-            contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: 170 }}
-            keyboardShouldPersistTaps="handled"
-            keyboardDismissMode="on-drag"
-            showsVerticalScrollIndicator={false}
-          >
-          {/* Session Condition Tags */}
-          <SessionConditionStrip
-            selected={conditions}
-            onChange={setSessionConditions}
-          />
-
-          {/* Boulder group cards */}
-          {groups.map((group, index) => (
-            <BoulderGroupCard
-              key={group.id}
-              groupId={group.id}
-              zoneName={group.zoneName}
-              logs={group.logs}
-              defaultRestSeconds={group.defaultRestSeconds}
-              notes={group.notes}
-              index={index}
-              totalGroups={groups.length}
-            />
-          ))}
-
-          {/* Add Zone button */}
-          <TouchableOpacity
-            onPress={handleAddZone}
-            activeOpacity={0.8}
-            style={{
-              borderColor: '#27272F',
-              backgroundColor: '#19191D',
-              flexDirection: 'row',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 8,
-              height: 44,
-              borderRadius: 8,
-              borderWidth: 1,
-              marginTop: 8,
+          <DraggableFlatList
+            data={groups}
+            keyExtractor={(item) => item.id}
+            onDragEnd={({ data }) => {
+              LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+              setIsDraggingCards(false);
+              const reorderGroups = useSessionStore.getState().reorderGroups;
+              if (reorderGroups) {
+                reorderGroups(data.map(g => g.id));
+              }
             }}
-          >
-            <Plus size={16} color="#555562" strokeWidth={2.5} />
-            <Text style={{ color: '#555562', fontWeight: '700', fontSize: 12, letterSpacing: 1.2 }}>ADD ZONE</Text>
-          </TouchableOpacity>
-        </ScrollView>
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: 170 }}
+            ListHeaderComponent={
+              <SessionConditionStrip
+                selected={conditions}
+                onChange={setSessionConditions}
+              />
+            }
+            renderItem={({ item, drag, isActive }) => (
+              <ScaleDecorator>
+                <BoulderGroupCard
+                  key={item.id}
+                  groupId={item.id}
+                  zoneName={item.zoneName}
+                  logs={item.logs}
+                  defaultRestSeconds={item.defaultRestSeconds}
+                  notes={item.notes}
+                  index={item.order}
+                  totalGroups={groups.length}
+                  drag={drag}
+                  isActive={isActive}
+                  forceCollapse={isDraggingCards}
+                  onHoldBegin={() => {
+                    triggerHaptic('light');
+                    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                    setIsDraggingCards(true);
+                  }}
+                  onHoldEnd={() => {
+                    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                    setIsDraggingCards(false);
+                  }}
+                />
+              </ScaleDecorator>
+            )}
+            ListFooterComponent={
+              <TouchableOpacity
+                onPress={handleAddZone}
+                activeOpacity={0.8}
+                style={{
+                  borderColor: '#27272F',
+                  backgroundColor: '#19191D',
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 8,
+                  height: 44,
+                  borderRadius: 8,
+                  borderWidth: 1,
+                  marginTop: 8,
+                }}
+              >
+                <Plus size={16} color="#555562" strokeWidth={2.5} />
+                <Text style={{ color: '#555562', fontWeight: '700', fontSize: 12, letterSpacing: 1.2 }}>ADD ZONE</Text>
+              </TouchableOpacity>
+            }
+          />
         </TouchableWithoutFeedback>
       </KeyboardAvoidingView>
 

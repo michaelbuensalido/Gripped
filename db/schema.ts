@@ -135,6 +135,15 @@ function runMigrations(db: SQLite.SQLiteDatabase): void {
   try {
     db.execSync("ALTER TABLE sessions ADD COLUMN conditions TEXT NOT NULL DEFAULT '[]';");
   } catch {}
+  try {
+    db.execSync('ALTER TABLE sessions ADD COLUMN skin_state TEXT;');
+  } catch {}
+  try {
+    db.execSync('ALTER TABLE sessions ADD COLUMN finger_fatigue TEXT;');
+  } catch {}
+  try {
+    db.execSync('ALTER TABLE boulder_groups ADD COLUMN is_completed INTEGER NOT NULL DEFAULT 0;');
+  } catch {}
 }
 
 export async function initializeDatabase(): Promise<void> {

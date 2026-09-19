@@ -7,12 +7,13 @@ import type { RoutineWithBlocks } from '../types';
 import { useSessionStore } from '../store/sessionStore';
 import { RoutineLaunchCard } from '../components/routines/RoutineLaunchCard';
 import { HangboardTimerCard } from '../components/routines/HangboardTimerCard';
+import { RouteTemplateList } from '../components/routines/RouteTemplateList';
 import { ScreenContainer } from '../components/ui/ScreenContainer';
 import { triggerHaptic } from '../utils/haptics';
 
 export default function RoutinesListScreen() {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<'my_routines' | 'drills'>('my_routines');
+  const [activeTab, setActiveTab] = useState<'my_routines' | 'templates'>('my_routines');
   const [routines, setRoutines] = useState<RoutineWithBlocks[]>([]);
   const startEmptySession = useSessionStore((s) => s.startEmptySession);
   const startSessionFromRoutine = useSessionStore((s) => s.startSessionFromRoutine);
@@ -33,7 +34,6 @@ export default function RoutinesListScreen() {
   );
 
   const myRoutines = routines.filter((r) => r.isCustom);
-  const exampleTemplates = routines.filter((r) => !r.isCustom);
 
   const handleStartEmpty = () => {
     const sessionId = startEmptySession('Freestyle Session');
@@ -79,8 +79,6 @@ export default function RoutinesListScreen() {
       ]
     );
   };
-
-  const displayedRoutines = activeTab === 'my_routines' ? myRoutines : exampleTemplates;
 
   return (
     <ScreenContainer withTopInset={true}>
@@ -143,20 +141,22 @@ export default function RoutinesListScreen() {
           <TouchableOpacity
             onPress={() => {
               triggerHaptic('selection');
-              setActiveTab('drills');
+              setActiveTab('templates');
             }}
             className={`flex-1 items-center justify-center rounded-lg ${
-              activeTab === 'drills' ? 'bg-[#1E1E24] border border-[#2C2C35]' : 'border border-transparent'
+              activeTab === 'templates' ? 'bg-[#1E1E24] border border-[#2C2C35]' : 'border border-transparent'
             }`}
           >
-            <Text className={`text-[12px] ${activeTab === 'drills' ? 'font-bold text-white' : 'text-[#8A8A98]'}`}>
-              Drills & Templates
+            <Text className={`text-[12px] ${activeTab === 'templates' ? 'font-bold text-white' : 'text-[#8A8A98]'}`}>
+              Route Templates
             </Text>
           </TouchableOpacity>
         </View>
 
         {/* Routine List */}
-        {activeTab === 'my_routines' && myRoutines.length === 0 ? (
+        {activeTab === 'templates' ? (
+          <RouteTemplateList onStart={handleStartRoutine} />
+        ) : myRoutines.length === 0 ? (
           <TouchableOpacity 
             onPress={() => router.push('/routines/editor')}
             activeOpacity={0.7}
@@ -165,7 +165,7 @@ export default function RoutinesListScreen() {
             <Text className="text-[13px] font-semibold text-[#8A8A98]">+ Create your first custom routine</Text>
           </TouchableOpacity>
         ) : (
-          displayedRoutines.map((routine) => (
+          myRoutines.map((routine) => (
             <RoutineLaunchCard
               key={routine.id}
               routine={routine}
