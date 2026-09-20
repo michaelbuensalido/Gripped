@@ -103,7 +103,6 @@ interface SessionState {
   tickRestTimer: () => void;
   syncRestTimer: () => number;
   dismissRestTimer: () => void;
-  updateRestTimerTarget: (targetMs: number | null) => void;
 
   // ─── Phase 1: Zero-latency ascent logging (Ascents table) ──────────────────
   ascents: Ascent[];
@@ -794,26 +793,6 @@ export const useSessionStore = create<SessionState>()(
         state.restNotificationId = null;
       });
       liveActivityManager.updateRest(null);
-    },
-    
-    updateRestTimerTarget: (targetMs: number | null) => {
-      if (!targetMs) {
-        get().dismissRestTimer();
-        return;
-      }
-      const now = Date.now();
-      if (targetMs <= now) {
-        get().dismissRestTimer();
-        return;
-      }
-      const secondsRemaining = Math.ceil((targetMs - now) / 1000);
-      set((state) => {
-        state.restTimerActive = true;
-        state.restTimerTargetTimestampMs = targetMs;
-        state.restTimerSeconds = secondsRemaining;
-      });
-      // We don't call liveActivityManager.updateRest here because this was triggered FROM the Live Activity.
-      // Though we could reschedule the notification if we wanted to.
     },
 
     setSessionConditions: (conditions: string[]) => {

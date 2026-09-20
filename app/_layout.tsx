@@ -22,6 +22,7 @@ import { initDatabase } from "../services/database";
 import { ActiveSessionMiniBar } from "../components/session/ActiveSessionMiniBar";
 import { useSessionStore } from "../store/sessionStore";
 import { triggerHaptic } from "../utils/haptics";
+import { notificationEngine } from "../services/notificationEngine";
 import "../global.css";
 
 function CustomTabBar({ state, descriptors, navigation }: any) {
@@ -182,6 +183,8 @@ export default function RootLayout() {
     try {
       initDatabase();
       setIsDbReady(true);
+      // Initialize background notifications for rest timer
+      notificationEngine.requestPermissions();
     } catch (e) {
       console.error(e);
     }

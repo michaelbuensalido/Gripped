@@ -48,6 +48,7 @@
         }
       ],
       "./plugins/withClimbingPoseTracker",
+      "./plugins/withStripPushNotifications",
       "expo-asset"
     ],
     "experiments": {

@@ -15,7 +15,6 @@ public struct CruxLogAttributes: ActivityAttributes {
         public var currentGrade: String?
         public var currentSet: Int?
         public var totalSets: Int?
-        public var action: String?
     }
     public var sessionName: String
     public var sessionId: String

@@ -9,7 +9,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Edit3, Trash2, X, Layers } from "lucide-react-native";
-import { triggerHaptic } from "../../utils/haptics";
+import { hapticEngine } from "../../services/hapticEngine";
 
 interface BlockActionSheetProps {
   visible: boolean;
@@ -33,16 +33,15 @@ export function BlockActionSheet({
   const insets = useSafeAreaInsets();
 
   const handleRenamePress = () => {
-    triggerHaptic("light");
+    hapticEngine.triggerLightTap();
     onClose();
-    // Allow sheet to close before triggering rename edit
     setTimeout(() => {
       onRename();
     }, 200);
   };
 
   const handleDeletePress = () => {
-    triggerHaptic("warning");
+    hapticEngine.triggerLightTap();
     onClose();
     setTimeout(() => {
       Alert.alert(
@@ -54,11 +53,11 @@ export function BlockActionSheet({
             text: "Delete Zone",
             style: "destructive",
             onPress: () => {
-              triggerHaptic("warning");
+              hapticEngine.triggerDestructive();
               onDelete();
             },
           },
-        ],
+        ]
       );
     }, 250);
   };

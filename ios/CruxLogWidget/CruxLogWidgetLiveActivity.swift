@@ -3,51 +3,145 @@ import WidgetKit
 import SwiftUI
 import AppIntents
 
-// ─── Shared Attributes ────────────────────────────────────────────────────────
-// MUST match the struct in node_modules/react-native-live-activities/ios/LiveActivities.swift
-// EXACTLY — same name, same property names, same types — ActivityKit links by type signature
+// ─── Shared Group / Attributes ────────────────────────────────────────────────
+// The Live Activity payload signature that links JS bridging to Swift
 
-struct CruxLogAttributes: ActivityAttributes {
+public struct CruxLogAttributes: ActivityAttributes {
     public struct ContentState: Codable, Hashable {
-        var sessionStartTime: Date
-        var sendCount: Int
-        var restEndDate: Date?
+        public var sessionStartTime: Date
+        public var sendCount: Int
+        public var restEndDate: Date?
+        public var currentZoneName: String?
+        public var currentGrade: String?
+        public var currentSet: Int?
+        public var totalSets: Int?
+        public var action: String?
     }
-    var sessionName: String
-    var sessionId: String
+    public var sessionName: String
+    public var sessionId: String
 }
 
 // ─── Interactive Buttons (App Intents) ────────────────────────────────────────
+// These allow Lock Screen buttons to mutate data natively without waking JS up
 
 struct LogBurnIntent: LiveActivityIntent {
     static var title: LocalizedStringResource = "Log Burn"
-
+    
+    @Parameter(title: "Activity ID")
+    var activityId: String?
+    
     @Parameter(title: "Status")
     var status: String
-
-    init() { self.status = "ATTEMPT" }
-
-    init(status: String) {
+    
+    init() {}
+    
+    init(activityId: String, status: String) {
+        self.activityId = activityId
         self.status = status
     }
-
-    func perform() async throws -> some IntentResult {
+    
+    func perform() async throws -> some IntentResult & ProvidesDialog {
         let defaults = UserDefaults(suiteName: "group.com.cruxlog.app")
         let pending = defaults?.string(forKey: "PendingOfflineAscents") ?? ""
         let newEvent = "\(Date().timeIntervalSince1970)|\(status)"
         let updated = pending.isEmpty ? newEvent : "\(pending),\(newEvent)"
         defaults?.set(updated, forKey: "PendingOfflineAscents")
-
-        if #available(iOS 16.2, *) {
-            if let activity = Activity<CruxLogAttributes>.activities.first {
-                var updatedState = activity.content.state
-                if status == "SEND" { updatedState.sendCount += 1 }
-                let updatedContent = ActivityContent(state: updatedState, staleDate: nil)
-                await activity.update(updatedContent)
+        
+        let activities = Activity<CruxLogAttributes>.activities
+        let target = activities.first(where: { $0.id == activityId }) ?? activities.first
+        
+        if let activity = target {
+            var updatedState = activity.content.state
+            if status == "SEND" {
+                updatedState.sendCount += 1
+            }
+            if #available(iOS 16.2, *) {
+                await activity.update(ActivityContent(state: updatedState, staleDate: nil))
+            } else {
+                await activity.update(using: updatedState)
             }
         }
+        
+        return .result(dialog: .init(""))
+    }
+}
 
-        return .result()
+struct AdjustRestIntent: LiveActivityIntent {
+    static var title: LocalizedStringResource = "Adjust Rest"
+    
+    @Parameter(title: "Activity ID")
+    var activityId: String?
+    
+    @Parameter(title: "Seconds")
+    var seconds: Int
+    
+    init() {}
+    
+    init(activityId: String, seconds: Int) {
+        self.activityId = activityId
+        self.seconds = seconds
+    }
+    
+    func perform() async throws -> some IntentResult & ProvidesDialog {
+        let activities = Activity<CruxLogAttributes>.activities
+        let target = activities.first(where: { $0.id == activityId }) ?? activities.first
+        
+        if let activity = target {
+            var updatedState = activity.content.state
+            if let currentRest = updatedState.restEndDate {
+                let newRest = currentRest.addingTimeInterval(TimeInterval(seconds))
+                if newRest > Date() {
+                    updatedState.restEndDate = newRest
+                } else {
+                    updatedState.restEndDate = nil
+                }
+                updatedState.action = "AdjustRest"
+                
+                let defaults = UserDefaults(suiteName: "group.com.cruxlog.app")
+                defaults?.set(updatedState.restEndDate?.timeIntervalSince1970 ?? 0, forKey: "ActiveRestEndTimestamp")
+                
+                if #available(iOS 16.2, *) {
+                    await activity.update(ActivityContent(state: updatedState, staleDate: nil))
+                } else {
+                    await activity.update(using: updatedState)
+                }
+            }
+        }
+        return .result(dialog: .init(""))
+    }
+}
+
+struct SkipRestIntent: LiveActivityIntent {
+    static var title: LocalizedStringResource = "Skip Rest"
+    
+    @Parameter(title: "Activity ID")
+    var activityId: String?
+    
+    init() {}
+    
+    init(activityId: String) {
+        self.activityId = activityId
+    }
+    
+    func perform() async throws -> some IntentResult & ProvidesDialog {
+        let activities = Activity<CruxLogAttributes>.activities
+        let target = activities.first(where: { $0.id == activityId }) ?? activities.first
+        
+        if let activity = target {
+            var updatedState = activity.content.state
+            updatedState.restEndDate = nil
+            updatedState.action = "SkipRest"
+            
+            let defaults = UserDefaults(suiteName: "group.com.cruxlog.app")
+            defaults?.set(0, forKey: "ActiveRestEndTimestamp")
+            
+            if #available(iOS 16.2, *) {
+                await activity.update(ActivityContent(state: updatedState, staleDate: nil))
+            } else {
+                await activity.update(using: updatedState)
+            }
+        }
+        return .result(dialog: .init(""))
     }
 }
 
@@ -56,62 +150,193 @@ struct LogBurnIntent: LiveActivityIntent {
 struct CruxLogWidgetLiveActivity: Widget {
     var body: some WidgetConfiguration {
         ActivityConfiguration(for: CruxLogAttributes.self) { context in
-
+            
             // ─── Lock Screen UI ───────────────────────────────────────────────
-
-            HStack(spacing: 12) {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("SESSION")
-                        .font(.system(size: 9, weight: .bold))
-                        .foregroundColor(Color(red: 85/255, green: 85/255, blue: 98/255))
-                        .tracking(1.5)
-                    Text(context.attributes.sessionName.uppercased())
-                        .font(.system(size: 13, weight: .bold))
-                        .foregroundColor(Color(red: 138/255, green: 138/255, blue: 152/255))
-                        .lineLimit(1)
-                }
-
-                Spacer()
-
-                // Ticking timer or Rest Timer
-                if let restEnd = context.state.restEndDate, restEnd > Date() {
-                    VStack(alignment: .center, spacing: 2) {
-                        Text("REST")
+            
+            VStack(spacing: 8) {
+                // Top Row (Session Title + Small Session Timer + Sends)
+                HStack(alignment: .center) {
+                    // Left: Title
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("SESSION")
                             .font(.system(size: 9, weight: .bold))
-                            .foregroundColor(Color(red: 231/255, green: 174/255, blue: 86/255))
-                            .tracking(1.5)
-                        Text(timerInterval: Date()...restEnd, countsDown: true)
-                            .font(.system(size: 28, weight: .bold, design: .monospaced))
-                            .foregroundColor(Color(red: 231/255, green: 174/255, blue: 86/255))
-                            .monospacedDigit()
+                            .foregroundColor(Color(red: 138/255, green: 138/255, blue: 152/255))
+                            .tracking(1.2)
+                        Text(context.attributes.sessionName.uppercased())
+                            .font(.system(size: 13, weight: .bold))
+                            .foregroundColor(.white)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.7)
                     }
-                } else {
-                    Text(timerInterval: context.state.sessionStartTime...context.state.sessionStartTime.addingTimeInterval(3600 * 24), countsDown: false)
-                        .font(.system(size: 28, weight: .bold, design: .monospaced))
-                        .foregroundColor(.white)
-                        .monospacedDigit()
+                    
+                    Spacer()
+                    
+                    // Right: Small Session Timer + SENDS
+                    HStack(alignment: .center, spacing: 12) {
+                        // Small Session Timer
+                        VStack(alignment: .trailing, spacing: 2) {
+                            Text("TIME")
+                                .font(.system(size: 9, weight: .bold))
+                                .foregroundColor(Color(red: 138/255, green: 138/255, blue: 152/255))
+                                .tracking(1.2)
+                            Text(timerInterval: context.state.sessionStartTime...context.state.sessionStartTime.addingTimeInterval(3600*24), countsDown: false)
+                                .font(.system(size: 13, weight: .bold, design: .monospaced))
+                                .foregroundColor(.white)
+                                .monospacedDigit()
+                        }
+                        
+                        // Vertical Divider
+                        Rectangle()
+                            .fill(Color(red: 39/255, green: 39/255, blue: 47/255))
+                            .frame(width: 1, height: 20)
+
+                        // SENDS
+                        VStack(alignment: .trailing, spacing: 2) {
+                            Text("SENDS")
+                                .font(.system(size: 9, weight: .bold))
+                                .foregroundColor(Color(red: 138/255, green: 138/255, blue: 152/255))
+                                .tracking(1.2)
+                            Text("\(context.state.sendCount)")
+                                .font(.system(size: 15, weight: .bold, design: .monospaced))
+                                .foregroundColor(Color(red: 142/255, green: 124/255, blue: 255/255))
+                        }
+                    }
                 }
-
-                Spacer()
-
-                VStack(alignment: .trailing, spacing: 2) {
-                    Text("SENDS")
-                        .font(.system(size: 9, weight: .bold))
-                        .foregroundColor(Color(red: 85/255, green: 85/255, blue: 98/255))
-                        .tracking(1.5)
-                    Text("\(context.state.sendCount)")
-                        .font(.system(size: 28, weight: .bold, design: .monospaced))
-                        .foregroundColor(Color(red: 142/255, green: 124/255, blue: 255/255))
+                
+                // Middle Row (Active Context Pill)
+                if let zoneName = context.state.currentZoneName,
+                   let grade = context.state.currentGrade,
+                   let currentSet = context.state.currentSet,
+                   let totalSets = context.state.totalSets {
+                    
+                    HStack {
+                        Spacer()
+                        Text("\(zoneName) • \(grade) • SET \(currentSet) OF \(totalSets)".uppercased())
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundColor(Color(red: 138/255, green: 138/255, blue: 152/255))
+                        Spacer()
+                    }
+                    .padding(.vertical, 6)
+                    .background(
+                        Capsule()
+                            .fill(Color(red: 25/255, green: 25/255, blue: 29/255))
+                    )
+                    .overlay(
+                        Capsule()
+                            .stroke(Color(red: 39/255, green: 39/255, blue: 47/255), lineWidth: 1)
+                    )
+                }
+                
+                // Bottom Row (Rest Timer Controls OR Quick Actions)
+                if let restEnd = context.state.restEndDate, restEnd > Date() {
+                    HStack(alignment: .center) {
+                        // Left: -15s Button
+                        Button(intent: AdjustRestIntent(activityId: context.activityID, seconds: -15)) {
+                            Text("-15")
+                                .font(.system(size: 13, weight: .bold, design: .monospaced))
+                                .foregroundColor(Color(red: 231/255, green: 174/255, blue: 86/255))
+                                .frame(minWidth: 44, minHeight: 36)
+                                .background(Color(red: 35/255, green: 30/255, blue: 22/255))
+                                .cornerRadius(8)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 8)
+                                        .stroke(Color(red: 231/255, green: 174/255, blue: 86/255).opacity(0.35), lineWidth: 1)
+                                )
+                        }
+                        .buttonStyle(.plain)
+                        .contentShape(Rectangle())
+                        
+                        Spacer()
+                        
+                        // Center: Amber countdown timer with dynamic identity refresh
+                        VStack(spacing: 1) {
+                            Text("REST")
+                                .font(.system(size: 9, weight: .bold))
+                                .foregroundColor(Color(red: 231/255, green: 174/255, blue: 86/255))
+                                .tracking(1.5)
+                            Text(timerInterval: Date()...restEnd, countsDown: true)
+                                .id(restEnd)
+                                .font(.system(size: 34, weight: .bold, design: .monospaced))
+                                .foregroundColor(Color(red: 231/255, green: 174/255, blue: 86/255))
+                                .monospacedDigit()
+                        }
+                        
+                        Spacer()
+                        
+                        // Right: +15s Button & SKIP Button
+                        HStack(spacing: 6) {
+                            Button(intent: AdjustRestIntent(activityId: context.activityID, seconds: 15)) {
+                                Text("+15")
+                                    .font(.system(size: 13, weight: .bold, design: .monospaced))
+                                    .foregroundColor(Color(red: 231/255, green: 174/255, blue: 86/255))
+                                    .frame(minWidth: 44, minHeight: 36)
+                                    .background(Color(red: 35/255, green: 30/255, blue: 22/255))
+                                    .cornerRadius(8)
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 8)
+                                            .stroke(Color(red: 231/255, green: 174/255, blue: 86/255).opacity(0.35), lineWidth: 1)
+                                    )
+                            }
+                            .buttonStyle(.plain)
+                            .contentShape(Rectangle())
+                            
+                            Button(intent: SkipRestIntent(activityId: context.activityID)) {
+                                Text("SKIP")
+                                    .font(.system(size: 12, weight: .bold))
+                                    .foregroundColor(Color(red: 138/255, green: 138/255, blue: 152/255))
+                                    .frame(minWidth: 46, minHeight: 36)
+                                    .background(Color(red: 25/255, green: 25/255, blue: 29/255))
+                                    .cornerRadius(8)
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 8)
+                                            .stroke(Color(red: 62/255, green: 62/255, blue: 72/255), lineWidth: 1)
+                                    )
+                            }
+                            .buttonStyle(.plain)
+                            .contentShape(Rectangle())
+                        }
+                    }
+                    .padding(.horizontal, 2)
+                } else {
+                    // Quick Action Buttons
+                    HStack(spacing: 12) {
+                        Button(intent: LogBurnIntent(activityId: context.activityID, status: "ATTEMPT")) {
+                            Text("BURN")
+                                .font(.system(size: 14, weight: .bold))
+                                .foregroundColor(Color(red: 138/255, green: 138/255, blue: 152/255))
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 12)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 8)
+                                        .stroke(Color(red: 62/255, green: 62/255, blue: 72/255), lineWidth: 1)
+                                )
+                        }
+                        .buttonStyle(.plain)
+                        .contentShape(Rectangle())
+                        
+                        Button(intent: LogBurnIntent(activityId: context.activityID, status: "SEND")) {
+                            Text("SEND")
+                                .font(.system(size: 14, weight: .bold))
+                                .foregroundColor(Color(red: 142/255, green: 124/255, blue: 255/255))
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 12)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 8)
+                                        .stroke(Color(red: 142/255, green: 124/255, blue: 255/255), lineWidth: 1)
+                                )
+                        }
+                        .buttonStyle(.plain)
+                        .contentShape(Rectangle())
+                    }
                 }
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 12)
+            .padding()
             .background(Color(red: 17/255, green: 17/255, blue: 19/255))
-            .activityBackgroundTint(Color(red: 17/255, green: 17/255, blue: 19/255))
-            .widgetURL(URL(string: "cruxlog://session/\(context.attributes.sessionId)"))
-
+            .activityBackgroundTint(Color.black.opacity(0.8))
+            
         } dynamicIsland: { context in
-
+            // ─── Dynamic Island UI (Restored Original) ─────────────────────────────────────────────
+            
             DynamicIsland {
                 DynamicIslandExpandedRegion(.leading) {
                     VStack(alignment: .leading, spacing: 2) {
@@ -133,6 +358,7 @@ struct CruxLogWidgetLiveActivity: Widget {
                                 .foregroundColor(Color(red: 231/255, green: 174/255, blue: 86/255))
                                 .tracking(1.5)
                             Text(timerInterval: Date()...restEnd, countsDown: true)
+                                .id(restEnd)
                                 .font(.system(size: 22, weight: .bold, design: .monospaced))
                                 .foregroundColor(Color(red: 231/255, green: 174/255, blue: 86/255))
                                 .monospacedDigit()
@@ -176,6 +402,7 @@ struct CruxLogWidgetLiveActivity: Widget {
             } compactTrailing: {
                 if let restEnd = context.state.restEndDate, restEnd > Date() {
                     Text(timerInterval: Date()...restEnd, countsDown: true)
+                        .id(restEnd)
                         .font(.system(size: 12, weight: .bold, design: .monospaced))
                         .monospacedDigit()
                         .foregroundColor(Color(red: 231/255, green: 174/255, blue: 86/255))
