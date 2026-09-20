@@ -1,0 +1,283 @@
+diff --git a/node_modules/react-native-live-activities/ios/LiveActivities.m b/node_modules/react-native-live-activities/ios/LiveActivities.m
+index 0323cc9..554a95a 100644
+--- a/node_modules/react-native-live-activities/ios/LiveActivities.m
++++ b/node_modules/react-native-live-activities/ios/LiveActivities.m
+@@ -1,14 +1,20 @@
+ #import <React/RCTBridgeModule.h>
++#import <React/RCTEventEmitter.h>
+ 
+-@interface RCT_EXTERN_MODULE(LiveActivities, NSObject)
++@interface RCT_EXTERN_MODULE(LiveActivities, RCTEventEmitter)
+ 
++RCT_EXTERN_METHOD(startActivity:(NSString *)sessionName
++                  sessionId:(NSString *)sessionId
++                  startTime:(double)startTime
++                  sendCount:(NSInteger)sendCount)
+ 
+-RCT_EXTERN_METHOD(createActivity)
+-RCT_EXTERN_METHOD(endAllActivity)
++RCT_EXTERN_METHOD(updateActivity:(NSInteger)sendCount
++                  restEndTimestamp:(double)restEndTimestamp
++                  zoneName:(NSString *)zoneName
++                  grade:(NSString *)grade
++                  currentSet:(NSInteger)currentSet
++                  totalSets:(NSInteger)totalSets)
+ 
+-+ (BOOL)requiresMainQueueSetup
+-{
+-  return NO;
+-}
++RCT_EXTERN_METHOD(endActivity)
+ 
+ @end
+diff --git a/node_modules/react-native-live-activities/ios/LiveActivities.swift b/node_modules/react-native-live-activities/ios/LiveActivities.swift
+index 1da2a6c..f66c523 100644
+--- a/node_modules/react-native-live-activities/ios/LiveActivities.swift
++++ b/node_modules/react-native-live-activities/ios/LiveActivities.swift
+@@ -1,67 +1,204 @@
+ import SwiftUI
+ import ActivityKit
++import Foundation
++import React
+ 
+-struct GroceryDeliveryAppAttributes: ActivityAttributes, Identifiable {
+-    public typealias LiveDeliveryData = ContentState
+-
++public struct CruxLogAttributes: ActivityAttributes {
+     public struct ContentState: Codable, Hashable {
+-        var courierName: String
+-        var deliveryTime: Date
+-        var heading: String
+-        var subHeading: String
++        public var sessionStartTime: Date
++        public var sendCount: Int
++        public var restEndDate: Date?
++        public var currentZoneName: String?
++        public var currentGrade: String?
++        public var currentSet: Int?
++        public var totalSets: Int?
++        public var action: String?
++        
++        public init(sessionStartTime: Date, sendCount: Int, restEndDate: Date? = nil, action: String? = nil) {
++            self.sessionStartTime = sessionStartTime
++            self.sendCount = sendCount
++            self.restEndDate = restEndDate
++            self.action = action
++        }
++    }
++    public var sessionName: String
++    public var sessionId: String
++    
++    public init(sessionName: String, sessionId: String) {
++        self.sessionName = sessionName
++        self.sessionId = sessionId
+     }
+-    var numberOfGroceyItems: Int
+-    var id = UUID()
+ }
+ 
++@objc(LiveActivities)
++class LiveActivities: RCTEventEmitter {
+     
++    private var contentUpdateTask: Task<Void, Never>?
++    private var activityTasks: [String: Task<Void, Never>] = [:]
+ 
+-@objc(LiveActivities)
+-class LiveActivities: NSObject {
++    override init() {
++        super.init()
++        observeActivities()
++    }
+     
+-    @objc
+-    @available(iOS 16.1, *)
+-    func createActivity() {
++    deinit {
++        contentUpdateTask?.cancel()
++        for task in activityTasks.values {
++            task.cancel()
++        }
++    }
++
++    override func supportedEvents() -> [String]! {
++        return ["onLiveActivityStateChanged"]
++    }
+     
+-        if #available(iOS 10.0, *) {
+-            print("Started")
+-            let center = UNUserNotificationCenter.current()
+-            center.requestAuthorization(options: [.alert, .sound, .badge]) { granted, error in
++    override class func requiresMainQueueSetup() -> Bool {
++        return true
++    }
+     
+-                if let error = error {
+-                    // Handle the error here.
+-                    print(error.localizedDescription)
+-                }
++    private func observeActivities() {
++        guard #available(iOS 16.1, *) else { return }
+         
+-                // Enable or disable features based on the authorization.
++        // Observe newly created activities
++        contentUpdateTask = Task {
++            for await activity in Activity<CruxLogAttributes>.activityUpdates {
++                observeContent(for: activity)
+             }
++        }
+         
+-            let attributes = GroceryDeliveryAppAttributes(numberOfGroceyItems: 12)
+-            let contentState = GroceryDeliveryAppAttributes.LiveDeliveryData(courierName: "Mike", deliveryTime: .now + 120, heading: "Shamsudeen", subHeading: "Yusuf")
+-            do {
+-                let _ = try Activity<GroceryDeliveryAppAttributes>.request(
+-                    attributes: attributes,
+-                    contentState: contentState,
+-                    pushType: .token)
+-            } catch (let error) {
+-                print(error.localizedDescription)
++        // Observe existing activities
++        for activity in Activity<CruxLogAttributes>.activities {
++            observeContent(for: activity)
++        }
++    }
++    
++    @available(iOS 16.1, *)
++    private func observeContent(for activity: Activity<CruxLogAttributes>) {
++        if activityTasks[activity.id] != nil { return }
++        
++        let task = Task {
++            if #available(iOS 16.2, *) {
++                for await update in activity.contentUpdates {
++                    self.notifyJS(state: update.state, activityId: activity.id)
++                }
++            } else {
++                for await state in activity.contentStateUpdates {
++                    self.notifyJS(state: state, activityId: activity.id)
++                }
+             }
+-        } else {
+-            // Fallback on earlier versions
+         }
++        activityTasks[activity.id] = task
++    }
++
++    private func notifyJS(state: CruxLogAttributes.ContentState, activityId: String) {
++        guard let action = state.action else { return } // Only notify if there's an action from the widget!
++        
++        let restEnd = state.restEndDate?.timeIntervalSince1970 ?? 0
++        let body: [String: Any] = [
++            "activityId": activityId,
++            "restEndDate": restEnd,
++            "action": action
++        ]
++        self.sendEvent(withName: "onLiveActivityStateChanged", body: body)
++    }
++
++    @objc
++    func startActivity(_ sessionName: String, sessionId: String, startTime: Double, sendCount: Int) {
++        guard #available(iOS 16.1, *) else {
++            return
++        }
++        
++        let attributes = CruxLogAttributes(sessionName: sessionName, sessionId: sessionId)
++        let state = CruxLogAttributes.ContentState(
++            sessionStartTime: Date(timeIntervalSince1970: startTime),
++            sendCount: sendCount,
++            restEndDate: nil,
++            action: nil
++        )
+         
++        do {
++            if #available(iOS 16.2, *) {
++                let content = ActivityContent(state: state, staleDate: nil)
++                let activity = try Activity<CruxLogAttributes>.request(
++                    attributes: attributes,
++                    content: content,
++                    pushType: nil
++                )
++                observeContent(for: activity)
++                print("[CruxLog] Live Activity started with id: \(activity.id)")
++            } else {
++                let activity = try Activity<CruxLogAttributes>.request(
++                    attributes: attributes,
++                    contentState: state,
++                    pushType: nil
++                )
++                observeContent(for: activity)
++                print("[CruxLog] Live Activity started with id: \(activity.id)")
++            }
++        } catch {
++            print("[CruxLog] Failed to start Live Activity: \(error)")
+         }
++    }
+ 
+     @objc
+-    @available(iOS 16.1, *)
+-    func endAllActivity() {
+-           Task {
+-               for activity in Activity<GroceryDeliveryAppAttributes>.activities{
+-                   await activity.end(dismissalPolicy: .immediate)
+-               }
+-           }
+-       }
++    func updateActivity(_ sendCount: Int, restEndTimestamp: Double, zoneName: String?, grade: String?, currentSet: Int, totalSets: Int) {
++        print("[CruxLog] updateActivity called natively! sendCount: \(sendCount), restEnd: \(restEndTimestamp)")
++        
++        guard #available(iOS 16.1, *) else {
++            return
++        }
+         
++        Task {
++            for activity in Activity<CruxLogAttributes>.activities {
++                if #available(iOS 16.2, *) {
++                    var updated = activity.content.state
++                    updated.sendCount = sendCount
++                    if restEndTimestamp > 0 {
++                        updated.restEndDate = Date(timeIntervalSince1970: restEndTimestamp)
++                    } else {
++                        updated.restEndDate = nil
++                    }
++                    updated.currentZoneName = (zoneName == nil || zoneName == "") ? nil : zoneName
++                    updated.currentGrade = (grade == nil || grade == "") ? nil : grade
++                    updated.currentSet = currentSet > 0 ? currentSet : 1
++                    updated.totalSets = totalSets > 0 ? totalSets : 1
++                    updated.action = nil // Clear action when JS updates
+                     
++                    await activity.update(ActivityContent(state: updated, staleDate: nil))
++                } else {
++                    var updated = activity.contentState
++                    updated.sendCount = sendCount
++                    if restEndTimestamp > 0 {
++                        updated.restEndDate = Date(timeIntervalSince1970: restEndTimestamp)
++                    } else {
++                        updated.restEndDate = nil
++                    }
++                    updated.currentZoneName = (zoneName == nil || zoneName == "") ? nil : zoneName
++                    updated.currentGrade = (grade == nil || grade == "") ? nil : grade
++                    updated.currentSet = currentSet > 0 ? currentSet : 1
++                    updated.totalSets = totalSets > 0 ? totalSets : 1
++                    updated.action = nil
+                     
++                    await activity.update(using: updated)
++                }
++            }
++        }
++    }
++
++    @objc
++    func endActivity() {
++        guard #available(iOS 16.1, *) else {
++            return
++        }
++        
++        Task {
++            for activity in Activity<CruxLogAttributes>.activities {
++                if #available(iOS 16.2, *) {
++                    await activity.end(nil, dismissalPolicy: .immediate)
++                } else {
++                    await activity.end(dismissalPolicy: .immediate)
++                }
++            }
++        }
++    }
+ }

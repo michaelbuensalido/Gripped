@@ -1,4 +1,5 @@
-import { Platform, NativeModules } from 'react-native';
+import { Platform, NativeModules, NativeEventEmitter } from 'react-native';
+import { useSessionStore } from '../store/sessionStore';
 
 // Defensive wrapper around react-native-live-activities native module.
 // The module registers itself as NativeModules.LiveActivities via Obj-C bridge.
@@ -11,6 +12,28 @@ class LiveActivityManager {
 
   private currentSends = 0;
   private currentRestTarget: number | null = null;
+  private currentZoneName: string | null = null;
+  private currentGrade: string | null = null;
+  private currentSet: number = 0;
+  private totalSets: number = 0;
+
+  constructor() {
+    if (Platform.OS === 'ios' && LiveActivities) {
+      const eventEmitter = new NativeEventEmitter(LiveActivities);
+      eventEmitter.addListener('onLiveActivityStateChanged', (event: any) => {
+        console.log('[LiveActivity] Received action from native widget:', event);
+        if (event.action === 'AdjustRest' || event.action === 'SkipRest') {
+           // event.restEndDate is in seconds, store needs ms
+           const targetMs = event.restEndDate > 0 ? event.restEndDate * 1000 : null;
+           const store = useSessionStore.getState();
+           if (targetMs !== store.restTimerTargetTimestampMs) {
+             // Update the store directly
+             store.updateRestTimerTarget(targetMs);
+           }
+        }
+      });
+    }
+  }
 
   public startSession(sessionId: string, sessionName: string) {
     if (Platform.OS !== 'ios') return;
@@ -23,6 +46,10 @@ class LiveActivityManager {
     this.currentSessionStartTime = Date.now();
     this.currentSends = 0;
     this.currentRestTarget = null;
+    this.currentZoneName = null;
+    this.currentGrade = null;
+    this.currentSet = 0;
+    this.totalSets = 0;
 
     try {
       LiveActivities.startActivity(
@@ -51,11 +78,28 @@ class LiveActivityManager {
     this.pushState();
   }
 
+  public updateZoneContext(zoneName: string | null, grade: string | null, currentSet: number, totalSets: number) {
+    if (Platform.OS !== 'ios' || !LiveActivities) return;
+    this.isActive = true;
+    this.currentZoneName = zoneName;
+    this.currentGrade = grade;
+    this.currentSet = currentSet;
+    this.totalSets = totalSets;
+    this.pushState();
+  }
+
   private pushState() {
     try {
       const restTarget = this.currentRestTarget ? this.currentRestTarget / 1000 : 0;
-      LiveActivities.updateActivity(this.currentSends, restTarget);
-      console.log('[LiveActivity] ✅ updateActivity called — sends:', this.currentSends, 'rest:', restTarget);
+      LiveActivities.updateActivity(
+        this.currentSends, 
+        restTarget,
+        this.currentZoneName || "",
+        this.currentGrade || "",
+        this.currentSet,
+        this.totalSets
+      );
+      console.log('[LiveActivity] ✅ updateActivity called — sends:', this.currentSends, 'rest:', restTarget, 'zone:', this.currentZoneName);
     } catch (e) {
       console.warn('[LiveActivity] updateActivity failed', e);
     }
@@ -76,3 +120,4 @@ class LiveActivityManager {
 }
 
 export const liveActivityManager = new LiveActivityManager();
+

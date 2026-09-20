@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { AppState, AppStateStatus } from 'react-native';
 import { useSessionStore } from '../store/sessionStore';
-import { triggerRestTimerAlert } from '../utils/haptics';
+import { hapticEngine } from '../services/hapticEngine';
 import { playRestTimerChime } from '../utils/sound';
 
 /**
@@ -25,7 +25,7 @@ export function useRestTimer(): void {
         const remaining = syncRestTimer();
         if (remaining <= 0 && !hasAlertedRef.current) {
           hasAlertedRef.current = true;
-          triggerRestTimerAlert();
+          hapticEngine.triggerRestComplete();
           playRestTimerChime();
         }
       };

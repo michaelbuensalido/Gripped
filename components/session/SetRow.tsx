@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, Pressable, Platform, ScrollView } from 'r
 import { Camera, Play, Check, Zap } from 'lucide-react-native';
 import Animated, { useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated';
 import { triggerHaptic } from '../../utils/haptics';
+import { hapticEngine } from '../../services/hapticEngine';
 import type { BoulderLog } from '../../types';
 import { useSessionStore } from '../../store/sessionStore';
 import { GradeSheet } from './GradeSheet';
@@ -49,28 +50,29 @@ export function SetRow({ log, index, groupId }: SetRowProps) {
 
   const handleAngleSelect = useCallback(() => {
     triggerHaptic('light');
+    hapticEngine.triggerLightTap();
     const cycle = [null, 'SLAB', 'VERT', 'OVERHANG', 'CAVE'] as const;
     const nextIdx = (cycle.indexOf(log.wallAngle ?? null) + 1) % cycle.length;
     updateWallAngle(groupId, log.id, cycle[nextIdx]);
   }, [groupId, log.id, log.wallAngle, updateWallAngle]);
 
   const handleIncrement = useCallback(() => {
-    triggerHaptic('light');
+    hapticEngine.triggerLightTap();
     incrementAttempts(groupId, log.id);
   }, [groupId, log.id, incrementAttempts]);
 
   const handleDecrement = useCallback(() => {
-    triggerHaptic('light');
+    hapticEngine.triggerLightTap();
     decrementAttempts(groupId, log.id);
   }, [groupId, log.id, decrementAttempts]);
 
   const handleSendTap = useCallback(() => {
     if (isSent) {
-      triggerHaptic('light');
+      hapticEngine.triggerLightTap();
       setOutcome(groupId, log.id, 'attempt');
     } else {
       const outcome = log.attempts === 1 ? 'flash' : 'send';
-      triggerHaptic(outcome === 'flash' ? 'success' : 'medium');
+      hapticEngine.triggerLogAction();
       setOutcome(groupId, log.id, outcome);
       const group = useSessionStore.getState().groups.find((g) => g.id === groupId);
       triggerRestTimer(group?.defaultRestSeconds ?? 180);
@@ -80,7 +82,7 @@ export function SetRow({ log, index, groupId }: SetRowProps) {
   const handleFlashLongPress = useCallback(() => {
     if (!isSent) return;
     const next = isFlash ? 'send' : 'flash';
-    triggerHaptic(next === 'flash' ? 'success' : 'medium');
+    hapticEngine.triggerLogAction();
     setOutcome(groupId, log.id, next);
     const group = useSessionStore.getState().groups.find((g) => g.id === groupId);
     triggerRestTimer(group?.defaultRestSeconds ?? 180);
@@ -163,7 +165,7 @@ export function SetRow({ log, index, groupId }: SetRowProps) {
         <View className="w-[25%] flex-row items-center justify-end gap-2">
           {log.media_uri ? (
             <TouchableOpacity
-              onPress={() => { triggerHaptic('light'); setPreviewModalOpen(true); }}
+              onPress={() => { hapticEngine.triggerLightTap(); setPreviewModalOpen(true); }}
               className="w-[40px] h-[40px] bg-[#8E7CFF] rounded-lg items-center justify-center border border-[#8E7CFF]"
             >
               {log.media_type === 'photo' ? (
@@ -174,7 +176,7 @@ export function SetRow({ log, index, groupId }: SetRowProps) {
             </TouchableOpacity>
           ) : (
             <TouchableOpacity
-              onPress={() => { triggerHaptic('light'); setCamModalOpen(true); }}
+              onPress={() => { hapticEngine.triggerLightTap(); setCamModalOpen(true); }}
               className="w-[40px] h-[40px] bg-[#141417] rounded-lg items-center justify-center border border-[#27272F]"
             >
               <Camera size={16} color="#8A8A98" />
