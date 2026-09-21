@@ -360,6 +360,10 @@ export const useSessionStore = create<SessionState>()(
         console.error('[sessionStore] loadSession getAscentsForSession failed:', e);
       }
       
+      if (!session.endTime) {
+        liveActivityManager.startSession(session.id, session.gymName);
+      }
+
       const globalSends = ascents.filter(a => a.status === 'SEND' || a.status === 'FLASH').length;
       const groupSends = groups.reduce((acc, g) => acc + g.logs.filter(l => l.outcome === 'send' || l.outcome === 'flash').length, 0);
       liveActivityManager.updateSends(globalSends + groupSends);
@@ -490,12 +494,6 @@ export const useSessionStore = create<SessionState>()(
         const g = state.groups.find((g) => g.id === groupId);
         if (g) g.logs.push(log);
       });
-      const state = get();
-      const g = state.groups.find(g => g.id === groupId);
-      // Only start a new rest timer if the user isn't currently resting
-      if (g && !state.restTimerActive) {
-        state.triggerRestTimer(g.defaultRestSeconds ?? 90);
-      }
     },
 
     updateLog: (groupId, log) => {
@@ -872,23 +870,37 @@ export const selectTotalSends = (state: SessionState) =>
 useSessionStore.subscribe((state, prevState) => {
   if (state.groups !== prevState.groups || state.ascents !== prevState.ascents) {
     if (state.groups.length > 0) {
-      let latestGroup = state.groups[state.groups.length - 1];
+      // Find candidate groups: prefer uncompleted blocks
+      const uncompletedGroups = state.groups.filter((g) => !g.isCompleted);
+      const candidateGroups = uncompletedGroups.length > 0 ? uncompletedGroups : state.groups;
+
+      let activeGroup = candidateGroups[0];
       let maxTimestamp = 0;
-      
-      for (const group of state.groups) {
+
+      for (const group of candidateGroups) {
         for (const log of group.logs) {
           if (log.timestamp > maxTimestamp) {
             maxTimestamp = log.timestamp;
-            latestGroup = group;
+            activeGroup = group;
           }
         }
       }
 
-      const totalSets = latestGroup.logs.length;
-      const currentSet = totalSets > 0 ? totalSets : 1; 
-      const grade = totalSets > 0 ? latestGroup.logs[latestGroup.logs.length - 1].gradeRaw : 'V?';
-      
-      liveActivityManager.updateZoneContext(latestGroup.zoneName, grade, currentSet, totalSets);
+      const totalSets = activeGroup.logs.length;
+
+      if (totalSets > 0) {
+        // Current set is the first set that is not yet sent or flashed
+        const firstUncompletedIndex = activeGroup.logs.findIndex(
+          (l) => l.outcome !== 'send' && l.outcome !== 'flash'
+        );
+        const currentSet = firstUncompletedIndex >= 0 ? firstUncompletedIndex + 1 : totalSets;
+        const activeLog = activeGroup.logs[currentSet - 1] ?? activeGroup.logs[totalSets - 1];
+        const grade = activeLog ? activeLog.gradeRaw : 'V?';
+
+        liveActivityManager.updateZoneContext(activeGroup.zoneName, grade, currentSet, totalSets);
+      } else {
+        liveActivityManager.updateZoneContext(activeGroup.zoneName, 'V?', 0, 0);
+      }
     } else {
       liveActivityManager.updateZoneContext(null, null, 0, 0);
     }
