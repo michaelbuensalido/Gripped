@@ -99,6 +99,7 @@ struct AdjustRestIntent: LiveActivityIntent {
                 
                 let defaults = UserDefaults(suiteName: "group.com.cruxlog.app")
                 defaults?.set(updatedState.restEndDate?.timeIntervalSince1970 ?? 0, forKey: "ActiveRestEndTimestamp")
+                defaults?.set("AdjustRest", forKey: "ActiveRestAction")
                 
                 if #available(iOS 16.2, *) {
                     await activity.update(ActivityContent(state: updatedState, staleDate: nil))
@@ -134,6 +135,7 @@ struct SkipRestIntent: LiveActivityIntent {
             
             let defaults = UserDefaults(suiteName: "group.com.cruxlog.app")
             defaults?.set(0, forKey: "ActiveRestEndTimestamp")
+            defaults?.set("SkipRest", forKey: "ActiveRestAction")
             
             if #available(iOS 16.2, *) {
                 await activity.update(ActivityContent(state: updatedState, staleDate: nil))
@@ -207,7 +209,8 @@ struct CruxLogWidgetLiveActivity: Widget {
                 if let zoneName = context.state.currentZoneName,
                    let grade = context.state.currentGrade,
                    let currentSet = context.state.currentSet,
-                   let totalSets = context.state.totalSets {
+                   let totalSets = context.state.totalSets,
+                   totalSets > 0 {
                     
                     HStack {
                         Spacer()
@@ -254,7 +257,7 @@ struct CruxLogWidgetLiveActivity: Widget {
                                 .font(.system(size: 9, weight: .bold))
                                 .foregroundColor(Color(red: 231/255, green: 174/255, blue: 86/255))
                                 .tracking(1.5)
-                            Text(timerInterval: Date()...restEnd, countsDown: true)
+                            Text(timerInterval: Date()...max(Date().addingTimeInterval(1), restEnd), countsDown: true)
                                 .id(restEnd)
                                 .font(.system(size: 34, weight: .bold, design: .monospaced))
                                 .foregroundColor(Color(red: 231/255, green: 174/255, blue: 86/255))
@@ -357,10 +360,19 @@ struct CruxLogWidgetLiveActivity: Widget {
                                 .font(.system(size: 9, weight: .bold))
                                 .foregroundColor(Color(red: 231/255, green: 174/255, blue: 86/255))
                                 .tracking(1.5)
-                            Text(timerInterval: Date()...restEnd, countsDown: true)
+                            Text(timerInterval: Date()...max(Date().addingTimeInterval(1), restEnd), countsDown: true)
                                 .id(restEnd)
                                 .font(.system(size: 22, weight: .bold, design: .monospaced))
                                 .foregroundColor(Color(red: 231/255, green: 174/255, blue: 86/255))
+                                .monospacedDigit()
+                        } else if context.state.currentZoneName != nil, let set = context.state.currentSet, let total = context.state.totalSets, total > 0 {
+                            Text("SET")
+                                .font(.system(size: 9, weight: .bold))
+                                .foregroundColor(Color(red: 85/255, green: 85/255, blue: 98/255))
+                                .tracking(1.5)
+                            Text("\(set)/\(total)")
+                                .font(.system(size: 22, weight: .bold, design: .monospaced))
+                                .foregroundColor(.white)
                                 .monospacedDigit()
                         } else {
                             Text("TIME")
@@ -401,12 +413,18 @@ struct CruxLogWidgetLiveActivity: Widget {
                 }
             } compactTrailing: {
                 if let restEnd = context.state.restEndDate, restEnd > Date() {
-                    Text(timerInterval: Date()...restEnd, countsDown: true)
+                    Text(timerInterval: Date()...max(Date().addingTimeInterval(1), restEnd), countsDown: true)
                         .id(restEnd)
                         .font(.system(size: 12, weight: .bold, design: .monospaced))
                         .monospacedDigit()
                         .foregroundColor(Color(red: 231/255, green: 174/255, blue: 86/255))
                         .frame(width: 45)
+                } else if context.state.currentZoneName != nil, let set = context.state.currentSet, let total = context.state.totalSets, total > 0 {
+                    Text("\(set)/\(total)")
+                        .font(.system(size: 12, weight: .bold, design: .monospaced))
+                        .monospacedDigit()
+                        .foregroundColor(.white)
+                        .frame(width: 45, alignment: .trailing)
                 } else {
                     Text(timerInterval: context.state.sessionStartTime...context.state.sessionStartTime.addingTimeInterval(3600 * 24), countsDown: false)
                         .font(.system(size: 12, weight: .bold, design: .monospaced))

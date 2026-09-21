@@ -1,4 +1,4 @@
-import { Platform, NativeModules, NativeEventEmitter } from 'react-native';
+import { Platform, NativeModules, NativeEventEmitter, AppState } from 'react-native';
 import { useSessionStore } from '../store/sessionStore';
 
 // Defensive wrapper around react-native-live-activities native module.
@@ -8,6 +8,7 @@ const LiveActivities = NativeModules.LiveActivities;
 
 class LiveActivityManager {
   private isActive = false;
+  private currentSessionId: string | null = null;
   private currentSessionStartTime: number | null = null;
 
   private currentSends = 0;
@@ -32,6 +33,49 @@ class LiveActivityManager {
            }
         }
       });
+
+      AppState.addEventListener('change', async (nextAppState) => {
+        if (nextAppState === 'active' && LiveActivities.getActiveRestEndTimestamp) {
+          try {
+            const timestampSeconds = await LiveActivities.getActiveRestEndTimestamp();
+            const action = LiveActivities.getActiveRestAction
+              ? await LiveActivities.getActiveRestAction()
+              : '';
+            const store = useSessionStore.getState();
+
+            if (action === 'SkipRest') {
+              // User explicitly tapped SKIP on the lock screen widget
+              if (LiveActivities.clearActiveRestAction) {
+                await LiveActivities.clearActiveRestAction();
+              }
+              if (store.restTimerActive) {
+                store.dismissRestTimer();
+              }
+            } else if (action === 'AdjustRest' && timestampSeconds && timestampSeconds > 0) {
+              // User adjusted rest on the lock screen widget (+15 or -15)
+              if (LiveActivities.clearActiveRestAction) {
+                await LiveActivities.clearActiveRestAction();
+              }
+              const targetMs = timestampSeconds * 1000;
+              store.updateRestTimerTarget(targetMs);
+            } else if (timestampSeconds && timestampSeconds > 0) {
+              const targetMs = timestampSeconds * 1000;
+              const remaining = Math.max(0, Math.round((targetMs - Date.now()) / 1000));
+
+              if (remaining > 0) {
+                // If native widget has a target and store is drifted by > 2s, align it
+                if (Math.abs(targetMs - (store.restTimerTargetTimestampMs ?? 0)) > 2000) {
+                  store.updateRestTimerTarget(targetMs);
+                }
+              }
+            }
+            // When action is NOT SkipRest, we do NOT dismiss the timer here!
+            // useRestTimer's syncRestTimer() reliably manages drift-free countdown.
+          } catch (e) {
+            console.warn('[LiveActivity] Failed to getActiveRestEndTimestamp', e);
+          }
+        }
+      });
     }
   }
 
@@ -42,7 +86,13 @@ class LiveActivityManager {
       return;
     }
 
+    if (this.isActive && this.currentSessionId === sessionId) {
+      this.pushState();
+      return;
+    }
+
     this.isActive = true;
+    this.currentSessionId = sessionId;
     this.currentSessionStartTime = Date.now();
     this.currentSends = 0;
     this.currentRestTarget = null;
@@ -115,6 +165,7 @@ class LiveActivityManager {
       console.warn('[LiveActivity] endActivity failed', e);
     }
     this.isActive = false;
+    this.currentSessionId = null;
     this.currentSessionStartTime = null;
   }
 }
