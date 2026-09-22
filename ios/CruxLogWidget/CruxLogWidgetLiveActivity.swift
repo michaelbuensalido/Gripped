@@ -3,6 +3,8 @@ import WidgetKit
 import SwiftUI
 import AppIntents
 
+import os.log
+
 // ─── Shared Group / Attributes ────────────────────────────────────────────────
 // The Live Activity payload signature that links JS bridging to Swift
 
@@ -45,7 +47,19 @@ struct LogBurnIntent: LiveActivityIntent {
         let pending = defaults?.string(forKey: "PendingOfflineAscents") ?? ""
         let newEvent = "\(Date().timeIntervalSince1970)|\(status)"
         let updated = pending.isEmpty ? newEvent : "\(pending),\(newEvent)"
+        
+        os_log("DIAGNOSTIC TRACE [LogBurnIntent]: Attempting to write PendingOfflineAscents.", type: .default)
+        os_log("DIAGNOSTIC TRACE [LogBurnIntent]: BEFORE - %{public}s", type: .default, pending)
         defaults?.set(updated, forKey: "PendingOfflineAscents")
+        let verifyPending = defaults?.string(forKey: "PendingOfflineAscents") ?? "NIL"
+        os_log("DIAGNOSTIC TRACE [LogBurnIntent]: AFTER - %{public}s", type: .default, verifyPending)
+
+        os_log("DIAGNOSTIC TRACE [LogBurnIntent]: Attempting to write ActiveRestAction.", type: .default)
+        let beforeAction = defaults?.string(forKey: "ActiveRestAction") ?? "NIL"
+        os_log("DIAGNOSTIC TRACE [LogBurnIntent]: BEFORE - %{public}s", type: .default, beforeAction)
+        defaults?.set(status, forKey: "ActiveRestAction")
+        let afterAction = defaults?.string(forKey: "ActiveRestAction") ?? "NIL"
+        os_log("DIAGNOSTIC TRACE [LogBurnIntent]: AFTER - %{public}s", type: .default, afterAction)
         
         let activities = Activity<CruxLogAttributes>.activities
         let target = activities.first(where: { $0.id == activityId }) ?? activities.first
@@ -98,8 +112,21 @@ struct AdjustRestIntent: LiveActivityIntent {
                 updatedState.action = "AdjustRest"
                 
                 let defaults = UserDefaults(suiteName: "group.com.cruxlog.app")
-                defaults?.set(updatedState.restEndDate?.timeIntervalSince1970 ?? 0, forKey: "ActiveRestEndTimestamp")
+                
+                let targetTimestamp = updatedState.restEndDate?.timeIntervalSince1970 ?? 0
+                os_log("DIAGNOSTIC TRACE [AdjustRestIntent]: Attempting to write ActiveRestEndTimestamp.", type: .default)
+                let beforeTs = defaults?.double(forKey: "ActiveRestEndTimestamp") ?? -1
+                os_log("DIAGNOSTIC TRACE [AdjustRestIntent]: BEFORE - %f", type: .default, beforeTs)
+                defaults?.set(targetTimestamp, forKey: "ActiveRestEndTimestamp")
+                let afterTs = defaults?.double(forKey: "ActiveRestEndTimestamp") ?? -1
+                os_log("DIAGNOSTIC TRACE [AdjustRestIntent]: AFTER - %f", type: .default, afterTs)
+
+                os_log("DIAGNOSTIC TRACE [AdjustRestIntent]: Attempting to write ActiveRestAction.", type: .default)
+                let beforeAction = defaults?.string(forKey: "ActiveRestAction") ?? "NIL"
+                os_log("DIAGNOSTIC TRACE [AdjustRestIntent]: BEFORE - %{public}s", type: .default, beforeAction)
                 defaults?.set("AdjustRest", forKey: "ActiveRestAction")
+                let afterAction = defaults?.string(forKey: "ActiveRestAction") ?? "NIL"
+                os_log("DIAGNOSTIC TRACE [AdjustRestIntent]: AFTER - %{public}s", type: .default, afterAction)
                 
                 if #available(iOS 16.2, *) {
                     await activity.update(ActivityContent(state: updatedState, staleDate: nil))
