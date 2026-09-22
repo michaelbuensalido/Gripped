@@ -35,30 +35,37 @@ class LiveActivityManager {
       });
 
       AppState.addEventListener('change', async (nextAppState) => {
-        if (nextAppState === 'active' && LiveActivities.getActiveRestEndTimestamp) {
-          try {
-            const timestampSeconds = await LiveActivities.getActiveRestEndTimestamp();
-            const action = LiveActivities.getActiveRestAction
-              ? await LiveActivities.getActiveRestAction()
-              : '';
-            const store = useSessionStore.getState();
+        if (nextAppState === 'active') {
+          console.log(`[DIAGNOSTIC TRACE] App Foregrounded at: ${Date.now()}ms`);
+          
+          if (LiveActivities.getActiveRestEndTimestamp) {
+            try {
+              const rawTimestamp = await LiveActivities.getActiveRestEndTimestamp();
+              const rawAction = LiveActivities.getActiveRestAction
+                ? await LiveActivities.getActiveRestAction()
+                : '';
+              console.log(`[DIAGNOSTIC TRACE] Raw Read from App Group - Timestamp: ${rawTimestamp}, Action: ${rawAction}`);
 
-            if (action === 'SkipRest') {
-              // User explicitly tapped SKIP on the lock screen widget
-              if (LiveActivities.clearActiveRestAction) {
-                await LiveActivities.clearActiveRestAction();
-              }
-              if (store.restTimerActive) {
-                store.dismissRestTimer();
-              }
-            } else if (action === 'AdjustRest' && timestampSeconds && timestampSeconds > 0) {
-              // User adjusted rest on the lock screen widget (+15 or -15)
-              if (LiveActivities.clearActiveRestAction) {
-                await LiveActivities.clearActiveRestAction();
-              }
-              const targetMs = timestampSeconds * 1000;
-              store.updateRestTimerTarget(targetMs);
-            } else if (timestampSeconds && timestampSeconds > 0) {
+              const timestampSeconds = rawTimestamp;
+              const action = rawAction;
+              const store = useSessionStore.getState();
+
+              if (action === 'SkipRest') {
+                // User explicitly tapped SKIP on the lock screen widget
+                if (LiveActivities.clearActiveRestAction) {
+                  await LiveActivities.clearActiveRestAction();
+                }
+                if (store.restTimerActive) {
+                  store.dismissRestTimer();
+                }
+              } else if (action === 'AdjustRest' && timestampSeconds && timestampSeconds > 0) {
+                // User adjusted rest on the lock screen widget (+15 or -15)
+                if (LiveActivities.clearActiveRestAction) {
+                  await LiveActivities.clearActiveRestAction();
+                }
+                const targetMs = timestampSeconds * 1000;
+                store.updateRestTimerTarget(targetMs);
+              } else if (timestampSeconds && timestampSeconds > 0) {
               const targetMs = timestampSeconds * 1000;
               const remaining = Math.max(0, Math.round((targetMs - Date.now()) / 1000));
 
@@ -74,6 +81,7 @@ class LiveActivityManager {
           } catch (e) {
             console.warn('[LiveActivity] Failed to getActiveRestEndTimestamp', e);
           }
+        }
         }
       });
     }

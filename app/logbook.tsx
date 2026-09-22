@@ -8,6 +8,7 @@ import {
   LogbookFilterStrip,
   type LogbookFilter,
 } from "../components/logbook/LogbookFilterStrip";
+import { ConsistencyLedger } from "../components/analytics/ConsistencyLedger";
 import { useSessionStore } from "../store/sessionStore";
 import { getAllSessionSummaries, type SessionSummary } from "../db/queries";
 import { triggerHaptic } from "../utils/haptics";
@@ -120,6 +121,11 @@ export default function LogbookScreen() {
           >
             <SettingsIcon size={20} color="#9090A0" />
           </TouchableOpacity>
+        </View>
+
+        {/* 12-Week Consistency Heatmap */}
+        <View className="mb-6">
+          <ConsistencyLedger />
         </View>
 
         {/* Quick-Filter Strip */}

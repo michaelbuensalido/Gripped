@@ -38,9 +38,14 @@ export function SessionHistoryCard({ session, isLast }: Props) {
         >
           {formatShortDate(session.startTime)}
         </Text>
-        <Text className="text-white text-[15px] font-bold" numberOfLines={1}>
-          {session.gymName || 'Bouldering Session'}
-        </Text>
+        <View className="flex-row items-center">
+          {!session.endTime && (
+            <View className="w-2 h-2 rounded-full bg-[#6EE756] animate-pulse mr-2" />
+          )}
+          <Text className={`${!session.endTime ? 'text-[#6EE756]' : 'text-white'} text-[15px] font-bold`} numberOfLines={1}>
+            {session.title || session.gymName || 'Bouldering Session'}
+          </Text>
+        </View>
       </View>
 
       {/* Center/Right: Grade Badge + Chevron */}

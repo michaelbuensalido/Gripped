@@ -37,12 +37,12 @@ export function LogbookFilterStrip({ active, onChange }: LogbookFilterStripProps
               onPress={() => { triggerHaptic('light'); onChange(chip.key); }}
               activeOpacity={0.7}
               className={`h-[36px] px-4 rounded-lg items-center justify-center border ${
-                isActive ? 'bg-[#1E1E24] border-[#6EE756]' : 'bg-[#141417] border-[#2C2C35]'
+                isActive ? 'bg-[#6EE756]/10 border-[#6EE756]' : 'bg-[#141417] border-[#2C2C35]'
               }`}
             >
               <Text 
                 className={`text-[12px] font-bold tracking-wider uppercase ${
-                  isActive ? 'text-white' : 'text-[#8A8A98]'
+                  isActive ? 'text-[#6EE756]' : 'text-[#8A8A98]'
                 }`}
               >
                 {chip.label}
