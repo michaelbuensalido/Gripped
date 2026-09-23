@@ -109,6 +109,7 @@ interface SessionState {
   ascents: Ascent[];
   logAscent: (gradeScalar: number, status: 'SEND' | 'ATTEMPT' | 'FLASH') => void;
   clearAscents: () => void;
+  logWidgetAscent: (status: 'SEND' | 'ATTEMPT') => void;
 }
 
 const OUTCOME_CYCLE: Outcome[] = ['attempt', 'send', 'flash'];
@@ -528,7 +529,19 @@ export const useSessionStore = create<SessionState>()(
         const sg = state.groups.find((g) => g.id === groupId);
         if (!sg) return;
         const idx = sg.logs.findIndex((l) => l.id === logId);
-        if (idx >= 0) sg.logs[idx].outcome = nextOutcome;
+        if (idx >= 0) {
+          sg.logs[idx].outcome = nextOutcome;
+        }
+        
+        // Auto-complete the block if all logs are sent/flashed
+        const allCompleted = sg.logs.length > 0 && sg.logs.every(l => l.outcome === 'send' || l.outcome === 'flash');
+        if (allCompleted && !sg.isCompleted) {
+          sg.isCompleted = true;
+          Q.updateGroupCompletion(groupId, true);
+        } else if (!allCompleted && sg.isCompleted) {
+          sg.isCompleted = false;
+          Q.updateGroupCompletion(groupId, false);
+        }
       });
       
       const state = get();
@@ -553,7 +566,19 @@ export const useSessionStore = create<SessionState>()(
         const sg = state.groups.find((g) => g.id === groupId);
         if (!sg) return;
         const idx = sg.logs.findIndex((l) => l.id === logId);
-        if (idx >= 0) sg.logs[idx].outcome = outcome;
+        if (idx >= 0) {
+          sg.logs[idx].outcome = outcome;
+        }
+
+        // Auto-complete the block if all logs are sent/flashed
+        const allCompleted = sg.logs.length > 0 && sg.logs.every(l => l.outcome === 'send' || l.outcome === 'flash');
+        if (allCompleted && !sg.isCompleted) {
+          sg.isCompleted = true;
+          Q.updateGroupCompletion(groupId, true);
+        } else if (!allCompleted && sg.isCompleted) {
+          sg.isCompleted = false;
+          Q.updateGroupCompletion(groupId, false);
+        }
       });
       
       const state = get();
@@ -851,6 +876,31 @@ export const useSessionStore = create<SessionState>()(
       liveActivityManager.updateSends(globalSends + groupSends);
     },
 
+    logWidgetAscent: (status) => {
+      const state = get();
+      const { groups } = state;
+      const uncompleted = groups.filter((g) => !g.isCompleted);
+      const candidates = uncompleted.length > 0 ? uncompleted : groups;
+      const activeGroup = candidates[0];
+      if (activeGroup) {
+        const currentLog = activeGroup.logs.find(
+          (l) => l.outcome !== 'send' && l.outcome !== 'flash'
+        ) ?? activeGroup.logs[activeGroup.logs.length - 1];
+        if (currentLog) {
+          if (status === 'SEND') {
+            get().setOutcome(activeGroup.id, currentLog.id, 'send');
+          } else if (status === 'ATTEMPT') {
+            get().incrementAttempts(activeGroup.id, currentLog.id);
+          }
+          // Optionally trigger haptics
+          try {
+            const { triggerLogAction } = require('../utils/haptics');
+            triggerLogAction();
+          } catch (e) { }
+        }
+      }
+    },
+
     clearAscents: () => {
       liveActivityManager.endSession();
       set((state) => { state.ascents = []; });
@@ -870,22 +920,15 @@ export const selectTotalSends = (state: SessionState) =>
 useSessionStore.subscribe((state, prevState) => {
   if (state.groups !== prevState.groups || state.ascents !== prevState.ascents) {
     if (state.groups.length > 0) {
-      // Find candidate groups: prefer uncompleted blocks
+      // Find candidate groups: prefer uncompleted blocks.
+      // Since groups are ordered, the first uncompleted group is the 'next' block.
       const uncompletedGroups = state.groups.filter((g) => !g.isCompleted);
       const candidateGroups = uncompletedGroups.length > 0 ? uncompletedGroups : state.groups;
 
+      // Ensure we are selecting the correct sequential block
       let activeGroup = candidateGroups[0];
-      let maxTimestamp = 0;
 
-      for (const group of candidateGroups) {
-        for (const log of group.logs) {
-          if (log.timestamp > maxTimestamp) {
-            maxTimestamp = log.timestamp;
-            activeGroup = group;
-          }
-        }
-      }
-
+      const isComplete = uncompletedGroups.length === 0;
       const totalSets = activeGroup.logs.length;
 
       if (totalSets > 0) {
@@ -897,12 +940,12 @@ useSessionStore.subscribe((state, prevState) => {
         const activeLog = activeGroup.logs[currentSet - 1] ?? activeGroup.logs[totalSets - 1];
         const grade = activeLog ? activeLog.gradeRaw : 'V?';
 
-        liveActivityManager.updateZoneContext(activeGroup.zoneName, grade, currentSet, totalSets);
+        liveActivityManager.updateZoneContext(activeGroup.zoneName, grade, currentSet, totalSets, isComplete);
       } else {
-        liveActivityManager.updateZoneContext(activeGroup.zoneName, 'V?', 0, 0);
+        liveActivityManager.updateZoneContext(activeGroup.zoneName, 'V?', 0, 0, isComplete);
       }
     } else {
-      liveActivityManager.updateZoneContext(null, null, 0, 0);
+      liveActivityManager.updateZoneContext(null, null, 0, 0, false);
     }
   }
 });

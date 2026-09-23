@@ -17,19 +17,40 @@ class LiveActivityManager {
   private currentGrade: string | null = null;
   private currentSet: number = 0;
   private totalSets: number = 0;
+  private isComplete: boolean = false;
 
   constructor() {
     if (Platform.OS === 'ios' && LiveActivities) {
       const eventEmitter = new NativeEventEmitter(LiveActivities);
       eventEmitter.addListener('onLiveActivityStateChanged', (event: any) => {
         console.log('[LiveActivity] Received action from native widget:', event);
-        if (event.action === 'AdjustRest' || event.action === 'SkipRest') {
-           // event.restEndDate is in seconds, store needs ms
+        const store = useSessionStore.getState();
+
+        if (event.action === 'AdjustRest') {
            const targetMs = event.restEndDate > 0 ? event.restEndDate * 1000 : null;
-           const store = useSessionStore.getState();
            if (targetMs !== store.restTimerTargetTimestampMs) {
-             // Update the store directly
              store.updateRestTimerTarget(targetMs);
+           }
+        } else if (event.action === 'SkipRest') {
+           // Suspend updates for 1.5s so the SwiftUI SKIPPED animation can finish
+           liveActivityManager.suspendUpdates(1500);
+           store.dismissRestTimer();
+        } else if (event.action === 'SEND' || event.action === 'ATTEMPT') {
+           // Suspend updates for 1.5s so the SwiftUI Checkmark/Flame animation can finish
+           liveActivityManager.suspendUpdates(1500);
+           store.logWidgetAscent(event.action as 'SEND' | 'ATTEMPT');
+           
+           // Clear the offline queue so AppState foreground doesn't double-count this
+           if (LiveActivities.clearPendingOfflineAscents) {
+             LiveActivities.clearPendingOfflineAscents().catch(() => {});
+           }
+        } else if (event.action === 'FINISH_SESSION') {
+           // If the user tapped FINISH on the widget, end the session in JS too
+           // This will natively end the activity automatically because store.clearAscents calls endSession
+           store.clearAscents();
+           // Also clear queue just in case
+           if (LiveActivities.clearPendingOfflineAscents) {
+             LiveActivities.clearPendingOfflineAscents().catch(() => {});
            }
         }
       });
@@ -37,51 +58,76 @@ class LiveActivityManager {
       AppState.addEventListener('change', async (nextAppState) => {
         if (nextAppState === 'active') {
           console.log(`[DIAGNOSTIC TRACE] App Foregrounded at: ${Date.now()}ms`);
-          
-          if (LiveActivities.getActiveRestEndTimestamp) {
-            try {
-              const rawTimestamp = await LiveActivities.getActiveRestEndTimestamp();
-              const rawAction = LiveActivities.getActiveRestAction
-                ? await LiveActivities.getActiveRestAction()
-                : '';
-              console.log(`[DIAGNOSTIC TRACE] Raw Read from App Group - Timestamp: ${rawTimestamp}, Action: ${rawAction}`);
 
-              const timestampSeconds = rawTimestamp;
-              const action = rawAction;
+          try {
+            // 1. Process Offline Queue via App Groups (User specified)
+            if (LiveActivities.getPendingOfflineAscents) {
+              const pendingStr = await LiveActivities.getPendingOfflineAscents();
+              if (pendingStr && pendingStr.trim() !== '') {
+                console.log(`[LiveActivity] Found pending offline ascents: ${pendingStr}`);
+                const events = pendingStr.split(',');
+                const store = useSessionStore.getState();
+                for (const event of events) {
+                  const parts = event.split('|');
+                  if (parts.length === 2) {
+                    const status = parts[1];
+                    if (status === 'SEND' || status === 'ATTEMPT') {
+                      console.log(`[LiveActivity] Dispatching queued offline ascent: ${status}`);
+                      store.logWidgetAscent(status as 'SEND' | 'ATTEMPT');
+                    }
+                  }
+                }
+                // CRITICAL: Clear the queue so we don't double count
+                if (LiveActivities.clearPendingOfflineAscents) {
+                  await LiveActivities.clearPendingOfflineAscents();
+                }
+              }
+            }
+
+            // 2. Read single pending action directly from ActivityKit
+            if (LiveActivities.getPendingWidgetAction) {
+              const result = await LiveActivities.getPendingWidgetAction();
+              const action: string = result?.action ?? '';
+              console.log(`[DIAGNOSTIC TRACE] getPendingWidgetAction → action="${action}"`);
+
               const store = useSessionStore.getState();
 
               if (action === 'SkipRest') {
-                // User explicitly tapped SKIP on the lock screen widget
-                if (LiveActivities.clearActiveRestAction) {
-                  await LiveActivities.clearActiveRestAction();
-                }
-                if (store.restTimerActive) {
-                  store.dismissRestTimer();
-                }
-              } else if (action === 'AdjustRest' && timestampSeconds && timestampSeconds > 0) {
-                // User adjusted rest on the lock screen widget (+15 or -15)
-                if (LiveActivities.clearActiveRestAction) {
-                  await LiveActivities.clearActiveRestAction();
-                }
-                const targetMs = timestampSeconds * 1000;
-                store.updateRestTimerTarget(targetMs);
-              } else if (timestampSeconds && timestampSeconds > 0) {
-              const targetMs = timestampSeconds * 1000;
-              const remaining = Math.max(0, Math.round((targetMs - Date.now()) / 1000));
+                if (LiveActivities.clearActiveRestAction) await LiveActivities.clearActiveRestAction();
+                if (store.restTimerActive) store.dismissRestTimer();
+                return;
+              }
 
-              if (remaining > 0) {
-                // If native widget has a target and store is drifted by > 2s, align it
-                if (Math.abs(targetMs - (store.restTimerTargetTimestampMs ?? 0)) > 2000) {
+              if (action === 'AdjustRest') {
+                if (LiveActivities.clearActiveRestAction) await LiveActivities.clearActiveRestAction();
+                // Fall through to timestamp path below for the actual target
+              }
+
+              if (action === 'SEND' || action === 'ATTEMPT') {
+                console.log(`[DIAGNOSTIC TRACE] Applying widget action: ${action}`);
+                if (LiveActivities.clearActiveRestAction) await LiveActivities.clearActiveRestAction();
+                // Since we already process PendingOfflineAscents above which covers SEND and ATTEMPT,
+                // we probably don't need to do it again here. But if the queue failed, this acts as a fallback.
+                // The widget only sets the queue now, but it also sets the state action. We should be careful of double counting.
+                // If we processed from the queue, we shouldn't process here.
+              }
+            }
+
+            // 3. Secondary path: rest timer drift correction via timestamp
+            if (LiveActivities.getActiveRestEndTimestamp) {
+              const timestampSeconds = await LiveActivities.getActiveRestEndTimestamp();
+              if (timestampSeconds && timestampSeconds > 0) {
+                const targetMs = timestampSeconds * 1000;
+                const remaining = Math.max(0, Math.round((targetMs - Date.now()) / 1000));
+                const store = useSessionStore.getState();
+                if (remaining > 0 && Math.abs(targetMs - (store.restTimerTargetTimestampMs ?? 0)) > 2000) {
                   store.updateRestTimerTarget(targetMs);
                 }
               }
             }
-            // When action is NOT SkipRest, we do NOT dismiss the timer here!
-            // useRestTimer's syncRestTimer() reliably manages drift-free countdown.
           } catch (e) {
-            console.warn('[LiveActivity] Failed to getActiveRestEndTimestamp', e);
+            console.warn('[LiveActivity] AppState foreground handler failed:', e);
           }
-        }
         }
       });
     }
@@ -108,6 +154,7 @@ class LiveActivityManager {
     this.currentGrade = null;
     this.currentSet = 0;
     this.totalSets = 0;
+    this.isComplete = false;
 
     try {
       LiveActivities.startActivity(
@@ -136,17 +183,38 @@ class LiveActivityManager {
     this.pushState();
   }
 
-  public updateZoneContext(zoneName: string | null, grade: string | null, currentSet: number, totalSets: number) {
+  public updateZoneContext(zoneName: string | null, grade: string | null, currentSet: number, totalSets: number, isComplete: boolean) {
     if (Platform.OS !== 'ios' || !LiveActivities) return;
     this.isActive = true;
     this.currentZoneName = zoneName;
     this.currentGrade = grade;
     this.currentSet = currentSet;
     this.totalSets = totalSets;
+    this.isComplete = isComplete;
     this.pushState();
   }
 
+  private updateTimeout: ReturnType<typeof setTimeout> | null = null;
+  private suspendUntil: number = 0;
+
+  public suspendUpdates(ms: number) {
+    this.suspendUntil = Date.now() + ms;
+  }
+
   private pushState() {
+    if (!this.isActive) return;
+
+    const delay = Math.max(0, this.suspendUntil - Date.now());
+    if (this.updateTimeout) clearTimeout(this.updateTimeout);
+
+    if (delay > 0) {
+      this.updateTimeout = setTimeout(() => this.executeNativeUpdate(), delay);
+    } else {
+      this.executeNativeUpdate();
+    }
+  }
+
+  private executeNativeUpdate() {
     try {
       const restTarget = this.currentRestTarget ? this.currentRestTarget / 1000 : 0;
       LiveActivities.updateActivity(
@@ -155,9 +223,10 @@ class LiveActivityManager {
         this.currentZoneName || "",
         this.currentGrade || "",
         this.currentSet,
-        this.totalSets
+        this.totalSets,
+        this.isComplete
       );
-      console.log('[LiveActivity] ✅ updateActivity called — sends:', this.currentSends, 'rest:', restTarget, 'zone:', this.currentZoneName);
+      console.log('[LiveActivity] ✅ updateActivity called — sends:', this.currentSends, 'rest:', restTarget, 'zone:', this.currentZoneName, 'isComplete:', this.isComplete);
     } catch (e) {
       console.warn('[LiveActivity] updateActivity failed', e);
     }
