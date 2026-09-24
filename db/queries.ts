@@ -1539,6 +1539,7 @@ export interface RecentBoulderLog {
   attempts: number;
   timestamp: number;
   gymName: string;
+  wallAngle: string | null;
 }
 
 export function getRecentBoulderLogs(limit = 10): RecentBoulderLog[] {
@@ -1550,8 +1551,9 @@ export function getRecentBoulderLogs(limit = 10): RecentBoulderLog[] {
     attempts: number;
     timestamp: number;
     gym_name: string;
+    wall_angle: string | null;
   }>(
-    `SELECT bl.id, bl.grade_raw, bl.outcome, bl.attempts, bl.timestamp, s.gym_name
+    `SELECT bl.id, bl.grade_raw, bl.outcome, bl.attempts, bl.timestamp, s.gym_name, bl.wall_angle
      FROM boulder_logs bl
      JOIN boulder_groups bg ON bl.group_id = bg.id
      JOIN sessions s ON bg.session_id = s.id
@@ -1566,6 +1568,7 @@ export function getRecentBoulderLogs(limit = 10): RecentBoulderLog[] {
     attempts: r.attempts,
     timestamp: r.timestamp,
     gymName: r.gym_name || 'Climbing Session',
+    wallAngle: r.wall_angle,
   }));
 }
 

@@ -12,7 +12,6 @@ import {
   getRecentOutcomesSummary,
   getGradeVolumeEqualizerData,
   getAngleMasteryBreakdown,
-  getFailureBreakdown,
   type GradePyramidDataRow,
   type WeeklyVolumeTrendsData,
   type WallAngleBreakdownItem,
@@ -21,16 +20,14 @@ import {
   type RecentBoulderLog,
   type RecentOutcomesSummaryData,
   type GradeVolumeEqualizerData,
-  type FailureBreakdownData,
 } from '../db/queries';
 import { OutcomeRingGauge } from '../components/analytics/OutcomeRingGauge';
 import { BentoMetricRow } from '../components/analytics/BentoMetricRow';
+import { SessionPacingWidget } from '../components/analytics/SessionPacingWidget';
 import { GradePyramidWidget } from '../components/analytics/GradePyramidWidget';
 import { ACWRWidget } from '../components/analytics/ACWRWidget';
 import { calculateACWR } from '../services/loadCalculations';
 import { AngleMasteryWidget } from '../components/analytics/AngleMasteryWidget';
-import { FailureBreakdownWidget } from '../components/analytics/FailureBreakdownWidget';
-import { ClimbingHoldGraphic, type HoldType } from '../components/ui/ClimbingHoldGraphic';
 import { ScreenContainer } from '../components/ui/ScreenContainer';
 import { triggerHaptic } from '../utils/haptics';
 
@@ -40,14 +37,11 @@ interface DisplayRoute {
   id: string;
   title: string;
   grade: string;
-  holdType: HoldType;
-  outcome: 'Flash' | 'Top';
+  wallAngle: string | null;
+  outcome: 'Flash' | 'Send' | 'Attempt';
   date: string;
+  attempts: number;
 }
-
-const HOLD_TYPE_LIST: HoldType[] = [
-  'ripple-effect', 'slab-rise', 'kars-sloper', 'poly-edge', 'purple-sloper', 'yellow-jug', 'orange-facet',
-];
 
 export default function AnalyticsScreen() {
   const router = useRouter();
@@ -63,7 +57,6 @@ export default function AnalyticsScreen() {
   const [angleMasteryData, setAngleMasteryData] = useState<AngleMasteryItem[]>([]);
   const [overview, setOverview] = useState<AnalyticsOverview | null>(null);
   const [recentLogs, setRecentLogs] = useState<RecentBoulderLog[]>([]);
-  const [failureBreakdown, setFailureBreakdown] = useState<FailureBreakdownData | null>(null);
 
   const [acwrData, setAcwrData] = useState<any>(null);
 
@@ -87,7 +80,6 @@ export default function AnalyticsScreen() {
       setAngleMasteryData(getAngleMasteryBreakdown(queryTf));
       setOverview(getAnalyticsOverview(sinceTimestamp));
       setRecentLogs(getRecentBoulderLogs(6));
-      setFailureBreakdown(getFailureBreakdown(sinceTimestamp));
       setAcwrData(calculateACWR());
     } catch (err) {
       console.error('Failed to load analytics data:', err);
@@ -113,14 +105,14 @@ export default function AnalyticsScreen() {
     const d = new Date(log.timestamp);
     const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     const dateStr = `${months[d.getMonth()]} ${d.getDate()}`;
-    const holdType = HOLD_TYPE_LIST[index % HOLD_TYPE_LIST.length];
     return {
       id: log.id,
-      title: `${log.gymName || 'Bouldering'} • #${log.attempts} att`,
+      title: `${log.gymName || 'Bouldering'}`,
       grade: log.gradeRaw,
-      holdType,
-      outcome: log.outcome === 'flash' ? 'Flash' : 'Top',
+      wallAngle: log.wallAngle || null,
+      outcome: log.outcome === 'flash' ? 'Flash' : log.outcome === 'send' ? 'Send' : 'Attempt',
       date: dateStr,
+      attempts: log.attempts ?? 1,
     };
   });
 
@@ -172,6 +164,8 @@ export default function AnalyticsScreen() {
           sparklineData={overview?.peakGradeTrend}
         />
 
+        <SessionPacingWidget overview={overview} />
+
         <View className="mt-4">
           <ACWRWidget data={acwrData} />
         </View>
@@ -190,9 +184,6 @@ export default function AnalyticsScreen() {
           <AngleMasteryWidget data={angleMasteryData} />
         </View>
 
-        <View className="mb-4">
-          <FailureBreakdownWidget data={failureBreakdown} />
-        </View>
 
         {/* Recent Sends Ledger */}
         <View className="mt-2">
@@ -207,7 +198,8 @@ export default function AnalyticsScreen() {
               displayRoutes.map((route, idx) => {
                 const isLast = idx === displayRoutes.length - 1;
                 const isFlash = route.outcome === 'Flash';
-                const badgeColor = isFlash ? '#6EE756' : '#8E7CFF';
+                const isSend = route.outcome === 'Send';
+                const badgeColor = isFlash ? '#6EE756' : isSend ? '#8E7CFF' : '#E7AE56';
 
                 return (
                   <View key={route.id} className={`flex-row items-center justify-between px-4 py-3 ${!isLast ? 'border-b border-[#27272F]' : ''}`}>
@@ -216,14 +208,26 @@ export default function AnalyticsScreen() {
                         <Text className="text-[#8E7CFF] font-bold text-[13px]">{route.grade}</Text>
                       </View>
                       <View className="flex-1">
-                        <Text className="text-white text-[13px] font-bold" numberOfLines={1}>{route.title}</Text>
+                        <View className="flex-row items-center">
+                           <Text className="text-white text-[13px] font-bold mr-2" numberOfLines={1}>{route.title}</Text>
+                           {route.wallAngle && (
+                             <View className="bg-[#27272F] px-1.5 py-0.5 rounded">
+                               <Text className="text-[#8A8A98] text-[9px] font-bold tracking-widest uppercase">{route.wallAngle}</Text>
+                             </View>
+                           )}
+                        </View>
                         <Text className="text-[#8A8A98] text-[11px] font-medium uppercase mt-0.5" style={{ color: badgeColor }}>{route.outcome}</Text>
                       </View>
                     </View>
 
-                    <Text className="text-[10px] text-[#8A8A98] uppercase tracking-[0.5px]" style={{ fontVariant: ['tabular-nums'] }}>
-                      {route.date}
-                    </Text>
+                    <View className="items-end">
+                      <Text className="text-[10px] text-[#8A8A98] uppercase tracking-[0.5px]" style={{ fontVariant: ['tabular-nums'] }}>
+                        {route.date}
+                      </Text>
+                      <Text className="text-[11px] text-[#8A8A98] font-mono mt-0.5 font-bold">
+                        # {route.attempts}x
+                      </Text>
+                    </View>
                   </View>
                 );
               })
