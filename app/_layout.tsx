@@ -25,91 +25,7 @@ import { triggerHaptic } from "../utils/haptics";
 import { notificationEngine } from "../services/notificationEngine";
 import "../global.css";
 
-function CustomTabBar({ state, descriptors, navigation }: any) {
-  // STRICTLY limit the rendered tabs to the 4 core routes
-  const coreRoutes = ["index", "projects", "analytics", "logbook"];
-  const visibleRoutes = state.routes.filter((route: any) =>
-    coreRoutes.includes(route.name),
-  );
-
-  const currentRouteName = state.routes[state.index]?.name;
-  if (!coreRoutes.includes(currentRouteName)) {
-    return null;
-  }
-
-  return (
-    <View style={styles.tabBarContainer}>
-      {visibleRoutes.map((route: any) => {
-        const { options } = descriptors[route.key];
-        const isFocused = state.routes[state.index].key === route.key;
-
-        const onPress = () => {
-          triggerHaptic("light");
-          const event = navigation.emit({
-            type: "tabPress",
-            target: route.key,
-            canPreventDefault: true,
-          });
-
-          if (!isFocused && !event.defaultPrevented) {
-            navigation.navigate(route.name, route.params);
-          }
-        };
-
-        let IconComponent: LucideIcon = TrendingUp;
-        let label = options.title || route.name;
-
-        if (route.name === "index") {
-          IconComponent = TrendingUp;
-          label = "Home";
-        } else if (route.name === "projects") {
-          IconComponent = Target;
-          label = "Projects";
-        } else if (route.name === "analytics") {
-          IconComponent = ChartNoAxesCombined;
-          label = "Progress";
-        } else if (route.name === "logbook") {
-          IconComponent = BookOpen;
-          label = "Logbook";
-        }
-
-        return (
-          <TouchableOpacity
-            key={route.key}
-            onPress={onPress}
-            activeOpacity={0.7}
-            style={styles.tabItem}
-          >
-            <View
-              style={[
-                styles.iconWrapper,
-                isFocused && styles.iconWrapperActive,
-              ]}
-            >
-              <IconComponent
-                size={20}
-                color={isFocused ? "#9D7BFF" : "#9090A0"}
-                strokeWidth={isFocused ? 2.2 : 2}
-              />
-            </View>
-            <Text
-              numberOfLines={1}
-              style={[
-                styles.tabLabel,
-                {
-                  color: isFocused ? "#9D7BFF" : "#9090A0",
-                  fontWeight: isFocused ? "700" : "500",
-                },
-              ]}
-            >
-              {label}
-            </Text>
-          </TouchableOpacity>
-        );
-      })}
-    </View>
-  );
-}
+import { FloatingTabBar } from "../components/ui/FloatingTabBar";
 
 function TabLayout() {
   const activeSession = useSessionStore((s) => s.activeSession);
@@ -117,13 +33,14 @@ function TabLayout() {
 
   return (
     <Tabs
-      tabBar={(props) => <CustomTabBar {...props} />}
+      tabBar={(props) => <FloatingTabBar {...props} />}
       screenOptions={{ headerShown: false }}
     >
       <Tabs.Screen name="index"     options={{ title: "Home" }} />
       <Tabs.Screen name="projects"  options={{ title: "Projects" }} />
       <Tabs.Screen name="analytics" options={{ title: "Progress" }} />
       <Tabs.Screen name="logbook"   options={{ title: "Logbook" }} />
+      <Tabs.Screen name="gallery"   options={{ title: "Gallery", href: null }} />
 
       {/* Hidden screens — no tab bar entry */}
       <Tabs.Screen name="routes"               options={{ href: null }} />
