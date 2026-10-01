@@ -40,3 +40,18 @@ export function useHomeStats() {
 export function useAllSessions() {
   return useLiveQuery(() => Q.getAllSessions());
 }
+
+export function useProgressStats(period: '7d'|'30d'|'90d'|'1y'|'all') {
+  return useLiveQuery(() => {
+    const now = Date.now();
+    return {
+      resultCounts: Q.getResultCounts(period, now),
+      avgGradeLast20: Q.getAverageGradeLast20(),
+      gradePyramid: Q.getGradePyramid(period, now),
+      weeklyVolume: Q.getWeeklyVolume(period, now),
+      rates: Q.getRates(period, now),
+      hardestSend: Q.getHardestSendTrend(period, now),
+      streak: Q.getStreak(now)
+    };
+  }, [period]);
+}
