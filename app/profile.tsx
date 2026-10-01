@@ -1,200 +1,111 @@
-import React, { useCallback, useMemo, useState } from "react";
-import { View, Text, ScrollView, TouchableOpacity } from "react-native";
-import { useRouter, useFocusEffect } from "expo-router";
-import { Plus, Settings as SettingsIcon } from "lucide-react-native";
-import { ScreenContainer } from "../components/ui/ScreenContainer";
-import { SessionHistoryCard } from "../components/logbook/SessionHistoryCard";
-import {
-  LogbookFilterStrip,
-  type LogbookFilter,
-} from "../components/logbook/LogbookFilterStrip";
-import { ConsistencyLedger } from "../components/analytics/ConsistencyLedger";
-import { useSessionStore } from '../store/sessionStore';
-import { useActiveSession } from '../db/hooks';
-import { getAllSessionSummaries, type SessionSummary } from "../db/queries";
-import { triggerHaptic } from "../utils/haptics";
-
-function formatMonthYear(timestamp: number): string {
-  const d = new Date(timestamp);
-  const months = [
-    "JANUARY",
-    "FEBRUARY",
-    "MARCH",
-    "APRIL",
-    "MAY",
-    "JUNE",
-    "JULY",
-    "AUGUST",
-    "SEPTEMBER",
-    "OCTOBER",
-    "NOVEMBER",
-    "DECEMBER",
-  ];
-  return `${months[d.getMonth()]} ${d.getFullYear()}`;
-}
+import React, { useState, useMemo } from 'react';
+import { View, ScrollView } from 'react-native';
+import { useRouter } from 'expo-router';
+import { Settings as SettingsIcon } from 'lucide-react-native';
+import { Screen } from '../components/ui/Screen';
+import { SessionRow } from '../components/ui/SessionRow';
+import { SectionHeader } from '../components/ui/SectionHeader';
+import { FilterChip } from '../components/ui/FilterChip';
+import { EmptyState } from '../components/ui/EmptyState';
+import { PrimaryButton } from '../components/ui/PrimaryButton';
+import { useAllSessions } from '../db/hooks';
+import { getSessionSummary } from '../db/queries';
+import { useTheme } from '../theme/useTheme';
+import { triggerHaptic } from '../utils/haptics';
 
 export default function ProfileScreen() {
   const router = useRouter();
-  const [sessions, setSessions] = useState<SessionSummary[]>([]);
-  const [activeFilter, setActiveFilter] = useState<LogbookFilter>("all");
+  const { colors, space, radius } = useTheme();
+  const sessions = useAllSessions();
+  const [activeGym, setActiveGym] = useState<string | null>(null);
 
-  const loadData = useCallback(() => {
-    try {
-      setSessions(getAllSessionSummaries());
-    } catch (err) {
-      console.error("Failed to load logbook data:", err);
-    }
-  }, []);
-
-  useFocusEffect(
-    useCallback(() => {
-      loadData();
-    }, [loadData]),
-  );
-
-  const filteredSessions = useMemo(() => {
-    switch (activeFilter) {
-      case "sent":
-        return sessions.filter((s) => s.sendCount > 0);
-      case "video":
-        return sessions.filter((s) => s.hasMedia);
-      case "v5plus": {
-        return sessions.filter((s) => {
-          if (!s.hardestGrade) return false;
-          const num = parseInt(s.hardestGrade.replace("V", ""), 10);
-          return !isNaN(num) && num >= 5;
-        });
-      }
-      default:
-        return sessions;
-    }
-  }, [sessions, activeFilter]);
-
-  const sessionsByMonth = useMemo(() => {
-    const groups: { monthYear: string; items: SessionSummary[] }[] = [];
-    filteredSessions.forEach((s) => {
-      const my = formatMonthYear(s.startTime);
-      let group = groups.find((g) => g.monthYear === my);
-      if (!group) {
-        group = { monthYear: my, items: [] };
-        groups.push(group);
-      }
-      group.items.push(s);
+  // Extract unique gyms for filter
+  const uniqueGyms = useMemo(() => {
+    const gyms = new Set<string>();
+    sessions.forEach(s => {
+      if (s.gymName) gyms.add(s.gymName);
     });
-    return groups;
-  }, [filteredSessions]);
+    return Array.from(gyms);
+  }, [sessions]);
 
-  const handleStartQuickSession = () => {
-    triggerHaptic("light");
-    useSessionStore
-      .getState()
-      .startQuickSession("Quick Session");
-    router.push('/session/active');
-  };
+  // Group by month
+  const grouped = useMemo(() => {
+    const map = new Map<string, any[]>();
+    sessions.forEach(s => {
+      if (activeGym && s.gymName !== activeGym) return;
+      
+      const d = new Date(s.startTime);
+      const monthYear = d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+      
+      if (!map.has(monthYear)) map.set(monthYear, []);
+      map.get(monthYear)!.push(s);
+    });
+    return Array.from(map.entries());
+  }, [sessions, activeGym]);
 
   return (
-    <ScreenContainer withTopInset={true}>
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={{
-          paddingHorizontal: 16,
-          paddingTop: 48,
-          paddingBottom: 120,
-        }}
-      >
-        {/* Top Header */}
-        <View className="flex-row items-center justify-between mb-4">
-          <View>
-            <Text className="text-white text-[34px] font-bold tracking-[-0.5px]">
-              Logbook
-            </Text>
-            <Text className="text-secondary text-[14px] mt-1">
-              Your chronological session history
-            </Text>
-          </View>
-          <TouchableOpacity
-            activeOpacity={0.8}
-            onPress={() => {
-              triggerHaptic("light");
-              router.push("/settings");
-            }}
-            className="w-[40px] h-[40px] bg-surface border border-border rounded-xl items-center justify-center"
-          >
-            <SettingsIcon size={20} color="#9090A0" />
-          </TouchableOpacity>
+    <Screen 
+      title="Profile" 
+      subtitle="Session History" 
+      scroll 
+      headerRight={
+        <View style={{ padding: 8, backgroundColor: colors.card, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border }}>
+          <SettingsIcon size={20} color={colors.text} onPress={() => router.push('/settings')} />
         </View>
-
-        {/* 12-Week Consistency Heatmap */}
-        <View className="mb-6">
-          <ConsistencyLedger />
-        </View>
-
-        {/* Quick-Filter Strip */}
-        <LogbookFilterStrip active={activeFilter} onChange={setActiveFilter} />
-
-        {/* Sessions History Feed */}
-        {sessions.length === 0 ? (
-          <View className="min-h-[160px] border border-dashed border-border bg-recessed rounded-xl flex-col items-center justify-center p-6">
-            <Text className="text-[12px] font-bold text-structural uppercase tracking-[1.2px]">
-              NO SESSIONS RECORDED
-            </Text>
-            <Text className="text-[13px] text-secondary text-center mt-2 mb-6">
-              Your chronologically logged gym sessions, volume stats, and beta
-              clips will populate here.
-            </Text>
-            <TouchableOpacity
-              activeOpacity={0.7}
-              onPress={handleStartQuickSession}
-              className="h-[44px] bg-surface border border-send rounded-lg px-6 items-center justify-center"
-            >
-              <Text className="text-[13px] font-bold text-send">
-                START QUICK SESSION
-              </Text>
-            </TouchableOpacity>
-          </View>
-        ) : filteredSessions.length === 0 ? (
-          <View className="items-center py-10 gap-2">
-            <Text className="text-[28px]">🔍</Text>
-            <Text className="text-white text-[15px] font-bold">
-              No sessions match this filter
-            </Text>
-            <Text className="text-secondary text-[13px] text-center">
-              Try selecting a different filter above
-            </Text>
-          </View>
-        ) : (
-          <View>
-            <TouchableOpacity
-              onPress={handleStartQuickSession}
-              activeOpacity={0.8}
-              className="h-[44px] flex-row items-center justify-center bg-surface border border-border rounded-lg mb-5 gap-2"
-            >
-              <Plus size={15} color="#8E7CFF" strokeWidth={2.5} />
-              <Text className="text-white text-[13px] font-bold tracking-[0.6px]">
-                NEW SESSION
-              </Text>
-            </TouchableOpacity>
-
-            {sessionsByMonth.map((group) => (
-              <View key={group.monthYear} className="mb-6">
-                <Text className="text-secondary text-[12px] font-bold tracking-[1.2px] mb-3 px-1">
-                  {group.monthYear}
-                </Text>
-
-                <View className="bg-surface border border-border rounded-xl overflow-hidden">
-                  {group.items.map((s, idx) => (
-                    <SessionHistoryCard
-                      key={s.id}
-                      session={s}
-                      isLast={idx === group.items.length - 1}
-                    />
-                  ))}
-                </View>
-              </View>
+      }
+    >
+      {/* Gym Filter Chips */}
+      {uniqueGyms.length > 0 && (
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: space.xl }}>
+          <View style={{ flexDirection: 'row', gap: space.sm }}>
+            <FilterChip 
+              label="All Gyms" 
+              active={activeGym === null} 
+              onPress={() => { triggerHaptic('light'); setActiveGym(null); }} 
+            />
+            {uniqueGyms.map(gym => (
+              <FilterChip 
+                key={gym}
+                label={gym} 
+                active={activeGym === gym} 
+                onPress={() => { triggerHaptic('light'); setActiveGym(gym); }} 
+              />
             ))}
           </View>
-        )}
-      </ScrollView>
-    </ScreenContainer>
+        </ScrollView>
+      )}
+
+      {grouped.length === 0 ? (
+        <EmptyState 
+          icon={<SettingsIcon size={24} />} 
+          title="No sessions found" 
+          body="Go log some climbs!" cta={<PrimaryButton label="Start a Session" onPress={() => router.push('/')} />} 
+        />
+      ) : (
+        <View style={{ gap: space.xl, paddingBottom: 100 }}>
+          {grouped.map(([month, monthSessions]) => (
+            <View key={month}>
+              <SectionHeader title={month} />
+              <View style={{ backgroundColor: colors.card, borderRadius: radius.md, overflow: 'hidden' }}>
+                {monthSessions.map((s: any, i: number) => {
+                  const summary = getSessionSummary(s.id);
+                  return (
+                    <SessionRow
+                      key={s.id}
+                      id={s.id}
+                      gymName={s.gymName}
+                      startedAt={s.startTime}
+                      durationMs={summary.duration}
+                      hardestGrade={summary.hardestGradeRaw !== '–' ? summary.hardestGradeRaw : undefined}
+                      isLast={i === monthSessions.length - 1}
+                    />
+                  );
+                })}
+              </View>
+            </View>
+          ))}
+        </View>
+      )}
+    </Screen>
   );
 }

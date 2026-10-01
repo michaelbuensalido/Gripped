@@ -1,15 +1,13 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, Alert } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { Trash2 } from 'lucide-react-native';
 import { Screen } from '../../../components/ui/Screen';
 import { StatTile } from '../../../components/ui/StatTile';
 import { SectionHeader } from '../../../components/ui/SectionHeader';
-import { GradePill } from '../../../components/ui/GradePill';
-import { ResultChip, ResultType } from '../../../components/ui/ResultChip';
-import { Card } from '../../../components/ui/Card';
+import { ClimbRow } from '../../../components/ui/ClimbRow';
+import { UndoToast } from '../../../components/ui/UndoToast';
 import { useTheme } from '../../../theme/useTheme';
-import { getSessionSummary, deleteBoulderLog, deleteSession } from '../../../db/queries';
+import { getSessionSummary, softDeleteBoulderLog, undoDeleteBoulderLog, deleteSession } from '../../../db/queries';
 import { useSessionClimbs } from '../../../db/hooks';
 import { triggerHaptic } from '../../../utils/haptics';
 
@@ -25,26 +23,30 @@ export default function SessionDetailScreen() {
   const router = useRouter();
   const { colors, space, type, radius } = useTheme();
 
-  // Make it reactive so edits/deletes update the list
+  const [deletedClimbId, setDeletedClimbId] = useState<string | null>(null);
   const climbs = useSessionClimbs(id || '');
   const summary = id ? getSessionSummary(id) : null;
 
   if (!summary) {
-    return <Screen title="Session Detail"><Text style={{ color: colors.textMuted }}>Session not found.</Text></Screen>;
+    return (
+      <Screen title="Session Detail">
+        <Text style={{ color: colors.textMuted }}>Session not found.</Text>
+      </Screen>
+    );
   }
 
   const handleDeleteClimb = (climbId: string) => {
-    Alert.alert('Delete Climb', 'Remove this climb from history?', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Delete',
-        style: 'destructive',
-        onPress: () => {
-          triggerHaptic('light');
-          deleteBoulderLog(climbId);
-        }
-      }
-    ]);
+    triggerHaptic('light');
+    softDeleteBoulderLog(climbId);
+    setDeletedClimbId(climbId);
+  };
+
+  const handleUndoDelete = () => {
+    if (deletedClimbId) {
+      triggerHaptic('light');
+      undoDeleteBoulderLog(deletedClimbId);
+      setDeletedClimbId(null);
+    }
   };
 
   const handleDeleteSession = () => {
@@ -73,29 +75,7 @@ export default function SessionDetailScreen() {
       <SectionHeader title="Climbs" />
       <View style={{ gap: space.sm, marginBottom: space.xxl }}>
         {climbs.map((c: any) => (
-          <View
-            key={c.id}
-            style={{
-              backgroundColor: colors.card,
-              borderRadius: radius.md,
-              flexDirection: 'row',
-              alignItems: 'center',
-              paddingHorizontal: space.md,
-              paddingVertical: space.sm,
-              gap: space.md,
-            }}
-          >
-            <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: space.md }}>
-              <GradePill gradeIndex={c.grade_index} label={c.grade_raw} />
-              <ResultChip result={(c.result as ResultType) || 'attempt'} />
-              {c.attempts > 1 && (
-                <Text style={[type.caption, { color: colors.textMuted }]}>×{c.attempts}</Text>
-              )}
-            </View>
-            <TouchableOpacity onPress={() => handleDeleteClimb(c.id)} hitSlop={10}>
-              <Trash2 size={16} color={colors.textMuted} />
-            </TouchableOpacity>
-          </View>
+          <ClimbRow key={c.id} climb={c} onDelete={handleDeleteClimb} />
         ))}
       </View>
 
@@ -111,6 +91,8 @@ export default function SessionDetailScreen() {
       >
         <Text style={[type.heading, { color: colors.danger }]}>Delete Session</Text>
       </TouchableOpacity>
+
+      <UndoToast visible={!!deletedClimbId} onUndo={handleUndoDelete} onDismiss={() => setDeletedClimbId(null)} />
     </Screen>
   );
 }

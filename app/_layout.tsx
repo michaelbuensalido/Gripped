@@ -45,7 +45,6 @@ function TabLayout() {
 
       {/* Hidden screens — no tab bar entry */}
       <Tabs.Screen name="settings"             options={{ href: null }} />
-      <Tabs.Screen name="history"              options={{ href: null }} />
       <Tabs.Screen name="session/new"          options={{ href: null }} />
       <Tabs.Screen name="session/active"       options={{ href: null }} />
       <Tabs.Screen name="session/index"        options={{ href: null }} />

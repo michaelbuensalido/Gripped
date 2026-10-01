@@ -131,7 +131,7 @@ export default function ProgressScreen() {
           </Card>
 
           {/* Recent Sessions */}
-          <SectionHeader title="Recent Sessions" action={{ label: "See all", onPress: () => router.push('/history') }} />
+          <SectionHeader title="Recent Sessions" action={{ label: "See all", onPress: () => router.push('/profile') }} />
           <Card style={{ padding: 0, overflow: 'hidden', marginBottom: 40 }}>
             {recentSessions.map((s: any, i: number) => {
               const summary = require('../db/queries').getSessionSummary(s.id);
