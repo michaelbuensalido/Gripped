@@ -118,7 +118,7 @@ export default function RootLayout() {
         resizeMode="cover"
       />
       <SafeAreaProvider>
-        <StatusBar style="light" />
+        <StatusBar style="dark" />
         {isDbReady ? <TabLayout /> : null}
         {isDbReady && <GlobalSessionBanner />}
         {/* Global floating mini-bar */}

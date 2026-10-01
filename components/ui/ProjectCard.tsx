@@ -13,17 +13,17 @@ export function ProjectCard({ project, onLogAttempt }: { project: any; onLogAtte
     <View style={[{ backgroundColor: colors.card, borderRadius: radius.lg, padding: space.lg, marginBottom: space.lg }, shadow.card]}>
       {/* Header */}
       <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: space.md, gap: space.sm }}>
-        <GradePill gradeIndex={project.grade_index} label={project.grade_raw} />
+        <GradePill gradeIndex={project.normalizedDifficulty} label={project.gradeRaw} />
         <Text style={[type.heading, { color: colors.text, flex: 1 }]} numberOfLines={1}>
           {project.title}
         </Text>
       </View>
 
       {/* Tags */}
-      {(project.wall_angle || project.hold_type) && (
+      {(project.wallAngle || project.holdType) && (
         <View style={{ flexDirection: 'row', gap: space.sm, marginBottom: space.md }}>
-          {project.wall_angle && <Chip label={project.wall_angle} />}
-          {project.hold_type && <Chip label={project.hold_type} />}
+          {project.wallAngle && <Chip label={project.wallAngle} />}
+          {project.holdType && <Chip label={project.holdType} />}
         </View>
       )}
 
@@ -36,16 +36,16 @@ export function ProjectCard({ project, onLogAttempt }: { project: any; onLogAtte
         <View>
           <Text style={[type.label, { color: colors.textMuted, marginBottom: 2 }]}>HIGH-WATER MARK</Text>
           <Text style={[type.heading, { color: colors.text }]}>
-            {project.high_water_mark_moves ? `${project.high_water_mark_moves} moves linked` : 'None yet'}
+            {project.highWaterMarkMoves ? `${project.highWaterMarkMoves} moves linked` : 'None yet'}
           </Text>
         </View>
       </View>
 
       {/* Micro-beta note */}
-      {project.micro_beta && (
+      {project.microBeta && (
         <TouchableOpacity onPress={() => setExpanded(!expanded)} activeOpacity={0.7} style={{ marginBottom: space.md }}>
           <Text style={[type.body, { color: colors.textMuted }]} numberOfLines={expanded ? undefined : 2}>
-            {project.micro_beta}
+            {project.microBeta}
           </Text>
         </TouchableOpacity>
       )}
