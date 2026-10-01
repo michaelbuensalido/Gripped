@@ -9,8 +9,10 @@ import { FilterChip } from '../components/ui/FilterChip';
 import { PrimaryButton } from '../components/ui/PrimaryButton';
 import { SecondaryButton } from '../components/ui/SecondaryButton';
 import { LogSheet } from '../components/session/LogSheet';
+import { StartSessionSheet } from '../components/session/StartSessionSheet';
 import { useProjects, useActiveSession, useAllSessions } from '../db/hooks';
-import { insertProject, insertSession, insertAttempt, updateProjectStatus, gradeToNumeric, getActiveSession } from '../db/queries';
+import { useSessionActions } from '../hooks/useSessionActions';
+import { insertProject, insertAttempt, updateProjectStatus, gradeToNumeric, getActiveSession } from '../db/queries';
 import { useSessionStore } from '../store/sessionStore';
 import { triggerHaptic } from '../utils/haptics';
 import { useTheme } from '../theme/useTheme';
@@ -78,23 +80,13 @@ export default function ProjectsScreen() {
     }
   };
 
-  const handleCreateSessionAndLog = () => {
-    triggerHaptic('medium');
-    const sessionId = uuid();
-    insertSession({
-      id: sessionId,
-      gymName: newGymName,
-      startTime: Date.now(),
-      notes: '',
-      title: 'Quick Session',
-      rpe: null,
-      mediaUris: [],
-      skinState: null,
-      fingerFatigue: null,
-    });
+  const { startOrResume } = useSessionActions();
+  const handleCreateSessionAndLog = (gymName: string) => {
+    startOrResume(gymName);
     setIsStartSessionSheetOpen(false);
-    setIsLogSheetOpen(true);
+    setTimeout(() => setIsLogSheetOpen(true), 100);
   };
+
 
   const handleSaveLog = (grade: string, result: any, attempts: number, notes: string) => {
     if (!selectedProject) return;
@@ -285,32 +277,6 @@ export default function ProjectsScreen() {
         </KeyboardAvoidingView>
       </Modal>
 
-      {/* Start Session Sheet */}
-      <Modal visible={isStartSessionSheetOpen} animationType="slide" transparent onRequestClose={() => setIsStartSessionSheetOpen(false)}>
-        <Pressable style={{ flex: 1, backgroundColor: colors.scrim, justifyContent: 'flex-end' }} onPress={() => setIsStartSessionSheetOpen(false)}>
-          <Pressable onPress={(e) => e.stopPropagation()}>
-            <View style={{ backgroundColor: colors.card, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl, padding: space.xl, paddingBottom: space.xxl + 20, ...shadow.floating }}>
-              
-              <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: colors.border, alignSelf: 'center', marginBottom: space.lg }} />
-              <View style={{ marginBottom: space.xl }}>
-                <Text style={[type.title, { color: colors.text, marginBottom: space.xs }]}>Start a session</Text>
-                <Text style={[type.body, { color: colors.textMuted }]}>Start a session to log this attempt on {selectedProject?.title}.</Text>
-              </View>
-
-              <Text style={[type.label, { color: colors.textMuted, marginBottom: space.xs }]}>Gym / Location</Text>
-              <TextInput 
-                value={newGymName} 
-                onChangeText={setNewGymName} 
-                style={[type.body, { backgroundColor: colors.cardMuted, borderRadius: radius.md, padding: space.md, marginBottom: space.xl, color: colors.text }]} 
-              />
-
-              <PrimaryButton testID="start-session-log-btn" label="Start & log attempt" onPress={handleCreateSessionAndLog} style={{ marginBottom: space.md }} />
-              <SecondaryButton testID="cancel-start-session-btn" label="Cancel" onPress={() => setIsStartSessionSheetOpen(false)} />
-            </View>
-          </Pressable>
-        </Pressable>
-      </Modal>
-
       {/* Log Climb Sheet */}
       <LogSheet
         visible={isLogSheetOpen}
@@ -322,6 +288,7 @@ export default function ProjectsScreen() {
         initialGrade={selectedProject?.gradeRaw}
         initialResult={'attempt'}
       />
+      <StartSessionSheet visible={isStartSessionSheetOpen} onClose={() => setIsStartSessionSheetOpen(false)} onStart={handleCreateSessionAndLog} />
     </Screen>
   );
 }

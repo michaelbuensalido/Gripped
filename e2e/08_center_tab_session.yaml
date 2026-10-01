@@ -1,0 +1,39 @@
+appId: com.cruxlog.app
+---
+- clearState
+- launchApp
+
+# (1) Tap center button when no session
+- assertVisible: "Start session"
+- tapOn:
+    id: "Start session"
+- assertVisible: "Start a session" # The bottom sheet
+- tapOn:
+    id: "start-session-submit-btn" # Primary button inside sheet
+- assertVisible: "SESSION" # Should be Active Session screen (Timer etc)
+
+# (2) Go to Projects, center button reads Resume
+- tapOn:
+    id: "projects-tab"
+- assertVisible: "Projects"
+- assertVisible: ".*Resume session.*"
+
+# (3) Kill and relaunch, still reads Resume
+- stopApp
+- launchApp
+- assertVisible: ".*Resume session.*"
+
+# (4) End session, reads Start
+- tapOn: ".*Resume session.*" # Go back to active session
+- tapOn: "End" # Assuming End button exists
+- tapOn: "Save & Finish"
+- tapOn:
+    id: "done-home-btn" # Back to home
+- assertVisible: "Start session"
+
+# (5) On Home, the Start session button opens the same sheet
+- tapOn:
+    id: "start-session-btn"
+- assertVisible: "Start a session"
+- tapOn:
+    id: "cancel-start-session-btn"

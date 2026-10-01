@@ -2,6 +2,8 @@ import { create } from 'zustand';
 import * as Q from '../db/queries';
 
 interface SessionState {
+  lastTab: string;
+  setLastTab: (tab: string) => void;
   activeSessionId: string | null;
   setActiveSessionId: (id: string | null) => void;
   
@@ -18,7 +20,7 @@ interface SessionState {
   setActiveProjectTarget: (project: any | null) => void;
 
   // Actions
-  startQuickSession: (gymName?: string) => string;
+  
   createProject: (data: any) => string;
   updateProjectStatus: (id: string, status: any) => void;
   updateProjectHighWaterMark: (id: string, moves: number) => void;
@@ -27,6 +29,9 @@ interface SessionState {
 }
 
 export const useSessionStore = create<SessionState>((set, get) => ({
+  lastTab: '/',
+  setLastTab: (tab) => set({ lastTab: tab }),
+
   activeSessionId: null,
   setActiveSessionId: (id) => set({ activeSessionId: id }),
 
@@ -79,7 +84,9 @@ export const useSessionStore = create<SessionState>((set, get) => ({
   },
 
   logGenericAscent: (payload) => {
-    const activeId = get().activeSessionId || get().startQuickSession();
+    const activeSession = Q.getActiveSession();
+    const activeId = activeSession ? activeSession.id : null;
+    if (!activeId) return ''; // should not happen
     const attemptId = `att_${Date.now()}`;
     const difficulty = Q.gradeToNumeric(payload.gradeRaw);
 

@@ -45,7 +45,7 @@ export default function ProgressScreen() {
           body="Log some climbs to see your stats and progression over time."
           cta={<PrimaryButton
             label="START SESSION"
-            onPress={() => router.push('/session/new')}
+            onPress={() => router.push('/')}
           />}
         />
       </Screen>

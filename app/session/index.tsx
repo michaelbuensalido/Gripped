@@ -77,7 +77,7 @@ export default function ActiveSessionScreen() {
             icon={<Plus size={24} color={colors.textMuted} />}
             title="No active session"
             body="Start a session to log your climbs and track progress."
-            cta={<PrimaryButton testID="start-session-btn" label="Start New Session" onPress={() => router.replace('/session/new')} />}
+            cta={<PrimaryButton testID="start-session-btn" label="Start New Session" onPress={() => router.replace('/')} />}
           />
         </View>
       </Screen>

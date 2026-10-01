@@ -9,6 +9,7 @@ import { GradePill } from '../../components/ui/GradePill';
 import { Card } from '../../components/ui/Card';
 import { SectionHeader } from '../../components/ui/SectionHeader';
 import { useTheme } from '../../theme/useTheme';
+import { useSessionStore } from '../../store/sessionStore';
 import { getAllSessions, getClimbsForSession } from '../../db/queries';
 
 function formatDuration(ms: number) {
@@ -20,6 +21,7 @@ function formatDuration(ms: number) {
 
 export default function SessionSummaryScreen() {
   const router = useRouter();
+  const lastTab = useSessionStore(s => s.lastTab);
   const { colors, space, type, radius, shadow } = useTheme();
 
   // Get the most recently ended session
@@ -104,7 +106,7 @@ export default function SessionSummaryScreen() {
       {/* CTAs */}
       <View style={{ gap: space.md, marginTop: space.sm }}>
         <PrimaryButton label="GO TO PROGRESS" onPress={() => router.replace('/analytics')} />
-        <SecondaryButton testID="done-home-btn" label="Home" onPress={() => router.replace('/')} />
+        <SecondaryButton testID="done-home-btn" label="Done" onPress={() => router.replace(lastTab as any)} />
       </View>
     </Screen>
   );

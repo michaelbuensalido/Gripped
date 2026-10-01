@@ -10,6 +10,8 @@ import { StatTile } from '../components/ui/StatTile';
 import { useTheme } from '../theme/useTheme';
 import { getActiveSession, getAllSessions, getWeeklyVolume, getStreak, getSessionSummary } from '../db/queries';
 import { useSessionStore } from '../store/sessionStore';
+import { useSessionActions } from '../hooks/useSessionActions';
+import { StartSessionSheet } from '../components/session/StartSessionSheet';
 import { triggerHaptic } from '../utils/haptics';
 import { SessionRow } from '../components/ui/SessionRow';
 
@@ -22,7 +24,8 @@ export default function HomeScreen() {
   const [streak, setStreak] = useState(0);
   const [weeklyVolume, setWeeklyVolume] = useState(0);
   
-  const startQuickSession = useSessionStore((s) => s.startQuickSession);
+  const { startOrResume } = useSessionActions();
+  const [isStartSheetOpen, setIsStartSheetOpen] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
@@ -46,15 +49,10 @@ export default function HomeScreen() {
   );
 
   const handleStartSession = () => {
-    triggerHaptic('medium');
     if (activeSession) {
-      router.push('/session/active');
+      startOrResume();
     } else {
-      // 1-tap start as per USER_FLOW.md
-      // We start it immediately using the last gym if available
-      const lastGym = lastSession?.gymName || 'Local Gym';
-      startQuickSession(lastGym);
-      router.push('/session/active');
+      setIsStartSheetOpen(true);
     }
   };
 
@@ -104,6 +102,7 @@ export default function HomeScreen() {
       )}
 
       {/* Active Projects could go here later if we implement the preview */}
+      <StartSessionSheet visible={isStartSheetOpen} onClose={() => setIsStartSheetOpen(false)} onStart={(gymName) => { setIsStartSheetOpen(false); startOrResume(gymName); }} />
     </Screen>
   );
 }
