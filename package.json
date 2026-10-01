@@ -57,9 +57,13 @@
   },
   "devDependencies": {
     "@babel/core": "^7.24.0",
+    "@types/better-sqlite3": "^9.6.0",
+    "@types/jest": "^30.0.0",
     "@types/react": "~19.2.4",
     "@types/uuid": "^9.0.0",
     "better-sqlite3": "^13.0.3",
+    "jest": "^30.5.2",
+    "ts-jest": "^29.4.14",
     "typescript": "~6.0.3"
   },
   "scripts": {

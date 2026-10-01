@@ -9,7 +9,7 @@ import {
   Platform,
   ScrollView,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, Redirect } from 'expo-router';
 import { Screen } from '../../components/ui/Screen';
 import { PrimaryButton } from '../../components/ui/PrimaryButton';
 import { SecondaryButton } from '../../components/ui/SecondaryButton';
@@ -33,8 +33,7 @@ export default function EndSessionScreen() {
   const [effort, setEffort] = useState<number | null>(null);
 
   if (!session) {
-    router.replace('/');
-    return null;
+    return <Redirect href="/" />;
   }
 
   const handleFinish = () => {
