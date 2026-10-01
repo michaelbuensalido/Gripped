@@ -14,7 +14,7 @@ export function FloatingTabBar({ state, descriptors, navigation }: any) {
         {state.routes.map((route: any, index: number) => {
           const { options } = descriptors[route.key];
           
-          const visibleTabs = ['index', 'projects', 'analytics', 'logbook'];
+          const visibleTabs = ['index', 'projects', 'analytics', 'profile'];
           if (!visibleTabs.includes(route.name)) return null;
 
           const isFocused = state.index === index;
@@ -38,11 +38,12 @@ export function FloatingTabBar({ state, descriptors, navigation }: any) {
           else if (route.name === 'explore') { IconComponent = Compass; label = "Explore"; }
           else if (route.name === 'projects') { IconComponent = Target; label = "Projects"; }
           else if (route.name === 'analytics') { IconComponent = TrendingUp; label = "Progress"; }
-          else if (route.name === 'logbook') { IconComponent = BookOpen; label = "Logbook"; }
+          else if (route.name === 'profile') { IconComponent = BookOpen; label = "Logbook"; }
           else if (route.name === 'profile') { IconComponent = User; label = "Profile"; }
 
           return (
             <TouchableOpacity
+              testID={`${route.name}-tab`}
               key={route.key}
               onPress={onPress}
               activeOpacity={0.7}

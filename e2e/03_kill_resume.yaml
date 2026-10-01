@@ -1,0 +1,35 @@
+appId: com.cruxlog
+---
+# E2E-3: Kill and relaunch mid-session — session and climbs survive
+# testIDs needed: start-session-btn, log-climb-btn, save-climb-btn, climb-list, resume-session-btn
+
+- launchApp:
+    clearState: true
+
+# Start session and log one climb
+- tapOn:
+    id: "start-session-btn"
+- tapOn:
+- tapOn:
+- tapOn:
+    id: "log-climb-btn"
+- tapOn:
+    id: "save-climb-btn"
+
+# Force kill the app
+- stopApp
+
+# Relaunch
+- launchApp
+
+# Home should show Resume Session (green button)
+- assertVisible:
+    id: "resume-session-btn"
+
+# Tap Resume
+- tapOn:
+    id: "resume-session-btn"
+
+# Active Session shows the climb that was logged
+- assertVisible:
+    id: "climb-list"

@@ -1,0 +1,35 @@
+appId: com.cruxlog
+---
+# E2E-5: Attempt triggers "Make this a project?"
+# testIDs needed: log-attempt-chip, make-project-btn, projects-tab
+
+- launchApp:
+    clearState: true
+
+# Start session
+- tapOn:
+    id: "start-session-btn"
+- tapOn:
+- tapOn:
+
+# Log an attempt
+- tapOn:
+    id: "log-climb-btn"
+- tapOn:
+    id: "log-attempt-chip"
+- tapOn:
+    id: "save-climb-btn"
+
+# Prompt should appear
+- assertVisible:
+    id: "make-project-btn"
+
+- tapOn:
+    id: "make-project-btn"
+
+# Go to Projects tab and check
+- tapOn:
+    id: "projects-tab"
+
+- assertVisible:
+    id: "project-card"

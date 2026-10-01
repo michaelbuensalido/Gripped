@@ -26,6 +26,7 @@ import { notificationEngine } from "../services/notificationEngine";
 import "../global.css";
 
 import { FloatingTabBar } from "../components/ui/FloatingTabBar";
+import { GlobalSessionBanner } from "../components/ui/GlobalSessionBanner";
 
 function TabLayout() {
   const activeSession = useActiveSession();
@@ -39,7 +40,7 @@ function TabLayout() {
       <Tabs.Screen name="index"     options={{ title: "Home" }} />
       <Tabs.Screen name="projects"  options={{ title: "Projects" }} />
       <Tabs.Screen name="analytics" options={{ title: "Progress" }} />
-      <Tabs.Screen name="logbook"   options={{ title: "Logbook" }} />
+      <Tabs.Screen name="profile"   options={{ title: "Profile" }} />
       <Tabs.Screen name="gallery"   options={{ title: "Gallery", href: null }} />
 
       {/* Hidden screens — no tab bar entry */}
@@ -120,6 +121,7 @@ export default function RootLayout() {
       <SafeAreaProvider>
         <StatusBar style="light" />
         {isDbReady ? <TabLayout /> : null}
+        {isDbReady && <GlobalSessionBanner />}
         {/* Global floating mini-bar */}
         
       </SafeAreaProvider>

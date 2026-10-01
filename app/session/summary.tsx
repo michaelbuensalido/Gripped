@@ -104,7 +104,7 @@ export default function SessionSummaryScreen() {
       {/* CTAs */}
       <View style={{ gap: space.md, marginTop: space.sm }}>
         <PrimaryButton label="GO TO PROGRESS" onPress={() => router.replace('/analytics')} />
-        <SecondaryButton label="Home" onPress={() => router.replace('/')} />
+        <SecondaryButton testID="done-home-btn" label="Home" onPress={() => router.replace('/')} />
       </View>
     </Screen>
   );

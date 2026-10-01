@@ -176,6 +176,14 @@ export function updateBoulderLogGradeAndMedia(id: string, gradeRaw: string, norm
   );
 }
 
+
+export function softDeleteBoulderLog(id: string): void {
+  runMutation('climbs', id, 'UPDATE', `UPDATE climbs SET deleted_at = ?, updated_at = ? WHERE id = ?`, [Date.now(), Date.now(), id]);
+}
+export function undoDeleteBoulderLog(id: string): void {
+  runMutation('climbs', id, 'UPDATE', `UPDATE climbs SET deleted_at = NULL, updated_at = ? WHERE id = ?`, [Date.now(), id]);
+}
+
 export function deleteBoulderLog(id: string): void {
   const db = getDatabase();
   runMutation('climbs', id, 'DELETE', `DELETE FROM climbs WHERE id = ?`, [id]);

@@ -196,7 +196,7 @@ export default function ProjectsScreen() {
               No active projects in this view
             </Text>
             <Text className="text-[#9090A0] text-xs text-center mb-5 px-4 leading-4">
-              Add the specific boulders you are actively sieging to track your high-water mark and micro-beta.
+              Add the specific projects you are actively sieging to track your high-water mark and micro-beta.
             </Text>
             <TouchableOpacity
               activeOpacity={0.8}
@@ -227,7 +227,7 @@ export default function ProjectsScreen() {
                   key={project.id}
                   className="bg-[#19191D] border border-[#27272F] rounded-2xl p-4 overflow-hidden"
                 >
-                  {/* Header: V-Grade Block + Route Name + Angle/Hold Tags */}
+                  {/* Header: V-Grade Block + Project Name + Angle/Hold Tags */}
                   <View className="flex-row items-center justify-between mb-3.5">
                     <View className="flex-row items-center gap-3 flex-1 pr-2">
                       {/* V-Grade block */}
@@ -237,7 +237,7 @@ export default function ProjectsScreen() {
                         </Text>
                       </View>
 
-                      {/* Route Name & Tags */}
+                      {/* Project Name & Tags */}
                       <View className="flex-1">
                         <Text className="text-white font-bold text-base tracking-tight" numberOfLines={1}>
                           {project.title}
@@ -373,7 +373,7 @@ export default function ProjectsScreen() {
                   New Project
                 </Text>
                 <Text className="text-[#9090A0] text-xs mt-0.5">
-                  Add a route to your personal siege hit-list
+                  Add a project to your personal siege hit-list
                 </Text>
               </View>
               <TouchableOpacity

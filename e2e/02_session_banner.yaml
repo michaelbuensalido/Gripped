@@ -1,0 +1,28 @@
+appId: com.cruxlog
+---
+# E2E-2: Running-session banner visible on Progress, Projects tabs
+# testIDs needed: session-banner, progress-tab, projects-tab
+
+- launchApp:
+    clearState: true
+
+# Start a session
+- tapOn:
+    id: "start-session-btn"
+- tapOn:
+- tapOn:
+
+# Active session is running — navigate to Progress tab
+- tapOn:
+    id: "progress-tab"
+
+# Banner must be visible
+- assertVisible:
+    id: "session-banner"
+
+# Navigate to Projects tab
+- tapOn:
+    id: "projects-tab"
+
+- assertVisible:
+    id: "session-banner"

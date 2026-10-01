@@ -126,7 +126,7 @@ export default function EndSessionScreen() {
         </ScrollView>
 
         <View style={{ gap: space.md, paddingBottom: space.xl }}>
-          <PrimaryButton label="SAVE & FINISH" onPress={handleFinish} />
+          <PrimaryButton testID="finish-session-btn" label="SAVE & FINISH" onPress={handleFinish} />
           <SecondaryButton label="Back to Session" onPress={handleCancel} />
         </View>
       </KeyboardAvoidingView>

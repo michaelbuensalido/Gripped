@@ -22,7 +22,8 @@ import { Card } from '../../components/ui/Card';
 import { useTheme } from '../../theme/useTheme';
 import { useActiveSession, useSessionClimbs } from '../../db/hooks';
 import { useSessionStore } from '../../store/sessionStore';
-import { deleteBoulderLog } from '../../db/queries';
+import { deleteBoulderLog, softDeleteBoulderLog, undoDeleteBoulderLog } from '../../db/queries';
+import { UndoToast } from '../../components/ui/UndoToast';
 import { triggerHaptic } from '../../utils/haptics';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -108,10 +109,10 @@ function GradePicker({ value, onChange }: { value: string; onChange: (g: string)
 function ResultSelector({ value, onChange }: { value: ResultType; onChange: (r: ResultType) => void }) {
   const { colors, space, radius, type } = useTheme();
 
-  const options: { result: ResultType; label: string; color: string; bg: string }[] = [
+  const options: { result: ResultType; label: string; color: string; bg: string; testID?: string }[] = [
     { result: 'flash', label: 'Flash', color: colors.flashText, bg: colors.flashSoft },
     { result: 'top',   label: 'Top',   color: colors.topText,   bg: colors.topSoft },
-    { result: 'attempt', label: 'Attempt', color: colors.attemptText, bg: colors.attemptSoft },
+    { result: 'attempt', label: 'Attempt', color: colors.attemptText, bg: colors.attemptSoft, testID: 'log-attempt-chip' },
   ];
 
   return (
@@ -120,6 +121,7 @@ function ResultSelector({ value, onChange }: { value: ResultType; onChange: (r: 
         const selected = value === o.result;
         return (
           <TouchableOpacity
+            testID={(o as any).testID}
             key={o.result}
             onPress={() => { triggerHaptic('light'); onChange(o.result); }}
             style={{
@@ -313,6 +315,8 @@ export default function ActiveSessionScreen() {
   const { isLogSheetOpen, setLogSheetOpen, logGenericAscent } = useSessionStore();
 
   const [elapsed, setElapsed] = useState(0);
+  const [projectPromptAttemptId, setProjectPromptAttemptId] = useState<string | null>(null);
+  const [deletedClimbId, setDeletedClimbId] = useState<string | null>(null);
   const [editingClimb, setEditingClimb] = useState<{ grade: string; result: ResultType; attempts: number } | null>(null);
 
   // Live timer
@@ -332,7 +336,7 @@ export default function ActiveSessionScreen() {
           <Text style={[type.body, { color: colors.textMuted, textAlign: 'center' }]}>
             No active session.
           </Text>
-          <PrimaryButton label="Start New Session" onPress={() => router.replace('/session/new')} />
+          <PrimaryButton testID="start-session-btn" label="Start New Session" onPress={() => router.replace('/session/new')} />
         </View>
       </Screen>
     );
@@ -349,7 +353,7 @@ export default function ActiveSessionScreen() {
 
   const handleSaveLog = (grade: string, result: ResultType, attempts: number, notes: string) => {
     triggerHaptic('medium');
-    logGenericAscent({
+    const attemptId = logGenericAscent({
       gradeRaw: grade,
       outcome: result === 'top' ? 'send' : result,
       movesLinked: attempts,
@@ -357,20 +361,22 @@ export default function ActiveSessionScreen() {
     });
     setLogSheetOpen(false);
     setEditingClimb(null);
+    if (result === 'attempt') {
+      setProjectPromptAttemptId(attemptId);
+    }
   };
 
   const handleDeleteClimb = (id: string) => {
-    Alert.alert('Delete Climb', 'Remove this climb from the session?', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Delete',
-        style: 'destructive',
-        onPress: () => {
-          triggerHaptic('light');
-          deleteBoulderLog(id);
-        },
-      },
-    ]);
+    triggerHaptic('light');
+    softDeleteBoulderLog(id);
+    setDeletedClimbId(id);
+  };
+  const handleUndoDelete = () => {
+    if (deletedClimbId) {
+      triggerHaptic('light');
+      undoDeleteBoulderLog(deletedClimbId);
+      setDeletedClimbId(null);
+    }
   };
 
   const handleEditClimb = (climb: any) => {
@@ -405,8 +411,34 @@ export default function ActiveSessionScreen() {
         </View>
 
         {/* Climb list */}
+                {/* Project Prompt */}
+        {projectPromptAttemptId && (
+          <View style={{ backgroundColor: colors.accentSoft, borderRadius: radius.md, padding: space.md, marginBottom: space.lg, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+            <Text style={[type.body, { color: colors.accentText }]}>Make this a project?</Text>
+            <View style={{ flexDirection: 'row', gap: space.sm }}>
+              <TouchableOpacity onPress={() => setProjectPromptAttemptId(null)} style={{ padding: space.sm }}>
+                <Text style={[type.caption, { color: colors.accentText }]}>No</Text>
+              </TouchableOpacity>
+              <TouchableOpacity testID="make-project-btn" onPress={() => {
+                triggerHaptic('light');
+                const climb = climbs.find((c: any) => c.id === projectPromptAttemptId);
+                if (climb) {
+                  useSessionStore.getState().createProject({
+                    title: `Project ${climb.grade_raw}`,
+                    gradeRaw: climb.grade_raw,
+                    gradeIndex: climb.grade_index,
+                  });
+                }
+                setProjectPromptAttemptId(null);
+                router.push('/projects');
+              }} style={{ paddingHorizontal: space.md, paddingVertical: space.sm, backgroundColor: colors.accent, borderRadius: radius.sm }}>
+                <Text style={[type.caption, { color: colors.textOnAccent, fontWeight: '700' }]}>Yes</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
         <SectionHeader title={`Climbs (${climbs.length})`} />
-        <View style={{ gap: space.sm, marginBottom: 120 }}>
+        <View testID="climb-list" style={{ gap: space.sm, marginBottom: 120 }}>
           {climbs.map((climb: any) => {
             const resultKey: ResultType =
               climb.result === 'send' ? 'top' : (climb.result as ResultType) ?? 'attempt';
@@ -488,6 +520,7 @@ export default function ActiveSessionScreen() {
         initialResult={editingClimb?.result}
         initialAttempts={editingClimb?.attempts}
       />
+      <UndoToast visible={!!deletedClimbId} onUndo={handleUndoDelete} onDismiss={() => setDeletedClimbId(null)} />
     </>
   );
 }

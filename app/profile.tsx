@@ -33,7 +33,7 @@ function formatMonthYear(timestamp: number): string {
   return `${months[d.getMonth()]} ${d.getFullYear()}`;
 }
 
-export default function LogbookScreen() {
+export default function ProfileScreen() {
   const router = useRouter();
   const [sessions, setSessions] = useState<SessionSummary[]>([]);
   const [activeFilter, setActiveFilter] = useState<LogbookFilter>("all");
