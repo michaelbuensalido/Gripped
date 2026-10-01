@@ -60,7 +60,7 @@ export function SessionHeader({ onFinish, onMinimize }: SessionHeaderProps) {
   return (
     <View
       style={{ paddingTop: insets.top }}
-      className="bg-[#111113] border-b border-[#1E1E24]"
+      className="bg-[#111113] border-b border-[#19191D]"
     >
       <View className="flex-row items-center justify-between px-5 py-4">
         {/* Minimize */}
@@ -85,17 +85,17 @@ export function SessionHeader({ onFinish, onMinimize }: SessionHeaderProps) {
               dismissRestTimer();
             }}
             delayLongPress={400}
-            className="flex-row items-center bg-[#19191D] px-4 py-1.5 rounded-full border border-[#E7AE56] gap-2"
+            className="flex-row items-center bg-[#19191D] px-4 py-1.5 rounded-full border border-[#3E3E48] gap-2"
           >
-            <Animated.View style={[{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#E7AE56' }, pulseStyle]} />
+            <Animated.View style={[{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#3E3E48' }, pulseStyle]} />
             <Text 
-              className="text-[16px] font-bold text-[#E7AE56]" 
+              className="text-[16px] font-bold text-[#3E3E48]" 
               style={{ fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace', fontVariant: ['tabular-nums'], letterSpacing: 1 }}
             >
               REST {pad(Math.floor(restTimerSeconds / 60))}:{pad(restTimerSeconds % 60)}
             </Text>
             <TouchableOpacity onPress={() => dismissRestTimer()} hitSlop={{top:10,bottom:10,left:10,right:10}} className="ml-1 bg-[#111113] rounded-full p-[2px]">
-               <X size={12} color="#E7AE56" strokeWidth={3} />
+               <X size={12} color="#3E3E48" strokeWidth={3} />
             </TouchableOpacity>
           </TouchableOpacity>
         ) : (
@@ -111,7 +111,7 @@ export function SessionHeader({ onFinish, onMinimize }: SessionHeaderProps) {
 
             {/* Sends count */}
             <Text 
-              className="text-[12px] text-[#8A8A98]"
+              className="text-[12px] text-[#9090A0]"
               style={{ fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace' }}
             >
               {totalSends} SENDS

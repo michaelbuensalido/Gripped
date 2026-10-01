@@ -27,7 +27,7 @@ export function Pill({
       bg = 'rgba(142, 124, 255, 0.16)';
       text = text || '#8E7CFF';
     } else {
-      bg = '#1E1E24';
+      bg = '#19191D';
       text = text || '#9A9AA6';
     }
   }

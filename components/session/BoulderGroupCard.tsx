@@ -122,7 +122,7 @@ export function BoulderGroupCard({
       onLongPress={handleLongPress}
       delayLongPress={200}
       className={`border rounded-xl p-4 mb-4 ${
-        isActive ? 'bg-[#1E1E24] border-[#3A3A46]' : 'bg-[#19191D] border-[#27272F]'
+        isActive ? 'bg-[#19191D] border-[#3A3A46]' : 'bg-[#19191D] border-[#27272F]'
       }`}
     >
       {/* Block Header */}
@@ -226,7 +226,7 @@ export function BoulderGroupCard({
             activeOpacity={0.8}
             className="w-full h-[40px] items-center justify-center rounded-lg border border-dashed border-[#27272F]"
           >
-            <Text className="text-[#8A8A98] text-[12px] font-semibold">+ Add Set</Text>
+            <Text className="text-[#9090A0] text-[12px] font-semibold">+ Add Set</Text>
           </TouchableOpacity>
         </View>
       )}

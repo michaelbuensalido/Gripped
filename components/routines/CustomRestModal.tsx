@@ -131,7 +131,7 @@ export function CustomRestModal({
                   height: 32,
                   borderRadius: 16,
                   backgroundColor: '#141418',
-                  borderColor: '#2C2C35',
+                  borderColor: '#27272F',
                   borderWidth: 1,
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -145,7 +145,7 @@ export function CustomRestModal({
             <View
               style={{
                 backgroundColor: '#141418',
-                borderColor: '#2C2C35',
+                borderColor: '#27272F',
                 borderWidth: 1,
                 borderRadius: 20,
                 paddingVertical: 18,
@@ -190,7 +190,7 @@ export function CustomRestModal({
                 style={{
                   flex: 1,
                   backgroundColor: '#16161B',
-                  borderColor: '#2C2C35',
+                  borderColor: '#27272F',
                   borderWidth: 1,
                   borderRadius: 12,
                   paddingVertical: 10,
@@ -206,7 +206,7 @@ export function CustomRestModal({
                 style={{
                   flex: 1,
                   backgroundColor: '#16161B',
-                  borderColor: '#2C2C35',
+                  borderColor: '#27272F',
                   borderWidth: 1,
                   borderRadius: 12,
                   paddingVertical: 10,
@@ -222,7 +222,7 @@ export function CustomRestModal({
                 style={{
                   flex: 1,
                   backgroundColor: '#16161B',
-                  borderColor: '#2C2C35',
+                  borderColor: '#27272F',
                   borderWidth: 1,
                   borderRadius: 12,
                   paddingVertical: 10,
@@ -238,7 +238,7 @@ export function CustomRestModal({
                 style={{
                   flex: 1,
                   backgroundColor: '#16161B',
-                  borderColor: '#2C2C35',
+                  borderColor: '#27272F',
                   borderWidth: 1,
                   borderRadius: 12,
                   paddingVertical: 10,
@@ -256,7 +256,7 @@ export function CustomRestModal({
                 alignItems: 'center',
                 justifyContent: 'space-between',
                 backgroundColor: '#16161B',
-                borderColor: '#2C2C35',
+                borderColor: '#27272F',
                 borderWidth: 1,
                 borderRadius: 14,
                 paddingHorizontal: 14,
@@ -264,7 +264,7 @@ export function CustomRestModal({
                 marginBottom: 20,
               }}
             >
-              <Text style={{ color: '#8A8A98', fontSize: 12, fontWeight: '600' }}>
+              <Text style={{ color: '#9090A0', fontSize: 12, fontWeight: '600' }}>
                 Exact seconds (10–600):
               </Text>
               <TextInput
@@ -290,7 +290,7 @@ export function CustomRestModal({
                 style={{
                   flex: 1,
                   backgroundColor: '#141418',
-                  borderColor: '#2C2C35',
+                  borderColor: '#27272F',
                   borderWidth: 1,
                   paddingVertical: 13,
                   borderRadius: 22,

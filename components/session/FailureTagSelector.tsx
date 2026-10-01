@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, Pressable } from 'react-native';
+import { View, StyleSheet, Pressable, Text } from 'react-native';
 import Animated, { FadeIn, FadeOut, Layout } from 'react-native-reanimated';
 import type { FailureReason } from '../../types';
 import { triggerHaptic } from '../../utils/haptics';
@@ -14,12 +14,14 @@ interface TagOption {
   label: string;
 }
 
+// Keys align with the canonical FailureReason taxonomy and
+// the FailureReasonPrompt bottom-sheet values.
 const FAILURE_TAGS: TagOption[] = [
-  { key: 'foot_slip', label: 'Foot Slip' },
-  { key: 'pumped', label: 'Pumped' },
-  { key: 'beta_error', label: 'Beta Error' },
-  { key: 'reach_span', label: 'Reach / Span' },
-  { key: 'grip_strength', label: 'Grip' },
+  { key: 'pump',       label: '🔥 Pump' },
+  { key: 'foot_slip',  label: '🦶 Foot Slip' },
+  { key: 'power',      label: '💪 Power' },
+  { key: 'beta_error', label: '🧠 Beta Error' },
+  { key: 'fear',       label: '😤 Fear' },
 ];
 
 export function FailureTagSelector({
@@ -28,11 +30,8 @@ export function FailureTagSelector({
 }: FailureTagSelectorProps) {
   const handlePress = (key: FailureReason) => {
     triggerHaptic('light');
-    if (selectedReason === key) {
-      onSelectReason(null);
-    } else {
-      onSelectReason(key);
-    }
+    // Toggle: pressing the active tag deselects it
+    onSelectReason(selectedReason === key ? null : key);
   };
 
   return (
@@ -70,10 +69,14 @@ export function FailureTagSelector({
   );
 }
 
+// ─── Styles ───────────────────────────────────────────────────────────────────
+// StyleSheet used here for dynamic transform (chipPressed scale) which
+// cannot be expressed via NativeWind className on Pressable style callback.
+
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: '#17171C',
-    borderColor: '#22222A',
+    backgroundColor: '#141417',     // bg-recessed
+    borderColor: '#22222A',          // border-borderRecessed
     borderWidth: 1,
     borderRadius: 12,
     padding: 8,
@@ -90,14 +93,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   chipUnselected: {
-    backgroundColor: '#1E1E24',
+    backgroundColor: '#19191D',     // bg-surface
     borderWidth: 1,
-    borderColor: '#2C2C35',
+    borderColor: '#27272F',          // border-border
   },
   chipSelected: {
-    backgroundColor: 'rgba(142, 124, 255, 0.18)',
+    backgroundColor: 'rgba(142, 124, 255, 0.18)', // bg-send/18
     borderWidth: 1,
-    borderColor: '#8E7CFF',
+    borderColor: '#8E7CFF',          // border-send
   },
   chipPressed: {
     transform: [{ scale: 0.95 }],
@@ -108,11 +111,11 @@ const styles = StyleSheet.create({
     letterSpacing: -0.1,
   },
   chipTextUnselected: {
-    color: '#8A8A98',
+    color: '#9090A0',               // text-secondary
     fontWeight: '600',
   },
   chipTextSelected: {
-    color: '#8E7CFF',
+    color: '#8E7CFF',               // text-send
     fontWeight: '700',
   },
 });

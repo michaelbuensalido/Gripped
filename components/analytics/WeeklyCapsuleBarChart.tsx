@@ -72,7 +72,7 @@ export function WeeklyCapsuleBarChart({
             >
               <Stop offset="0%" stopColor="#6EE756" stopOpacity="0.10" />
               <Stop offset="40%" stopColor="#8E7CFF" stopOpacity="0.04" />
-              <Stop offset="100%" stopColor="#1E1E24" stopOpacity="0" />
+              <Stop offset="100%" stopColor="#19191D" stopOpacity="0" />
             </RadialGradient>
           </Defs>
           <Rect
@@ -95,7 +95,7 @@ export function WeeklyCapsuleBarChart({
           style={styles.expandButton}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
-          <Maximize2 size={16} color="#8A8A98" />
+          <Maximize2 size={16} color="#9090A0" />
         </TouchableOpacity>
       </View>
 
@@ -208,11 +208,11 @@ export function WeeklyCapsuleBarChart({
 
 const styles = StyleSheet.create({
   cardContainer: {
-    backgroundColor: "#1E1E24",
+    backgroundColor: "#19191D",
     borderRadius: 24,
     padding: 20,
     borderWidth: 1,
-    borderColor: "#2C2C35",
+    borderColor: "#27272F",
     position: "relative",
     overflow: "hidden",
   },
@@ -265,7 +265,7 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   metricSubtitle: {
-    color: "#8A8A98",
+    color: "#9090A0",
     fontSize: 13,
     fontWeight: "500",
     marginTop: 2,
@@ -282,7 +282,7 @@ const styles = StyleSheet.create({
   floatingPill: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#1E1E24",
+    backgroundColor: "#19191D",
     borderWidth: 1,
     borderColor: "#FFFFFF",
     borderRadius: 12,
@@ -318,10 +318,10 @@ const styles = StyleSheet.create({
     width: "100%",
     maxWidth: 38,
     height: 140,
-    backgroundColor: "#17171C",
+    backgroundColor: "#141417",
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: "#2C2C35",
+    borderColor: "#27272F",
     overflow: "hidden",
     justifyContent: "flex-end",
     position: "relative",
@@ -331,7 +331,7 @@ const styles = StyleSheet.create({
   },
   capsuleInnerBg: {
     ...StyleSheet.absoluteFill,
-    backgroundColor: "#17171C",
+    backgroundColor: "#141417",
   },
   capsuleFill: {
     width: "100%",
@@ -345,7 +345,7 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
   },
   dayLabel: {
-    color: "#8A8A98",
+    color: "#9090A0",
     fontSize: 11,
     fontWeight: "700",
     marginTop: 8,

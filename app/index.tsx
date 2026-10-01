@@ -16,6 +16,7 @@ import {
   ChevronRight,
   Clock,
   Settings as SettingsIcon,
+  Plus,
 } from "lucide-react-native";
 import Svg, { Polygon, Path } from "react-native-svg";
 import {
@@ -25,7 +26,6 @@ import {
 } from "../constants/theme";
 import { ScreenContainer } from "../components/ui/ScreenContainer";
 import { getHomeStats, type HomeStats } from "../db/queries";
-import { getAllRoutinesWithBlocks } from "../db/routineQueries";
 import { GRADE_BY_LABEL } from "../constants/grades";
 import { useSessionStore } from "../store/sessionStore";
 import type { RoutineWithBlocks } from "../types";
@@ -126,7 +126,7 @@ export default function HomeScreen() {
       try {
         const stats = getHomeStats();
         setHomeStats(stats);
-        const routines = getAllRoutinesWithBlocks();
+        const routines: any[] = [];
         if (routines.length > 0) {
           setSuggestedRoutine(routines[0]);
         }
@@ -165,7 +165,7 @@ export default function HomeScreen() {
   const handleLogSend = (route: RecommendedRoute) => {
     setSelectedRoute(null);
     if (hasActiveSession && homeStats?.activeSession) {
-      router.push(`/session/${homeStats.activeSession.id}`);
+      router.push('/session/active');
     } else {
       router.push("/session/new");
     }
@@ -369,96 +369,78 @@ export default function HomeScreen() {
           </View>
         </View>
 
-        {/* ── 3. Metric Strip Grammar & Contrast Cleanup ─────── */}
+        {/* ── 3. Weekly Load Ticker ──────────────────────────────────────────── */}
         <View
           style={{
-            flexDirection: "row",
-            justifyContent: "space-between",
-            gap: 10,
+            flexDirection: 'row',
+            backgroundColor: '#19191D',
+            borderWidth: 1,
+            borderColor: '#27272F',
+            borderRadius: 14,
             marginBottom: 20,
+            overflow: 'hidden',
           }}
         >
-          {/* Card 1: COMPLETED */}
-          <View
-            style={{
-              flex: 1,
-              backgroundColor: "#1E1E24",
-              borderWidth: 1,
-              borderColor: "#2C2C35",
-              borderRadius: 14,
-              padding: 13,
-            }}
-          >
-            <Text style={{ color: "#FFFFFF", fontSize: 24, fontWeight: "700" }}>
+          {/* Cell 1: SENDS */}
+          <View style={{ flex: 1, paddingVertical: 14, paddingHorizontal: 12, alignItems: 'flex-start' }}>
+            <Text style={{ color: '#FFFFFF', fontSize: 28, fontWeight: '700', letterSpacing: -0.5 }}>
               {homeStats?.totalSends ?? 0}
             </Text>
             <Text
               style={{
-                color: "#8A8A98",
-                fontSize: 10,
-                fontWeight: "700",
-                letterSpacing: 0.8,
+                color: '#9090A0',
+                fontSize: 9,
+                fontWeight: '700',
+                letterSpacing: 1.2,
                 marginTop: 4,
+                textTransform: 'uppercase',
               }}
-              className="uppercase"
             >
-              COMPLETED
+              Sends
             </Text>
           </View>
 
-          {/* Card 2: PROJECTS */}
-          <View
-            style={{
-              flex: 1,
-              backgroundColor: "#1E1E24",
-              borderWidth: 1,
-              borderColor: "#2C2C35",
-              borderRadius: 14,
-              padding: 13,
-            }}
-          >
-            <Text style={{ color: "#FFFFFF", fontSize: 24, fontWeight: "700" }}>
+          {/* Divider */}
+          <View style={{ width: 1, backgroundColor: '#27272F', marginVertical: 10 }} />
+
+          {/* Cell 2: ATTEMPTS */}
+          <View style={{ flex: 1, paddingVertical: 14, paddingHorizontal: 12, alignItems: 'flex-start' }}>
+            <Text style={{ color: '#FFFFFF', fontSize: 28, fontWeight: '700', letterSpacing: -0.5 }}>
               {homeStats?.totalProjects ?? 3}
             </Text>
             <Text
               style={{
-                color: "#8A8A98",
-                fontSize: 10,
-                fontWeight: "700",
-                letterSpacing: 0.8,
+                color: '#9090A0',
+                fontSize: 9,
+                fontWeight: '700',
+                letterSpacing: 1.2,
                 marginTop: 4,
+                textTransform: 'uppercase',
               }}
-              className="uppercase"
             >
-              PROJECTS
+              Attempts
             </Text>
           </View>
 
-          {/* Card 3: FLASHES */}
-          <View
-            style={{
-              flex: 1,
-              backgroundColor: "#1E1E24",
-              borderWidth: 1,
-              borderColor: "#2C2C35",
-              borderRadius: 14,
-              padding: 13,
-            }}
-          >
-            <Text style={{ color: "#FFFFFF", fontSize: 24, fontWeight: "700" }}>
-              {homeStats?.totalFlashes ?? 0}
+          {/* Divider */}
+          <View style={{ width: 1, backgroundColor: '#27272F', marginVertical: 10 }} />
+
+          {/* Cell 3: REST DAYS */}
+          <View style={{ flex: 1, paddingVertical: 14, paddingHorizontal: 12, alignItems: 'flex-start' }}>
+            <Text style={{ color: '#FFFFFF', fontSize: 28, fontWeight: '700', letterSpacing: -0.5 }}>
+              2<Text style={{ color: '#555562', fontSize: 14, fontWeight: '600' }}>/7</Text>
             </Text>
             <Text
               style={{
-                color: "#8A8A98",
-                fontSize: 10,
-                fontWeight: "700",
-                letterSpacing: 0.8,
+                color: '#9090A0',
+                fontSize: 9,
+                fontWeight: '700',
+                letterSpacing: 1.2,
                 marginTop: 4,
+                textTransform: 'uppercase',
               }}
-              className="uppercase"
             >
-              FLASHES
+              Rest Days
             </Text>
           </View>
         </View>
@@ -595,10 +577,10 @@ export default function HomeScreen() {
 
           {/* Action Button */}
           <TouchableOpacity
-            activeOpacity={0.85}
+            activeOpacity={0.8}
             onPress={() => {
               if (hasActiveSession && homeStats?.activeSession) {
-                router.push(`/session/${homeStats.activeSession.id}`);
+                router.push('/session/active');
               } else if (suggestedRoutine) {
                 router.push({
                   pathname: "/session/new",
@@ -609,24 +591,26 @@ export default function HomeScreen() {
               }
             }}
             style={{
-              backgroundColor: "#8E7CFF",
-              height: 52,
-              borderRadius: 26,
+              width: "100%",
+              height: 56,
+              backgroundColor: "#19191D",
+              borderWidth: 1,
+              borderColor: "#8E7CFF",
+              borderRadius: 14,
+              flexDirection: "row",
               alignItems: "center",
               justifyContent: "center",
-              shadowColor: "#8E7CFF",
-              shadowOffset: { width: 0, height: 4 },
-              shadowOpacity: 0.4,
-              shadowRadius: 10,
-              elevation: 5,
+              gap: 10,
             }}
           >
+            <Plus size={18} color="#FFFFFF" strokeWidth={2.5} />
             <Text
               style={{
                 color: "#FFFFFF",
-                fontSize: 15,
+                fontSize: 16,
                 fontWeight: "700",
-                letterSpacing: 0.5,
+                letterSpacing: 1.0,
+                textTransform: "uppercase",
               }}
             >
               {hasActiveSession ? "RESUME SESSION" : "START SESSION"}
@@ -655,7 +639,7 @@ export default function HomeScreen() {
             onPress={() => {
               triggerHaptic("light");
               if (hasActiveSession && homeStats?.activeSession) {
-                router.push(`/session/${homeStats.activeSession.id}`);
+                router.push('/session/active');
               } else {
                 router.push("/session/new");
               }

@@ -16,9 +16,9 @@ export function StartEmptySessionCard({ onPress }: StartEmptySessionCardProps) {
       }}
       style={({ pressed }) => ({
         width: '100%',
-        backgroundColor: '#1E1E24',
+        backgroundColor: '#19191D',
         borderWidth: 1,
-        borderColor: '#2C2C35',
+        borderColor: '#27272F',
         borderRadius: 20,
         padding: 16,
         marginBottom: 24,
@@ -61,7 +61,7 @@ export function StartEmptySessionCard({ onPress }: StartEmptySessionCardProps) {
           </Text>
           <Text
             style={{
-              color: '#8A8A98',
+              color: '#9090A0',
               fontSize: 12,
               fontWeight: '400',
               marginTop: 2,

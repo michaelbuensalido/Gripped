@@ -19,8 +19,8 @@ export function SessionPyramidChart({ pyramid }: SessionPyramidChartProps) {
     return (
       <View
         style={{
-          backgroundColor: '#1E1E24',
-          borderColor: '#2C2C35',
+          backgroundColor: '#19191D',
+          borderColor: '#27272F',
           borderWidth: 1,
           borderRadius: 20,
           padding: 16,
@@ -41,8 +41,8 @@ export function SessionPyramidChart({ pyramid }: SessionPyramidChartProps) {
   return (
     <View
       style={{
-        backgroundColor: '#1E1E24',
-        borderColor: '#2C2C35',
+        backgroundColor: '#19191D',
+        borderColor: '#27272F',
         borderWidth: 1,
         borderRadius: 20,
         padding: 16,
@@ -52,7 +52,7 @@ export function SessionPyramidChart({ pyramid }: SessionPyramidChartProps) {
       <View className="flex-row items-center justify-between mb-3">
         <Text
           style={{
-            color: '#8A8A98',
+            color: '#9090A0',
             fontSize: 11,
             fontWeight: '700',
             letterSpacing: 0.8,
@@ -61,7 +61,7 @@ export function SessionPyramidChart({ pyramid }: SessionPyramidChartProps) {
         >
           SESSION GRADE PYRAMID
         </Text>
-        <Text style={{ color: '#8A8A98', fontSize: 12 }}>Volume per grade</Text>
+        <Text style={{ color: '#9090A0', fontSize: 12 }}>Volume per grade</Text>
       </View>
 
       {/* Rows */}
@@ -106,7 +106,7 @@ export function SessionPyramidChart({ pyramid }: SessionPyramidChartProps) {
                   y={3}
                   width={attemptW}
                   height={CHART_H - 6}
-                  fill="#484852"
+                  fill="#FF453A"
                   rx={row.flashes === 0 && row.sends === 0 ? 5 : 0}
                 />
               )}
@@ -120,7 +120,7 @@ export function SessionPyramidChart({ pyramid }: SessionPyramidChartProps) {
       })}
 
       {/* Legend */}
-      <View className="flex-row items-center justify-center gap-5 mt-3 pt-3 border-t border-[#2C2C35]">
+      <View className="flex-row items-center justify-center gap-5 mt-3 pt-3 border-t border-[#27272F]">
         <View className="flex-row items-center gap-1.5">
           <View className="w-2.5 h-2.5 rounded-sm bg-[#6EE756]" />
           <Text className="text-[#9A9AA6] text-[11px] font-semibold">Flash</Text>
@@ -130,7 +130,7 @@ export function SessionPyramidChart({ pyramid }: SessionPyramidChartProps) {
           <Text className="text-[#9A9AA6] text-[11px] font-semibold">Top</Text>
         </View>
         <View className="flex-row items-center gap-1.5">
-          <View className="w-2.5 h-2.5 rounded-sm bg-[#484852]" />
+          <View className="w-2.5 h-2.5 rounded-sm bg-[#FF453A]" />
           <Text className="text-[#9A9AA6] text-[11px] font-semibold">Attempt</Text>
         </View>
       </View>

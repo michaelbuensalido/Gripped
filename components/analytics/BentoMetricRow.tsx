@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, TouchableOpacity } from 'react-native';
 import Svg, { Polyline } from 'react-native-svg';
 
 export interface BentoMetricRowProps {
@@ -23,10 +23,10 @@ export function BentoMetricRow({
   const renderSparkline = () => {
     if (!sparklineData || sparklineData.length < 2) {
       return (
-        <View style={styles.equalizerContainer}>
-          <View style={[styles.equalizerBar, { height: 12 }]} />
-          <View style={[styles.equalizerBar, { height: 24 }]} />
-          <View style={[styles.equalizerBar, { height: 16 }]} />
+        <View className="flex-row items-end gap-1 h-7 pb-0.5">
+          <View className="w-[5px] h-[12px] rounded-full bg-flash" />
+          <View className="w-[5px] h-[24px] rounded-full bg-flash" />
+          <View className="w-[5px] h-[16px] rounded-full bg-flash" />
         </View>
       );
     }
@@ -44,7 +44,7 @@ export function BentoMetricRow({
     }).join(' ');
 
     return (
-      <View style={{ width, height, justifyContent: 'center' }}>
+      <View className="w-[48px] h-[24px] justify-center">
         <Svg width={width} height={height} viewBox={`0 -2 ${width} ${height + 4}`}>
           <Polyline
             points={points}
@@ -60,113 +60,43 @@ export function BentoMetricRow({
   };
 
   return (
-    <View style={styles.container}>
+    <View className="flex-row gap-3 mt-3">
       {/* ── Left Card: Peak Grade ────────────────────────────── */}
       <TouchableOpacity
         activeOpacity={0.8}
         onPress={onPeakGradePress}
-        style={styles.card}
+        className="flex-1 bg-surface border border-border rounded-[20px] p-4 justify-between"
       >
-        <Text style={styles.cardLabel}>PEAK GRADE</Text>
+        <Text className="text-secondary text-[11px] font-bold tracking-[0.8px] uppercase mb-2">PEAK GRADE</Text>
 
-        <View style={styles.contentRow}>
-          <Text style={styles.metricValue}>{displayPeak}</Text>
+        <View className="flex-row items-center justify-between mb-2">
+          <Text className="text-primary text-[28px] font-extrabold tracking-[-0.6px]">{displayPeak}</Text>
           {renderSparkline()}
         </View>
 
-        <Text style={styles.cardSublabel}>Hardest Send</Text>
+        <Text className="text-structural text-[11px] font-semibold">Hardest Send</Text>
       </TouchableOpacity>
 
       {/* ── Right Card: Flash Efficiency ─────────────────────── */}
       <TouchableOpacity
         activeOpacity={0.8}
         onPress={onFlashRatePress}
-        style={styles.card}
+        className="flex-1 bg-surface border border-border rounded-[20px] p-4 justify-between"
       >
-        <Text style={styles.cardLabel}>FLASH RATE</Text>
+        <Text className="text-secondary text-[11px] font-bold tracking-[0.8px] uppercase mb-2">FLASH RATE</Text>
 
-        <View style={styles.contentRow}>
-          <Text style={styles.metricValue}>{displayRate}</Text>
+        <View className="flex-row items-center justify-between mb-2">
+          <Text className="text-primary text-[28px] font-extrabold tracking-[-0.6px]">{displayRate}</Text>
         </View>
 
         {/* Horizontal capsule progress bar on bottom */}
-        <View style={styles.progressTrack}>
+        <View className="h-2 rounded-full bg-recessed border border-borderRecessed overflow-hidden mt-1">
           <View
-            style={[
-              styles.progressFill,
-              { width: `${Math.min(100, Math.max(10, flashRate))}%` },
-            ]}
+            className="h-full rounded-full bg-flash"
+            style={{ width: `${Math.min(100, Math.max(10, flashRate))}%` }}
           />
         </View>
       </TouchableOpacity>
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flexDirection: 'row',
-    gap: 12,
-    marginTop: 12,
-  },
-  card: {
-    flex: 1,
-    backgroundColor: '#1E1E24',
-    borderRadius: 20,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: '#2C2C35',
-    justifyContent: 'space-between',
-  },
-  cardLabel: {
-    color: '#8A8A98',
-    fontSize: 11,
-    fontWeight: '700',
-    letterSpacing: 0.8,
-    textTransform: 'uppercase',
-    marginBottom: 8,
-  },
-  contentRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 8,
-  },
-  metricValue: {
-    color: '#FFFFFF',
-    fontSize: 28,
-    fontWeight: '800',
-    letterSpacing: -0.6,
-  },
-  equalizerContainer: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    gap: 4,
-    height: 28,
-    paddingBottom: 2,
-  },
-  equalizerBar: {
-    width: 5,
-    borderRadius: 3,
-    backgroundColor: '#6EE756',
-  },
-  cardSublabel: {
-    color: '#8A8A98',
-    fontSize: 11,
-    fontWeight: '600',
-  },
-  progressTrack: {
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#17171C',
-    borderWidth: 1,
-    borderColor: '#2C2C35',
-    overflow: 'hidden',
-    marginTop: 4,
-  },
-  progressFill: {
-    height: '100%',
-    borderRadius: 4,
-    backgroundColor: '#6EE756',
-  },
-});

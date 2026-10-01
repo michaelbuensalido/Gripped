@@ -28,21 +28,21 @@ export function SessionHistoryCard({ session, isLast }: Props) {
         triggerHaptic('light');
         router.push(`/session/detail/${session.id}`);
       }}
-      className={`h-[64px] flex-row items-center justify-between px-4 ${!isLast ? 'border-b border-[#22222A]' : ''}`}
+      className={`h-[64px] flex-row items-center justify-between px-4 ${!isLast ? 'border-b border-borderRecessed' : ''}`}
     >
       {/* Left: Date + Title */}
       <View className="flex-1 mr-4">
         <Text 
-          className="text-[#8A8A98] text-[11px] uppercase tracking-wider mb-0.5"
+          className="text-secondary text-[11px] uppercase tracking-wider mb-0.5"
           style={{ fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace' }}
         >
           {formatShortDate(session.startTime)}
         </Text>
         <View className="flex-row items-center">
           {!session.endTime && (
-            <View className="w-2 h-2 rounded-full bg-[#6EE756] animate-pulse mr-2" />
+            <View className="w-2 h-2 rounded-full bg-flash animate-pulse mr-2" />
           )}
-          <Text className={`${!session.endTime ? 'text-[#6EE756]' : 'text-white'} text-[15px] font-bold`} numberOfLines={1}>
+          <Text className={`${!session.endTime ? 'text-flash' : 'text-white'} text-[15px] font-bold`} numberOfLines={1}>
             {session.title || session.gymName || 'Bouldering Session'}
           </Text>
         </View>
@@ -51,13 +51,13 @@ export function SessionHistoryCard({ session, isLast }: Props) {
       {/* Center/Right: Grade Badge + Chevron */}
       <View className="flex-row items-center gap-3">
         {peakGrade ? (
-          <View className="bg-[#141417] border border-[#2C2C35] rounded-md px-2 py-0.5">
+          <View className="bg-recessed border border-border rounded-md px-2 py-0.5">
             <Text className="text-white text-[12px] font-bold">{peakGrade}</Text>
           </View>
         ) : (
           session.hasMedia ? (
-            <View className="bg-[#141417] border border-[#8E7CFF] rounded-md px-2 py-0.5">
-              <Text className="text-[#8E7CFF] text-[10px] font-bold tracking-wider">BETA</Text>
+            <View className="bg-recessed border border-send rounded-md px-2 py-0.5">
+              <Text className="text-send text-[10px] font-bold tracking-wider">BETA</Text>
             </View>
           ) : null
         )}

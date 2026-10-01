@@ -2,11 +2,10 @@ import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
 import 'react-native-get-random-values';
 import { v4 as uuid } from 'uuid';
-import type { Session, BoulderGroup, BoulderLog, Outcome, RoutineWithBlocks, FailureReason } from '../types';
+import type { Session, BoulderGroup, BoulderLog, Outcome, RoutineWithBlocks, FailureReason, Project, ProjectStatus, GenericAscentPayload, WallAngle, HoldType } from '../types';
 import { DEFAULT_GRADE, GRADE_BY_LABEL } from '../constants/grades';
 import * as Q from '../db/queries';
 import { triggerRestTimerStart } from '../utils/haptics';
-import { insertAscent, getAscentsForSession } from '../services/database';
 import { liveActivityManager } from '../services/liveActivity';
 import { notificationEngine } from '../services/notificationEngine';
 
@@ -110,6 +109,33 @@ interface SessionState {
   logAscent: (gradeScalar: number, status: 'SEND' | 'ATTEMPT' | 'FLASH') => void;
   clearAscents: () => void;
   logWidgetAscent: (status: 'SEND' | 'ATTEMPT') => void;
+
+  // ─── Failure Reason Tracking ─────────────────────────────────────────────────
+  // After a FALL/ATTEMPT is logged, pendingFailureLogId holds the logId waiting
+  // for a root-cause reason via FailureReasonPrompt. Cleared once reason is set.
+  pendingFailureLogId: string | null;
+  setPendingFailureLog: (logId: string | null) => void;
+  commitFailureReason: (
+    groupId: string,
+    logId: string,
+    reason: FailureReason | null
+  ) => void;
+
+  // ─── Projects (Personal Hit-List) ───────────────────────────────────────────
+  projects: Project[];
+  activeProjectTarget: Project | null;
+  pendingAttemptId: string | null;
+  loadProjects: () => void;
+  createProject: (data: Omit<Project, 'id' | 'createdAt' | 'updatedAt'>) => string;
+  updateProjectStatus: (id: string, status: ProjectStatus) => void;
+  updateProjectHighWaterMark: (id: string, moves: number) => void;
+  updateProjectBeta: (id: string, beta: string, mediaUri?: string | null) => void;
+  setActiveProjectTarget: (project: Project | null) => void;
+  deleteProject: (id: string) => void;
+
+  // ─── Generic Ascents ────────────────────────────────────────────────────────
+  logGenericAscent: (payload: GenericAscentPayload) => string;
+  setAttemptFailureReason: (attemptId: string, reason: FailureReason | null) => void;
 }
 
 const OUTCOME_CYCLE: Outcome[] = ['attempt', 'send', 'flash'];
@@ -120,6 +146,9 @@ export const useSessionStore = create<SessionState>()(
     groups: [],
     conditions: [],
     ascents: [],
+    projects: [],
+    activeProjectTarget: null,
+    pendingAttemptId: null,
     restTimerActive: false,
     restTimerSeconds: 0,
     restTimerMax: 90,
@@ -165,6 +194,7 @@ export const useSessionStore = create<SessionState>()(
       set((state) => {
         state.activeSession = session;
         state.groups = [{ ...group, logs: [log] }];
+        state.ascents = [];
       });
     },
 
@@ -207,6 +237,7 @@ export const useSessionStore = create<SessionState>()(
       set((state) => {
         state.activeSession = session;
         state.groups = [{ ...group, logs: [log] }];
+        state.ascents = [];
       });
 
       return session.id;
@@ -276,6 +307,7 @@ export const useSessionStore = create<SessionState>()(
       set((state) => {
         state.activeSession = session;
         state.groups = newGroups;
+        state.ascents = [];
         state.restTimerMax = firstRest;
       });
 
@@ -293,6 +325,7 @@ export const useSessionStore = create<SessionState>()(
       set((state) => {
         state.activeSession = null;
         state.groups = [];
+        state.ascents = [];
       });
     },
 
@@ -316,6 +349,7 @@ export const useSessionStore = create<SessionState>()(
       set((state) => {
         state.activeSession = null;
         state.groups = [];
+        state.ascents = [];
       });
     },
 
@@ -356,9 +390,9 @@ export const useSessionStore = create<SessionState>()(
       }));
       let ascents: Ascent[] = [];
       try {
-        ascents = getAscentsForSession(sessionId);
+        ascents = Q.getAscentsForSession(sessionId);
       } catch(e) {
-        console.error('[sessionStore] loadSession getAscentsForSession failed:', e);
+        console.error('[sessionStore] loadSession Q.getAscentsForSession failed:', e);
       }
       
       if (!session.endTime) {
@@ -857,9 +891,9 @@ export const useSessionStore = create<SessionState>()(
       const id = uuid();
       const timestamp = Date.now();
 
-      // Synchronously write to Ascents table (zero-latency, no awaiting)
+      // Record in cruxlog.db climbs table via Mock
       try {
-        insertAscent(id, activeSession.id, gradeScalar, status, timestamp);
+        Q.insertAscentMock(id, activeSession.id, gradeScalar, status, timestamp);
       } catch (e) {
         console.warn('[logAscent] DB write failed:', e);
       }
@@ -878,32 +912,273 @@ export const useSessionStore = create<SessionState>()(
 
     logWidgetAscent: (status) => {
       const state = get();
-      const { groups } = state;
+      const { groups, activeSession } = state;
+      if (!activeSession) return;
+
       const uncompleted = groups.filter((g) => !g.isCompleted);
       const candidates = uncompleted.length > 0 ? uncompleted : groups;
       const activeGroup = candidates[0];
-      if (activeGroup) {
-        const currentLog = activeGroup.logs.find(
+
+      if (activeGroup && activeGroup.logs.length > 0) {
+        let currentLog = activeGroup.logs.find(
           (l) => l.outcome !== 'send' && l.outcome !== 'flash'
-        ) ?? activeGroup.logs[activeGroup.logs.length - 1];
-        if (currentLog) {
-          if (status === 'SEND') {
-            get().setOutcome(activeGroup.id, currentLog.id, 'send');
-          } else if (status === 'ATTEMPT') {
-            get().incrementAttempts(activeGroup.id, currentLog.id);
-          }
-          // Optionally trigger haptics
+        );
+
+        if (!currentLog) {
+          // All existing logs in this group are sent/flashed! Create the next boulder log
+          const newLogId = uuid();
+          const prevLog = activeGroup.logs[activeGroup.logs.length - 1];
+          const newLog: BoulderLog = {
+            id: newLogId,
+            groupId: activeGroup.id,
+            gradeRaw: prevLog?.gradeRaw ?? DEFAULT_GRADE.label,
+            normalizedDifficulty: prevLog?.normalizedDifficulty ?? DEFAULT_GRADE.difficulty,
+            rpe: null,
+            attempts: 1,
+            outcome: status === 'SEND' ? 'flash' : 'attempt',
+            timestamp: Date.now(),
+            media_uri: null,
+            media_type: null,
+          };
+          Q.insertBoulderLog(newLog);
+          set((s) => {
+            const sg = s.groups.find((g) => g.id === activeGroup.id);
+            if (sg) {
+              sg.logs.push(newLog);
+              sg.isCompleted = false;
+            }
+          });
+          get().logAscent(newLog.normalizedDifficulty, status === 'SEND' ? 'FLASH' : 'ATTEMPT');
+          get().triggerRestTimer(activeGroup.defaultRestSeconds ?? 90);
           try {
             const { triggerLogAction } = require('../utils/haptics');
             triggerLogAction();
-          } catch (e) { }
+          } catch (e) {}
+          return;
         }
+
+        const difficulty = currentLog.normalizedDifficulty ?? 5;
+        if (status === 'SEND') {
+          const outcome: Outcome = currentLog.attempts <= 1 ? 'flash' : 'send';
+          get().setOutcome(activeGroup.id, currentLog.id, outcome);
+          get().logAscent(difficulty, outcome === 'flash' ? 'FLASH' : 'SEND');
+        } else if (status === 'ATTEMPT') {
+          get().incrementAttempts(activeGroup.id, currentLog.id);
+          get().logAscent(difficulty, 'ATTEMPT');
+        }
+
+        try {
+          const { triggerLogAction } = require('../utils/haptics');
+          triggerLogAction();
+        } catch (e) {}
+        return;
       }
+
+      // Fallback: If no groups (e.g. freestyle/volume session), create a group & log directly
+      get().addGroup('Main Wall', 90);
+      const afterGroups = get().groups;
+      const createdGroup = afterGroups[afterGroups.length - 1];
+      if (createdGroup) {
+        const newLogId = uuid();
+        const newLog: BoulderLog = {
+          id: newLogId,
+          groupId: createdGroup.id,
+          gradeRaw: DEFAULT_GRADE.label,
+          normalizedDifficulty: DEFAULT_GRADE.difficulty,
+          rpe: null,
+          attempts: 1,
+          outcome: status === 'SEND' ? 'flash' : 'attempt',
+          timestamp: Date.now(),
+          media_uri: null,
+          media_type: null,
+        };
+        Q.insertBoulderLog(newLog);
+        set((s) => {
+          const sg = s.groups.find((g) => g.id === createdGroup.id);
+          if (sg) sg.logs.push(newLog);
+        });
+      }
+      get().logAscent(5, status);
+      get().triggerRestTimer(90);
+      try {
+        const { triggerLogAction } = require('../utils/haptics');
+        triggerLogAction();
+      } catch (e) {}
     },
 
     clearAscents: () => {
       liveActivityManager.endSession();
       set((state) => { state.ascents = []; });
+    },
+
+    // ─── Failure Reason Tracking ────────────────────────────────────────────────
+
+    pendingFailureLogId: null,
+
+    setPendingFailureLog: (logId) => {
+      set((state) => { state.pendingFailureLogId = logId; });
+    },
+
+    commitFailureReason: (groupId, logId, reason) => {
+      // 1. Write to SQLite first (offline-first, synchronous)
+      Q.updateBoulderLogFailureReason(logId, reason);
+
+      // 2. Update Zustand cache
+      set((state) => {
+        const g = state.groups.find(g => g.id === groupId);
+        if (!g) return;
+        const log = g.logs.find(l => l.id === logId);
+        if (log) {
+          log.failureReason = reason;
+          log.failure_reason = reason;
+        }
+        // Clear the pending prompt
+        state.pendingFailureLogId = null;
+      });
+    },
+
+    // ─── Projects (Personal Hit-List) Implementations ───────────────────────────
+
+    loadProjects: () => {
+      try {
+        const list = Q.getAllProjects();
+        set((state) => {
+          state.projects = list;
+        });
+      } catch (err) {
+        console.error('[sessionStore] loadProjects error:', err);
+      }
+    },
+
+    createProject: (data) => {
+      const id = `proj_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+      const now = Date.now();
+      const newProj: Project = {
+        ...data,
+        id,
+        createdAt: now,
+        updatedAt: now,
+      };
+
+      // 1. SQLite Write First (Offline-first, synchronous)
+      Q.insertProject(newProj);
+
+      // 2. Optimistic Zustand update
+      set((state) => {
+        state.projects.unshift(newProj);
+      });
+      return id;
+    },
+
+    updateProjectStatus: (id, status) => {
+      Q.updateProjectStatus(id, status);
+      set((state) => {
+        const p = state.projects.find((proj) => proj.id === id);
+        if (p) p.status = status;
+        if (state.activeProjectTarget?.id === id) {
+          state.activeProjectTarget.status = status;
+        }
+      });
+    },
+
+    updateProjectHighWaterMark: (id, moves) => {
+      Q.updateProjectHighWaterMark(id, moves);
+      set((state) => {
+        const p = state.projects.find((proj) => proj.id === id);
+        if (p && moves > p.highWaterMarkMoves) {
+          p.highWaterMarkMoves = moves;
+        }
+        if (state.activeProjectTarget?.id === id && moves > state.activeProjectTarget.highWaterMarkMoves) {
+          state.activeProjectTarget.highWaterMarkMoves = moves;
+        }
+      });
+    },
+
+    updateProjectBeta: (id, beta, mediaUri) => {
+      Q.updateProjectBeta(id, beta, mediaUri);
+      set((state) => {
+        const p = state.projects.find((proj) => proj.id === id);
+        if (p) {
+          p.microBeta = beta;
+          if (mediaUri !== undefined) p.mediaUri = mediaUri;
+        }
+        if (state.activeProjectTarget?.id === id) {
+          state.activeProjectTarget.microBeta = beta;
+          if (mediaUri !== undefined) state.activeProjectTarget.mediaUri = mediaUri;
+        }
+      });
+    },
+
+    setActiveProjectTarget: (project) => {
+      set((state) => {
+        state.activeProjectTarget = project;
+      });
+    },
+
+    deleteProject: (id) => {
+      Q.deleteProject(id);
+      set((state) => {
+        state.projects = state.projects.filter((p) => p.id !== id);
+        if (state.activeProjectTarget?.id === id) {
+          state.activeProjectTarget = null;
+        }
+      });
+    },
+
+    // ─── Generic Ascent Logging ─────────────────────────────────────────────────
+
+    logGenericAscent: (payload) => {
+      const active = get().activeSession;
+      const sessionId = active ? active.id : get().startQuickSession();
+      const attemptId = `att_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+      const difficulty = Q.gradeToNumeric(payload.gradeRaw);
+
+      const record = {
+        id: attemptId,
+        sessionId,
+        projectId: payload.projectId ?? null,
+        gradeRaw: payload.gradeRaw,
+        normalizedDifficulty: difficulty,
+        wallAngle: payload.wallAngle,
+        holdType: payload.holdType,
+        outcome: payload.outcome,
+        failureReason: payload.failureReason ?? null,
+        movesLinked: payload.movesLinked ?? 0,
+        timestamp: Date.now(),
+      };
+
+      // 1. Sync write to SQLite attempts table
+      Q.insertAttempt(record);
+
+      // 2. Also register in memory ascents list for zero-latency UI
+      const statusScalar: 'SEND' | 'ATTEMPT' | 'FLASH' = 
+        payload.outcome === 'flash' ? 'FLASH' : payload.outcome === 'send' ? 'SEND' : 'ATTEMPT';
+      get().logAscent(difficulty, statusScalar);
+
+      // 3. If tied to a project, update project high-water mark or status
+      if (payload.projectId) {
+        if (payload.outcome === 'send' || payload.outcome === 'flash') {
+          get().updateProjectStatus(payload.projectId, 'sent');
+        } else if (payload.movesLinked) {
+          get().updateProjectHighWaterMark(payload.projectId, payload.movesLinked);
+        }
+      }
+
+      // 4. Prompt failure reason modal if fall
+      set((state) => {
+        if (payload.outcome === 'fall' || payload.outcome === 'attempt') {
+          state.pendingAttemptId = attemptId;
+        }
+      });
+
+      return attemptId;
+    },
+
+    setAttemptFailureReason: (attemptId, reason) => {
+      Q.updateAttemptFailureReason(attemptId, reason);
+      set((state) => {
+        state.pendingAttemptId = null;
+      });
     },
   }))
 );

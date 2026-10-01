@@ -100,7 +100,7 @@ export function BlockActionSheet({
               <View className="flex-row items-center justify-between mb-4 pb-3 border-b border-[#27272F]">
                 <View className="flex-row items-center gap-2.5">
                   <View>
-                    <Text className="text-[#8A8A98] text-[10px] font-bold uppercase tracking-[1.2px]">
+                    <Text className="text-[#9090A0] text-[10px] font-bold uppercase tracking-[1.2px]">
                       Zone Controls
                     </Text>
                     <Text

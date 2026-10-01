@@ -13,12 +13,12 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import {
   TrendingUp,
-  Route,
+  Target,
   ChartNoAxesCombined,
   BookOpen,
   type LucideIcon,
 } from "lucide-react-native";
-import { initDatabase } from "../services/database";
+import { initializeDatabase } from "../db/schema";
 import { ActiveSessionMiniBar } from "../components/session/ActiveSessionMiniBar";
 import { useSessionStore } from "../store/sessionStore";
 import { triggerHaptic } from "../utils/haptics";
@@ -27,7 +27,7 @@ import "../global.css";
 
 function CustomTabBar({ state, descriptors, navigation }: any) {
   // STRICTLY limit the rendered tabs to the 4 core routes
-  const coreRoutes = ["index", "routines", "analytics", "logbook"];
+  const coreRoutes = ["index", "projects", "analytics", "logbook"];
   const visibleRoutes = state.routes.filter((route: any) =>
     coreRoutes.includes(route.name),
   );
@@ -62,10 +62,10 @@ function CustomTabBar({ state, descriptors, navigation }: any) {
         if (route.name === "index") {
           IconComponent = TrendingUp;
           label = "Home";
-        } else if (route.name === "routines" || route.name === "routes") {
-          IconComponent = Route;
-          label = "Routes";
-        } else if (route.name === "analytics" || route.name === "progress") {
+        } else if (route.name === "projects") {
+          IconComponent = Target;
+          label = "Projects";
+        } else if (route.name === "analytics") {
           IconComponent = ChartNoAxesCombined;
           label = "Progress";
         } else if (route.name === "logbook") {
@@ -88,7 +88,7 @@ function CustomTabBar({ state, descriptors, navigation }: any) {
             >
               <IconComponent
                 size={20}
-                color={isFocused ? "#9D7BFF" : "#8A8A98"}
+                color={isFocused ? "#9D7BFF" : "#9090A0"}
                 strokeWidth={isFocused ? 2.2 : 2}
               />
             </View>
@@ -97,7 +97,7 @@ function CustomTabBar({ state, descriptors, navigation }: any) {
               style={[
                 styles.tabLabel,
                 {
-                  color: isFocused ? "#9D7BFF" : "#8A8A98",
+                  color: isFocused ? "#9D7BFF" : "#9090A0",
                   fontWeight: isFocused ? "700" : "500",
                 },
               ]}
@@ -120,20 +120,20 @@ function TabLayout() {
       tabBar={(props) => <CustomTabBar {...props} />}
       screenOptions={{ headerShown: false }}
     >
-      <Tabs.Screen name="index" options={{ title: "Home" }} />
-      <Tabs.Screen name="routines" options={{ title: "Routes" }} />
+      <Tabs.Screen name="index"     options={{ title: "Home" }} />
+      <Tabs.Screen name="projects"  options={{ title: "Projects" }} />
       <Tabs.Screen name="analytics" options={{ title: "Progress" }} />
-      <Tabs.Screen name="logbook" options={{ title: "Logbook" }} />
+      <Tabs.Screen name="logbook"   options={{ title: "Logbook" }} />
 
-      {/* Explicitly hide all other screens so they don't become tabs */}
-      <Tabs.Screen name="settings" options={{ href: null }} />
-      <Tabs.Screen name="history" options={{ href: null }} />
-      <Tabs.Screen name="session/new" options={{ href: null }} />
-      <Tabs.Screen name="session/active" options={{ href: null }} />
-      <Tabs.Screen name="session/camera" options={{ href: null }} />
-      <Tabs.Screen name="session/[id]" options={{ href: null }} />
-      <Tabs.Screen name="session/detail/[id]" options={{ href: null }} />
-      <Tabs.Screen name="routines/editor" options={{ href: null }} />
+      {/* Hidden screens — no tab bar entry */}
+      <Tabs.Screen name="routes"               options={{ href: null }} />
+      <Tabs.Screen name="settings"             options={{ href: null }} />
+      <Tabs.Screen name="history"              options={{ href: null }} />
+      <Tabs.Screen name="session/new"          options={{ href: null }} />
+      <Tabs.Screen name="session/active"       options={{ href: null }} />
+      <Tabs.Screen name="session/index"        options={{ href: null }} />
+      <Tabs.Screen name="session/camera"       options={{ href: null }} />
+      <Tabs.Screen name="session/detail/[id]"  options={{ href: null }} />
     </Tabs>
   );
 }
@@ -180,18 +180,20 @@ const styles = StyleSheet.create({
 export default function RootLayout() {
   const [isDbReady, setIsDbReady] = React.useState(false);
   useEffect(() => {
-    try {
-      initDatabase();
-      setIsDbReady(true);
-      // Initialize background notifications for rest timer
-      notificationEngine.requestPermissions();
-    } catch (e) {
-      console.error(e);
-    }
+    (async () => {
+      try {
+        await initializeDatabase();
+        useSessionStore.getState().initActiveSession();
+        setIsDbReady(true);
+        notificationEngine.requestPermissions();
+      } catch (e) {
+        console.error(e);
+      }
+    })();
   }, []);
 
   return (
-    <GestureHandlerRootView style={{ flex: 1, backgroundColor: "#131316" }}>
+    <GestureHandlerRootView style={{ flex: 1, backgroundColor: "#111113" }}>
       <ImageBackground
         source={require("../assets/speckled_mat_bg.jpg")}
         style={StyleSheet.absoluteFill}

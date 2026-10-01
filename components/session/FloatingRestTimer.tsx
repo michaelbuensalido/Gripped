@@ -102,7 +102,7 @@ export function FloatingRestTimer() {
           hitSlop={{ top: 10, bottom: 10, left: 6, right: 10 }}
           style={styles.closeBtn}
         >
-          <X size={13} color="#8A8A98" strokeWidth={2.5} />
+          <X size={13} color="#9090A0" strokeWidth={2.5} />
         </TouchableOpacity>
       </View>
     </View>
@@ -119,7 +119,7 @@ const styles = StyleSheet.create({
   pill: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#1E1E24',
+    backgroundColor: '#19191D',
     borderWidth: 1,
     borderColor: '#8E7CFF',
     borderRadius: 999,
@@ -167,7 +167,7 @@ const styles = StyleSheet.create({
     width: 20,
     height: 20,
     borderRadius: 10,
-    backgroundColor: '#17171C',
+    backgroundColor: '#141417',
     alignItems: 'center',
     justifyContent: 'center',
     marginLeft: 2,

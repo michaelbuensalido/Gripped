@@ -168,7 +168,7 @@ export function MonthlyVolumeWidget({ stats }: MonthlyVolumeWidgetProps) {
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: '#1E1E24',
+    backgroundColor: '#19191D',
     borderRadius: 24,
     padding: 18,
     borderWidth: 1,
@@ -202,7 +202,7 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
   },
   cardSubtitle: {
-    color: '#8A8A98',
+    color: '#9090A0',
     fontSize: 11,
     fontWeight: '500',
     marginTop: 2,
@@ -217,7 +217,7 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255, 255, 255, 0.06)',
   },
   kpiLabel: {
-    color: '#8A8A98',
+    color: '#9090A0',
     fontSize: 9,
     fontWeight: '600',
     textTransform: 'uppercase',
@@ -256,7 +256,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(142, 124, 255, 0.25)',
   },
   gradePillText: {
-    color: '#8A8A98',
+    color: '#9090A0',
     fontSize: 9,
     fontWeight: '700',
   },
@@ -296,7 +296,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
   weekLabel: {
-    color: '#8A8A98',
+    color: '#9090A0',
     fontSize: 9,
     fontWeight: '600',
   },
@@ -338,7 +338,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   inspectChipGrade: {
-    color: '#E8DEB5',
+    color: '#3E3E48',
     fontSize: 11,
     fontWeight: '700',
   },
@@ -362,7 +362,7 @@ const styles = StyleSheet.create({
     borderRadius: 3,
   },
   footerText: {
-    color: '#8A8A98',
+    color: '#9090A0',
     fontSize: 10,
     fontWeight: '600',
   },

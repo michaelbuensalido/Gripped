@@ -160,7 +160,7 @@ export default function SessionDetailScreen() {
           onPress: () => {
             if (!id) return;
             reopenSession(id);
-            router.replace(`/session/${id}`);
+            router.replace('/session/active');
           },
         },
       ]
@@ -217,7 +217,7 @@ export default function SessionDetailScreen() {
       {/* ── Top Bar ────────────────────────────────────────────── */}
       <View
         style={{
-          borderBottomColor: '#2C2C35',
+          borderBottomColor: '#27272F',
           borderBottomWidth: 1,
           paddingHorizontal: 16,
           paddingVertical: 12,
@@ -234,9 +234,9 @@ export default function SessionDetailScreen() {
             width: 36,
             height: 36,
             borderRadius: 18,
-            backgroundColor: '#1E1E24',
+            backgroundColor: '#19191D',
             borderWidth: 1,
-            borderColor: '#2C2C35',
+            borderColor: '#27272F',
             alignItems: 'center',
             justifyContent: 'center',
           }}
@@ -259,7 +259,7 @@ export default function SessionDetailScreen() {
           </Text>
           <Text
             style={{
-              color: '#8A8A98',
+              color: '#9090A0',
               fontSize: 12,
               marginTop: 2,
               textAlign: 'center',
@@ -281,9 +281,9 @@ export default function SessionDetailScreen() {
               width: 36,
               height: 36,
               borderRadius: 18,
-              backgroundColor: '#1E1E24',
+              backgroundColor: '#19191D',
               borderWidth: 1,
-              borderColor: '#2C2C35',
+              borderColor: '#27272F',
               alignItems: 'center',
               justifyContent: 'center',
             }}
@@ -291,7 +291,7 @@ export default function SessionDetailScreen() {
             {isSharing ? (
               <ActivityIndicator size="small" color="#8E7CFF" />
             ) : (
-              <Share2 size={18} color="#8A8A98" />
+              <Share2 size={18} color="#9090A0" />
             )}
           </TouchableOpacity>
           <TouchableOpacity
@@ -301,14 +301,14 @@ export default function SessionDetailScreen() {
               width: 36,
               height: 36,
               borderRadius: 18,
-              backgroundColor: '#1E1E24',
+              backgroundColor: '#19191D',
               borderWidth: 1,
-              borderColor: '#2C2C35',
+              borderColor: '#27272F',
               alignItems: 'center',
               justifyContent: 'center',
             }}
           >
-            <MoreVertical size={18} color="#8A8A98" />
+            <MoreVertical size={18} color="#9090A0" />
           </TouchableOpacity>
         </View>
       </View>
@@ -322,8 +322,8 @@ export default function SessionDetailScreen() {
           style={[
             FLOATING_CARD_STYLE,
             {
-              backgroundColor: '#1E1E24',
-              borderColor: '#2C2C35',
+              backgroundColor: '#19191D',
+              borderColor: '#27272F',
               borderWidth: 1,
               borderRadius: 20,
               padding: 16,
@@ -348,7 +348,7 @@ export default function SessionDetailScreen() {
             </Text>
             <Text
               style={{
-                color: '#8A8A98',
+                color: '#9090A0',
                 fontSize: 11,
                 fontWeight: '600',
                 letterSpacing: 0.8,
@@ -361,7 +361,7 @@ export default function SessionDetailScreen() {
           </View>
 
           {/* Subtle divider */}
-          <View style={{ width: 1, height: 32, backgroundColor: '#2C2C35' }} />
+          <View style={{ width: 1, height: 32, backgroundColor: '#27272F' }} />
 
           {/* 2. MAX ATTEMPT */}
           <View className="flex-1 items-center">
@@ -377,7 +377,7 @@ export default function SessionDetailScreen() {
             </Text>
             <Text
               style={{
-                color: '#8A8A98',
+                color: '#9090A0',
                 fontSize: 11,
                 fontWeight: '600',
                 letterSpacing: 0.8,
@@ -390,7 +390,7 @@ export default function SessionDetailScreen() {
           </View>
 
           {/* Subtle divider */}
-          <View style={{ width: 1, height: 32, backgroundColor: '#2C2C35' }} />
+          <View style={{ width: 1, height: 32, backgroundColor: '#27272F' }} />
 
           {/* 3. DURATION */}
           <View className="flex-1 items-center">
@@ -406,7 +406,7 @@ export default function SessionDetailScreen() {
             </Text>
             <Text
               style={{
-                color: '#8A8A98',
+                color: '#9090A0',
                 fontSize: 11,
                 fontWeight: '600',
                 letterSpacing: 0.8,
@@ -424,8 +424,8 @@ export default function SessionDetailScreen() {
           style={[
             FLOATING_CARD_STYLE,
             {
-              backgroundColor: '#1E1E24',
-              borderColor: '#2C2C35',
+              backgroundColor: '#19191D',
+              borderColor: '#27272F',
               borderWidth: 1,
               borderRadius: 20,
               padding: 16,
@@ -436,7 +436,7 @@ export default function SessionDetailScreen() {
           <View className="flex-row items-center justify-between mb-2">
             <Text
               style={{
-                color: '#8A8A98',
+                color: '#9090A0',
                 fontSize: 11,
                 fontWeight: '700',
                 letterSpacing: 0.8,
@@ -460,17 +460,17 @@ export default function SessionDetailScreen() {
               {session.notes}
             </Text>
           ) : (
-            <Text style={{ color: '#8A8A98', fontSize: 13, fontStyle: 'italic' }}>
+            <Text style={{ color: '#9090A0', fontSize: 13, fontStyle: 'italic' }}>
               No notes logged. Tap Edit to add reflections or crux details.
             </Text>
           )}
 
           {/* Media Attachments */}
           {session.mediaUris && session.mediaUris.length > 0 ? (
-            <View className="mt-3 pt-3 border-t border-[#2C2C35]">
+            <View className="mt-3 pt-3 border-t border-[#27272F]">
               <Text
                 style={{
-                  color: '#8A8A98',
+                  color: '#9090A0',
                   fontSize: 11,
                   fontWeight: '700',
                   letterSpacing: 0.8,
@@ -490,7 +490,7 @@ export default function SessionDetailScreen() {
                       borderRadius: 12,
                       overflow: 'hidden',
                       borderWidth: 1,
-                      borderColor: '#2C2C35',
+                      borderColor: '#27272F',
                       marginRight: 8,
                     }}
                   >
@@ -509,7 +509,7 @@ export default function SessionDetailScreen() {
         <View className="mb-2">
           <Text
             style={{
-              color: '#8A8A98',
+              color: '#9090A0',
               fontSize: 11,
               fontWeight: '700',
               letterSpacing: 0.8,
@@ -518,7 +518,7 @@ export default function SessionDetailScreen() {
           >
             WALL ZONES & CLIMBS
           </Text>
-          <Text style={{ color: '#8A8A98', fontSize: 12, marginTop: 2 }}>
+          <Text style={{ color: '#9090A0', fontSize: 12, marginTop: 2 }}>
             {groups.length} zone{groups.length !== 1 ? 's' : ''} • {kpis.totalClimbs} total sets
           </Text>
         </View>
@@ -612,7 +612,7 @@ export default function SessionDetailScreen() {
             <TouchableOpacity
               onPress={handleShare}
               activeOpacity={0.7}
-              className="flex-row items-center gap-3 py-3.5 border-b border-[#2C2C35]"
+              className="flex-row items-center gap-3 py-3.5 border-b border-[#27272F]"
             >
               <Share2 size={18} color="#8E7CFF" />
               <Text className="text-[#8E7CFF] font-bold text-base">Share Summary</Text>

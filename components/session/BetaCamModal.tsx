@@ -865,8 +865,8 @@ export function BetaCamModal({
             {/* Bottom Actions */}
 
             <View style={{
-              backgroundColor: '#1E1E24',
-              borderColor: '#2C2C35',
+              backgroundColor: '#19191D',
+              borderColor: '#27272F',
               borderWidth: 1,
               borderRadius: 24,
               padding: 16,
@@ -894,10 +894,10 @@ export function BetaCamModal({
                       style={{
                         flex: 1,
                         height: 40,
-                        backgroundColor: isActive ? (outcome === 'Flash' ? '#6EE756' : outcome === 'Top' ? '#8E7CFF' : '#3E3E48') : '#17171C',
+                        backgroundColor: isActive ? (outcome === 'Flash' ? '#6EE756' : outcome === 'Top' ? '#8E7CFF' : '#3E3E48') : '#141417',
                         borderRadius: 12,
                         borderWidth: 1,
-                        borderColor: isActive ? 'transparent' : '#2C2C35',
+                        borderColor: isActive ? 'transparent' : '#27272F',
                         alignItems: 'center',
                         justifyContent: 'center',
                       }}
@@ -925,7 +925,7 @@ export function BetaCamModal({
                         }}
                         style={{
                           backgroundColor: isActive ? '#3E3E48' : 'transparent',
-                          borderColor: isActive ? '#5A5A65' : '#2C2C35',
+                          borderColor: isActive ? '#5A5A65' : '#27272F',
                           borderWidth: 1,
                           borderRadius: 8,
                           paddingHorizontal: 12,
@@ -946,9 +946,9 @@ export function BetaCamModal({
               <View style={{ flexDirection: 'row', gap: 12 }}>
                 <TouchableOpacity
                   onPress={handleRetake}
-                  style={{ flex: 1, height: 46, backgroundColor: '#17171C', borderColor: '#2C2C35', borderWidth: 1, borderRadius: 12, alignItems: 'center', justifyContent: 'center' }}
+                  style={{ flex: 1, height: 46, backgroundColor: '#141417', borderColor: '#27272F', borderWidth: 1, borderRadius: 12, alignItems: 'center', justifyContent: 'center' }}
                 >
-                  <Text style={{ color: '#8A8A98', fontSize: 15, fontWeight: '600' }}>Retake</Text>
+                  <Text style={{ color: '#9090A0', fontSize: 15, fontWeight: '600' }}>Retake</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   onPress={() => {
@@ -1377,7 +1377,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#8E7CFF',
   },
   modeTabText: {
-    color: '#8A8A98',
+    color: '#9090A0',
     fontSize: 13,
     fontWeight: '700',
   },
@@ -1391,9 +1391,9 @@ const styles = StyleSheet.create({
     zIndex: 15,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#1E1E24',
+    backgroundColor: '#19191D',
     borderWidth: 1,
-    borderColor: '#2C2C35',
+    borderColor: '#27272F',
     borderRadius: 16,
     paddingHorizontal: 12,
     paddingVertical: 6,
@@ -1616,7 +1616,7 @@ const styles = StyleSheet.create({
     paddingBottom: 44,
     backgroundColor: '#16161C',
     borderTopWidth: 1,
-    borderColor: '#2C2C35',
+    borderColor: '#27272F',
     gap: 10,
   },
   retakeBtn: {
@@ -1625,8 +1625,8 @@ const styles = StyleSheet.create({
     height: 52,
     borderRadius: 26,
     borderWidth: 1,
-    borderColor: '#2C2C35',
-    backgroundColor: '#1E1E24',
+    borderColor: '#27272F',
+    backgroundColor: '#19191D',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1756,7 +1756,7 @@ const styles = StyleSheet.create({
     zIndex: 100,
   },
   rejectionCard: {
-    backgroundColor: '#1E1E24',
+    backgroundColor: '#19191D',
     borderColor: '#FF5C5C',
     borderWidth: 1,
     borderRadius: 20,
@@ -1800,7 +1800,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   keyframesSectionTitle: {
-    color: '#8A8A98',
+    color: '#9090A0',
     fontSize: 10,
     fontWeight: '700',
     letterSpacing: 0.8,
@@ -1851,7 +1851,7 @@ const styles = StyleSheet.create({
     flex: 1,
     height: 44,
     borderRadius: 12,
-    backgroundColor: '#2C2C35',
+    backgroundColor: '#27272F',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -1892,7 +1892,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 28,
   },
   validatingCard: {
-    backgroundColor: '#1E1E24',
+    backgroundColor: '#19191D',
     borderRadius: 18,
     borderWidth: 1,
     borderColor: 'rgba(142, 124, 255, 0.3)',

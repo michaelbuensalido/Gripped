@@ -155,11 +155,11 @@ export function RouteTemplateList({ onStart }: RouteTemplateListProps) {
                   {isExpanded ? <ChevronUp size={16} color="#555562" /> : <ChevronDown size={16} color="#555562" />}
                 </View>
                 <View className="bg-[#27272F]/50 border border-[#3A3A46] rounded mt-1 self-start px-2 py-0.5">
-                  <Text className="text-[#8A8A98] text-[10px] uppercase tracking-wider">
+                  <Text className="text-[#9090A0] text-[10px] uppercase tracking-wider">
                     {targetLabel}
                   </Text>
                 </View>
-                <Text className="text-[#8A8A98] text-xs leading-5 mt-2">
+                <Text className="text-[#9090A0] text-xs leading-5 mt-2">
                   {template.description}
                 </Text>
               </View>
@@ -191,11 +191,11 @@ export function RouteTemplateList({ onStart }: RouteTemplateListProps) {
                         Block {bIdx + 1}: {block.title}
                       </Text>
                       <View className="flex-row items-center gap-3">
-                        <Text className="text-[#8A8A98] text-[11px]">
+                        <Text className="text-[#9090A0] text-[11px]">
                           {totalBurns} burns • {grades}
                         </Text>
                         <View className="bg-[#27272F] px-1.5 py-0.5 rounded">
-                          <Text className="text-[#8A8A98] text-[10px]">{block.defaultRestSeconds}s rest</Text>
+                          <Text className="text-[#9090A0] text-[10px]">{block.defaultRestSeconds}s rest</Text>
                         </View>
                       </View>
                     </View>

@@ -84,7 +84,7 @@ export function ConsistencyLedger() {
     <View className="bg-[#19191D] border border-[#27272F] rounded-xl p-4">
       <View className="mb-4">
         <Text className="text-white font-bold">CONSISTENCY LEDGER</Text>
-        <Text className="text-[#8A8A98] text-xs mt-1">Last 12 weeks of session volume</Text>
+        <Text className="text-[#9090A0] text-xs mt-1">Last 12 weeks of session volume</Text>
       </View>
 
       <View className="flex-row justify-between w-full">
@@ -100,7 +100,7 @@ export function ConsistencyLedger() {
               {/* X-axis Label */}
               <View className="h-4 mb-1 justify-end">
                 {showMonth && (
-                  <Text className="text-[10px] text-[#8A8A98] tabular-nums">
+                  <Text className="text-[10px] text-[#9090A0] tabular-nums">
                     {monthStr}
                   </Text>
                 )}

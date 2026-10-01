@@ -25,7 +25,7 @@ export function PlannedBoulderRow({
     <View
       style={{
         height: 52,
-        backgroundColor: '#17171C',
+        backgroundColor: '#141417',
         borderColor: '#25252E',
         borderWidth: 1,
         borderRadius: 12,
@@ -43,7 +43,7 @@ export function PlannedBoulderRow({
         hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}
         style={{
           backgroundColor: '#22222B',
-          borderColor: '#2C2C35',
+          borderColor: '#27272F',
           borderWidth: 1,
           paddingHorizontal: 12,
           paddingVertical: 5,
@@ -81,7 +81,7 @@ export function PlannedBoulderRow({
           <Text
             numberOfLines={1}
             style={{
-              color: '#8A8A98',
+              color: '#9090A0',
               fontSize: 12,
               fontWeight: '500',
             }}
@@ -106,10 +106,10 @@ export function PlannedBoulderRow({
         style={{
           flexDirection: 'row',
           alignItems: 'center',
-          backgroundColor: '#1E1E24',
+          backgroundColor: '#19191D',
           borderRadius: 10,
           borderWidth: 1,
-          borderColor: '#2C2C35',
+          borderColor: '#27272F',
           overflow: 'hidden',
         }}
       >
@@ -125,7 +125,7 @@ export function PlannedBoulderRow({
             height: 36,
             alignItems: 'center',
             justifyContent: 'center',
-            backgroundColor: '#1E1E24',
+            backgroundColor: '#19191D',
           }}
         >
           <Minus size={14} color="#FFFFFF" />
@@ -162,7 +162,7 @@ export function PlannedBoulderRow({
             height: 36,
             alignItems: 'center',
             justifyContent: 'center',
-            backgroundColor: '#1E1E24',
+            backgroundColor: '#19191D',
           }}
         >
           <Plus size={14} color="#FFFFFF" />

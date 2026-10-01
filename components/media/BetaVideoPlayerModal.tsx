@@ -262,7 +262,7 @@ export function BetaVideoPlayerModal({
           ]}
           pointerEvents={showControls ? 'auto' : 'none'}
         >
-          {/* Left: Grade pill (Surface #1E1E24, border 1px #6EE756, px-3 py-1, rounded-full, text 13pt Bold #6EE756) */}
+          {/* Left: Grade pill (Surface #19191D, border 1px #6EE756, px-3 py-1, rounded-full, text 13pt Bold #6EE756) */}
           <View style={styles.gradePill}>
             <Text style={styles.gradePillText}>{gradeRaw} {outcomeText}</Text>
           </View>
@@ -276,7 +276,7 @@ export function BetaVideoPlayerModal({
             <View style={{ width: 1 }} />
           )}
 
-          {/* Right: Close button (36x36pt circle #1E1E24, border 1px #2C2C35, items-center justify-center, icon X in #FFFFFF) */}
+          {/* Right: Close button (36x36pt circle #19191D, border 1px #27272F, items-center justify-center, icon X in #FFFFFF) */}
           <TouchableOpacity
             onPress={() => {
               triggerHaptic('light');
@@ -290,7 +290,7 @@ export function BetaVideoPlayerModal({
           </TouchableOpacity>
         </View>
 
-        {/* ── Tactile Floating Scrubbing Controls (Bottom: Surface #1E1E24, border 1px #2C2C35, rounded-3xl, p-4, mx-4, mb-8) ── */}
+        {/* ── Tactile Floating Scrubbing Controls (Bottom: Surface #19191D, border 1px #27272F, rounded-3xl, p-4, mx-4, mb-8) ── */}
         <View
           style={[
             styles.bottomControlsContainer,
@@ -299,7 +299,7 @@ export function BetaVideoPlayerModal({
           ]}
           pointerEvents={showControls ? 'auto' : 'none'}
         >
-          {/* Scrubber Slider: track #17171C, thumb Lavender #8E7CFF */}
+          {/* Scrubber Slider: track #141417, thumb Lavender #8E7CFF */}
           <Pressable style={styles.scrubberTouchArea} onPress={handleScrub}>
             <View style={styles.scrubberTrack}>
               <View style={[styles.scrubberFill, { width: `${progressRatio * 100}%` }]} />
@@ -307,7 +307,7 @@ export function BetaVideoPlayerModal({
             </View>
           </Pressable>
 
-          {/* Time Readout: 11pt mono #8A8A98 */}
+          {/* Time Readout: 11pt mono #9090A0 */}
           <View style={styles.timeRow}>
             <Text style={styles.timeText}>{formatTime(currentTime)}</Text>
             <Text style={styles.timeText}>{formatTime(totalDuration)}</Text>
@@ -343,7 +343,7 @@ export function BetaVideoPlayerModal({
                 activeOpacity={0.75}
                 hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
               >
-                <ChevronLeft size={14} color="#8A8A98" />
+                <ChevronLeft size={14} color="#9090A0" />
                 <Text style={styles.frameStepText}>-1 Frame</Text>
               </TouchableOpacity>
 
@@ -367,7 +367,7 @@ export function BetaVideoPlayerModal({
                 hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
               >
                 <Text style={styles.frameStepText}>+1 Frame</Text>
-                <ChevronRight size={14} color="#8A8A98" />
+                <ChevronRight size={14} color="#9090A0" />
               </TouchableOpacity>
             </View>
           </View>
@@ -418,7 +418,7 @@ const styles = StyleSheet.create({
     zIndex: 30,
   },
   gradePill: {
-    backgroundColor: '#1E1E24',
+    backgroundColor: '#19191D',
     borderWidth: 1,
     borderColor: '#6EE756',
     paddingHorizontal: 12,
@@ -432,7 +432,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.3,
   },
   failureChip: {
-    backgroundColor: '#1E1E24',
+    backgroundColor: '#19191D',
     borderWidth: 1,
     borderColor: '#8E7CFF',
     paddingHorizontal: 12,
@@ -448,9 +448,9 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: '#1E1E24',
+    backgroundColor: '#19191D',
     borderWidth: 1,
-    borderColor: '#2C2C35',
+    borderColor: '#27272F',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -459,9 +459,9 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: '#1E1E24',
+    backgroundColor: '#19191D',
     borderWidth: 1,
-    borderColor: '#2C2C35',
+    borderColor: '#27272F',
     borderRadius: 24,
     padding: 16,
     marginHorizontal: 16,
@@ -474,7 +474,7 @@ const styles = StyleSheet.create({
   scrubberTrack: {
     height: 6,
     borderRadius: 3,
-    backgroundColor: '#17171C',
+    backgroundColor: '#141417',
     borderWidth: 1,
     borderColor: '#22222A',
     position: 'relative',
@@ -504,7 +504,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   timeText: {
-    color: '#8A8A98',
+    color: '#9090A0',
     fontSize: 11,
     fontWeight: '600',
     fontVariant: ['tabular-nums'],
@@ -524,7 +524,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 5,
     borderRadius: 12,
-    backgroundColor: '#17171C',
+    backgroundColor: '#141417',
     borderWidth: 1,
     borderColor: '#22222A',
   },
@@ -533,7 +533,7 @@ const styles = StyleSheet.create({
     borderColor: '#8E7CFF',
   },
   speedChipText: {
-    color: '#8A8A98',
+    color: '#9090A0',
     fontSize: 12,
     fontWeight: '700',
   },
@@ -549,7 +549,7 @@ const styles = StyleSheet.create({
   frameStepBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#17171C',
+    backgroundColor: '#141417',
     borderWidth: 1,
     borderColor: '#22222A',
     paddingHorizontal: 8,
@@ -558,7 +558,7 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   frameStepText: {
-    color: '#8A8A98',
+    color: '#9090A0',
     fontSize: 11,
     fontWeight: '600',
   },

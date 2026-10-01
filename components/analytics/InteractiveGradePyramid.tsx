@@ -1,18 +1,31 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, Dimensions } from 'react-native';
 import Svg, { Rect } from 'react-native-svg';
+import { X, Zap, Check } from 'lucide-react-native';
 import { triggerHaptic } from '../../utils/haptics';
-import { Zap, Check, X } from 'lucide-react-native';
 import type { GradePyramidRow } from '../../db/queries';
-import { GRADE_BY_LABEL } from '../../constants/grades';
-import { THEME_COLORS } from '../../constants/theme';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
+const CONTAINER_WIDTH = SCREEN_WIDTH - 64; 
+const LABEL_W = 32;
+const COUNT_W = 28;
+const BAR_AREA = CONTAINER_WIDTH - LABEL_W - COUNT_W - 16;
 const CHART_H = 26;
-const LABEL_W = 40;
-const COUNT_W = 36;
-// Screen width minus mx-4 (32) and card p-4 (32)
-const BAR_AREA = SCREEN_WIDTH - 64 - LABEL_W - COUNT_W;
+
+// Minimal fallback grade colours if needed, though mostly using system tokens now
+const GRADE_BY_LABEL: Record<string, { color: string; textColor: string }> = {
+  'V0': { color: '#27272F', textColor: '#FFFFFF' },
+  'V1': { color: '#27272F', textColor: '#FFFFFF' },
+  'V2': { color: '#27272F', textColor: '#FFFFFF' },
+  'V3': { color: '#27272F', textColor: '#FFFFFF' },
+  'V4': { color: '#8E7CFF', textColor: '#FFFFFF' }, // Core send color 
+  'V5': { color: '#8E7CFF', textColor: '#FFFFFF' },
+  'V6': { color: '#8E7CFF', textColor: '#FFFFFF' },
+  'V7': { color: '#FF453A', textColor: '#FFFFFF' }, // Alert / Hard
+  'V8': { color: '#FF453A', textColor: '#FFFFFF' },
+  'V9': { color: '#FF453A', textColor: '#FFFFFF' },
+  'V10+': { color: '#FF453A', textColor: '#FFFFFF' },
+};
 
 interface InteractiveGradePyramidProps {
   pyramid: GradePyramidRow[];
@@ -25,8 +38,8 @@ export function InteractiveGradePyramid({ pyramid }: InteractiveGradePyramidProp
     return (
       <View className="items-center py-10">
         <Text className="text-3xl mb-2">🧗</Text>
-        <Text className="text-white font-bold text-base mb-1">No climbs logged yet</Text>
-        <Text className="text-muted text-xs text-center px-4">
+        <Text className="text-primary font-bold text-base mb-1">No climbs logged yet</Text>
+        <Text className="text-secondary text-xs text-center px-4">
           Log workouts to generate your grade distribution pyramid.
         </Text>
       </View>
@@ -51,22 +64,12 @@ export function InteractiveGradePyramid({ pyramid }: InteractiveGradePyramidProp
     <View>
       {/* Interactive Tooltip Inspector Card */}
       {selectedRow ? (
-        <View
-          style={{
-            backgroundColor: THEME_COLORS.cardSurface,
-            borderColor: 'rgba(142, 124, 255, 0.4)',
-            borderTopColor: 'rgba(255, 255, 255, 0.16)',
-            borderWidth: 1,
-            borderRadius: 14,
-            padding: 12,
-            marginBottom: 16,
-          }}
-        >
-          <View className="flex-row items-center justify-between mb-2 pb-1.5 border-b border-[#2C2C35]">
+        <View className="bg-surface border border-send/40 border-t-border rounded-[14px] p-3 mb-4">
+          <View className="flex-row items-center justify-between mb-2 pb-1.5 border-b border-border">
             <View className="flex-row items-center gap-2">
               <View
                 style={{
-                  backgroundColor: GRADE_BY_LABEL[selectedRow.gradeRaw]?.color ?? '#484852',
+                  backgroundColor: GRADE_BY_LABEL[selectedRow.gradeRaw]?.color ?? '#FF453A',
                 }}
                 className="rounded-full px-2 py-0.5"
               >
@@ -79,11 +82,11 @@ export function InteractiveGradePyramid({ pyramid }: InteractiveGradePyramidProp
                   {selectedRow.gradeRaw}
                 </Text>
               </View>
-              <Text className="text-white font-bold text-sm">Grade Details</Text>
+              <Text className="text-primary font-bold text-sm">Grade Details</Text>
             </View>
 
             <TouchableOpacity onPress={() => setSelectedRow(null)} className="p-1">
-              <X size={14} color="#9A9AA6" />
+              <X size={14} color="#9090A0" />
             </TouchableOpacity>
           </View>
 
@@ -94,25 +97,25 @@ export function InteractiveGradePyramid({ pyramid }: InteractiveGradePyramidProp
               </Text>
               <View className="flex-row items-center gap-1">
                 <Zap size={10} color="#6EE756" fill="#6EE756" />
-                <Text className="text-muted text-[10px] uppercase font-bold">Flash</Text>
+                <Text className="text-structural text-[10px] uppercase font-bold">Flash</Text>
               </View>
             </View>
 
-            <View className="items-center flex-1 border-x border-[#2C2C35]">
+            <View className="items-center flex-1 border-x border-border">
               <Text className="text-send text-base font-black">
                 {selectedRow.sends}
               </Text>
               <View className="flex-row items-center gap-1">
                 <Check size={10} color="#8E7CFF" strokeWidth={3} />
-                <Text className="text-muted text-[10px] uppercase font-bold">Top</Text>
+                <Text className="text-structural text-[10px] uppercase font-bold">Top</Text>
               </View>
             </View>
 
-            <View className="items-center flex-1 border-r border-[#2C2C35]">
+            <View className="items-center flex-1 border-r border-border">
               <Text className="text-secondary text-base font-black">
                 {selectedRow.attempts}
               </Text>
-              <Text className="text-muted text-[10px] uppercase font-bold">Attempts</Text>
+              <Text className="text-structural text-[10px] uppercase font-bold">Attempts</Text>
             </View>
 
             <View className="items-center flex-1">
@@ -123,8 +126,8 @@ export function InteractiveGradePyramid({ pyramid }: InteractiveGradePyramidProp
                   totalBurns > 0 ? Math.round((totalCompleted / totalBurns) * 100) : 0;
                 return (
                   <>
-                    <Text className="text-white text-base font-black">{conversion}%</Text>
-                    <Text className="text-muted text-[10px] uppercase font-bold">Send Rate</Text>
+                    <Text className="text-primary text-base font-black">{conversion}%</Text>
+                    <Text className="text-structural text-[10px] uppercase font-bold">Send Rate</Text>
                   </>
                 );
               })()}
@@ -148,14 +151,14 @@ export function InteractiveGradePyramid({ pyramid }: InteractiveGradePyramidProp
             onPress={() => handleRowPress(row)}
             activeOpacity={0.75}
             className={`flex-row items-center mb-1.5 py-1 px-1 rounded-lg ${
-              isSelected ? 'bg-surface/80 border border-accent/40' : ''
+              isSelected ? 'bg-surface/80 border border-send/40' : ''
             }`}
           >
             {/* Grade Label */}
             <Text
               style={{ width: LABEL_W }}
               className={`text-xs font-black ${
-                isSelected ? 'text-accent' : 'text-secondary'
+                isSelected ? 'text-send' : 'text-secondary'
               }`}
             >
               {row.gradeRaw}
@@ -169,7 +172,7 @@ export function InteractiveGradePyramid({ pyramid }: InteractiveGradePyramidProp
                 y={3}
                 width={BAR_AREA}
                 height={CHART_H - 6}
-                fill={isSelected ? '#202026' : '#16161C'}
+                fill={isSelected ? '#19191D' : '#141417'}
                 rx={5}
               />
 
@@ -204,7 +207,7 @@ export function InteractiveGradePyramid({ pyramid }: InteractiveGradePyramidProp
                   y={3}
                   width={attemptW}
                   height={CHART_H - 6}
-                  fill="#484852"
+                  fill="#FF453A"
                   rx={row.flashes === 0 && row.sends === 0 ? 5 : 0}
                 />
               )}
@@ -214,7 +217,7 @@ export function InteractiveGradePyramid({ pyramid }: InteractiveGradePyramidProp
             <Text
               style={{ width: COUNT_W }}
               className={`text-xs font-bold text-right ${
-                isSelected ? 'text-white' : 'text-secondary'
+                isSelected ? 'text-primary' : 'text-secondary'
               }`}
             >
               {total}
@@ -224,23 +227,23 @@ export function InteractiveGradePyramid({ pyramid }: InteractiveGradePyramidProp
       })}
 
       {/* Legend & Tip */}
-      <View className="flex-row items-center justify-between mt-3 pt-3 border-t border-[#2C2C35]">
+      <View className="flex-row items-center justify-between mt-3 pt-3 border-t border-border">
         <View className="flex-row items-center gap-4">
           <View className="flex-row items-center gap-1.5">
-            <View className="w-2.5 h-2.5 rounded-sm bg-[#6EE756]" />
+            <View className="w-2.5 h-2.5 rounded-sm bg-flash" />
             <Text className="text-secondary text-[11px] font-semibold">Flash</Text>
           </View>
           <View className="flex-row items-center gap-1.5">
-            <View className="w-2.5 h-2.5 rounded-sm bg-[#8E7CFF]" />
+            <View className="w-2.5 h-2.5 rounded-sm bg-send" />
             <Text className="text-secondary text-[11px] font-semibold">Top</Text>
           </View>
           <View className="flex-row items-center gap-1.5">
-            <View className="w-2.5 h-2.5 rounded-sm bg-[#484852]" />
+            <View className="w-2.5 h-2.5 rounded-sm bg-alert" />
             <Text className="text-secondary text-[11px] font-semibold">Attempt</Text>
           </View>
         </View>
 
-        <Text className="text-muted text-[10px] italic">Tap bar to inspect</Text>
+        <Text className="text-structural text-[10px] italic">Tap bar to inspect</Text>
       </View>
     </View>
   );

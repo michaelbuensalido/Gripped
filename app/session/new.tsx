@@ -12,7 +12,6 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ArrowLeft, MapPin } from 'lucide-react-native';
 import { useSessionStore } from '../../store/sessionStore';
 import { THEME_COLORS, FLOATING_CARD_STYLE } from '../../constants/theme';
-import { getRoutineById, getAllRoutinesWithBlocks } from '../../db/routineQueries';
 import { ScreenContainer } from '../../components/ui/ScreenContainer';
 
 export default function NewSessionScreen() {
@@ -34,28 +33,30 @@ export default function NewSessionScreen() {
     if (wrapUp === '1') {
       const currentActive = useSessionStore.getState().activeSession;
       if (currentActive) {
-        router.replace(`/session/${currentActive.id}?showWrapUp=1`);
+        router.replace('/session/active');
       } else {
-        const routines = getAllRoutinesWithBlocks();
-        const sessionId = routines.length > 0
-          ? startSessionFromRoutine(routines[0], routines[0].title)
-          : startEmptySession('Crux Climbing Gym');
-        router.replace(`/session/${sessionId}?showWrapUp=1`);
+        const routines: any[] = [];
+        if (routines.length > 0) {
+          startSessionFromRoutine(routines[0], routines[0].title);
+        } else {
+          startEmptySession('Crux Climbing Gym');
+        }
+        router.replace('/session/active');
       }
       return;
     }
 
     if (startEmpty === '1') {
-      const sessionId = startEmptySession('Gym Session');
-      router.replace(`/session/${sessionId}`);
+      startEmptySession('Gym Session');
+      router.replace('/session/active');
       return;
     }
 
     if (testRoutine === '1') {
-      const routines = getAllRoutinesWithBlocks();
+      const routines: any[] = [];
       if (routines.length > 0) {
-        const sessionId = startSessionFromRoutine(routines[0], routines[0].title);
-        router.replace(`/session/${sessionId}`);
+        startSessionFromRoutine(routines[0], routines[0].title);
+        router.replace('/session/active');
         return;
       }
     }
@@ -66,19 +67,15 @@ export default function NewSessionScreen() {
       hasLaunchedRef.current = true;
       const routine = getRoutineById(routineId);
       if (routine) {
-        const sessionId = startSessionFromRoutine(routine, routine.title);
-        router.replace(`/session/${sessionId}`);
+        startSessionFromRoutine(routine, routine.title);
+        router.replace('/session/active');
       }
     }
   }, [routineId, startEmpty, testRoutine, wrapUp, startSessionFromRoutine, startEmptySession, router]);
 
   const handleStart = () => {
     startSession(gymName.trim() || 'My Gym');
-    // After store sets session, navigate to it
-    const session = useSessionStore.getState().activeSession;
-    if (session) {
-      router.replace(`/session/${session.id}`);
-    }
+    router.replace('/session/active');
   };
 
   return (

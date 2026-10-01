@@ -22,7 +22,7 @@ const DEFAULT_REST = 90;
 
 function SectionHeader({ label }: { label: string }) {
   return (
-    <Text className="text-[#8A8A98] text-[11px] font-bold uppercase tracking-[1.2px] px-4 mt-6 mb-2.5">
+    <Text className="text-[#9090A0] text-[11px] font-bold uppercase tracking-[1.2px] px-4 mt-6 mb-2.5">
       {label}
     </Text>
   );
@@ -38,7 +38,7 @@ function SettingsRow({
   right?: React.ReactNode;
 }) {
   return (
-    <View className="flex-row items-center justify-between px-4 py-4 border-b border-[#2C2C35]/60">
+    <View className="flex-row items-center justify-between px-4 py-4 border-b border-[#27272F]/60">
       <View className="flex-1 mr-4">
         <Text className="text-white font-semibold">{label}</Text>
         {sublabel ? <Text className="text-[#9A9AA6] text-xs mt-0.5">{sublabel}</Text> : null}

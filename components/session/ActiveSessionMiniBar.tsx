@@ -124,7 +124,7 @@ export function ActiveSessionMiniBar() {
       activeOpacity={0.95}
       onPress={() => {
         triggerHaptic('light');
-        router.push(`/session/${activeSession.id}`);
+        router.push('/session/active');
       }}
       style={[
         styles.container,

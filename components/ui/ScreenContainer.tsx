@@ -20,7 +20,7 @@ export function ScreenContainer({
   const insets = useSafeAreaInsets();
 
   return (
-    <View style={[{ flex: 1, backgroundColor: '#131316' }, style]}>
+    <View style={[{ flex: 1, backgroundColor: '#111113' }, style]}>
       {/* ── Textured Speckled Gym Mat Background Layer with Subdued Opacity ── */}
       <ImageBackground
         source={require('../../assets/speckled_mat_bg.jpg')}

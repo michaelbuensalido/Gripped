@@ -32,6 +32,7 @@ export function SetRow({ log, index, groupId }: SetRowProps) {
   const commitSetGrading = useSessionStore((s) => s.commitSetGrading);
   const triggerRestTimer = useSessionStore((s) => s.triggerRestTimer);
   const setFailureReason = useSessionStore((s) => s.setFailureReason);
+  const logAscent        = useSessionStore((s) => s.logAscent);
 
   const isSent  = log.outcome === 'send' || log.outcome === 'flash';
   const isFlash = log.outcome === 'flash';
@@ -59,7 +60,8 @@ export function SetRow({ log, index, groupId }: SetRowProps) {
   const handleIncrement = useCallback(() => {
     hapticEngine.triggerLightTap();
     incrementAttempts(groupId, log.id);
-  }, [groupId, log.id, incrementAttempts]);
+    logAscent(log.normalizedDifficulty ?? 5, 'ATTEMPT');
+  }, [groupId, log.id, log.normalizedDifficulty, incrementAttempts, logAscent]);
 
   const handleDecrement = useCallback(() => {
     hapticEngine.triggerLightTap();
@@ -74,10 +76,11 @@ export function SetRow({ log, index, groupId }: SetRowProps) {
       const outcome = log.attempts === 1 ? 'flash' : 'send';
       hapticEngine.triggerLogAction();
       setOutcome(groupId, log.id, outcome);
+      logAscent(log.normalizedDifficulty ?? 5, outcome === 'flash' ? 'FLASH' : 'SEND');
       const group = useSessionStore.getState().groups.find((g) => g.id === groupId);
       triggerRestTimer(group?.defaultRestSeconds ?? 180);
     }
-  }, [isSent, groupId, log.id, log.attempts, setOutcome, triggerRestTimer]);
+  }, [isSent, groupId, log.id, log.attempts, log.normalizedDifficulty, setOutcome, logAscent, triggerRestTimer]);
 
   const handleFlashLongPress = useCallback(() => {
     if (!isSent) return;
@@ -127,7 +130,7 @@ export function SetRow({ log, index, groupId }: SetRowProps) {
           <TouchableOpacity
             onPress={() => setGradeSheetOpen(true)}
             activeOpacity={0.8}
-            className="bg-[#141417] border border-[#2C2C35] px-2.5 py-1.5 rounded-lg"
+            className="bg-[#141417] border border-[#27272F] px-2.5 py-1.5 rounded-lg"
           >
             <Text className="text-white text-[14px] font-bold">{log.gradeRaw}</Text>
           </TouchableOpacity>
@@ -140,7 +143,7 @@ export function SetRow({ log, index, groupId }: SetRowProps) {
           >
             <Text 
               className={`text-[10px] font-bold tracking-[1px] uppercase ${
-                log.wallAngle ? 'text-[#8E7CFF]' : 'text-[#8A8A98]'
+                log.wallAngle ? 'text-[#8E7CFF]' : 'text-[#9090A0]'
               }`}
             >
               {log.wallAngle === 'OVERHANG' ? 'OVHG' : log.wallAngle || '—'}
@@ -152,11 +155,11 @@ export function SetRow({ log, index, groupId }: SetRowProps) {
         <View className="w-[25%] items-center">
           <View className="flex-row items-center bg-[#141417] border border-[#27272F] rounded-lg">
             <TouchableOpacity onPress={handleDecrement} className="w-[30px] h-[36px] items-center justify-center">
-              <Text className="text-[#8A8A98] text-[14px]">−</Text>
+              <Text className="text-[#9090A0] text-[14px]">−</Text>
             </TouchableOpacity>
             <Text className="text-white text-[13px] font-semibold px-1">{log.attempts} att</Text>
             <TouchableOpacity onPress={handleIncrement} className="w-[30px] h-[36px] items-center justify-center">
-              <Text className="text-[#8A8A98] text-[14px]">+</Text>
+              <Text className="text-[#9090A0] text-[14px]">+</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -179,7 +182,7 @@ export function SetRow({ log, index, groupId }: SetRowProps) {
               onPress={() => { hapticEngine.triggerLightTap(); setCamModalOpen(true); }}
               className="w-[40px] h-[40px] bg-[#141417] rounded-lg items-center justify-center border border-[#27272F]"
             >
-              <Camera size={16} color="#8A8A98" />
+              <Camera size={16} color="#9090A0" />
             </TouchableOpacity>
           )}
 
@@ -196,7 +199,7 @@ export function SetRow({ log, index, groupId }: SetRowProps) {
                 backgroundColor: (isFlash || isSent)
                   ? 'rgba(142, 124, 255, 0.20)' 
                   : '#141417',
-                borderColor: (isFlash || isSent) ? '#8E7CFF' : '#2C2C35',
+                borderColor: (isFlash || isSent) ? '#8E7CFF' : '#27272F',
                 borderWidth: 1,
               }]}
             >
@@ -221,7 +224,7 @@ export function SetRow({ log, index, groupId }: SetRowProps) {
                     isActive ? 'border-[#8E7CFF]' : 'bg-[#19191D] border-[#27272F]'
                   }`}
                 >
-                  <Text className={`text-[11px] ${isActive ? 'text-[#8E7CFF] font-bold' : 'text-[#8A8A98]'}`}>
+                  <Text className={`text-[11px] ${isActive ? 'text-[#8E7CFF] font-bold' : 'text-[#9090A0]'}`}>
                     {reason}
                   </Text>
                 </TouchableOpacity>

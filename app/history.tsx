@@ -57,8 +57,8 @@ export default function HistoryScreen() {
 
   const handleStartQuickSession = () => {
     triggerHaptic('medium');
-    const sessionId = useSessionStore.getState().startQuickSession('Quick Session');
-    router.push(`/session/${sessionId}`);
+    useSessionStore.getState().startQuickSession('Quick Session');
+    router.push('/session/active');
   };
 
   return (
@@ -127,7 +127,7 @@ export default function HistoryScreen() {
 
                 <View style={styles.sessionStatsRow}>
                   <View style={styles.statItem}>
-                    <Clock size={13} color="#8A8A98" />
+                    <Clock size={13} color="#9090A0" />
                     <Text style={styles.statText}>{formatDuration(s.durationMinutes)}</Text>
                   </View>
 
@@ -166,9 +166,9 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#1E1E24',
+    backgroundColor: '#19191D',
     borderWidth: 1,
-    borderColor: '#2C2C35',
+    borderColor: '#27272F',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -180,7 +180,7 @@ const styles = StyleSheet.create({
   },
   headerSubtitle: {
     fontSize: 13,
-    color: '#8A8A98',
+    color: '#9090A0',
     marginTop: 2,
   },
   emptyContainer: {
@@ -194,9 +194,9 @@ const styles = StyleSheet.create({
   sessionCard: {
     padding: 16,
     borderRadius: 20,
-    backgroundColor: '#1E1E24',
+    backgroundColor: '#19191D',
     borderWidth: 1,
-    borderColor: '#2C2C35',
+    borderColor: '#27272F',
   },
   sessionCardTop: {
     flexDirection: 'row',
@@ -211,7 +211,7 @@ const styles = StyleSheet.create({
   },
   sessionDate: {
     fontSize: 12,
-    color: '#8A8A98',
+    color: '#9090A0',
     marginTop: 2,
   },
   gradeBadge: {
@@ -243,6 +243,6 @@ const styles = StyleSheet.create({
   statText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#8A8A98',
+    color: '#9090A0',
   },
 });

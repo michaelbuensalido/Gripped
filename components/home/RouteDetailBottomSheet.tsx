@@ -49,9 +49,9 @@ export function RouteDetailBottomSheet({
         <TouchableOpacity
           activeOpacity={1}
           style={{
-            backgroundColor: '#1E1E24',
+            backgroundColor: '#19191D',
             borderTopWidth: 1,
-            borderTopColor: '#2C2C35',
+            borderTopColor: '#27272F',
             borderTopLeftRadius: 28,
             borderTopRightRadius: 28,
             paddingHorizontal: 20,
@@ -127,19 +127,19 @@ export function RouteDetailBottomSheet({
                 borderRadius: 16,
                 backgroundColor: '#262630',
                 borderWidth: 1,
-                borderColor: '#2C2C35',
+                borderColor: '#27272F',
                 alignItems: 'center',
                 justifyContent: 'center',
               }}
             >
-              <X size={16} color="#8A8A98" />
+              <X size={16} color="#9090A0" />
             </TouchableOpacity>
           </View>
 
           {/* Hold Style / Angle Preview Banner */}
           <View
             style={{
-              backgroundColor: '#17171C',
+              backgroundColor: '#141417',
               borderWidth: 1,
               borderColor: '#25252E',
               borderRadius: 16,
@@ -174,30 +174,30 @@ export function RouteDetailBottomSheet({
             >
               <View
                 style={{
-                  backgroundColor: '#1E1E24',
+                  backgroundColor: '#19191D',
                   borderWidth: 1,
-                  borderColor: '#2C2C35',
+                  borderColor: '#27272F',
                   paddingHorizontal: 10,
                   paddingVertical: 4,
                   borderRadius: 8,
                 }}
               >
-                <Text style={{ color: '#8A8A98', fontSize: 12, fontWeight: '500' }}>
+                <Text style={{ color: '#9090A0', fontSize: 12, fontWeight: '500' }}>
                   {route.holdType || 'Technical Hold'}
                 </Text>
               </View>
 
               <View
                 style={{
-                  backgroundColor: '#1E1E24',
+                  backgroundColor: '#19191D',
                   borderWidth: 1,
-                  borderColor: '#2C2C35',
+                  borderColor: '#27272F',
                   paddingHorizontal: 10,
                   paddingVertical: 4,
                   borderRadius: 8,
                 }}
               >
-                <Text style={{ color: '#8A8A98', fontSize: 12, fontWeight: '500' }}>
+                <Text style={{ color: '#9090A0', fontSize: 12, fontWeight: '500' }}>
                   {route.angle || 'Overhang'}
                 </Text>
               </View>
@@ -255,9 +255,9 @@ export function RouteDetailBottomSheet({
                   flex: 1,
                   height: 44,
                   borderRadius: 12,
-                  backgroundColor: '#17171C',
+                  backgroundColor: '#141417',
                   borderWidth: 1,
-                  borderColor: '#2C2C35',
+                  borderColor: '#27272F',
                   flexDirection: 'row',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -288,9 +288,9 @@ export function RouteDetailBottomSheet({
                   flex: 1,
                   height: 44,
                   borderRadius: 12,
-                  backgroundColor: '#17171C',
+                  backgroundColor: '#141417',
                   borderWidth: 1,
-                  borderColor: '#2C2C35',
+                  borderColor: '#27272F',
                   flexDirection: 'row',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -299,7 +299,7 @@ export function RouteDetailBottomSheet({
                   opacity: pressed ? 0.92 : 1,
                 })}
               >
-                <Video size={16} color="#8A8A98" />
+                <Video size={16} color="#9090A0" />
                 <Text
                   style={{
                     color: '#FFFFFF',

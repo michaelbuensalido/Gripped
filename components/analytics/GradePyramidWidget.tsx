@@ -38,22 +38,22 @@ export function GradePyramidWidget({
 
   return (
     <View className="bg-[#19191D] border border-[#27272F] rounded-xl p-4">
-      <Text className="text-[#8A8A98] text-[11px] font-bold tracking-[1px] mb-4 uppercase">
+      <Text className="text-[#9090A0] text-[11px] font-bold tracking-[1px] mb-4 uppercase">
         {title}
       </Text>
 
       {/* Table Header */}
       <View className="flex-row items-center mb-2 px-3">
-        <Text className="flex-1 text-[#8A8A98] text-[12px] font-semibold">GRADE</Text>
-        <Text className="w-[60px] text-center text-[#8A8A98] text-[12px] font-semibold">BURNS</Text>
-        <Text className="w-[70px] text-right text-[#8A8A98] text-[12px] font-semibold">SEND %</Text>
+        <Text className="flex-1 text-[#9090A0] text-[12px] font-semibold">GRADE</Text>
+        <Text className="w-[60px] text-center text-[#9090A0] text-[12px] font-semibold">BURNS</Text>
+        <Text className="w-[70px] text-right text-[#9090A0] text-[12px] font-semibold">SEND %</Text>
       </View>
 
       {/* Table Body */}
       <View className="overflow-hidden rounded-lg">
         {activeRows.length === 0 ? (
           <View className="py-6 items-center">
-            <Text className="text-[#8A8A98] text-[13px]">No data available</Text>
+            <Text className="text-[#9090A0] text-[13px]">No data available</Text>
           </View>
         ) : (
           activeRows.map((row, index) => {
@@ -88,7 +88,7 @@ export function GradePyramidWidget({
                 <Text 
                   className="w-[70px] text-right text-[14px] font-bold z-10"
                   style={{ 
-                    color: sendPercent === '100' ? '#6EE756' : '#8A8A98',
+                    color: sendPercent === '100' ? '#6EE756' : '#9090A0',
                     fontVariant: ['tabular-nums'] 
                   }}
                 >

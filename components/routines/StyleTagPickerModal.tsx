@@ -81,7 +81,7 @@ export function StyleTagPickerModal({
                     className={`flex-row items-center gap-1.5 px-3.5 py-2 rounded-full border ${
                       isSelected
                         ? 'bg-[#8E7CFF]/20 border-[#8E7CFF]'
-                        : 'bg-[#16161C] border-[#2C2C35]'
+                        : 'bg-[#16161C] border-[#27272F]'
                     }`}
                   >
                     {isSelected && <Check size={13} color="#8E7CFF" strokeWidth={3} />}

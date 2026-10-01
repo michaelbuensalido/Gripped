@@ -65,12 +65,12 @@ export function VolumeByGradeCard({
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: '#1E1E24',
+    backgroundColor: '#19191D',
     borderRadius: 20,
     padding: 16,
     marginTop: 12,
     borderWidth: 1,
-    borderColor: '#2C2C35',
+    borderColor: '#27272F',
   },
   headerRow: {
     flexDirection: 'row',
@@ -79,7 +79,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   cardHeader: {
-    color: '#8A8A98',
+    color: '#9090A0',
     fontSize: 11,
     fontWeight: '700',
     letterSpacing: 0.8,
@@ -108,7 +108,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
   },
   trendText: {
-    color: '#131316',
+    color: '#111113',
     fontSize: 11,
     fontWeight: '800',
   },
@@ -125,19 +125,19 @@ const styles = StyleSheet.create({
   barTrack: {
     width: 7,
     height: 32,
-    backgroundColor: '#17171C',
+    backgroundColor: '#141417',
     borderRadius: 4,
     justifyContent: 'flex-end',
     overflow: 'hidden',
     borderWidth: 0.5,
-    borderColor: '#2C2C35',
+    borderColor: '#27272F',
   },
   barFill: {
     width: '100%',
     borderRadius: 4,
   },
   barLabel: {
-    color: '#8A8A98',
+    color: '#9090A0',
     fontSize: 9,
     fontWeight: '700',
   },

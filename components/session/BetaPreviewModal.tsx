@@ -71,7 +71,7 @@ export function BetaPreviewModal({
                       ? '#6EE756'
                       : isSent
                       ? '#8E7CFF'
-                      : '#2C2C35',
+                      : '#27272F',
                   },
                 ]}
               >
@@ -195,7 +195,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#1A1A20',
     borderRadius: 24,
     borderWidth: 1,
-    borderColor: '#2C2C35',
+    borderColor: '#27272F',
     overflow: 'hidden',
     shadowColor: '#000000',
     shadowOffset: { width: 0, height: 12 },
@@ -265,7 +265,7 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     borderTopWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.06)',
-    backgroundColor: '#1E1E24',
+    backgroundColor: '#19191D',
     gap: 8,
   },
   deleteBtn: {

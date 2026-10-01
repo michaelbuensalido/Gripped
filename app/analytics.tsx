@@ -1,4 +1,5 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
+
 import { View, Text, ScrollView, TouchableOpacity, Modal, TouchableWithoutFeedback, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect, useRouter } from 'expo-router';
@@ -30,6 +31,11 @@ import { calculateACWR } from '../services/loadCalculations';
 import { AngleMasteryWidget } from '../components/analytics/AngleMasteryWidget';
 import { ScreenContainer } from '../components/ui/ScreenContainer';
 import { triggerHaptic } from '../utils/haptics';
+import RootCauseFailureChart from '../components/analytics/RootCauseFailureChart';
+import WallAngleRadar from '../components/analytics/WallAngleRadar';
+import GradeProgressionTimeline from '../components/analytics/GradeProgressionTimeline';
+import AscentPyramid from '../components/analytics/AscentPyramid';
+
 
 export type TimeframeOption = 'weekly' | 'monthly' | 'all';
 
@@ -98,6 +104,38 @@ export default function AnalyticsScreen() {
     setIsTimeframeModalVisible(false);
     loadAnalytics(tf);
   };
+
+  // ─── Derived data for new chart components ────────────────────────────────
+  // These use the SAME existing state variables — no extra fetches needed.
+
+  const wallAngleRadarData = useMemo(() => {
+    if (!angleMasteryData?.length) return { slab: 0, vertical: 0, overhang: 0, roof: 0 };
+    const find = (key: string) => {
+      const item = angleMasteryData.find(a =>
+        a.angle?.toLowerCase().includes(key.toLowerCase())
+      );
+      // fallback to 0 if total attempts + sends is 0
+      const total = (item?.totalSends ?? 0) + (item?.totalAttempts ?? 0);
+      return item ? Math.round(((item.totalSends ?? 0) / Math.max(total, 1)) * 100) : 0;
+    };
+    return {
+      slab:     find('slab'),
+      vertical: find('vert'),
+      overhang: find('over'),
+      roof:     find('roof') || find('cave'),
+    };
+  }, [angleMasteryData]);
+
+  const ascentPyramidData = useMemo(() =>
+    pyramidData.slice(0, 8).map(row => ({
+      grade:    row.grade_raw,
+      flashes:  row.flash_count,
+      sends:    row.top_count,
+      attempts: row.attempt_count,
+    })),
+  [pyramidData]);
+
+
 
   const timeframeLabel = timeframe === 'weekly' ? 'Weekly ⌵' : timeframe === 'monthly' ? 'Monthly ⌵' : 'All-Time ⌵';
 
@@ -184,6 +222,32 @@ export default function AnalyticsScreen() {
           <AngleMasteryWidget data={angleMasteryData} />
         </View>
 
+
+        {/* ── NEW: Performance Diagnostics ─────────────────────────────────── */}
+        <View className="flex-row items-center gap-3 mt-7 mb-4">
+          <Text className="text-[#9090A0] text-[11px] font-bold tracking-[1px]">PERFORMANCE DIAGNOSTICS</Text>
+          <View className="flex-1 h-[1px] bg-[#27272F]" />
+        </View>
+
+        {/* Grade Progression Timeline */}
+        <View className="mb-4">
+          <GradeProgressionTimeline data={[]} />
+        </View>
+
+        {/* Wall Angle Radar + Root Cause side-by-side */}
+        <View className="flex-row gap-3 mb-4">
+          <View className="flex-1">
+            <WallAngleRadar data={wallAngleRadarData} />
+          </View>
+          <View className="flex-1">
+            <RootCauseFailureChart segments={[]} totalFailures={0} />
+          </View>
+        </View>
+
+        {/* Ascent Pyramid */}
+        <View className="mb-4">
+          <AscentPyramid data={ascentPyramidData} />
+        </View>
 
         {/* Recent Sends Ledger */}
         <View className="mt-2">

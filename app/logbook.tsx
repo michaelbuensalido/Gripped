@@ -85,10 +85,10 @@ export default function LogbookScreen() {
 
   const handleStartQuickSession = () => {
     triggerHaptic("light");
-    const sessionId = useSessionStore
+    useSessionStore
       .getState()
       .startQuickSession("Quick Session");
-    router.push(`/session/${sessionId}`);
+    router.push('/session/active');
   };
 
   return (
@@ -107,7 +107,7 @@ export default function LogbookScreen() {
             <Text className="text-white text-[34px] font-bold tracking-[-0.5px]">
               Logbook
             </Text>
-            <Text className="text-[#9A9AA6] text-[14px] mt-1">
+            <Text className="text-secondary text-[14px] mt-1">
               Your chronological session history
             </Text>
           </View>
@@ -117,7 +117,7 @@ export default function LogbookScreen() {
               triggerHaptic("light");
               router.push("/settings");
             }}
-            className="w-[40px] h-[40px] bg-[#19191D] border border-[#27272F] rounded-xl items-center justify-center"
+            className="w-[40px] h-[40px] bg-surface border border-border rounded-xl items-center justify-center"
           >
             <SettingsIcon size={20} color="#9090A0" />
           </TouchableOpacity>
@@ -133,20 +133,20 @@ export default function LogbookScreen() {
 
         {/* Sessions History Feed */}
         {sessions.length === 0 ? (
-          <View className="min-h-[160px] border border-dashed border-[#27272F] bg-[#141417] rounded-xl flex-col items-center justify-center p-6">
-            <Text className="text-[12px] font-bold text-[#555562] uppercase tracking-[1.2px]">
+          <View className="min-h-[160px] border border-dashed border-border bg-recessed rounded-xl flex-col items-center justify-center p-6">
+            <Text className="text-[12px] font-bold text-structural uppercase tracking-[1.2px]">
               NO SESSIONS RECORDED
             </Text>
-            <Text className="text-[13px] text-[#8A8A98] text-center mt-2 mb-6">
+            <Text className="text-[13px] text-secondary text-center mt-2 mb-6">
               Your chronologically logged gym sessions, volume stats, and beta
               clips will populate here.
             </Text>
             <TouchableOpacity
               activeOpacity={0.7}
               onPress={handleStartQuickSession}
-              className="h-[44px] bg-[#19191D] border border-[#8E7CFF] rounded-lg px-6 items-center justify-center"
+              className="h-[44px] bg-surface border border-send rounded-lg px-6 items-center justify-center"
             >
-              <Text className="text-[13px] font-bold text-[#8E7CFF]">
+              <Text className="text-[13px] font-bold text-send">
                 START QUICK SESSION
               </Text>
             </TouchableOpacity>
@@ -157,7 +157,7 @@ export default function LogbookScreen() {
             <Text className="text-white text-[15px] font-bold">
               No sessions match this filter
             </Text>
-            <Text className="text-[#8A8A98] text-[13px] text-center">
+            <Text className="text-secondary text-[13px] text-center">
               Try selecting a different filter above
             </Text>
           </View>
@@ -166,7 +166,7 @@ export default function LogbookScreen() {
             <TouchableOpacity
               onPress={handleStartQuickSession}
               activeOpacity={0.8}
-              className="h-[44px] flex-row items-center justify-center bg-[#19191D] border border-[#27272F] rounded-lg mb-5 gap-2"
+              className="h-[44px] flex-row items-center justify-center bg-surface border border-border rounded-lg mb-5 gap-2"
             >
               <Plus size={15} color="#8E7CFF" strokeWidth={2.5} />
               <Text className="text-white text-[13px] font-bold tracking-[0.6px]">
@@ -176,11 +176,11 @@ export default function LogbookScreen() {
 
             {sessionsByMonth.map((group) => (
               <View key={group.monthYear} className="mb-6">
-                <Text className="text-[#8A8A98] text-[12px] font-bold tracking-[1.2px] mb-3 px-1">
+                <Text className="text-secondary text-[12px] font-bold tracking-[1.2px] mb-3 px-1">
                   {group.monthYear}
                 </Text>
 
-                <View className="bg-[#19191D] border border-[#27272F] rounded-xl overflow-hidden">
+                <View className="bg-surface border border-border rounded-xl overflow-hidden">
                   {group.items.map((s, idx) => (
                     <SessionHistoryCard
                       key={s.id}

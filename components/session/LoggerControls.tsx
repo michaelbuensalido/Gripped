@@ -1,10 +1,7 @@
-import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
-import {
-  Gesture,
-  GestureDetector,
-} from 'react-native-gesture-handler';
+import React, { useRef } from 'react';
+import { StyleSheet, Text, View, TouchableOpacity, Platform } from 'react-native';
 import * as Haptics from 'expo-haptics';
+import { Zap, Flame } from 'lucide-react-native';
 
 interface LoggerControlsProps {
   onAttempt: () => void;
@@ -12,94 +9,88 @@ interface LoggerControlsProps {
 }
 
 // ─── Attempt Block ─────────────────────────────────────────────────────────────
-// Triggers on: Swipe Left OR Long Press
+// Triggers on: Tap or Long Press
 // Haptic: Heavy Impact
-
 function AttemptBlock({ onAttempt }: { onAttempt: () => void }) {
-  const fired = React.useRef(false);
+  const fired = useRef(false);
 
   const fire = () => {
     if (fired.current) return;
     fired.current = true;
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+    try {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+    } catch (_) {}
     onAttempt();
-    // Reset guard after gesture window
-    setTimeout(() => { fired.current = false; }, 600);
+    setTimeout(() => {
+      fired.current = false;
+    }, 250);
   };
 
-  const longPress = Gesture.LongPress()
-    .minDuration(350)
-    .onStart(() => { 'worklet'; fire(); });
-
-  const swipeLeft = Gesture.Pan()
-    .onEnd((e) => {
-      'worklet';
-      if (e.translationX < -40 && Math.abs(e.translationY) < 60) {
-        fire();
-      }
-    });
-
-  const composed = Gesture.Race(longPress, swipeLeft);
-
   return (
-    <GestureDetector gesture={composed}>
-      <View style={styles.attemptBlock} accessible accessibilityLabel="Log Attempt">
-        {/* Faint direction indicator */}
-        <Text style={styles.swipeHint}>← SWIPE  OR  HOLD</Text>
-        <Text style={styles.attemptLabel}>BURN</Text>
-        <Text style={styles.attemptSub}>attempt</Text>
+    <TouchableOpacity
+      activeOpacity={0.65}
+      onPress={fire}
+      onLongPress={fire}
+      delayLongPress={300}
+      style={styles.attemptBlock}
+      accessible
+      accessibilityRole="button"
+      accessibilityLabel="Log Attempt (Burn)"
+    >
+      <View style={styles.hintRow}>
+        <Flame size={12} color="#FF5C5C" strokeWidth={2.5} />
+        <Text style={styles.swipeHint}>TAP TO LOG</Text>
       </View>
-    </GestureDetector>
+      <Text style={styles.attemptLabel}>BURN</Text>
+      <Text style={styles.attemptSub}>+1 attempt</Text>
+    </TouchableOpacity>
   );
 }
 
 // ─── Send Block ────────────────────────────────────────────────────────────────
-// Triggers on: Swipe Right OR Single Tap
+// Triggers on: Tap or Long Press
 // Haptic: Success Notification
-
 function SendBlock({ onSend }: { onSend: () => void }) {
-  const fired = React.useRef(false);
+  const fired = useRef(false);
 
   const fire = () => {
     if (fired.current) return;
     fired.current = true;
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    try {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    } catch (_) {}
     onSend();
-    setTimeout(() => { fired.current = false; }, 600);
+    setTimeout(() => {
+      fired.current = false;
+    }, 250);
   };
 
-  const tap = Gesture.Tap()
-    .maxDuration(250)
-    .onEnd(() => { 'worklet'; fire(); });
-
-  const swipeRight = Gesture.Pan()
-    .onEnd((e) => {
-      'worklet';
-      if (e.translationX > 40 && Math.abs(e.translationY) < 60) {
-        fire();
-      }
-    });
-
-  const composed = Gesture.Race(tap, swipeRight);
-
   return (
-    <GestureDetector gesture={composed}>
-      <View style={styles.sendBlock} accessible accessibilityLabel="Log Send">
-        <Text style={styles.swipeHintSend}>SWIPE  OR  TAP →</Text>
-        <Text style={styles.sendLabel}>SEND</Text>
-        <Text style={styles.sendSub}>top-out</Text>
+    <TouchableOpacity
+      activeOpacity={0.65}
+      onPress={fire}
+      onLongPress={fire}
+      delayLongPress={300}
+      style={styles.sendBlock}
+      accessible
+      accessibilityRole="button"
+      accessibilityLabel="Log Send (Top-Out)"
+    >
+      <View style={styles.hintRow}>
+        <Zap size={12} color="#8E7CFF" strokeWidth={2.5} />
+        <Text style={styles.swipeHintSend}>TAP TO TOP</Text>
       </View>
-    </GestureDetector>
+      <Text style={styles.sendLabel}>SEND</Text>
+      <Text style={styles.sendSub}>top-out</Text>
+    </TouchableOpacity>
   );
 }
 
 // ─── Compound Export ───────────────────────────────────────────────────────────
-
 export function LoggerControls({ onAttempt, onSend }: LoggerControlsProps) {
   return (
     <View style={styles.root}>
       <AttemptBlock onAttempt={onAttempt} />
-      {/* 1px vertical divider */}
       <View style={styles.divider} />
       <SendBlock onSend={onSend} />
     </View>
@@ -111,41 +102,47 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     borderTopWidth: 1,
     borderTopColor: '#27272F',
+    backgroundColor: '#111113',
+  },
+
+  hintRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginBottom: 4,
   },
 
   // ─── Attempt ───────────────────────────────────────────────────────────────
   attemptBlock: {
     flex: 1,
-    minHeight: 100,
+    minHeight: 96,
     backgroundColor: '#141417',
-    borderRightWidth: 0,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 20,
+    paddingVertical: 18,
     paddingHorizontal: 12,
-    gap: 4,
+    gap: 2,
   },
   attemptLabel: {
     fontSize: 22,
-    fontWeight: '800',
-    color: '#8A8A98',
+    fontWeight: '900',
+    color: '#D4D4DC',
     letterSpacing: 3,
     textTransform: 'uppercase',
   },
   attemptSub: {
     fontSize: 11,
-    fontWeight: '600',
-    color: '#555562',
-    letterSpacing: 2,
+    fontWeight: '700',
+    color: '#70707E',
+    letterSpacing: 1.5,
     textTransform: 'uppercase',
   },
   swipeHint: {
-    fontSize: 9,
-    fontWeight: '700',
-    color: '#3E3E48',
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#FF5C5C',
     letterSpacing: 1.5,
     textTransform: 'uppercase',
-    marginBottom: 6,
   },
 
   // ─── Divider ───────────────────────────────────────────────────────────────
@@ -157,42 +154,34 @@ const styles = StyleSheet.create({
   // ─── Send ──────────────────────────────────────────────────────────────────
   sendBlock: {
     flex: 1,
-    minHeight: 100,
-    backgroundColor: '#141417',
-    borderWidth: 1,
-    borderColor: '#8E7CFF',
-    // Override to kill the left border duplicate with divider
-    borderLeftWidth: 0,
-    borderBottomWidth: 0,
-    borderRightWidth: 0,
-    borderTopWidth: 0,
+    minHeight: 96,
+    backgroundColor: '#16141F',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 20,
+    paddingVertical: 18,
     paddingHorizontal: 12,
-    gap: 4,
+    gap: 2,
   },
   sendLabel: {
     fontSize: 22,
-    fontWeight: '800',
+    fontWeight: '900',
     color: '#8E7CFF',
     letterSpacing: 3,
     textTransform: 'uppercase',
   },
   sendSub: {
     fontSize: 11,
-    fontWeight: '600',
+    fontWeight: '700',
     color: '#8E7CFF',
-    opacity: 0.5,
-    letterSpacing: 2,
+    opacity: 0.7,
+    letterSpacing: 1.5,
     textTransform: 'uppercase',
   },
   swipeHintSend: {
-    fontSize: 9,
-    fontWeight: '700',
-    color: '#3E3E48',
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#8E7CFF',
     letterSpacing: 1.5,
     textTransform: 'uppercase',
-    marginBottom: 6,
   },
 });
