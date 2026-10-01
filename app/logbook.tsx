@@ -9,7 +9,8 @@ import {
   type LogbookFilter,
 } from "../components/logbook/LogbookFilterStrip";
 import { ConsistencyLedger } from "../components/analytics/ConsistencyLedger";
-import { useSessionStore } from "../store/sessionStore";
+import { useSessionStore } from '../store/sessionStore';
+import { useActiveSession } from '../db/hooks';
 import { getAllSessionSummaries, type SessionSummary } from "../db/queries";
 import { triggerHaptic } from "../utils/haptics";
 

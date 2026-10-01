@@ -1,183 +1,52 @@
-import React, { useState, useEffect } from 'react';
-import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  KeyboardAvoidingView,
-  Platform,
-} from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import { ArrowLeft, MapPin } from 'lucide-react-native';
+import React, { useState } from 'react';
+import { View, TextInput, KeyboardAvoidingView, Platform, TouchableOpacity, Text } from 'react-native';
+import { useRouter } from 'expo-router';
+import { MapPin } from 'lucide-react-native';
+import { Screen } from '../../components/ui/Screen';
+import { PrimaryButton } from '../../components/ui/PrimaryButton';
 import { useSessionStore } from '../../store/sessionStore';
-import { THEME_COLORS, FLOATING_CARD_STYLE } from '../../constants/theme';
-import { ScreenContainer } from '../../components/ui/ScreenContainer';
+import { useTheme } from '../../theme/useTheme';
 
 export default function NewSessionScreen() {
   const router = useRouter();
-  const { routineId, startEmpty, testRoutine, wrapUp } = useLocalSearchParams<{
-    routineId?: string;
-    startEmpty?: string;
-    testRoutine?: string;
-    wrapUp?: string;
-  }>();
-  const insets = useSafeAreaInsets();
+  const { colors, type, space, radius } = useTheme();
   const [gymName, setGymName] = useState('');
-  const startSession = useSessionStore((s) => s.startSession);
-  const startSessionFromRoutine = useSessionStore((s) => s.startSessionFromRoutine);
-  const startEmptySession = useSessionStore((s) => s.startEmptySession);
-  const hasLaunchedRef = React.useRef(false);
-
-  useEffect(() => {
-    if (wrapUp === '1') {
-      const currentActive = useSessionStore.getState().activeSession;
-      if (currentActive) {
-        router.replace('/session/active');
-      } else {
-        const routines: any[] = [];
-        if (routines.length > 0) {
-          startSessionFromRoutine(routines[0], routines[0].title);
-        } else {
-          startEmptySession('Crux Climbing Gym');
-        }
-        router.replace('/session/active');
-      }
-      return;
-    }
-
-    if (startEmpty === '1') {
-      startEmptySession('Gym Session');
-      router.replace('/session/active');
-      return;
-    }
-
-    if (testRoutine === '1') {
-      const routines: any[] = [];
-      if (routines.length > 0) {
-        startSessionFromRoutine(routines[0], routines[0].title);
-        router.replace('/session/active');
-        return;
-      }
-    }
-
-    if (hasLaunchedRef.current) return;
-
-    if (routineId) {
-      hasLaunchedRef.current = true;
-      const routine = getRoutineById(routineId);
-      if (routine) {
-        startSessionFromRoutine(routine, routine.title);
-        router.replace('/session/active');
-      }
-    }
-  }, [routineId, startEmpty, testRoutine, wrapUp, startSessionFromRoutine, startEmptySession, router]);
+  const startQuickSession = useSessionStore((s) => s.startQuickSession);
 
   const handleStart = () => {
-    startSession(gymName.trim() || 'My Gym');
+    startQuickSession(gymName.trim() || 'My Gym');
     router.replace('/session/active');
   };
 
   return (
-    <ScreenContainer withTopInset={true}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        style={{ flex: 1 }}
-      >
-        {/* Back */}
-        <TouchableOpacity
-          onPress={() => router.back()}
-          className="p-4"
-          activeOpacity={0.7}
-        >
-          <ArrowLeft size={22} color="#FFFFFF" />
-        </TouchableOpacity>
-
-        <View className="flex-1 px-6 pt-4">
-          <Text
-            style={{
-              color: '#FFFFFF',
-              fontSize: 34,
-              fontWeight: '700',
-              letterSpacing: -0.5,
-              marginBottom: 4,
-            }}
-          >
-            New Session
-          </Text>
-          <Text
-            style={{
-              color: '#9A9AA6',
-              fontSize: 14,
-              fontWeight: '400',
-              marginBottom: 28,
-            }}
-          >
-            Where are you climbing today?
-          </Text>
-
-          {/* Gym name input */}
-          <View
-            style={[
-              FLOATING_CARD_STYLE,
-              {
-                borderRadius: 20,
-                padding: 16,
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: 12,
-              },
-            ]}
-          >
-            <MapPin size={20} color="#8E7CFF" />
+    <Screen title="New Session" subtitle="Where are you climbing today?" scroll={false}>
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1, marginTop: space.xl }}>
+        <View style={{ flex: 1 }}>
+          <View style={{
+            backgroundColor: colors.cardMuted,
+            borderRadius: radius.md,
+            padding: space.lg,
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: space.md,
+          }}>
+            <MapPin size={20} color={colors.textMuted} />
             <TextInput
               value={gymName}
               onChangeText={setGymName}
               placeholder="Gym name (e.g. Boulder World)"
-              placeholderTextColor="#555562"
+              placeholderTextColor={colors.textMuted}
               returnKeyType="done"
-              style={{
-                color: '#FFFFFF',
-                fontSize: 16,
-                fontWeight: '600',
-                flex: 1,
-              }}
+              style={[{ color: colors.text, flex: 1 }, type.body]}
               autoFocus
             />
           </View>
         </View>
 
-        {/* Start button */}
-        <View className="px-6" style={{ paddingBottom: insets.bottom + 24 }}>
-          <TouchableOpacity
-            onPress={handleStart}
-            activeOpacity={0.85}
-            style={{
-              backgroundColor: '#8E7CFF',
-              height: 52,
-              borderRadius: 26,
-              alignItems: 'center',
-              justifyContent: 'center',
-              shadowColor: '#8E7CFF',
-              shadowOffset: { width: 0, height: 4 },
-              shadowOpacity: 0.4,
-              shadowRadius: 10,
-              elevation: 5,
-            }}
-          >
-            <Text
-              style={{
-                color: '#FFFFFF',
-                fontSize: 15,
-                fontWeight: '700',
-                letterSpacing: 0.5,
-              }}
-            >
-              START CLIMBING
-            </Text>
-          </TouchableOpacity>
+        <View style={{ paddingBottom: space.xxl }}>
+          <PrimaryButton label="START CLIMBING" onPress={handleStart} />
         </View>
       </KeyboardAvoidingView>
-    </ScreenContainer>
+    </Screen>
   );
 }

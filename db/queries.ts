@@ -1,12 +1,30 @@
 import { getDatabase } from './schema';
 import type { Session, BoulderGroup, BoulderLog, FailureReason, Project, ProjectStatus, Outcome, Sector, Route, Attempt, HoldType, WallAngle, RouteStatus } from '../types';
 import { v4 as uuid } from 'uuid';
+import { dbEvents } from './events';
 
 // ─── Sessions ────────────────────────────────────────────────────────────────
+
+function runMutation(tableName: string, recordId: string, opType: 'INSERT' | 'UPDATE' | 'DELETE', sql: string, params: any[]) {
+  const db = getDatabase();
+  const now = Date.now();
+  db.runSync(sql, params);
+  
+  if (opType !== 'DELETE') {
+    db.runSync(`UPDATE ${tableName} SET sync_status = 'pending' WHERE id = ?`, [recordId]);
+  }
+
+  db.runSync(
+    `INSERT INTO outbox (op_id, table_name, record_id, op_type, payload, created_at) VALUES (?, ?, ?, ?, ?, ?)`,
+    [uuid(), tableName, recordId, opType, '{}', now]
+  );
+  dbEvents.emit();
+}
+
 export function insertSession(session: Omit<Session, 'endTime'>): void {
   const db = getDatabase();
   const now = Date.now();
-  db.runSync(
+  runMutation('sessions', session.id, 'INSERT', 
     `INSERT INTO sessions (id, gym_name, started_at, notes, created_at, updated_at)
      VALUES (?, ?, ?, ?, ?, ?)`,
     [session.id, session.gymName, session.startTime, session.notes, now, now]
@@ -15,7 +33,7 @@ export function insertSession(session: Omit<Session, 'endTime'>): void {
 
 export function finishSession(id: string, endTime: number): void {
   const db = getDatabase();
-  db.runSync(`UPDATE sessions SET ended_at = ?, updated_at = ? WHERE id = ?`, [endTime, Date.now(), id]);
+  runMutation('sessions', id, 'UPDATE', `UPDATE sessions SET ended_at = ?, updated_at = ? WHERE id = ?`, [endTime, Date.now(), id]);
 }
 
 export function completeSessionWrapUp(
@@ -31,7 +49,7 @@ export function completeSessionWrapUp(
 ): void {
   const db = getDatabase();
   const mediaJson = JSON.stringify(mediaUris);
-  db.runSync(
+  runMutation('sessions', id, 'UPDATE', 
     `UPDATE sessions 
      SET ended_at = ?, title = ?, notes = ?, gym_name = ?, rpe = ?, media_uris = ?, skin_state = ?, finger_fatigue = ?, updated_at = ?
      WHERE id = ?`,
@@ -59,17 +77,17 @@ export function getActiveSession(): Session | null {
 
 export function updateSessionNotes(id: string, notes: string): void {
   const db = getDatabase();
-  db.runSync(`UPDATE sessions SET notes = ?, updated_at = ? WHERE id = ?`, [notes, Date.now(), id]);
+  runMutation('sessions', id, 'UPDATE', `UPDATE sessions SET notes = ?, updated_at = ? WHERE id = ?`, [notes, Date.now(), id]);
 }
 
 export function updateSessionGym(id: string, gymName: string): void {
   const db = getDatabase();
-  db.runSync(`UPDATE sessions SET gym_name = ?, updated_at = ? WHERE id = ?`, [gymName, Date.now(), id]);
+  runMutation('sessions', id, 'UPDATE', `UPDATE sessions SET gym_name = ?, updated_at = ? WHERE id = ?`, [gymName, Date.now(), id]);
 }
 
 export function deleteSession(id: string): void {
   const db = getDatabase();
-  db.runSync(`DELETE FROM sessions WHERE id = ?`, [id]);
+  runMutation('sessions', id, 'DELETE', `DELETE FROM sessions WHERE id = ?`, [id]);
 }
 
 function mapSession(row: any): Session {
@@ -121,7 +139,7 @@ export function insertBoulderLog(log: BoulderLog): void {
     if(active) sessionId = active.id;
   }
   const now = Date.now();
-  db.runSync(
+  runMutation('climbs', log.id, 'INSERT', 
     `INSERT INTO climbs (
       id, session_id, grade_index, grade_raw, result, attempts, rating, notes, photo_url, logged_at, failure_reason, wall_angle, created_at, updated_at
     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -133,7 +151,7 @@ export function insertBoulderLog(log: BoulderLog): void {
 
 export function updateBoulderLog(log: BoulderLog): void {
   const db = getDatabase();
-  db.runSync(
+  runMutation('climbs', log.id, 'UPDATE', 
     `UPDATE climbs SET grade_raw = ?, grade_index = ?, rating = ?, attempts = ?, result = ?, photo_url = ?, notes = ?, failure_reason = ?, wall_angle = ?, updated_at = ? WHERE id = ?`,
     [log.gradeRaw, log.normalizedDifficulty, (log.rpe ?? null), log.attempts, log.outcome, (log.media_uri ?? null), (log.notes ?? null), (log.failureReason ?? log.failure_reason ?? null), (log.wallAngle ?? null), Date.now(), log.id]
   );
@@ -141,7 +159,7 @@ export function updateBoulderLog(log: BoulderLog): void {
 
 export function updateBoulderLogFailureReason(id: string, failureReason: FailureReason | null): void {
   const db = getDatabase();
-  db.runSync(`UPDATE climbs SET failure_reason = ?, updated_at = ? WHERE id = ?`, [failureReason, Date.now(), id]);
+  runMutation('climbs', id, 'UPDATE', `UPDATE climbs SET failure_reason = ?, updated_at = ? WHERE id = ?`, [failureReason, Date.now(), id]);
 }
 
 export function updateBoulderLogMedia(id: string, mediaUri: string | null, mediaType: string | null): void {
@@ -159,7 +177,7 @@ export function updateBoulderLogGradeAndMedia(id: string, gradeRaw: string, norm
 
 export function deleteBoulderLog(id: string): void {
   const db = getDatabase();
-  db.runSync(`DELETE FROM climbs WHERE id = ?`, [id]);
+  runMutation('climbs', id, 'DELETE', `DELETE FROM climbs WHERE id = ?`, [id]);
 }
 
 export function getLogsForGroup(groupId: string): BoulderLog[] {
@@ -462,7 +480,7 @@ export function seedDefaultRoutinesIfEmpty(): void {}
 export function insertAttempt(attempt: any): void {
   const db = getDatabase();
   const now = Date.now();
-  db.runSync(
+  runMutation('climbs', attempt.id, 'INSERT', 
     `INSERT INTO climbs (
       id, session_id, project_id, grade_raw, grade_index, wall_angle, hold_type, result, attempts, logged_at, failure_reason, created_at, updated_at
     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -485,7 +503,7 @@ export function insertAttempt(attempt: any): void {
 
 export function updateAttemptFailureReason(attemptId: string, reason: string | null): void {
   const db = getDatabase();
-  db.runSync(`UPDATE climbs SET failure_reason = ?, updated_at = ? WHERE id = ?`, [reason, Date.now(), attemptId]);
+  runMutation('climbs', attemptId, 'UPDATE', `UPDATE climbs SET failure_reason = ?, updated_at = ? WHERE id = ?`, [reason, Date.now(), attemptId]);
 }
 
 export type SessionDetailData = any;
@@ -496,7 +514,7 @@ export function updateSessionConditions(sessionId: string, conditions: string[])
 export function insertProject(project: any): void {
   const db = getDatabase();
   const now = Date.now();
-  db.runSync(
+  runMutation('projects', project.id, 'INSERT', 
     `INSERT INTO projects (id, title, grade_raw, grade_index, wall_angle, hold_type, status, high_water_mark_moves, total_moves, micro_beta, photo_url, created_at, updated_at)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [project.id, project.title, project.gradeRaw, project.normalizedDifficulty, project.wallAngle, project.holdType, project.status, project.highWaterMarkMoves, project.totalMoves ?? null, (project.microBeta ?? null), (project.mediaUri ?? null), now, now]
@@ -516,3 +534,17 @@ export type RecentOutcomesSummaryData = any;
 export type OutcomeSegmentData = any;
 export type WallAngleBreakdownItem = any;
 export type WeeklyVolumeTrendsData = any;
+
+export function getClimbsForSession(sessionId: string): any[] {
+  const db = getDatabase();
+  return db.getAllSync(`SELECT * FROM climbs WHERE session_id = ? ORDER BY logged_at DESC`, [sessionId]);
+}
+
+
+
+// Mocks for analytics and logbook
+export function getAllSessionSummaries() { return []; }
+export type DisciplineSplitItem = any;
+export type FailureBreakdownData = any;
+export type GradePyramidRow = any;
+export type WeeklyVolumeStat = any;

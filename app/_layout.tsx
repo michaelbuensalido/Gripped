@@ -19,8 +19,8 @@ import {
   type LucideIcon,
 } from "lucide-react-native";
 import { initializeDatabase } from "../db/schema";
-import { ActiveSessionMiniBar } from "../components/session/ActiveSessionMiniBar";
-import { useSessionStore } from "../store/sessionStore";
+import { useSessionStore } from '../store/sessionStore';
+import { useActiveSession } from '../db/hooks';
 import { triggerHaptic } from "../utils/haptics";
 import { notificationEngine } from "../services/notificationEngine";
 import "../global.css";
@@ -28,7 +28,7 @@ import "../global.css";
 import { FloatingTabBar } from "../components/ui/FloatingTabBar";
 
 function TabLayout() {
-  const activeSession = useSessionStore((s) => s.activeSession);
+  const activeSession = useActiveSession();
   const isSessionActive = activeSession !== null;
 
   return (
@@ -100,7 +100,7 @@ export default function RootLayout() {
     (async () => {
       try {
         await initializeDatabase();
-        useSessionStore.getState().initActiveSession();
+        // initActiveSession is removed
         setIsDbReady(true);
         notificationEngine.requestPermissions();
       } catch (e) {
@@ -121,7 +121,7 @@ export default function RootLayout() {
         <StatusBar style="light" />
         {isDbReady ? <TabLayout /> : null}
         {/* Global floating mini-bar */}
-        <ActiveSessionMiniBar />
+        
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );

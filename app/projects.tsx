@@ -23,6 +23,7 @@ import {
 } from 'lucide-react-native';
 import { ScreenContainer } from '../components/ui/ScreenContainer';
 import { useSessionStore } from '../store/sessionStore';
+import { useProjects } from '../db/hooks';
 import type { Project, WallAngle, HoldType } from '../types';
 import { triggerHaptic } from '../utils/haptics';
 
@@ -45,8 +46,8 @@ const GRADES = ['V2', 'V3', 'V4', 'V5', 'V6', 'V7', 'V8', 'V9', 'V10', 'V11', 'V
 
 export default function ProjectsScreen() {
   const router = useRouter();
-  const projects = useSessionStore((s) => s.projects);
-  const loadProjects = useSessionStore((s) => s.loadProjects);
+  const projects = useProjects() || [];
+  const loadProjects = () => {};
   const createProject = useSessionStore((s) => s.createProject);
   const updateProjectStatus = useSessionStore((s) => s.updateProjectStatus);
   const updateProjectHighWaterMark = useSessionStore((s) => s.updateProjectHighWaterMark);

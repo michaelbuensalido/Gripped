@@ -27,7 +27,8 @@ import {
 import { ScreenContainer } from "../components/ui/ScreenContainer";
 import { getHomeStats, type HomeStats } from "../db/queries";
 import { GRADE_BY_LABEL } from "../constants/grades";
-import { useSessionStore } from "../store/sessionStore";
+import { useSessionStore } from '../store/sessionStore';
+import { useActiveSession } from '../db/hooks';
 import type { RoutineWithBlocks } from "../types";
 import {
   RecommendedRouteCard,
@@ -113,7 +114,7 @@ function SolidBoulderIcon({
 export default function HomeScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const activeSession = useSessionStore((s) => s.activeSession);
+  const activeSession = useActiveSession();
   const [homeStats, setHomeStats] = useState<HomeStats | null>(null);
   const [suggestedRoutine, setSuggestedRoutine] =
     useState<RoutineWithBlocks | null>(null);
