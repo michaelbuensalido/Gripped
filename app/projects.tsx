@@ -1,5 +1,5 @@
-import React, { useState, useMemo } from 'react';
-import { View, ScrollView, TouchableOpacity, Modal, Text, TextInput, KeyboardAvoidingView, Platform, Alert } from 'react-native';
+import React, { useState, useMemo, useEffect } from 'react';
+import { View, ScrollView, TouchableOpacity, Modal, Text, TextInput, KeyboardAvoidingView, Platform, Alert, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Plus, X } from 'lucide-react-native';
 import { Screen } from '../components/ui/Screen';
@@ -7,13 +7,14 @@ import { EmptyState } from '../components/ui/EmptyState';
 import { ProjectCard } from '../components/ui/ProjectCard';
 import { FilterChip } from '../components/ui/FilterChip';
 import { PrimaryButton } from '../components/ui/PrimaryButton';
-import { useProjects } from '../db/hooks';
+import { SecondaryButton } from '../components/ui/SecondaryButton';
+import { LogSheet } from '../components/session/LogSheet';
+import { useProjects, useActiveSession, useAllSessions } from '../db/hooks';
+import { insertProject, insertSession, insertAttempt, updateProjectStatus, gradeToNumeric, getActiveSession } from '../db/queries';
 import { useSessionStore } from '../store/sessionStore';
-import { insertProject } from '../db/queries';
-import { v4 as uuid } from 'uuid';
 import { triggerHaptic } from '../utils/haptics';
 import { useTheme } from '../theme/useTheme';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { v4 as uuid } from 'uuid';
 
 const WALL_ANGLES = [
   { key: 'slab', label: 'Slab' },
@@ -35,20 +36,33 @@ const GRADES = ['V2', 'V3', 'V4', 'V5', 'V6', 'V7', 'V8', 'V9', 'V10', 'V11', 'V
 export default function ProjectsScreen() {
   const router = useRouter();
   const { colors, space, shadow, radius, type } = useTheme();
-  const insets = useSafeAreaInsets();
+  
   const projects = useProjects() || [];
-  
-  const setActiveProjectTarget = useSessionStore((s) => s.setActiveProjectTarget);
-  
-  const [activeTab, setActiveTab] = useState<'in_progress' | 'sent'>('in_progress');
+  const activeSession = useActiveSession();
+  const sessions = useAllSessions();
+  const lastGym = useMemo(() => sessions.length > 0 ? sessions[0].gymName : 'Local Gym', [sessions]);
 
+  const [activeTab, setActiveTab] = useState<'in_progress' | 'sent'>('in_progress');
+  const [selectedProject, setSelectedProject] = useState<any>(null);
+
+  // Modals state
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isStartSessionSheetOpen, setIsStartSessionSheetOpen] = useState(false);
+  const [isLogSheetOpen, setIsLogSheetOpen] = useState(false);
+  
+  // Add Project state
   const [newTitle, setNewTitle] = useState('');
-  const [newGrade, setNewGrade] = useState(''); // Empty initially
+  const [newGrade, setNewGrade] = useState(''); 
   const [newAngle, setNewAngle] = useState('overhang');
   const [newHoldType, setNewHoldType] = useState('crimps');
   const [newTotalMoves, setNewTotalMoves] = useState('12');
   const [newBeta, setNewBeta] = useState('');
+
+  // Start Session state
+  const [newGymName, setNewGymName] = useState('Local Gym');
+  useEffect(() => {
+    if (isStartSessionSheetOpen) setNewGymName(lastGym);
+  }, [isStartSessionSheetOpen, lastGym]);
 
   const filteredProjects = useMemo(() => {
     return projects.filter((p) => p.status === activeTab);
@@ -56,8 +70,60 @@ export default function ProjectsScreen() {
 
   const handleStartSiege = (project: any) => {
     triggerHaptic('heavy');
-    setActiveProjectTarget(project);
-    router.push('/session/active');
+    setSelectedProject(project);
+    if (activeSession) {
+      setIsLogSheetOpen(true);
+    } else {
+      setIsStartSessionSheetOpen(true);
+    }
+  };
+
+  const handleCreateSessionAndLog = () => {
+    triggerHaptic('medium');
+    const sessionId = uuid();
+    insertSession({
+      id: sessionId,
+      gymName: newGymName,
+      startTime: Date.now(),
+      notes: '',
+      title: 'Quick Session',
+      rpe: null,
+      mediaUris: [],
+      skinState: null,
+      fingerFatigue: null,
+    });
+    setIsStartSessionSheetOpen(false);
+    setIsLogSheetOpen(true);
+  };
+
+  const handleSaveLog = (grade: string, result: any, attempts: number, notes: string) => {
+    if (!selectedProject) return;
+
+    const active = getActiveSession();
+    if (!active) return;
+
+    insertAttempt({
+      id: uuid(),
+      sessionId: active.id,
+      projectId: selectedProject.id,
+      gradeRaw: grade,
+      normalizedDifficulty: gradeToNumeric(grade),
+      wallAngle: selectedProject.wallAngle,
+      holdType: selectedProject.holdType,
+      outcome: result,
+      attemptNumber: attempts,
+      timestamp: Date.now(),
+      failureReason: null,
+      notes: notes,
+    });
+
+    if (result === 'send' || result === 'top' || result === 'flash') {
+      updateProjectStatus(selectedProject.id, 'sent');
+    }
+
+    triggerHaptic('success');
+    setIsLogSheetOpen(false);
+    setSelectedProject(null);
   };
 
   const handleCreateProject = () => {
@@ -69,7 +135,6 @@ export default function ProjectsScreen() {
       Alert.alert('Required', 'Please select a target grade');
       return;
     }
-
 
     const total = parseInt(newTotalMoves, 10);
     insertProject({
@@ -85,7 +150,6 @@ export default function ProjectsScreen() {
       microBeta: newBeta.trim() || null,
       mediaUri: null,
     });
-
 
     triggerHaptic('medium');
     setIsAddModalOpen(false);
@@ -144,7 +208,7 @@ export default function ProjectsScreen() {
         style={[
           {
             position: 'absolute',
-            bottom: insets.bottom + 64 + 16,
+            bottom: 104,
             right: 24,
             width: 56,
             height: 56,
@@ -156,7 +220,7 @@ export default function ProjectsScreen() {
           shadow.floating
         ]}
       >
-        <Plus size={24} color="#FFFFFF" />
+        <Plus size={24} color={colors.textOnAccent} />
       </TouchableOpacity>
 
       {/* Add Project Modal */}
@@ -176,13 +240,15 @@ export default function ProjectsScreen() {
 
             <ScrollView showsVerticalScrollIndicator={false}>
               <Text style={[type.label, { color: colors.textMuted, marginBottom: space.xs }]}>Project Name</Text>
-              <TextInput value={newTitle} onChangeText={setNewTitle} placeholder="e.g. Cave Roof V6" testID="project-nickname-input" placeholderTextColor={colors.textMuted} style={[{ backgroundColor: colors.card, borderRadius: radius.md, padding: space.md, marginBottom: space.lg, color: colors.text }, type.body]} />
+              <TextInput testID="project-nickname-input" value={newTitle} onChangeText={setNewTitle} placeholder="e.g. Cave Roof V6" placeholderTextColor={colors.textMuted} style={[{ backgroundColor: colors.card, borderRadius: radius.md, padding: space.md, marginBottom: space.lg, color: colors.text }, type.body]} />
 
               <Text style={[type.label, { color: colors.textMuted, marginBottom: space.xs }]}>Target Grade</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: space.lg }}>
                 <View style={{ flexDirection: 'row', gap: space.sm }}>
                   {GRADES.map(g => (
-                    <View key={g} testID={`grade-chip-${g}`}><FilterChip label={g} active={newGrade === g} onPress={() => setNewGrade(g)} /></View>
+                    <View key={g} testID={`grade-chip-${g}`}>
+                      <FilterChip label={g} active={newGrade === g} onPress={() => setNewGrade(g)} />
+                    </View>
                   ))}
                 </View>
               </ScrollView>
@@ -215,10 +281,47 @@ export default function ProjectsScreen() {
                 style={{ marginBottom: 40 }}
               />
             </ScrollView>
-
           </View>
         </KeyboardAvoidingView>
       </Modal>
+
+      {/* Start Session Sheet */}
+      <Modal visible={isStartSessionSheetOpen} animationType="slide" transparent onRequestClose={() => setIsStartSessionSheetOpen(false)}>
+        <Pressable style={{ flex: 1, backgroundColor: colors.scrim, justifyContent: 'flex-end' }} onPress={() => setIsStartSessionSheetOpen(false)}>
+          <Pressable onPress={(e) => e.stopPropagation()}>
+            <View style={{ backgroundColor: colors.card, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl, padding: space.xl, paddingBottom: space.xxl + 20, ...shadow.floating }}>
+              
+              <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: colors.border, alignSelf: 'center', marginBottom: space.lg }} />
+              <View style={{ marginBottom: space.xl }}>
+                <Text style={[type.title, { color: colors.text, marginBottom: space.xs }]}>Start a session</Text>
+                <Text style={[type.body, { color: colors.textMuted }]}>Start a session to log this attempt on {selectedProject?.title}.</Text>
+              </View>
+
+              <Text style={[type.label, { color: colors.textMuted, marginBottom: space.xs }]}>Gym / Location</Text>
+              <TextInput 
+                value={newGymName} 
+                onChangeText={setNewGymName} 
+                style={[type.body, { backgroundColor: colors.cardMuted, borderRadius: radius.md, padding: space.md, marginBottom: space.xl, color: colors.text }]} 
+              />
+
+              <PrimaryButton testID="start-session-log-btn" label="Start & log attempt" onPress={handleCreateSessionAndLog} style={{ marginBottom: space.md }} />
+              <SecondaryButton testID="cancel-start-session-btn" label="Cancel" onPress={() => setIsStartSessionSheetOpen(false)} />
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      {/* Log Climb Sheet */}
+      <LogSheet
+        visible={isLogSheetOpen}
+        onClose={() => {
+          setIsLogSheetOpen(false);
+          setSelectedProject(null);
+        }}
+        onSave={handleSaveLog}
+        initialGrade={selectedProject?.gradeRaw}
+        initialResult={'attempt'}
+      />
     </Screen>
   );
 }

@@ -1,0 +1,45 @@
+appId: com.cruxlog.app # replace with actual
+---
+- clearState
+- launchApp
+
+# Skip directly to projects tab
+- tapOn:
+    id: "projects-tab"
+
+# Create a project first to click on
+- tapOn:
+    id: "add-project-fab"
+- tapOn:
+    id: "project-nickname-input"
+- inputText: "Blue Sloper"
+- hideKeyboard
+- tapOn:
+    id: "grade-chip-V5"
+- tapOn:
+    id: "project-save-btn"
+
+# Now we have a project. Tap 'Log attempt' on its card.
+- tapOn: "Log Attempt"
+
+# Assert the 'No session active' sheet appears (not the blank screen)
+- assertVisible: "Start a session to log this attempt"
+
+# Tap Start & log attempt
+- tapOn:
+    id: "start-session-log-btn"
+
+# Now the Log Climb sheet should be open. The grade should be prefilled.
+- assertVisible: "Log Climb"
+
+# Select Attempt and Save
+- tapOn:
+    id: "log-attempt-chip"
+- tapOn:
+    id: "save-climb-btn"
+
+# Assert we are back on Projects, with updated burns count
+- assertVisible: "Projects"
+# Ideally we assert the burns count changed from 0 to 1, but we can just assert the card is visible
+- assertVisible:
+    id: "project-card-Blue-Sloper"
