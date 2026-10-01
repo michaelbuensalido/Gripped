@@ -78,14 +78,14 @@ export default function AnalyticsScreen() {
     }
 
     try {
-      setOutcomesSummary(getRecentOutcomesSummary(20));
-      setGradeEqualizer(getGradeVolumeEqualizerData(queryTf));
+      setOutcomesSummary(getRecentOutcomesSummary());
+      setGradeEqualizer(getGradeVolumeEqualizerData());
       setPyramidData(getGradePyramidData(queryTf));
       setVolumeTrends(getWeeklyVolumeTrends(queryTf));
       setWallAngleData(getWallAngleBreakdown(queryTf));
       setAngleMasteryData(getAngleMasteryBreakdown(queryTf));
-      setOverview(getAnalyticsOverview(sinceTimestamp));
-      setRecentLogs(getRecentBoulderLogs(6));
+      setOverview(getAnalyticsOverview());
+      setRecentLogs(getRecentBoulderLogs());
       setAcwrData(calculateACWR());
     } catch (err) {
       console.error('Failed to load analytics data:', err);

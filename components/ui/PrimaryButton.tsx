@@ -6,24 +6,27 @@ interface PrimaryButtonProps {
   label: string;
   icon?: React.ReactNode;
   loading?: boolean;
+  disabled?: boolean;
   onPress: () => void;
 }
 
-export function PrimaryButton({ label, icon, loading, onPress }: PrimaryButtonProps) {
+export function PrimaryButton({ label, icon, loading, disabled, onPress }: PrimaryButtonProps) {
   const { colors, radius, type } = useTheme();
+  const isDisabled = disabled || loading;
 
   return (
     <TouchableOpacity
-      onPress={loading ? undefined : onPress}
+      onPress={isDisabled ? undefined : onPress}
       activeOpacity={0.7}
       style={{
-        backgroundColor: colors.accent,
+        backgroundColor: isDisabled ? colors.border : colors.accent,
         height: 52,
         borderRadius: radius.md,
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
         paddingHorizontal: 16,
+        opacity: isDisabled ? 0.5 : 1,
       }}
     >
       {loading ? (

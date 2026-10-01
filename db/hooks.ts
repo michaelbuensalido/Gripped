@@ -4,12 +4,14 @@ import * as Q from './queries';
 
 function useLiveQuery<T>(queryFn: () => T, deps: any[] = []): T {
   const [data, setData] = useState<T>(queryFn);
-  
+
   useEffect(() => {
     setData(queryFn());
-    return dbEvents.subscribe(() => {
+    const unsubscribe = dbEvents.subscribe(() => {
       setData(queryFn());
     });
+    return unsubscribe;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, deps);
 
   return data;
@@ -20,7 +22,7 @@ export function useActiveSession() {
 }
 
 export function useSessionClimbs(sessionId: string) {
-  return useLiveQuery(() => Q.getClimbsForSession(sessionId), [sessionId]);
+  return useLiveQuery(() => (sessionId ? Q.getClimbsForSession(sessionId) : []), [sessionId]);
 }
 
 export function useRecentSessions() {

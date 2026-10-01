@@ -1,20 +1,21 @@
 import React from 'react';
-import { View, Text, TouchableOpacity } from 'react-native';
+import { View, Text, TouchableOpacity, ViewStyle } from 'react-native';
 import { useTheme } from '../../theme/useTheme';
 
-interface SectionHeaderProps {
+export interface SectionHeaderProps {
   title: string;
   action?: {
     label: string;
     onPress: () => void;
   };
+  style?: ViewStyle;
 }
 
-export function SectionHeader({ title, action }: SectionHeaderProps) {
+export function SectionHeader({ title, action, style }: SectionHeaderProps) {
   const { colors, type, space } = useTheme();
 
   return (
-    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: space.md }}>
+    <View style={[{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: space.md }, style]}>
       <Text style={[{ color: colors.textMuted }, type.label]}>{title}</Text>
       {action && (
         <TouchableOpacity onPress={action.onPress}>

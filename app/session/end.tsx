@@ -1,75 +1,135 @@
 import React, { useState } from 'react';
-import { View, TextInput, KeyboardAvoidingView, Platform } from 'react-native';
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+} from 'react-native';
 import { useRouter } from 'expo-router';
 import { Screen } from '../../components/ui/Screen';
 import { PrimaryButton } from '../../components/ui/PrimaryButton';
 import { SecondaryButton } from '../../components/ui/SecondaryButton';
 import { SectionHeader } from '../../components/ui/SectionHeader';
-import { useActiveSession } from '../../db/hooks';
+import { Card } from '../../components/ui/Card';
 import { useTheme } from '../../theme/useTheme';
+import { useActiveSession } from '../../db/hooks';
 import { completeSessionWrapUp } from '../../db/queries';
 import { useSessionStore } from '../../store/sessionStore';
+import { triggerHaptic } from '../../utils/haptics';
+
+const EFFORT_LABELS = ['', 'Easy', 'Moderate', 'Hard', 'Very Hard', 'Max Effort'];
 
 export default function EndSessionScreen() {
   const router = useRouter();
-  const session = useActiveSession();
   const { colors, type, space, radius } = useTheme();
-  
-  const [notes, setNotes] = useState(session?.notes || '');
-  const [rpe, setRpe] = useState(session?.rpe?.toString() || '');
-  const setActiveSessionId = useSessionStore(s => s.setActiveSessionId);
+  const session = useActiveSession();
+  const setActiveSessionId = useSessionStore((s) => s.setActiveSessionId);
+
+  const [notes, setNotes] = useState('');
+  const [effort, setEffort] = useState<number | null>(null);
+
+  if (!session) {
+    router.replace('/');
+    return null;
+  }
 
   const handleFinish = () => {
-    if (session) {
-      completeSessionWrapUp(
-        session.id,
-        Date.now(),
-        session.title || 'Session',
-        notes,
-        session.gymName,
-        parseInt(rpe, 10) || null,
-        session.mediaUris || []
-      );
-    }
+    triggerHaptic('medium');
+    completeSessionWrapUp(
+      session.id,
+      Date.now(),
+      session.title || 'Session',
+      notes,
+      session.gymName,
+      effort,
+      session.mediaUris ?? []
+    );
     setActiveSessionId(null);
-    router.replace('/analytics');
+    router.replace('/session/summary');
   };
 
-  if (!session) return null;
+  const handleCancel = () => {
+    Alert.alert('Go Back', 'Return to the active session?', [
+      { text: 'Stay here', style: 'cancel' },
+      { text: 'Go back', onPress: () => router.back() },
+    ]);
+  };
 
   return (
-    <Screen title="Finish Session" subtitle="How did it go?">
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1, marginTop: space.xl, gap: space.xl }}>
-        
-        <View>
-          <SectionHeader title="Effort (RPE 1-10)" />
-          <TextInput
-            value={rpe}
-            onChangeText={setRpe}
-            keyboardType="number-pad"
-            placeholder="e.g. 8"
-            placeholderTextColor={colors.textMuted}
-            style={[{ backgroundColor: colors.cardMuted, padding: space.md, borderRadius: radius.md, color: colors.text }, type.body]}
-          />
-        </View>
+    <Screen title="End Session" subtitle="How did it go?" scroll={false}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        style={{ flex: 1, marginTop: space.lg }}
+      >
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ gap: space.xl, paddingBottom: 140 }}>
 
-        <View>
-          <SectionHeader title="Session Notes" />
-          <TextInput
-            value={notes}
-            onChangeText={setNotes}
-            multiline
-            placeholder="How did you feel? What did you work on?"
-            placeholderTextColor={colors.textMuted}
-            style={[{ backgroundColor: colors.cardMuted, padding: space.md, borderRadius: radius.md, color: colors.text, minHeight: 120, textAlignVertical: 'top' }, type.body]}
-          />
-        </View>
+          {/* Effort selector */}
+          <View>
+            <SectionHeader title="Perceived Effort (1–5)" />
+            <View style={{ flexDirection: 'row', gap: space.sm }}>
+              {[1, 2, 3, 4, 5].map((n) => {
+                const selected = effort === n;
+                return (
+                  <TouchableOpacity
+                    key={n}
+                    onPress={() => { triggerHaptic('light'); setEffort(n); }}
+                    style={{
+                      flex: 1,
+                      height: 56,
+                      borderRadius: radius.md,
+                      backgroundColor: selected ? colors.accentSoft : colors.cardMuted,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      borderWidth: selected ? 1.5 : 0,
+                      borderColor: selected ? colors.accent : 'transparent',
+                    }}
+                  >
+                    <Text style={[type.heading, { color: selected ? colors.accentText : colors.text }]}>
+                      {n}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+            {effort !== null && (
+              <Text style={[type.caption, { color: colors.textMuted, marginTop: space.sm }]}>
+                {EFFORT_LABELS[effort]}
+              </Text>
+            )}
+          </View>
 
-        <View style={{ gap: space.md, marginTop: space.xl }}>
+          {/* Session notes */}
+          <View>
+            <SectionHeader title="Session Notes (optional)" />
+            <TextInput
+              value={notes}
+              onChangeText={setNotes}
+              multiline
+              placeholder="How did you feel? What clicked today?"
+              placeholderTextColor={colors.textMuted}
+              style={[
+                type.body,
+                {
+                  color: colors.text,
+                  backgroundColor: colors.cardMuted,
+                  borderRadius: radius.md,
+                  padding: space.md,
+                  minHeight: 100,
+                  textAlignVertical: 'top',
+                },
+              ]}
+            />
+          </View>
+        </ScrollView>
+
+        <View style={{ gap: space.md, paddingBottom: space.xl }}>
           <PrimaryButton label="SAVE & FINISH" onPress={handleFinish} />
-          <SecondaryButton label="CANCEL" onPress={() => router.back()} />
+          <SecondaryButton label="Back to Session" onPress={handleCancel} />
         </View>
-        
       </KeyboardAvoidingView>
     </Screen>
   );

@@ -113,6 +113,7 @@ function ConfettiParticle({ particle, progress, originY }: ParticleProps) {
     wobbleAmp,
   } = particle;
 
+  // @ts-ignore – Reanimated v3 + RN 0.74 transform type narrowing conflict
   const animatedStyle = useAnimatedStyle(() => {
     'worklet';
     const p = progress.value;
@@ -150,7 +151,7 @@ function ConfettiParticle({ particle, progress, originY }: ParticleProps) {
         { translateX: transX },
         { translateY: transY },
         { rotate: rot },
-      ],
+      ] as any,
       opacity,
     };
   });
@@ -168,7 +169,7 @@ function ConfettiParticle({ particle, progress, originY }: ParticleProps) {
           marginLeft: -width / 2,
           marginTop: -height / 2,
         },
-        animatedStyle,
+        animatedStyle as any,
       ]}
     />
   );

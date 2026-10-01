@@ -508,6 +508,23 @@ export function updateAttemptFailureReason(attemptId: string, reason: string | n
 
 export type SessionDetailData = any;
 export type GradePyramidRow = any;
+export type GradePyramidDataRow = any;
+export type GradePyramidAllTimeRow = any;
+export type AngleMasteryItem = any;
+export type RecentBoulderLog = any;
+export type HomeStats = any;
+export type SessionSummary = any;
+export type WeeklyCapsuleOverviewData = any;
+export type GradeVolumeEqualizerData = any;
+export type SessionTrendPoint = any;
+export type AnalyticsOverview = any;
+export type RecentOutcomesSummaryData = any;
+export type OutcomeSegmentData = any;
+export type WallAngleBreakdownItem = any;
+export type WeeklyVolumeTrendsData = any;
+export type DisciplineSplitItem = any;
+export type FailureBreakdownData = any;
+export type WeeklyVolumeStat = any;
 
 export function updateSessionConditions(sessionId: string, conditions: string[]): void {}
 
@@ -525,26 +542,54 @@ export function gradeToNumeric(gradeRaw: string): number {
   return parseInt(gradeRaw.replace('V', '')) || 0;
 }
 
-export type SessionSummary = any;
-export type WeeklyCapsuleOverviewData = any;
-export type GradeVolumeEqualizerData = any;
-export type SessionTrendPoint = any;
-export type AnalyticsOverview = any;
-export type RecentOutcomesSummaryData = any;
-export type OutcomeSegmentData = any;
-export type WallAngleBreakdownItem = any;
-export type WeeklyVolumeTrendsData = any;
-
 export function getClimbsForSession(sessionId: string): any[] {
   const db = getDatabase();
   return db.getAllSync(`SELECT * FROM climbs WHERE session_id = ? ORDER BY logged_at DESC`, [sessionId]);
 }
 
+export function getAllSessionSummaries(): any[] {
+  const db = getDatabase();
+  const rows = db.getAllSync<any>(`SELECT * FROM sessions ORDER BY started_at DESC`);
+  return rows.map(mapSession);
+}
 
+export function getAnalyticsOverview(): AnalyticsOverview { return {}; }
+export function getRecentBoulderLogs(): RecentBoulderLog[] { return []; }
+export function getRecentOutcomesSummary(): RecentOutcomesSummaryData { return {}; }
+export function getGradeVolumeEqualizerData(): GradeVolumeEqualizerData { return {}; }
+export function clearAllSessionData(): void {
+  const db = getDatabase();
+  db.runSync(`DELETE FROM climbs`);
+  db.runSync(`DELETE FROM sessions`);
+  db.runSync(`DELETE FROM outbox`);
+  dbEvents.emit();
+}
 
-// Mocks for analytics and logbook
-export function getAllSessionSummaries() { return []; }
-export type DisciplineSplitItem = any;
-export type FailureBreakdownData = any;
-export type GradePyramidRow = any;
-export type WeeklyVolumeStat = any;
+export function getSessionSummary(sessionId: string) {
+  const db = getDatabase();
+  const session = db.getFirstSync<any>(`SELECT * FROM sessions WHERE id = ?`, [sessionId]);
+  const climbs = db.getAllSync<any>(`SELECT * FROM climbs WHERE session_id = ?`, [sessionId]);
+
+  const sends = climbs.filter((c: any) => c.result === 'send' || c.result === 'flash' || c.result === 'top');
+  const flashes = climbs.filter((c: any) => c.result === 'flash');
+  const hardest = sends.reduce((max: any, c: any) => {
+    if (!max || c.grade_index > max.grade_index) return c;
+    return max;
+  }, null);
+
+  const duration = session
+    ? ((session.ended_at || Date.now()) - session.started_at)
+    : 0;
+
+  return {
+    duration,
+    climbs: climbs.length,
+    sends: sends.length,
+    flashes: flashes.length,
+    hardestGradeRaw: hardest?.grade_raw ?? '–',
+    hardestGradeIndex: hardest?.grade_index ?? 0,
+    gymName: session?.gym_name ?? '',
+    startedAt: session?.started_at ?? 0,
+    endedAt: session?.ended_at ?? 0,
+  };
+}

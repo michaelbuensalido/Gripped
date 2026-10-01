@@ -580,13 +580,8 @@ export default function HomeScreen() {
           <TouchableOpacity
             activeOpacity={0.8}
             onPress={() => {
-              if (hasActiveSession && homeStats?.activeSession) {
+              if (activeSession) {
                 router.push('/session/active');
-              } else if (suggestedRoutine) {
-                router.push({
-                  pathname: "/session/new",
-                  params: { routineId: suggestedRoutine.id },
-                });
               } else {
                 router.push("/session/new");
               }
@@ -594,9 +589,9 @@ export default function HomeScreen() {
             style={{
               width: "100%",
               height: 56,
-              backgroundColor: "#19191D",
+              backgroundColor: activeSession ? "#3BA462" : "#19191D",
               borderWidth: 1,
-              borderColor: "#8E7CFF",
+              borderColor: activeSession ? "#1F6B3A" : "#8E7CFF",
               borderRadius: 14,
               flexDirection: "row",
               alignItems: "center",
@@ -614,7 +609,7 @@ export default function HomeScreen() {
                 textTransform: "uppercase",
               }}
             >
-              {hasActiveSession ? "RESUME SESSION" : "START SESSION"}
+              {activeSession ? "RESUME SESSION" : "START SESSION"}
             </Text>
           </TouchableOpacity>
         </View>

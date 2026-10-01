@@ -49,7 +49,8 @@ function TabLayout() {
       <Tabs.Screen name="session/new"          options={{ href: null }} />
       <Tabs.Screen name="session/active"       options={{ href: null }} />
       <Tabs.Screen name="session/index"        options={{ href: null }} />
-      <Tabs.Screen name="session/camera"       options={{ href: null }} />
+      <Tabs.Screen name="session/end"          options={{ href: null }} />
+      <Tabs.Screen name="session/summary"      options={{ href: null }} />
       <Tabs.Screen name="session/detail/[id]"  options={{ href: null }} />
     </Tabs>
   );
