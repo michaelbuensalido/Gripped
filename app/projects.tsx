@@ -9,6 +9,8 @@ import { FilterChip } from '../components/ui/FilterChip';
 import { PrimaryButton } from '../components/ui/PrimaryButton';
 import { useProjects } from '../db/hooks';
 import { useSessionStore } from '../store/sessionStore';
+import { insertProject } from '../db/queries';
+import { v4 as uuid } from 'uuid';
 import { triggerHaptic } from '../utils/haptics';
 import { useTheme } from '../theme/useTheme';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -37,7 +39,7 @@ export default function ProjectsScreen() {
   const projects = useProjects() || [];
   
   const setActiveProjectTarget = useSessionStore((s) => s.setActiveProjectTarget);
-  const createProject = useSessionStore((s) => s.createProject);
+  
   const [activeTab, setActiveTab] = useState<'in_progress' | 'sent'>('in_progress');
 
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -68,8 +70,10 @@ export default function ProjectsScreen() {
       return;
     }
 
+
     const total = parseInt(newTotalMoves, 10);
-    createProject({
+    insertProject({
+      id: uuid(),
       title: newTitle.trim(),
       gradeRaw: newGrade,
       normalizedDifficulty: parseInt(newGrade.replace('V', ''), 10) || 0,
@@ -81,6 +85,7 @@ export default function ProjectsScreen() {
       microBeta: newBeta.trim() || null,
       mediaUri: null,
     });
+
 
     triggerHaptic('medium');
     setIsAddModalOpen(false);
@@ -130,6 +135,7 @@ export default function ProjectsScreen() {
 
       {/* Floating Action Button */}
       <TouchableOpacity 
+        testID="add-project-fab"
         onPress={() => {
           triggerHaptic('light');
           setIsAddModalOpen(true);
@@ -170,13 +176,13 @@ export default function ProjectsScreen() {
 
             <ScrollView showsVerticalScrollIndicator={false}>
               <Text style={[type.label, { color: colors.textMuted, marginBottom: space.xs }]}>Project Name</Text>
-              <TextInput value={newTitle} onChangeText={setNewTitle} placeholder="e.g. Cave Roof V6" placeholderTextColor={colors.textMuted} style={[{ backgroundColor: colors.card, borderRadius: radius.md, padding: space.md, marginBottom: space.lg, color: colors.text }, type.body]} />
+              <TextInput value={newTitle} onChangeText={setNewTitle} placeholder="e.g. Cave Roof V6" testID="project-nickname-input" placeholderTextColor={colors.textMuted} style={[{ backgroundColor: colors.card, borderRadius: radius.md, padding: space.md, marginBottom: space.lg, color: colors.text }, type.body]} />
 
               <Text style={[type.label, { color: colors.textMuted, marginBottom: space.xs }]}>Target Grade</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: space.lg }}>
                 <View style={{ flexDirection: 'row', gap: space.sm }}>
                   {GRADES.map(g => (
-                    <FilterChip key={g} label={g} active={newGrade === g} onPress={() => setNewGrade(g)} />
+                    <View key={g} testID={`grade-chip-${g}`}><FilterChip label={g} active={newGrade === g} onPress={() => setNewGrade(g)} /></View>
                   ))}
                 </View>
               </ScrollView>
@@ -202,6 +208,7 @@ export default function ProjectsScreen() {
               <TextInput value={newBeta} onChangeText={setNewBeta} placeholder="e.g. Heel hook right on move 3" placeholderTextColor={colors.textMuted} multiline numberOfLines={3} style={[{ backgroundColor: colors.card, borderRadius: radius.md, padding: space.md, marginBottom: space.xl, color: colors.text, minHeight: 80 }, type.body]} />
 
               <PrimaryButton 
+                testID="project-save-btn"
                 label="Add Project" 
                 disabled={!newGrade || !newTitle.trim()} 
                 onPress={handleCreateProject} 

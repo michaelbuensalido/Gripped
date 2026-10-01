@@ -10,7 +10,7 @@ export function ProjectCard({ project, onLogAttempt }: { project: any; onLogAtte
   const [expanded, setExpanded] = useState(false);
 
   return (
-    <View style={[{ backgroundColor: colors.card, borderRadius: radius.lg, padding: space.lg, marginBottom: space.lg }, shadow.card]}>
+    <View testID={`project-card-${project.title.replace(/\s+/g, '-')}`} style={[{ backgroundColor: colors.card, borderRadius: radius.lg, padding: space.lg, marginBottom: space.lg }, shadow.card]}>
       {/* Header */}
       <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: space.md, gap: space.sm }}>
         <GradePill gradeIndex={project.normalizedDifficulty} label={project.gradeRaw} />
