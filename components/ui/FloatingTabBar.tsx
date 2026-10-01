@@ -14,7 +14,8 @@ export function FloatingTabBar({ state, descriptors, navigation }: any) {
         {state.routes.map((route: any, index: number) => {
           const { options } = descriptors[route.key];
           
-          if (options.href === null) return null;
+          const visibleTabs = ['index', 'projects', 'analytics', 'logbook'];
+          if (!visibleTabs.includes(route.name)) return null;
 
           const isFocused = state.index === index;
 
