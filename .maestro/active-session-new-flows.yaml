@@ -1,0 +1,53 @@
+appId: com.michaelbuensalido.cruxlog
+---
+- launchApp
+- assertVisible: "START SESSION"
+- tapOn: "START SESSION"
+
+# Check header timer visibility
+- assertVisible: "00:0*"
+
+# Verify Log Climb button is visible and tappable
+- assertVisible: "LOG CLIMB"
+
+# Log a climb via Quick Add
+- tapOn: "V2" # assuming V2 is in recent grades
+
+# Verify climb added (should show in list)
+- assertVisible: "V2"
+
+# Verify rest timer started
+- assertVisible: "02:5*"
+
+# Skip rest timer
+- tapOn:
+    id: "skip-rest-btn"
+
+# Change Result toggle to Flash
+- tapOn: "Flash"
+- tapOn: "V3"
+
+# Verify V3 flash logged and V3 is now visible
+- assertVisible: "V3"
+- assertVisible: "FLASH"
+
+# Verify Insight Cards are visible (since we have >= 2 climbs)
+- assertVisible: "SESSION PYRAMID"
+
+# Scroll insight cards
+- swipe:
+    direction: RIGHT
+    duration: 500
+
+- assertVisible: "RESULT MIX"
+
+# Swipe again
+- swipe:
+    direction: RIGHT
+    duration: 500
+
+- assertVisible: "DIFFICULTY CURVE"
+
+- tapOn: "End"
+- assertVisible: "End Session"
+- tapOn: "End Session"

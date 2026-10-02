@@ -19,6 +19,11 @@ interface SessionState {
   activeProjectTarget: any | null;
   setActiveProjectTarget: (project: any | null) => void;
 
+  restTimerEndTime: number | null;
+  isRestTimerRunning: boolean;
+  setRestTimer: (endTime: number | null, isRunning: boolean) => void;
+  addRestTimerSeconds: (seconds: number) => void;
+
   // Actions
   
   createProject: (data: any) => string;
@@ -46,6 +51,14 @@ export const useSessionStore = create<SessionState>((set, get) => ({
 
   activeProjectTarget: null,
   setActiveProjectTarget: (project) => set({ activeProjectTarget: project }),
+
+  restTimerEndTime: null,
+  isRestTimerRunning: false,
+  setRestTimer: (endTime, isRunning) => set({ restTimerEndTime: endTime, isRestTimerRunning: isRunning }),
+  addRestTimerSeconds: (seconds) => set((state) => {
+    if (!state.restTimerEndTime) return state;
+    return { restTimerEndTime: state.restTimerEndTime + seconds * 1000 };
+  }),
 
   startQuickSession: (gymName = 'Local Gym') => {
     const id = `session_${Date.now()}`;

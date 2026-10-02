@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react';
 import { View, Text, TouchableOpacity, Animated } from 'react-native';
 import { Swipeable } from 'react-native-gesture-handler';
 import { Archive, Plus } from 'lucide-react-native';
+import { useRouter } from 'expo-router';
 import { useTheme } from '../../theme/useTheme';
 import { GradePill } from './GradePill';
 import { Chip } from './Chip';
@@ -40,18 +41,16 @@ export function ProjectCard({
   project, 
   onLogAttempt,
   onArchive,
-  variant = 'default',
   style,
 }: { 
   project: any; 
   onLogAttempt?: () => void;
   onArchive?: () => void;
-  variant?: 'default' | 'compact';
   style?: any;
 }) {
   const { colors, space, radius, type, shadow } = useTheme();
-  const [expanded, setExpanded] = useState(false);
   const swipeableRef = useRef<Swipeable>(null);
+  const router = useRouter();
 
   const renderLeftActions = (progress: Animated.AnimatedInterpolation<number>, dragX: Animated.AnimatedInterpolation<number>) => {
     const opacity = dragX.interpolate({
@@ -68,7 +67,7 @@ export function ProjectCard({
           justifyContent: 'center',
           alignItems: 'center',
           borderRadius: radius.lg,
-          marginBottom: space.lg,
+          marginBottom: space.md,
         }}
         onPress={() => {
           swipeableRef.current?.close();
@@ -99,7 +98,7 @@ export function ProjectCard({
           justifyContent: 'center',
           alignItems: 'center',
           borderRadius: radius.lg,
-          marginBottom: space.lg,
+          marginBottom: space.md,
           marginLeft: space.sm,
         }}
         onPress={() => {
@@ -116,93 +115,79 @@ export function ProjectCard({
     );
   };
 
+  // Format Line 2: Gym · Angle · Hold
+  const tags = [];
+  if (project.gymName) tags.push(project.gymName);
+  if (project.wallAngle) tags.push(project.wallAngle.charAt(0).toUpperCase() + project.wallAngle.slice(1));
+  if (project.holdType) tags.push(project.holdType.charAt(0).toUpperCase() + project.holdType.slice(1));
+  const subtitle = tags.join(' · ');
+
+  // Informative status chip
+  let statusChip = null;
+  if (project.statusChip && project.statusChip !== 'Not started') {
+    statusChip = project.statusChip;
+  }
+
   const cardContent = (
-    <View testID={`project-card-${project.title.replace(/\s+/g, '-')}`} style={[{ backgroundColor: colors.card, borderRadius: radius.lg, padding: variant === 'compact' ? space.md : space.lg, marginBottom: variant === 'compact' ? 0 : space.lg }, shadow.card, style]}>
-      {/* Header */}
-      <View style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: space.md, gap: space.md }}>
+    <TouchableOpacity
+      activeOpacity={0.7}
+      onPress={() => router.push(`/project/${project.id}` as any)}
+      style={[{ backgroundColor: colors.card, borderRadius: radius.lg, padding: space.md, marginBottom: space.md }, shadow.card, style]}
+      testID={`project-card-${project.title.replace(/\\s+/g, '-')}`}
+    >
+      {/* Row 1 */}
+      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: space.sm, gap: space.md }}>
         <GradePill gradeIndex={project.normalizedDifficulty ?? project.grade_index ?? 0} label={project.gradeRaw ?? project.grade_raw ?? '—'} />
         <View style={{ flex: 1 }}>
           <Text style={[type.heading, { color: colors.text }]} numberOfLines={1}>
             {project.title}
           </Text>
-          {project.gymName && (
-            <Text style={[type.caption, { color: colors.textMuted, marginTop: 2 }]} numberOfLines={1}>
-              {project.gymName}
-            </Text>
-          )}
         </View>
-        {variant !== 'compact' && project.statusChip && (
+        {statusChip && (
           <View style={{ backgroundColor: colors.cardMuted, paddingHorizontal: 6, paddingVertical: 2, borderRadius: radius.sm }}>
-            <Text style={[type.caption, { color: colors.text }]}>{project.statusChip}</Text>
+            <Text style={[type.caption, { color: colors.text }]}>{statusChip}</Text>
           </View>
         )}
       </View>
 
-      {variant === 'compact' ? (
-        <View style={{ flexDirection: 'row', gap: space.lg }}>
-          <View>
-            <Text style={[type.caption, { color: colors.textMuted, marginBottom: 2 }]}>BURNS</Text>
-            <Text style={[type.heading, { color: colors.text, fontSize: 14 }]}>{project.attempts || 0}</Text>
+      {/* Row 2 */}
+      {subtitle ? (
+        <Text style={[type.caption, { color: colors.textMuted, marginBottom: space.md }]} numberOfLines={1}>
+          {subtitle}
+        </Text>
+      ) : <View style={{ marginBottom: space.md }} />}
+
+      {/* Row 3 */}
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+        {project.attempts > 0 ? (
+          <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, gap: space.sm }}>
+            <Text style={[type.caption, { color: colors.textMuted }]} numberOfLines={1}>
+              {`${project.attempts} burns`}
+              {project.highWaterMarkMoves ? ` · ${project.highWaterMarkMoves} moves linked` : ''}
+              {project.lastTriedAt ? ` · ${getRelativeTime(project.lastTriedAt)}` : ''}
+            </Text>
           </View>
-          {(project.highWaterMarkMoves ?? project.high_water_mark_moves) ? (
-            <View>
-              <Text style={[type.caption, { color: colors.textMuted, marginBottom: 2 }]}>LINKED</Text>
-              <Text style={[type.heading, { color: colors.text, fontSize: 14 }]}>
-                {project.highWaterMarkMoves ?? project.high_water_mark_moves}
-              </Text>
-            </View>
-          ) : null}
-        </View>
-      ) : (
-        <>
-          {/* Tags */}
-          {(project.wallAngle || project.holdType) && (
-            <View style={{ flexDirection: 'row', gap: space.sm, marginBottom: space.md }}>
-              {project.wallAngle && <Chip label={project.wallAngle} />}
-              {project.holdType && <Chip label={project.holdType} />}
-            </View>
+        ) : (
+          <Text style={[type.caption, { color: colors.textMuted, flex: 1 }]}>No attempts yet</Text>
+        )}
+
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.md }}>
+          {project.burnsPerSession && project.burnsPerSession.length > 0 && (
+            <Sparkline data={project.burnsPerSession} />
           )}
-
-          {/* Stats */}
-          <View style={{ flexDirection: 'row', gap: space.lg, marginBottom: space.md, alignItems: 'flex-end' }}>
-            <View>
-              <Text style={[type.label, { color: colors.textMuted, marginBottom: 2 }]}>BURNS</Text>
-              <Text style={[type.heading, { color: colors.text }]}>{project.attempts || 0}</Text>
-            </View>
-            <View>
-              <Text style={[type.label, { color: colors.textMuted, marginBottom: 2 }]}>HIGH-WATER</Text>
-              <Text style={[type.heading, { color: colors.text }]}>
-                {project.highWaterMarkMoves ? `${project.highWaterMarkMoves} moves` : 'None'}
-              </Text>
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={[type.label, { color: colors.textMuted, marginBottom: 2 }]}>LAST TRIED</Text>
-              <Text style={[type.body, { color: colors.text }]}>{getRelativeTime(project.lastTriedAt)}</Text>
-            </View>
-            {project.burnsPerSession && project.burnsPerSession.length > 0 && (
-              <Sparkline data={project.burnsPerSession} />
-            )}
-          </View>
-
-          {/* Notes */}
-          {project.microBeta && (
-            <TouchableOpacity onPress={() => setExpanded(!expanded)} activeOpacity={0.7} style={{ marginBottom: space.md }}>
-              <Text style={[type.body, { color: colors.textMuted }]} numberOfLines={expanded ? undefined : 2}>
-                {project.microBeta}
-              </Text>
+          {onLogAttempt && (
+            <TouchableOpacity
+              onPress={onLogAttempt}
+              style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingVertical: 4, paddingHorizontal: 8, backgroundColor: colors.accentSoft, borderRadius: radius.sm }}
+            >
+              <Plus size={14} color={colors.accentText} />
+              <Text style={[type.label, { color: colors.accentText, marginTop: 1 }]}>Log attempt</Text>
             </TouchableOpacity>
           )}
-
-          {/* Action */}
-          <View style={{ alignItems: 'flex-start', marginTop: space.sm }}>
-            <SecondaryButton label="Log Attempt" onPress={onLogAttempt!} />
-          </View>
-        </>
-      )}
-    </View>
+        </View>
+      </View>
+    </TouchableOpacity>
   );
-
-  if (variant === 'compact') return cardContent;
 
   return (
     <Swipeable 

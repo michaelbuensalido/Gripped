@@ -578,7 +578,6 @@ export default function SessionDetailScreen({
                     ...p,
                     statusChip: p.isToppedInSession ? 'Sent' : p.statusChip,
                   }}
-                  variant="compact"
                 />
               ))}
             </View>

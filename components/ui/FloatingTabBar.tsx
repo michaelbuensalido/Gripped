@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Keyboard, Platform, Animated } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { useTheme } from '../../theme/useTheme';
-import { Home, Plus, TrendingUp, User, Target, Play } from 'lucide-react-native';
+import { Home, Plus, TrendingUp, User, Target, Play, BookOpen } from 'lucide-react-native';
 import { useSessionActions } from '../../hooks/useSessionActions';
 import { useSessionStore } from '../../store/sessionStore';
 import { StartSessionSheet } from '../session/StartSessionSheet';
@@ -143,7 +143,7 @@ export function FloatingTabBar({ state, descriptors, navigation }: any) {
     return () => { showSub.remove(); hideSub.remove(); };
   }, []);
 
-  if (keyboardVisible || state.routes[state.index].name.startsWith('session/')) return null;
+  if (keyboardVisible || state.routes[state.index].name.startsWith('session')) return null;
 
     const routes = state.routes.filter((r: any) => visibleTabs.includes(r.name));
 
@@ -169,7 +169,7 @@ export function FloatingTabBar({ state, descriptors, navigation }: any) {
             if (route.name === 'index') { IconComponent = Home; label = "Home"; }
             else if (route.name === 'projects') { IconComponent = Target; label = "Projects"; }
             else if (route.name === 'analytics') { IconComponent = TrendingUp; label = "Progress"; }
-            else if (route.name === 'profile') { IconComponent = User; label = "Profile"; }
+            else if (route.name === 'profile') { IconComponent = BookOpen; label = "Logbook"; }
 
             const tabElement = (
               <TouchableOpacity

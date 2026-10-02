@@ -1324,3 +1324,279 @@ export function getProjectsForSession(sessionId: string): any[] {
   }));
 }
 
+
+export interface LogbookFilters {
+  viewMode: 'list' | 'calendar';
+  period: 'week' | 'month' | '3months' | 'year' | 'all';
+  gym: string | null;
+  minGradeIndex: number | null;
+  searchQuery: string | null;
+  sort: 'newest' | 'climbs' | 'hardest';
+  showEmpty: boolean;
+  selectedDate: string | null; // YYYY-MM-DD
+}
+
+export function getLogbookSummary(filters: LogbookFilters, nowMs: number = Date.now()) {
+  const db = getDatabase();
+  
+  // Build period clause
+  let since = 0;
+  const now = new Date(nowMs);
+  if (filters.period === 'week') {
+    const day = now.getDay() || 7;
+    since = new Date(now.getFullYear(), now.getMonth(), now.getDate() - day + 1).getTime();
+  } else if (filters.period === 'month') {
+    since = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
+  } else if (filters.period === '3months') {
+    since = new Date(now.getFullYear(), now.getMonth() - 2, 1).getTime();
+  } else if (filters.period === 'year') {
+    since = new Date(now.getFullYear(), 0, 1).getTime();
+  }
+
+  // Previous period
+  let prevStart = 0;
+  let prevEnd = since - 1;
+  if (filters.period === 'week') {
+    prevStart = since - 7 * 24 * 60 * 60 * 1000;
+  } else if (filters.period === 'month') {
+    const p = new Date(since);
+    p.setMonth(p.getMonth() - 1);
+    prevStart = p.getTime();
+  } else if (filters.period === '3months') {
+    const p = new Date(since);
+    p.setMonth(p.getMonth() - 3);
+    prevStart = p.getTime();
+  } else if (filters.period === 'year') {
+    const p = new Date(since);
+    p.setFullYear(p.getFullYear() - 1);
+    prevStart = p.getTime();
+  } else {
+    prevStart = 0;
+    prevEnd = 0; // no previous for 'all'
+  }
+
+  // Safely exclude active session
+  const activeSessionId = db.getFirstSync<any>(`SELECT id FROM sessions WHERE deleted_at IS NULL AND ended_at IS NULL ORDER BY started_at DESC LIMIT 1`)?.id;
+
+  // Aggregate current period
+  let currentSql = `
+    SELECT 
+      COUNT(DISTINCT s.id) as sessions,
+      COUNT(c.id) as climbs,
+      SUM(CASE WHEN c.result = 'send' OR c.result = 'top' OR c.result = 'flash' THEN 1 ELSE 0 END) as sends,
+      SUM(IFNULL(s.ended_at, s.started_at) - s.started_at) as durationMs
+    FROM sessions s
+    LEFT JOIN climbs c ON c.session_id = s.id AND c.deleted_at IS NULL
+    WHERE s.deleted_at IS NULL AND s.started_at >= ?
+  `;
+  const currentArgs: any[] = [since];
+
+  if (activeSessionId) {
+    currentSql += ` AND s.id != ?`;
+    currentArgs.push(activeSessionId);
+  }
+
+  if (!filters.showEmpty) {
+    currentSql += ` AND EXISTS (SELECT 1 FROM climbs c2 WHERE c2.session_id = s.id AND c2.deleted_at IS NULL)`;
+  }
+  
+  if (filters.gym) {
+    currentSql += ` AND s.gym_name = ?`;
+    currentArgs.push(filters.gym);
+  }
+
+  const currentRow = db.getFirstSync<any>(currentSql, currentArgs);
+  
+  let prevSessions = 0;
+  if (prevStart > 0) {
+    let prevSql = `
+      SELECT COUNT(DISTINCT s.id) as sessions
+      FROM sessions s
+      WHERE s.deleted_at IS NULL AND s.started_at >= ? AND s.started_at <= ?
+    `;
+    const prevArgs: any[] = [prevStart, prevEnd];
+    
+    if (activeSessionId) {
+      prevSql += ` AND s.id != ?`;
+      prevArgs.push(activeSessionId);
+    }
+
+    if (!filters.showEmpty) {
+      prevSql += ` AND EXISTS (SELECT 1 FROM climbs c2 WHERE c2.session_id = s.id AND c2.deleted_at IS NULL)`;
+    }
+    if (filters.gym) {
+      prevSql += ` AND s.gym_name = ?`;
+      prevArgs.push(filters.gym);
+    }
+    const prevRow = db.getFirstSync<any>(prevSql, prevArgs);
+    prevSessions = prevRow?.sessions || 0;
+  }
+
+  return {
+    sessions: currentRow?.sessions || 0,
+    climbs: currentRow?.climbs || 0,
+    sends: currentRow?.sends || 0,
+    durationMs: currentRow?.durationMs || 0,
+    prevSessions,
+  };
+}
+
+export function getLogbookHistory(filters: LogbookFilters, nowMs: number = Date.now()) {
+  const db = getDatabase();
+  
+  const activeSessionId = db.getFirstSync<any>(`SELECT id FROM sessions WHERE deleted_at IS NULL AND ended_at IS NULL ORDER BY started_at DESC LIMIT 1`)?.id;
+  
+  // Step 1: Base session query with aggregate counts per session
+  let sql = `
+    SELECT 
+      s.id, s.gym_name as gymName, s.started_at as startTime, s.ended_at as endTime, s.notes, s.effort,
+      COUNT(c.id) as climbsCount,
+      SUM(CASE WHEN c.result = 'send' OR c.result = 'top' OR c.result = 'flash' THEN 1 ELSE 0 END) as sendsCount,
+      SUM(CASE WHEN c.result = 'flash' THEN 1 ELSE 0 END) as flashesCount,
+      MAX(c.grade_index) as hardestGradeIndex,
+      GROUP_CONCAT(c.grade_raw || '|' || c.grade_index || '|' || c.result || '|' || IFNULL(c.project_id, '')) as climbData
+    FROM sessions s
+    LEFT JOIN climbs c ON c.session_id = s.id AND c.deleted_at IS NULL
+    WHERE s.deleted_at IS NULL 
+  `;
+  
+  const args: any[] = [];
+  
+  if (activeSessionId) {
+    sql += ` AND s.id != ?`;
+    args.push(activeSessionId);
+  }
+
+  // Filters
+  let since = 0;
+  const now = new Date(nowMs);
+  if (filters.period === 'week') {
+    const day = now.getDay() || 7;
+    since = new Date(now.getFullYear(), now.getMonth(), now.getDate() - day + 1).getTime();
+  } else if (filters.period === 'month') {
+    since = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
+  } else if (filters.period === '3months') {
+    since = new Date(now.getFullYear(), now.getMonth() - 2, 1).getTime();
+  } else if (filters.period === 'year') {
+    since = new Date(now.getFullYear(), 0, 1).getTime();
+  }
+  if (since > 0) {
+    sql += ` AND s.started_at >= ?`;
+    args.push(since);
+  }
+  
+  if (filters.gym) {
+    sql += ` AND s.gym_name = ?`;
+    args.push(filters.gym);
+  }
+  
+  if (filters.searchQuery) {
+    sql += ` AND (IFNULL(s.notes, '') LIKE ? OR IFNULL(s.gym_name, '') LIKE ?)`;
+    const search = `%${filters.searchQuery}%`;
+    args.push(search, search);
+  }
+  
+  if (filters.selectedDate) {
+    // selectedDate is YYYY-MM-DD local time, filter sessions that fall on this day
+    const [y, m, d] = filters.selectedDate.split('-').map(Number);
+    const startOfDay = new Date(y, m - 1, d).getTime();
+    const endOfDay = startOfDay + 24 * 60 * 60 * 1000;
+    sql += ` AND s.started_at >= ? AND s.started_at < ?`;
+    args.push(startOfDay, endOfDay);
+  }
+
+  sql += ` GROUP BY s.id`;
+  
+  // HAVING clause for climb count and min grade
+  const havingClauses = [];
+  if (!filters.showEmpty) {
+    havingClauses.push(`COUNT(c.id) > 0`);
+  }
+  if (filters.minGradeIndex !== null) {
+    havingClauses.push(`MAX(c.grade_index) >= ?`);
+    args.push(filters.minGradeIndex);
+  }
+  if (havingClauses.length > 0) {
+    sql += ` HAVING ` + havingClauses.join(' AND ');
+  }
+
+  // Sort
+  if (filters.sort === 'newest') {
+    sql += ` ORDER BY s.started_at DESC`;
+  } else if (filters.sort === 'climbs') {
+    sql += ` ORDER BY COUNT(c.id) DESC, s.started_at DESC`;
+  } else if (filters.sort === 'hardest') {
+    sql += ` ORDER BY MAX(c.grade_index) DESC, s.started_at DESC`;
+  }
+
+  const rows = db.getAllSync<any>(sql, args);
+  
+  // Post-process to group by month and compute badges
+  const monthGroups = new Map<string, { monthLabel: string, data: any[], totalClimbs: number, totalSends: number }>();
+  
+  let previousMaxClimbs = 0;
+  let previousHighestGradeIndex = 0;
+  
+  // We need all-time historical bests to compute "Personal best" accurately, 
+  // but for simplicity and performance in the app, we compute it relative to the fetched list,
+  // or we run a separate fast query to get all-time maxes per session. 
+  // Actually, to get TRUE personal best, we'd need to know the highest grade BEFORE each session.
+  // We can just query `SELECT session_id, MAX(grade_index) FROM climbs GROUP BY session_id ORDER BY logged_at`
+  
+  for (const row of [...rows].sort((a,b) => a.startTime - b.startTime)) {
+    const isPB = row.hardestGradeIndex > previousHighestGradeIndex && previousHighestGradeIndex > 0;
+    const isBiggest = row.climbsCount > previousMaxClimbs && previousMaxClimbs > 0;
+    const isFlashDay = row.flashesCount >= 2;
+    
+    let isProjectSent = false;
+    let hardestLabel = '–';
+    let mix = { flash: 0, top: 0, attempt: 0 };
+    
+    if (row.climbData) {
+      const climbs = row.climbData.split(',').map((cd: string) => {
+        const p = cd.split('|');
+        return { gradeRaw: p[0], gradeIndex: Number(p[1]), result: p[2], projectId: p[3] };
+      });
+      
+      for (const c of climbs) {
+        if (c.projectId !== '' && (c.result === 'send' || c.result === 'top' || c.result === 'flash')) {
+          isProjectSent = true;
+        }
+        if (c.result === 'flash') mix.flash++;
+        else if (c.result === 'send' || c.result === 'top') mix.top++;
+        else mix.attempt++;
+      }
+      
+      const hardest = climbs.find((c: any) => c.gradeIndex === row.hardestGradeIndex && (c.result === 'send' || c.result === 'top' || c.result === 'flash'));
+      if (hardest) hardestLabel = hardest.gradeRaw;
+    }
+    
+    row.badges = [];
+    if (isBiggest) row.badges.push({ id: 'biggest', label: 'Biggest session', color: 'accent' });
+    if (isFlashDay) row.badges.push({ id: 'flash_day', label: 'Flash day', color: 'flash' });
+    if (isProjectSent) row.badges.push({ id: 'project_sent', label: 'Project sent', color: 'success' });
+    if (isPB) row.badges.push({ id: 'personal_best', label: 'Personal best', color: 'accent' });
+    
+    row.hardestLabel = hardestLabel;
+    row.resultMix = mix;
+    
+    // Update watermarks
+    if (row.hardestGradeIndex > previousHighestGradeIndex) previousHighestGradeIndex = row.hardestGradeIndex;
+    if (row.climbsCount > previousMaxClimbs) previousMaxClimbs = row.climbsCount;
+  }
+
+  // Grouping by Month (descending)
+  for (const row of rows) {
+    const d = new Date(row.startTime);
+    const monthLabel = d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+    if (!monthGroups.has(monthLabel)) {
+      monthGroups.set(monthLabel, { monthLabel, data: [], totalClimbs: 0, totalSends: 0 });
+    }
+    const group = monthGroups.get(monthLabel)!;
+    group.data.push(row);
+    group.totalClimbs += row.climbsCount;
+    group.totalSends += row.sendsCount;
+  }
+  
+  return Array.from(monthGroups.values());
+}

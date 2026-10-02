@@ -87,3 +87,10 @@ export function useProject(id: string) {
 export function useProjectHistory(id: string) {
   return useLiveQuery(() => Q.getProjectHistory(id), [id]);
 }
+export function useLogbookSummary(filters: Q.LogbookFilters) {
+  return useLiveQuery(() => Q.getLogbookSummary(filters), [JSON.stringify(filters)]);
+}
+
+export function useLogbookHistory(filters: Q.LogbookFilters) {
+  return useLiveQuery(() => Q.getLogbookHistory(filters), [JSON.stringify(filters)]);
+}

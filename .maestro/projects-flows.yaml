@@ -1,0 +1,36 @@
+appId: com.michaelbuensalido.cruxlog
+---
+- launchApp:
+    clearState: true
+- tapOn: "Projects"
+
+# Verify caption counts
+- assertVisible: ".*active · .*sent · .*burns"
+
+# Change sort
+- tapOn: "Sort: Recently tried"
+- tapOn: "Hardest"
+- assertVisible: "Sort: Hardest"
+
+# Open filters
+- tapOn: "Filter projects"
+- tapOn: "Overhang"
+- tapOn: "Apply Filters"
+
+# Open a project (if it exists) or verify empty state
+- runFlow:
+    when:
+      visible: "No matching projects"
+    commands:
+      - tapOn: "Clear filters"
+
+# Try logging an attempt from a card
+- tapOn: "Log attempt"
+- assertVisible: "Use active session."
+- tapOn: "OK"
+
+# Switch to Sent
+- tapOn: "Sent .*"
+
+# Open a project (will tap the first one visible)
+- tapOn: "project-card-.*"
