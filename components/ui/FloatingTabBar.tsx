@@ -11,6 +11,7 @@ import { triggerHaptic } from '../../utils/haptics';
 
 function formatDuration(ms: number) {
   const totalSecs = Math.floor(ms / 1000);
+  if (totalSecs < 60) return '<1 min';
   const h = Math.floor(totalSecs / 3600);
   const m = Math.floor((totalSecs % 3600) / 60);
   const s = totalSecs % 60;

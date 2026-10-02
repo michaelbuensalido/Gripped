@@ -1,0 +1,32 @@
+appId: com.cruxlog
+---
+- clearState
+- launchApp
+
+# Finish a session flow
+- tapOn: "Start session"
+- assertVisible: "SESSION IN PROGRESS"
+- tapOn: "Resume session"
+
+# Tap Quick Add to log a climb
+- tapOn: "V2"
+- assertVisible: "Climb logged"
+
+# End Session
+- tapOn: "End"
+- tapOn: "FINISH SESSION"
+
+# Back on Home
+- assertVisible: "Recent Sessions"
+- assertVisible: "1 climb"
+
+# Start another session and Discard
+- tapOn: "Start session"
+- tapOn: "Resume session"
+- tapOn: "V2"
+- tapOn: "More options" # The ... menu
+- tapOn: "Discard session"
+- tapOn: "Discard session" # Alert confirmation
+
+# Verify we're back and things didn't break
+- assertVisible: "Recent Sessions"

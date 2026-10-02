@@ -10,11 +10,13 @@ export interface SessionRowProps {
   gymName: string;
   startedAt: number;
   durationMs: number;
+  climbs?: number;
+  sends?: number;
   hardestGrade?: string;
   isLast?: boolean;
 }
 
-export function SessionRow({ id, gymName, startedAt, durationMs, hardestGrade, isLast }: SessionRowProps) {
+export function SessionRow({ id, gymName, startedAt, durationMs, climbs, sends, hardestGrade, isLast }: SessionRowProps) {
   const router = useRouter();
   const { colors, type, space } = useTheme();
 
@@ -46,7 +48,7 @@ export function SessionRow({ id, gymName, startedAt, durationMs, hardestGrade, i
           {gymName || 'Session'}
         </Text>
         <Text style={[type.caption, { color: colors.textMuted }]}>
-          {dateStr} • {durationStr}
+          {dateStr} • {durationStr}{climbs !== undefined ? ` • ${climbs} climb${climbs !== 1 ? 's' : ''}` : ''}{sends !== undefined ? ` • ${sends} send${sends !== 1 ? 's' : ''}` : ''}
         </Text>
       </View>
 

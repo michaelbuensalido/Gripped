@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Animated, Dimensions } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { Settings as SettingsIcon, Plus, PlayCircle } from 'lucide-react-native';
+import { Settings as SettingsIcon, Plus, PlayCircle, Trophy } from 'lucide-react-native';
 import { Screen } from '../components/ui/Screen';
 import { Card } from '../components/ui/Card';
 import { HeroCard } from '../components/ui/HeroCard';
+import { ProjectCard } from '../components/ui/ProjectCard';
 import { PrimaryButton } from '../components/ui/PrimaryButton';
 import { StatTile } from '../components/ui/StatTile';
 import { SectionHeader } from '../components/ui/SectionHeader';
@@ -21,6 +23,7 @@ import { triggerHaptic } from '../utils/haptics';
 
 function formatDuration(ms: number) {
   const totalSecs = Math.floor(ms / 1000);
+  if (totalSecs < 60) return '<1 min';
   const h = Math.floor(totalSecs / 3600);
   const m = Math.floor((totalSecs % 3600) / 60);
   const s = totalSecs % 60;
@@ -36,6 +39,8 @@ export default function HomeScreen() {
   const { startOrResume } = useSessionActions();
   const [isStartSheetOpen, setIsStartSheetOpen] = useState(false);
   const [elapsed, setElapsed] = useState(0);
+  const insets = useSafeAreaInsets();
+  const scrollY = React.useRef(new Animated.Value(0)).current;
 
   // Live timer for active session
   useEffect(() => {
@@ -60,30 +65,36 @@ export default function HomeScreen() {
   const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
 
   return (
-    <Screen scroll>
+    <View style={{ flex: 1, backgroundColor: colors.bg }}>
+      <Animated.ScrollView
+        onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], { useNativeDriver: true })}
+        scrollEventThrottle={16}
+        contentContainerStyle={{ paddingTop: Math.max(insets.top, space.xxl), paddingHorizontal: space.lg }}
+      >
       {/* 1. Header */}
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: space.xl }}>
-        <View style={{ flex: 1 }}>
+        <View style={{ flex: 1, alignItems: 'flex-start' }}>
           <Text style={[type.body, { color: colors.textMuted, marginBottom: space.xs }]}>{greeting}</Text>
           <Text style={[type.display, { color: colors.text }]}>Welcome back</Text>
-        </View>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.md, marginTop: space.sm }}>
           {data.hardest30d && (
-            <GradePill gradeIndex={data.hardest30d.gradeIndex} label={data.hardest30d.gradeRaw} />
+            <View style={{ marginTop: space.sm }}>
+               <GradePill gradeIndex={data.hardest30d.gradeIndex} label={`Best ${data.hardest30d.gradeRaw}`} />
+            </View>
           )}
-          <TouchableOpacity
-            onPress={() => router.push('/settings')}
-            style={{
-              padding: space.sm,
-              backgroundColor: colors.card,
-              borderRadius: radius.md,
-              borderWidth: 1,
-              borderColor: colors.border,
-            }}
-          >
-            <SettingsIcon size={20} color={colors.text} />
-          </TouchableOpacity>
         </View>
+        <TouchableOpacity
+          onPress={() => router.push('/settings')}
+          style={{
+            padding: space.sm,
+            backgroundColor: colors.card,
+            borderRadius: radius.md,
+            borderWidth: 1,
+            borderColor: colors.border,
+            marginTop: space.sm
+          }}
+        >
+          <SettingsIcon size={20} color={colors.text} />
+        </TouchableOpacity>
       </View>
 
       {/* 2. HeroCard — the ONE primary action */}
@@ -210,7 +221,7 @@ export default function HomeScreen() {
             <View style={{ marginBottom: space.xl }}>
               <VolumeChart
                 data={data.weeklyVolume}
-                changePercent={data.weeklyVolumeChange}
+                
                 onPress={() => router.push('/analytics')}
               />
             </View>
@@ -229,7 +240,7 @@ export default function HomeScreen() {
                 gap: space.md,
               }}
             >
-              <Text style={{ fontSize: 20 }}>🎉</Text>
+              <Trophy size={20} color={colors.accentText} />
               <Text style={[type.heading, { color: colors.accentText, flex: 1 }]}>
                 New best: {data.personalBest.gradeRaw},{' '}
                 {data.personalBest.daysAgo === 0
@@ -253,6 +264,8 @@ export default function HomeScreen() {
                     gymName={s.gymName}
                     startedAt={s.startTime}
                     durationMs={s.durationMs}
+                    climbs={s.climbs}
+                    sends={s.sends}
                     hardestGrade={s.hardestGradeRaw}
                     isLast={i === data.recentSessions.length - 1}
                   />
@@ -275,6 +288,14 @@ export default function HomeScreen() {
           startOrResume(gymName);
         }}
       />
-    </Screen>
+      </Animated.ScrollView>
+      <Animated.View style={{
+        position: 'absolute', top: 0, left: 0, right: 0, height: insets.top,
+        backgroundColor: colors.bg,
+        opacity: scrollY.interpolate({ inputRange: [0, 40], outputRange: [0, 1], extrapolate: 'clamp' }),
+        borderBottomWidth: 1,
+        borderBottomColor: colors.border
+      }} pointerEvents="none" />
+    </View>
   );
 }

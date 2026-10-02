@@ -870,8 +870,9 @@ export function getHomeSummary(): HomeSummary {
   }
   
   const thisWeekClimbs = db.getAllSync<any>(`
-    SELECT * FROM climbs 
-    WHERE logged_at >= ? AND logged_at <= ? AND deleted_at IS NULL
+    SELECT c.* FROM climbs c
+    JOIN sessions s ON c.session_id = s.id
+    WHERE c.logged_at >= ? AND c.logged_at <= ? AND c.deleted_at IS NULL AND s.deleted_at IS NULL
   `, [startOfWeekMs, endOfWeekMs]);
   
   climbsThisWeek = thisWeekClimbs.length;
@@ -945,31 +946,43 @@ export function getHomeSummary(): HomeSummary {
   
   const thirtyDaysAgo = nowMs - 30 * 24 * 60 * 60 * 1000;
   const hardest30dRow = db.getFirstSync<any>(`
-    SELECT grade_raw, grade_index FROM climbs 
-    WHERE logged_at >= ? AND deleted_at IS NULL AND (result = 'send' OR result = 'top' OR result = 'flash')
+    SELECT c.grade_raw, c.grade_index FROM climbs c
+    JOIN sessions s ON c.session_id = s.id
+    WHERE c.logged_at >= ? AND c.deleted_at IS NULL AND s.deleted_at IS NULL AND (c.result = 'send' OR c.result = 'top' OR c.result = 'flash')
     ORDER BY grade_index DESC LIMIT 1
   `, [thirtyDaysAgo]);
   
   const hardest30d = hardest30dRow ? { gradeRaw: hardest30dRow.grade_raw, gradeIndex: hardest30dRow.grade_index } : null;
   
   const allTimeHardestRow = db.getFirstSync<any>(`
-    SELECT grade_raw, grade_index FROM climbs 
-    WHERE deleted_at IS NULL AND (result = 'send' OR result = 'top' OR result = 'flash')
+    SELECT c.grade_raw, c.grade_index FROM climbs c
+    JOIN sessions s ON c.session_id = s.id
+    WHERE c.deleted_at IS NULL AND s.deleted_at IS NULL AND (c.result = 'send' OR c.result = 'top' OR c.result = 'flash')
     ORDER BY grade_index DESC LIMIT 1
   `);
   let personalBest = null;
   if (allTimeHardestRow) {
     const hardestGrade = allTimeHardestRow.grade_index;
     const firstTimeRow = db.getFirstSync<any>(`
-      SELECT logged_at FROM climbs 
-      WHERE grade_index = ? AND deleted_at IS NULL AND (result = 'send' OR result = 'top' OR result = 'flash')
+      SELECT c.logged_at FROM climbs c
+      JOIN sessions s ON c.session_id = s.id
+      WHERE c.grade_index = ? AND c.deleted_at IS NULL AND s.deleted_at IS NULL AND (c.result = 'send' OR c.result = 'top' OR c.result = 'flash')
       ORDER BY logged_at ASC LIMIT 1
     `, [hardestGrade]);
     
     if (firstTimeRow) {
       const daysAgo = Math.floor((nowMs - firstTimeRow.logged_at) / (1000 * 60 * 60 * 24));
       if (daysAgo <= 14) {
-        personalBest = { gradeRaw: allTimeHardestRow.grade_raw, daysAgo };
+        // Check if there was a previous best to beat (i.e., any climb logged before this one)
+        const previousClimbs = db.getFirstSync<any>(`
+          SELECT COUNT(*) as c FROM climbs c
+          JOIN sessions s ON c.session_id = s.id
+          WHERE c.logged_at < ? AND c.deleted_at IS NULL AND s.deleted_at IS NULL
+        `, [firstTimeRow.logged_at]);
+        
+        if (previousClimbs && previousClimbs.c > 0) {
+          personalBest = { gradeRaw: allTimeHardestRow.grade_raw, daysAgo };
+        }
       }
     }
   }
