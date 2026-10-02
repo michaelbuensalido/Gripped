@@ -2,7 +2,6 @@ import { jest, describe, it, expect, beforeEach } from '@jest/globals';
 import { getDatabase } from '../../db/schema';
 import { insertSession, softDeleteBoulderLog, undoDeleteBoulderLog, deleteSession, getClimbsForSession } from '../../db/queries';
 
-jest.mock('expo-sqlite', () => require('../../__mocks__/expo-sqlite'));
 let idCounter = 0;
 jest.mock('uuid', () => ({ v4: () => `test-uuid-${idCounter++}` }));
 
