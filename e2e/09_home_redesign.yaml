@@ -1,0 +1,55 @@
+appId: com.cruxlog
+---
+- clearState
+- launchApp
+
+# First-launch state
+- assertVisible: "Welcome back"
+- assertVisible: "LOG YOUR FIRST SESSION"
+- assertVisible: "Start your first session to see your stats, streaks and progress here."
+- assertNotVisible: "Recent Sessions"
+- assertNotVisible: "SESSIONS" # Stat tiles
+
+# Start a session
+- tapOn:
+    id: "start-session-btn"
+# Wait for the StartSessionSheet
+- assertVisible: "Start session"
+- tapOn: "Start"
+
+# In Active Session screen now
+- assertVisible: "Resume" # Global banner / active state? Wait, we are ON the active session screen, title is Gym.
+- assertVisible: "LOG CLIMB"
+
+# Log a climb
+- tapOn: "LOG CLIMB"
+- assertVisible: "LOG" # From bottom sheet
+- tapOn: "SAVE"
+
+# End the session
+- tapOn: "End"
+- assertVisible: "End Session"
+- tapOn:
+    id: "finish-session-btn"
+
+# In summary screen
+- assertVisible: "Done"
+- tapOn: "Done"
+
+# Back on Home Screen
+# Now it should show populated state
+- assertVisible: "READY TO CLIMB?"
+- assertVisible: "SESSIONS" # Stat tiles
+- assertVisible: "Recent Sessions"
+- assertVisible: "Projects"
+- assertNotVisible: "Start your first session to see your stats, streaks and progress here."
+
+# Start a new session from populated state
+- tapOn:
+    id: "start-session-btn"
+# Active session screen again
+- tapOn: "Home" # Tap tab bar to go back Home
+
+# Home screen should show active session hero card
+- assertVisible: "SESSION IN PROGRESS"
+- assertVisible: "Resume session"

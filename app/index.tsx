@@ -1,108 +1,280 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
-import { useRouter, useFocusEffect } from 'expo-router';
-import { Plus, Settings as SettingsIcon, Play, PlayCircle } from 'lucide-react-native';
+import { useRouter } from 'expo-router';
+import { Settings as SettingsIcon, Plus, PlayCircle } from 'lucide-react-native';
 import { Screen } from '../components/ui/Screen';
-import { PrimaryButton } from '../components/ui/PrimaryButton';
-import { SectionHeader } from '../components/ui/SectionHeader';
 import { Card } from '../components/ui/Card';
+import { HeroCard } from '../components/ui/HeroCard';
+import { PrimaryButton } from '../components/ui/PrimaryButton';
 import { StatTile } from '../components/ui/StatTile';
+import { SectionHeader } from '../components/ui/SectionHeader';
+import { SessionRow } from '../components/ui/SessionRow';
+import { GradePill } from '../components/ui/GradePill';
+import { WeekStrip } from '../components/ui/WeekStrip';
+import { VolumeChart } from '../components/ui/VolumeChart';
+import { EmptyState } from '../components/ui/EmptyState';
 import { useTheme } from '../theme/useTheme';
-import { getActiveSession, getAllSessions, getWeeklyVolume, getStreak, getSessionSummary } from '../db/queries';
-import { useSessionStore } from '../store/sessionStore';
+import { useHomeSummary } from '../db/hooks';
 import { useSessionActions } from '../hooks/useSessionActions';
 import { StartSessionSheet } from '../components/session/StartSessionSheet';
 import { triggerHaptic } from '../utils/haptics';
-import { SessionRow } from '../components/ui/SessionRow';
+
+function formatDuration(ms: number) {
+  const totalSecs = Math.floor(ms / 1000);
+  const h = Math.floor(totalSecs / 3600);
+  const m = Math.floor((totalSecs % 3600) / 60);
+  const s = totalSecs % 60;
+  if (h > 0) return `${h}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+  return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+}
 
 export default function HomeScreen() {
   const router = useRouter();
-  const { colors, type, space, radius } = useTheme();
-  
-  const [activeSession, setActiveSession] = useState<any>(null);
-  const [lastSession, setLastSession] = useState<any>(null);
-  const [streak, setStreak] = useState(0);
-  const [weeklyVolume, setWeeklyVolume] = useState(0);
-  
+  const { colors, type, space, radius, shadow } = useTheme();
+
+  const data = useHomeSummary();
   const { startOrResume } = useSessionActions();
   const [isStartSheetOpen, setIsStartSheetOpen] = useState(false);
+  const [elapsed, setElapsed] = useState(0);
 
-  useFocusEffect(
-    useCallback(() => {
-      const active = getActiveSession();
-      setActiveSession(active);
-      
-      const all = getAllSessions();
-      if (active && all.length > 1) {
-        setLastSession(all[1]);
-      } else if (!active && all.length > 0) {
-        setLastSession(all[0]);
-      } else {
-        setLastSession(null);
-      }
-      
-      setStreak(getStreak());
-      
-      const vols = getWeeklyVolume('7d');
-      setWeeklyVolume(vols.length > 0 ? vols[vols.length - 1].count : 0);
-    }, [])
-  );
+  // Live timer for active session
+  useEffect(() => {
+    if (!data.activeSession) { setElapsed(0); return; }
+    const start = data.activeSession.startTime;
+    setElapsed(Date.now() - start);
+    const interval = setInterval(() => setElapsed(Date.now() - start), 1000);
+    return () => clearInterval(interval);
+  }, [data.activeSession?.id]);
 
   const handleStartSession = () => {
-    if (activeSession) {
+    triggerHaptic('medium');
+    if (data.activeSession) {
       startOrResume();
     } else {
       setIsStartSheetOpen(true);
     }
   };
 
+  // Greeting
+  const hour = new Date().getHours();
+  const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
+
   return (
-    <Screen 
-      title="CruxLog" 
-      subtitle="LEDGER HUB"
-      headerRight={
-        <TouchableOpacity onPress={() => router.push('/settings')} style={{ padding: 8, backgroundColor: colors.card, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border }}>
-          <SettingsIcon size={20} color={colors.text} />
-        </TouchableOpacity>
-      }
-      scroll
-    >
-      {/* Primary Action */}
-      <View style={{ marginBottom: space.xl, marginTop: space.sm }}>
-        <PrimaryButton 
-          testID={activeSession ? "resume-session-btn" : "start-session-btn"}
-          label={activeSession ? "RESUME SESSION" : "START SESSION"}
-          icon={<PlayCircle color={colors.textOnAccent} size={20} />}
-          onPress={handleStartSession}
-          style={activeSession ? { backgroundColor: colors.flashText } : undefined}
-        />
+    <Screen scroll>
+      {/* 1. Header */}
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: space.xl }}>
+        <View style={{ flex: 1 }}>
+          <Text style={[type.body, { color: colors.textMuted, marginBottom: space.xs }]}>{greeting}</Text>
+          <Text style={[type.display, { color: colors.text }]}>Welcome back</Text>
+        </View>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.md, marginTop: space.sm }}>
+          {data.hardest30d && (
+            <GradePill gradeIndex={data.hardest30d.gradeIndex} label={data.hardest30d.gradeRaw} />
+          )}
+          <TouchableOpacity
+            onPress={() => router.push('/settings')}
+            style={{
+              padding: space.sm,
+              backgroundColor: colors.card,
+              borderRadius: radius.md,
+              borderWidth: 1,
+              borderColor: colors.border,
+            }}
+          >
+            <SettingsIcon size={20} color={colors.text} />
+          </TouchableOpacity>
+        </View>
       </View>
 
-      {/* Week Overview */}
-      <View style={{ flexDirection: 'row', gap: space.md, marginBottom: space.xl }}>
-        <StatTile flex label="Streak (wks)" value={streak} />
-        <StatTile flex label="Climbs this week" value={weeklyVolume} />
-      </View>
-
-      {/* Last Session */}
-      {lastSession && (
-        <>
-          <SectionHeader title="Last Session" />
-          <Card style={{ padding: 0, overflow: 'hidden', marginBottom: space.xl }}>
-            <SessionRow 
-              id={lastSession.id}
-              gymName={lastSession.gymName}
-              startedAt={lastSession.startTime}
-              durationMs={getSessionSummary(lastSession.id).duration}
-              hardestGrade={getSessionSummary(lastSession.id).hardestGradeRaw}
-              isLast={true}
+      {/* 2. HeroCard — the ONE primary action */}
+      <View style={{ marginBottom: space.xl }}>
+        {data.activeSession ? (
+          <HeroCard
+            title="SESSION IN PROGRESS"
+            value={formatDuration(elapsed)}
+            subtitle={`${data.activeSessionClimbCount} climb${data.activeSessionClimbCount !== 1 ? 's' : ''} logged`}
+          >
+            <PrimaryButton
+              testID="resume-session-btn"
+              label="Resume session"
+              icon={<PlayCircle color={colors.textOnAccent} size={20} />}
+              onPress={handleStartSession}
             />
-          </Card>
+          </HeroCard>
+        ) : (
+          <HeroCard
+            title={data.hasAnyData ? 'READY TO CLIMB?' : 'LOG YOUR FIRST SESSION'}
+            subtitle={
+              data.lastSession
+                ? `${data.lastSession.gymName} · ${data.lastSessionRelative}`
+                : 'Tap below to get started'
+            }
+          >
+            <PrimaryButton
+              testID="start-session-btn"
+              label="Start session"
+              icon={<PlayCircle color={colors.textOnAccent} size={20} />}
+              onPress={handleStartSession}
+            />
+          </HeroCard>
+        )}
+      </View>
+
+      {/* First-time user: stop here */}
+      {!data.hasAnyData ? (
+        <View style={{ marginTop: space.lg }}>
+          <Text style={[type.body, { color: colors.textMuted, textAlign: 'center' }]}>
+            Start your first session to see your stats, streaks and progress here.
+          </Text>
+        </View>
+      ) : (
+        <>
+          {/* 3. WeekStrip */}
+          <View style={{ marginBottom: space.xl }}>
+            <WeekStrip days={data.weekDays} streak={data.streak} />
+          </View>
+
+          {/* 4. Three StatTiles */}
+          <View style={{ flexDirection: 'row', gap: space.sm, marginBottom: space.xl }}>
+            <StatTile flex label="SESSIONS" value={data.sessionsThisWeek} />
+            <StatTile flex label="CLIMBS" value={data.climbsThisWeek} />
+            <StatTile
+              flex
+              label="SENDS"
+              value={data.sendsThisWeek}
+              trend={data.flashesThisWeek > 0 ? `${data.flashesThisWeek} flash${data.flashesThisWeek !== 1 ? 'es' : ''}` : undefined}
+            />
+          </View>
+
+          {/* 5. Projects strip */}
+          <View style={{ marginBottom: space.xl }}>
+            <SectionHeader
+              title="Projects"
+              action={{ label: 'See all', onPress: () => router.push('/projects') }}
+            />
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -space.lg }}>
+              <View style={{ flexDirection: 'row', paddingHorizontal: space.lg, gap: space.md }}>
+                {data.projects.length === 0 ? (
+                  <Card
+                    onPress={() => router.push('/projects')}
+                    style={{ width: 160, padding: space.lg }}
+                  >
+                    <Plus size={20} color={colors.textMuted} style={{ marginBottom: space.sm }} />
+                    <Text style={[type.heading, { color: colors.text, marginBottom: space.xs }]}>
+                      Add your first project
+                    </Text>
+                    <Text style={[type.caption, { color: colors.textMuted }]}>
+                      Track a climb you're working on
+                    </Text>
+                  </Card>
+                ) : (
+                  data.projects.slice(0, 5).map((p: any) => (
+                    <Card
+                      key={p.id}
+                      onPress={() => router.push('/projects')}
+                      style={{ width: 160, padding: space.md }}
+                    >
+                      <GradePill
+                        gradeIndex={p.normalizedDifficulty ?? p.grade_index ?? 0}
+                        label={p.gradeRaw ?? p.grade_raw ?? '—'}
+                      />
+                      <Text
+                        style={[type.heading, { color: colors.text, marginTop: space.sm, marginBottom: space.xs }]}
+                        numberOfLines={1}
+                      >
+                        {p.title}
+                      </Text>
+                      <View style={{ flexDirection: 'row', gap: space.lg }}>
+                        <View>
+                          <Text style={[type.caption, { color: colors.textMuted }]}>Burns</Text>
+                          <Text style={[type.heading, { color: colors.text, fontSize: 14 }]}>{p.attempts || 0}</Text>
+                        </View>
+                        {(p.highWaterMarkMoves ?? p.high_water_mark_moves) ? (
+                          <View>
+                            <Text style={[type.caption, { color: colors.textMuted }]}>Linked</Text>
+                            <Text style={[type.heading, { color: colors.text, fontSize: 14 }]}>
+                              {p.highWaterMarkMoves ?? p.high_water_mark_moves}
+                            </Text>
+                          </View>
+                        ) : null}
+                      </View>
+                    </Card>
+                  ))
+                )}
+              </View>
+            </ScrollView>
+          </View>
+
+          {/* 6. Weekly volume chart */}
+          {data.weeklyVolume.length > 0 && (
+            <View style={{ marginBottom: space.xl }}>
+              <VolumeChart
+                data={data.weeklyVolume}
+                changePercent={data.weeklyVolumeChange}
+                onPress={() => router.push('/analytics')}
+              />
+            </View>
+          )}
+
+          {/* 7. PersonalBestBanner */}
+          {data.personalBest && (
+            <View
+              style={{
+                backgroundColor: colors.accentSoft,
+                borderRadius: radius.md,
+                padding: space.lg,
+                marginBottom: space.xl,
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: space.md,
+              }}
+            >
+              <Text style={{ fontSize: 20 }}>🎉</Text>
+              <Text style={[type.heading, { color: colors.accentText, flex: 1 }]}>
+                New best: {data.personalBest.gradeRaw},{' '}
+                {data.personalBest.daysAgo === 0
+                  ? 'today'
+                  : data.personalBest.daysAgo === 1
+                  ? 'yesterday'
+                  : `${data.personalBest.daysAgo} days ago`}
+              </Text>
+            </View>
+          )}
+
+          {/* 8. Recent sessions */}
+          {data.recentSessions.length > 0 && (
+            <View style={{ marginBottom: space.xxl }}>
+              <SectionHeader title="Recent Sessions" />
+              <Card style={{ padding: 0, overflow: 'hidden' }}>
+                {data.recentSessions.map((s: any, i: number) => (
+                  <SessionRow
+                    key={s.id}
+                    id={s.id}
+                    gymName={s.gymName}
+                    startedAt={s.startTime}
+                    durationMs={s.durationMs}
+                    hardestGrade={s.hardestGradeRaw}
+                    isLast={i === data.recentSessions.length - 1}
+                  />
+                ))}
+              </Card>
+            </View>
+          )}
         </>
       )}
 
-      {/* Active Projects could go here later if we implement the preview */}
-      <StartSessionSheet visible={isStartSheetOpen} onClose={() => setIsStartSheetOpen(false)} onStart={(gymName) => { setIsStartSheetOpen(false); startOrResume(gymName); }} />
+      {/* Bottom padding for FloatingTabBar */}
+      <View style={{ height: 80 }} />
+
+      {/* StartSessionSheet */}
+      <StartSessionSheet
+        visible={isStartSheetOpen}
+        onClose={() => setIsStartSheetOpen(false)}
+        onStart={(gymName) => {
+          setIsStartSheetOpen(false);
+          startOrResume(gymName);
+        }}
+      />
     </Screen>
   );
 }

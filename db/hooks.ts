@@ -55,3 +55,7 @@ export function useProgressStats(period: '7d'|'30d'|'90d'|'1y'|'all') {
     };
   }, [period]);
 }
+
+export function useHomeSummary() {
+  return useLiveQuery(() => Q.getHomeSummary());
+}

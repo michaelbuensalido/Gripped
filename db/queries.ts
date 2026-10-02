@@ -776,3 +776,267 @@ export function getStreak(nowMs: number = Date.now()) {
   
   return streak;
 }
+
+export interface HomeSummary {
+  activeSession: Session | null;
+  activeSessionClimbCount: number;
+  lastSession: { id: string; gymName: string; startTime: number; endTime: number; } | null;
+  lastSessionRelative: string;
+  sessionsThisWeek: number;
+  climbsThisWeek: number;
+  sendsThisWeek: number;
+  flashesThisWeek: number;
+  streak: number;
+  weekDays: { dayLabel: string; date: string; hasSession: boolean; isToday: boolean }[];
+  hardest30d: { gradeRaw: string; gradeIndex: number } | null;
+  personalBest: { gradeRaw: string; daysAgo: number } | null;
+  weeklyVolume: { weekLabel: string; climbs: number; isCurrent: boolean }[];
+  weeklyVolumeChange: number;
+  recentSessions: { id: string; gymName: string; startTime: number; durationMs: number; climbs: number; sends: number; hardestGradeRaw: string }[];
+  projects: any[];
+  hasAnyData: boolean;
+}
+
+export function getHomeSummary(): HomeSummary {
+  const db = getDatabase();
+  const nowMs = Date.now();
+  
+  const hasAnySession = db.getFirstSync<{ c: number }>(`SELECT COUNT(*) as c FROM sessions WHERE deleted_at IS NULL`)?.c || 0;
+  
+  let activeSession = getActiveSession();
+  let activeSessionClimbCount = 0;
+  if (activeSession) {
+    const c = db.getFirstSync<{ c: number }>(`SELECT COUNT(*) as c FROM climbs WHERE session_id = ? AND deleted_at IS NULL`, [activeSession.id]);
+    activeSessionClimbCount = c?.c || 0;
+  }
+  
+  const d = new Date(nowMs);
+  const dayOfWeek = d.getDay(); 
+  const daysSinceMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+  const mondayOfThisWeek = new Date(d.getFullYear(), d.getMonth(), d.getDate() - daysSinceMonday);
+  mondayOfThisWeek.setHours(0,0,0,0);
+  const startOfWeekMs = mondayOfThisWeek.getTime();
+  const endOfWeekMs = startOfWeekMs + 7 * 24 * 60 * 60 * 1000 - 1;
+
+  const validSessions = db.getAllSync<any>(`
+    SELECT s.*, 
+           (SELECT COUNT(*) FROM climbs c WHERE c.session_id = s.id AND c.deleted_at IS NULL) as climb_count
+    FROM sessions s
+    WHERE s.deleted_at IS NULL
+  `).filter(s => s.climb_count > 0).sort((a, b) => b.started_at - a.started_at);
+
+  const completedSessions = validSessions.filter(s => s.ended_at !== null && s.id !== activeSession?.id);
+  
+  let lastSession = null;
+  let lastSessionRelative = '';
+  if (completedSessions.length > 0) {
+    const ls = completedSessions[0];
+    lastSession = {
+      id: ls.id,
+      gymName: ls.gym_name || '',
+      startTime: ls.started_at,
+      endTime: ls.ended_at,
+    };
+    
+    const lsStart = new Date(ls.started_at);
+    lsStart.setHours(0,0,0,0);
+    const today = new Date(nowMs);
+    today.setHours(0,0,0,0);
+    const diffDays = Math.round((today.getTime() - lsStart.getTime()) / (1000 * 60 * 60 * 24));
+    
+    if (diffDays === 0) lastSessionRelative = 'Today';
+    else if (diffDays === 1) lastSessionRelative = 'Yesterday';
+    else if (diffDays <= 6) lastSessionRelative = `${diffDays} days ago`;
+    else if (diffDays <= 13) lastSessionRelative = 'Last week';
+    else lastSessionRelative = `${Math.floor(diffDays / 7)} weeks ago`;
+  }
+  
+  let sessionsThisWeek = 0;
+  let climbsThisWeek = 0;
+  let sendsThisWeek = 0;
+  let flashesThisWeek = 0;
+  
+  for (const s of validSessions) {
+    if (s.started_at >= startOfWeekMs && s.started_at <= endOfWeekMs) {
+      sessionsThisWeek++;
+    }
+  }
+  
+  const thisWeekClimbs = db.getAllSync<any>(`
+    SELECT * FROM climbs 
+    WHERE logged_at >= ? AND logged_at <= ? AND deleted_at IS NULL
+  `, [startOfWeekMs, endOfWeekMs]);
+  
+  climbsThisWeek = thisWeekClimbs.length;
+  for (const c of thisWeekClimbs) {
+    if (c.result === 'send' || c.result === 'top' || c.result === 'flash') sendsThisWeek++;
+    if (c.result === 'flash') flashesThisWeek++;
+  }
+  
+  let streak = 0;
+  const sessionsByWeek = new Set<string>();
+  for (const s of validSessions) {
+    const res = db.getFirstSync<{w:string}>(`SELECT strftime('%Y-%W', datetime(?, 'unixepoch', 'localtime')) as w`, [Math.floor(s.started_at/1000)]);
+    if (res?.w) sessionsByWeek.add(res.w);
+  }
+  
+  const currentWeekStrRes = db.getFirstSync<{w:string}>(`SELECT strftime('%Y-%W', datetime(?, 'unixepoch', 'localtime')) as w`, [Math.floor(nowMs/1000)]);
+  const currentWeekStr = currentWeekStrRes?.w || '';
+  
+  let checkMs = nowMs;
+  let checkWeekStr = currentWeekStr;
+  
+  let hasSessionThisWeek = sessionsByWeek.has(checkWeekStr);
+  
+  let currentStreak = 0;
+  if (hasSessionThisWeek) {
+    currentStreak++;
+    while (true) {
+      checkMs -= 7 * 24 * 60 * 60 * 1000;
+      const prevRes = db.getFirstSync<{w:string}>(`SELECT strftime('%Y-%W', datetime(?, 'unixepoch', 'localtime')) as w`, [Math.floor(checkMs/1000)]);
+      if (prevRes?.w && sessionsByWeek.has(prevRes.w)) {
+        currentStreak++;
+      } else {
+        break;
+      }
+    }
+  } else {
+    checkMs -= 7 * 24 * 60 * 60 * 1000;
+    const prevRes = db.getFirstSync<{w:string}>(`SELECT strftime('%Y-%W', datetime(?, 'unixepoch', 'localtime')) as w`, [Math.floor(checkMs/1000)]);
+    if (prevRes?.w && sessionsByWeek.has(prevRes.w)) {
+      currentStreak++;
+      while (true) {
+        checkMs -= 7 * 24 * 60 * 60 * 1000;
+        const p2 = db.getFirstSync<{w:string}>(`SELECT strftime('%Y-%W', datetime(?, 'unixepoch', 'localtime')) as w`, [Math.floor(checkMs/1000)]);
+        if (p2?.w && sessionsByWeek.has(p2.w)) {
+          currentStreak++;
+        } else {
+          break;
+        }
+      }
+    }
+  }
+  streak = currentStreak;
+  
+  const weekDays = [];
+  const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const todayDay = new Date(nowMs).getDate();
+  const todayMonth = new Date(nowMs).getMonth();
+  for (let i = 0; i < 7; i++) {
+    const cur = new Date(mondayOfThisWeek.getTime() + i * 24 * 60 * 60 * 1000);
+    const hasSess = validSessions.some(s => {
+      const sd = new Date(s.started_at);
+      return sd.getDate() === cur.getDate() && sd.getMonth() === cur.getMonth() && sd.getFullYear() === cur.getFullYear();
+    });
+    weekDays.push({
+      dayLabel: dayNames[cur.getDay()].substring(0, 3),
+      date: cur.toISOString().split('T')[0],
+      hasSession: hasSess,
+      isToday: cur.getDate() === todayDay && cur.getMonth() === todayMonth,
+    });
+  }
+  
+  const thirtyDaysAgo = nowMs - 30 * 24 * 60 * 60 * 1000;
+  const hardest30dRow = db.getFirstSync<any>(`
+    SELECT grade_raw, grade_index FROM climbs 
+    WHERE logged_at >= ? AND deleted_at IS NULL AND (result = 'send' OR result = 'top' OR result = 'flash')
+    ORDER BY grade_index DESC LIMIT 1
+  `, [thirtyDaysAgo]);
+  
+  const hardest30d = hardest30dRow ? { gradeRaw: hardest30dRow.grade_raw, gradeIndex: hardest30dRow.grade_index } : null;
+  
+  const allTimeHardestRow = db.getFirstSync<any>(`
+    SELECT grade_raw, grade_index FROM climbs 
+    WHERE deleted_at IS NULL AND (result = 'send' OR result = 'top' OR result = 'flash')
+    ORDER BY grade_index DESC LIMIT 1
+  `);
+  let personalBest = null;
+  if (allTimeHardestRow) {
+    const hardestGrade = allTimeHardestRow.grade_index;
+    const firstTimeRow = db.getFirstSync<any>(`
+      SELECT logged_at FROM climbs 
+      WHERE grade_index = ? AND deleted_at IS NULL AND (result = 'send' OR result = 'top' OR result = 'flash')
+      ORDER BY logged_at ASC LIMIT 1
+    `, [hardestGrade]);
+    
+    if (firstTimeRow) {
+      const daysAgo = Math.floor((nowMs - firstTimeRow.logged_at) / (1000 * 60 * 60 * 24));
+      if (daysAgo <= 14) {
+        personalBest = { gradeRaw: allTimeHardestRow.grade_raw, daysAgo };
+      }
+    }
+  }
+  
+  const weeklyVolume = [];
+  const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  
+  let currentWeekVolume = 0;
+  let lastWeekVolume = 0;
+  
+  for (let i = 7; i >= 0; i--) {
+    const wStart = new Date(startOfWeekMs - i * 7 * 24 * 60 * 60 * 1000);
+    const wEnd = wStart.getTime() + 7 * 24 * 60 * 60 * 1000 - 1;
+    
+    const count = db.getFirstSync<{c:number}>(`
+      SELECT COUNT(*) as c FROM climbs 
+      WHERE logged_at >= ? AND logged_at <= ? AND deleted_at IS NULL
+    `, [wStart.getTime(), wEnd])?.c || 0;
+    
+    weeklyVolume.push({
+      weekLabel: `${monthNames[wStart.getMonth()]} ${wStart.getDate()}`,
+      climbs: count,
+      isCurrent: i === 0
+    });
+    
+    if (i === 0) currentWeekVolume = count;
+    if (i === 1) lastWeekVolume = count;
+  }
+  
+  let weeklyVolumeChange = 0;
+  if (lastWeekVolume > 0) {
+    weeklyVolumeChange = Math.round(((currentWeekVolume - lastWeekVolume) / lastWeekVolume) * 100);
+  } else if (currentWeekVolume > 0) {
+    weeklyVolumeChange = 100;
+  }
+  
+  const recentSessions = completedSessions.slice(0, 3).map(s => {
+    const cRows = db.getAllSync<any>(`SELECT grade_raw, grade_index, result FROM climbs WHERE session_id = ? AND deleted_at IS NULL`, [s.id]);
+    const sendsRows = cRows.filter(c => c.result === 'send' || c.result === 'top' || c.result === 'flash');
+    let hg = '–';
+    if (sendsRows.length > 0) {
+      sendsRows.sort((a,b) => b.grade_index - a.grade_index);
+      hg = sendsRows[0].grade_raw;
+    }
+    return {
+      id: s.id,
+      gymName: s.gym_name || '',
+      startTime: s.started_at,
+      durationMs: (s.ended_at || nowMs) - s.started_at,
+      climbs: cRows.length,
+      sends: sendsRows.length,
+      hardestGradeRaw: hg
+    };
+  });
+  
+  const projects = getAllProjects().filter(p => p.status === 'in_progress');
+  
+  return {
+    activeSession,
+    activeSessionClimbCount,
+    lastSession,
+    lastSessionRelative,
+    sessionsThisWeek,
+    climbsThisWeek,
+    sendsThisWeek,
+    flashesThisWeek,
+    streak,
+    weekDays,
+    hardest30d,
+    personalBest,
+    weeklyVolume,
+    weeklyVolumeChange,
+    recentSessions,
+    projects,
+    hasAnyData: hasAnySession > 0,
+  };
+}
