@@ -73,9 +73,38 @@ export default function LogbookScreen() {
   };
 
   const renderStat = (label: string, value: string | number) => (
-    <View style={{ flex: 1, backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border, minHeight: 64, padding: space.sm, borderRadius: radius.md, alignItems: 'center', justifyContent: 'center' }}>
-      <Text style={[type.stat, { fontSize: 20, color: colors.text }]} adjustsFontSizeToFit numberOfLines={1}>{value}</Text>
-      <Text style={[type.label, { color: colors.textMuted, fontSize: 10, marginTop: 2 }]} numberOfLines={1}>{label}</Text>
+    <View
+      style={{
+        flex: 1,
+        backgroundColor: colors.card,
+        borderWidth: 1,
+        borderColor: colors.border,
+        minHeight: 76,
+        padding: space.sm,
+        borderRadius: radius.md,
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}
+    >
+      <Text
+        style={[
+          type.stat,
+          { fontSize: 22, color: colors.text, fontVariant: ['tabular-nums'] },
+        ]}
+        adjustsFontSizeToFit
+        numberOfLines={1}
+      >
+        {value}
+      </Text>
+      <Text
+        style={[
+          type.label,
+          { color: colors.textMuted, fontSize: 10, marginTop: 4 },
+        ]}
+        numberOfLines={1}
+      >
+        {label}
+      </Text>
     </View>
   );
 
@@ -97,31 +126,94 @@ export default function LogbookScreen() {
       <View style={{ paddingHorizontal: space.lg, marginBottom: space.sm }}>
         {/* Compact Top Header */}
         {!isSearchActive ? (
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', height: 40 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', height: 48 }}>
             <Text style={[type.display, { color: colors.text, fontSize: 28 }]}>Logbook</Text>
             
-            <View style={{ flexDirection: 'row', gap: space.sm, alignItems: 'center' }}>
-              <TouchableOpacity onPress={() => setIsSearchActive(true)} accessibilityLabel="Search" style={{ padding: 8, backgroundColor: colors.card, borderRadius: radius.pill }}>
+            <View style={{ flexDirection: 'row', gap: space.xs, alignItems: 'center' }}>
+              <TouchableOpacity
+                onPress={() => setIsSearchActive(true)}
+                accessibilityRole="button"
+                accessibilityLabel="Search"
+                style={{
+                  width: 44,
+                  height: 44,
+                  backgroundColor: colors.card,
+                  borderRadius: radius.md,
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
                 <Search size={20} color={colors.text} />
               </TouchableOpacity>
               
-              <View style={{ flexDirection: 'row', backgroundColor: colors.card, borderRadius: radius.pill, padding: 2 }}>
-                <TouchableOpacity onPress={() => setFilters(f => ({ ...f, viewMode: 'list' }))} accessibilityLabel="List view" style={{ padding: 6, backgroundColor: filters.viewMode === 'list' ? colors.accent : 'transparent', borderRadius: radius.pill }}>
-                  <List size={16} color={filters.viewMode === 'list' ? colors.textOnAccent : colors.textMuted} />
+              <View
+                style={{
+                  flexDirection: 'row',
+                  backgroundColor: colors.card,
+                  borderRadius: radius.md,
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                  height: 44,
+                  padding: 3,
+                  alignItems: 'center',
+                }}
+              >
+                <TouchableOpacity
+                  onPress={() => setFilters(f => ({ ...f, viewMode: 'list' }))}
+                  accessibilityRole="button"
+                  accessibilityLabel="List view"
+                  style={{
+                    width: 36,
+                    height: 36,
+                    backgroundColor: filters.viewMode === 'list' ? colors.accentSoft : 'transparent',
+                    borderRadius: radius.sm,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <List size={18} color={filters.viewMode === 'list' ? colors.accentText : colors.textMuted} />
                 </TouchableOpacity>
-                <TouchableOpacity onPress={() => setFilters(f => ({ ...f, viewMode: 'calendar' }))} accessibilityLabel="Calendar view" style={{ padding: 6, backgroundColor: filters.viewMode === 'calendar' ? colors.accent : 'transparent', borderRadius: radius.pill }}>
-                  <Calendar size={16} color={filters.viewMode === 'calendar' ? colors.textOnAccent : colors.textMuted} />
+                <TouchableOpacity
+                  onPress={() => setFilters(f => ({ ...f, viewMode: 'calendar' }))}
+                  accessibilityRole="button"
+                  accessibilityLabel="Calendar view"
+                  style={{
+                    width: 36,
+                    height: 36,
+                    backgroundColor: filters.viewMode === 'calendar' ? colors.accentSoft : 'transparent',
+                    borderRadius: radius.sm,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <Calendar size={18} color={filters.viewMode === 'calendar' ? colors.accentText : colors.textMuted} />
                 </TouchableOpacity>
               </View>
 
-              <TouchableOpacity onPress={() => router.push('/settings')} accessibilityLabel="Settings" style={{ padding: 8, backgroundColor: colors.card, borderRadius: radius.pill }}>
+              <TouchableOpacity
+                onPress={() => router.push('/settings')}
+                accessibilityRole="button"
+                accessibilityLabel="Settings"
+                style={{
+                  width: 44,
+                  height: 44,
+                  backgroundColor: colors.card,
+                  borderRadius: radius.md,
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
                 <SettingsIcon size={20} color={colors.text} />
               </TouchableOpacity>
             </View>
           </View>
         ) : (
-          <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: colors.cardMuted, borderRadius: radius.pill, paddingHorizontal: space.md, height: 40 }}>
-            <Search size={16} color={colors.textMuted} />
+          <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: colors.cardMuted, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, paddingHorizontal: space.md, height: 48 }}>
+            <Search size={18} color={colors.textMuted} />
             <TextInput 
               style={[type.body, { flex: 1, marginLeft: space.sm, color: colors.text }]}
               placeholder="Search notes or gym..."
@@ -131,29 +223,84 @@ export default function LogbookScreen() {
               autoFocus
               onEndEditing={() => setFilters(f => ({ ...f, searchQuery: searchInput || null }))}
             />
-            <TouchableOpacity onPress={() => { setIsSearchActive(false); setSearchInput(''); setFilters(f => ({ ...f, searchQuery: null })); }}>
-              <X size={16} color={colors.textMuted} />
+            <TouchableOpacity
+              onPress={() => { setIsSearchActive(false); setSearchInput(''); setFilters(f => ({ ...f, searchQuery: null })); }}
+              accessibilityRole="button"
+              accessibilityLabel="Clear search"
+              style={{ width: 36, height: 36, alignItems: 'center', justifyContent: 'center' }}
+            >
+              <X size={18} color={colors.textMuted} />
             </TouchableOpacity>
           </View>
         )}
 
         {/* Period Segmented Control & Filters */}
         <View style={{ flexDirection: 'row', marginTop: space.md, gap: space.sm, alignItems: 'center' }}>
-          <View style={{ flex: 1, flexDirection: 'row', backgroundColor: colors.card, borderRadius: radius.pill, padding: 2 }}>
+          <View
+            style={{
+              flex: 1,
+              flexDirection: 'row',
+              backgroundColor: colors.card,
+              borderRadius: radius.md,
+              borderWidth: 1,
+              borderColor: colors.border,
+              height: 52,
+              padding: 4,
+            }}
+          >
             {['week', 'month', '3months', 'year', 'all'].map(p => {
               const active = filters.period === p;
               const label = p === 'week' ? 'Week' : p === 'month' ? 'Month' : p === '3months' ? '3 mo' : p === 'year' ? 'Year' : 'All';
               return (
-                <TouchableOpacity key={p} onPress={() => setFilters(f => ({ ...f, period: p as any }))} style={{ flex: 1, paddingVertical: 6, backgroundColor: active ? colors.accent : 'transparent', borderRadius: radius.pill, alignItems: 'center' }}>
-                  <Text style={[type.caption, { color: active ? colors.textOnAccent : colors.text, fontWeight: active ? '600' : '400' }]}>{label}</Text>
+                <TouchableOpacity
+                  key={p}
+                  onPress={() => setFilters(f => ({ ...f, period: p as any }))}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: active }}
+                  style={{
+                    flex: 1,
+                    backgroundColor: active ? colors.accentSoft : 'transparent',
+                    borderRadius: radius.sm,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <Text
+                    style={[
+                      type.caption,
+                      {
+                        color: active ? colors.accentText : colors.textMuted,
+                        fontWeight: active ? '700' : '500',
+                      },
+                    ]}
+                  >
+                    {label}
+                  </Text>
                 </TouchableOpacity>
               );
             })}
           </View>
 
-          <TouchableOpacity onPress={() => setIsFilterModalOpen(true)} accessibilityLabel="Filters" style={{ padding: 8, backgroundColor: colors.card, borderRadius: radius.pill, position: 'relative' }}>
-            <Filter size={18} color={hasActiveFilters ? colors.accent : colors.text} />
-            {hasActiveFilters && <View style={{ position: 'absolute', top: 0, right: 0, width: 8, height: 8, borderRadius: 4, backgroundColor: colors.accent }} />}
+          <TouchableOpacity
+            onPress={() => setIsFilterModalOpen(true)}
+            accessibilityRole="button"
+            accessibilityLabel="Filters"
+            style={{
+              width: 52,
+              height: 52,
+              backgroundColor: colors.card,
+              borderRadius: radius.md,
+              borderWidth: 1,
+              borderColor: colors.border,
+              alignItems: 'center',
+              justifyContent: 'center',
+              position: 'relative',
+            }}
+          >
+            <Filter size={20} color={hasActiveFilters ? colors.accentText : colors.text} />
+            {hasActiveFilters && (
+              <View style={{ position: 'absolute', top: 12, right: 12, width: 8, height: 8, borderRadius: 4, backgroundColor: colors.accent }} />
+            )}
           </TouchableOpacity>
         </View>
 
@@ -220,24 +367,40 @@ export default function LogbookScreen() {
       />
 
       {/* Filter Bottom Sheet */}
+      {/* Filter Bottom Sheet */}
       <Modal visible={isFilterModalOpen} animationType="slide" transparent>
-        <View style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.5)' }}>
-          <View style={{ backgroundColor: colors.bg, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl, padding: space.xl }}>
+        <View style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.6)' }}>
+          <View style={{ backgroundColor: colors.card, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl, borderWidth: 1, borderColor: colors.border, padding: space.xl, paddingBottom: 34 }}>
+            {/* Drag Handle */}
+            <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: colors.border, alignSelf: 'center', marginBottom: space.md }} />
+
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: space.xl }}>
               <Text style={[type.display, { color: colors.text, fontSize: 24 }]}>Filters</Text>
-              <TouchableOpacity onPress={() => setIsFilterModalOpen(false)}>
-                <X size={24} color={colors.text} />
+              <TouchableOpacity
+                onPress={() => setIsFilterModalOpen(false)}
+                accessibilityRole="button"
+                accessibilityLabel="Close filters"
+                style={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: radius.sm,
+                  backgroundColor: colors.cardMuted,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <X size={18} color={colors.text} />
               </TouchableOpacity>
             </View>
 
-            <Text style={[type.label, { color: colors.textMuted, marginBottom: space.sm }]}>Sort By</Text>
+            <Text style={[type.label, { color: colors.textMuted, marginBottom: space.sm }]}>SORT BY</Text>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.sm, marginBottom: space.lg }}>
               {['newest', 'climbs', 'hardest'].map(s => (
                 <Chip key={s} label={s === 'newest' ? 'Newest' : s === 'climbs' ? 'Most climbs' : 'Hardest'} active={filters.sort === s} onPress={() => setFilters(f => ({ ...f, sort: s as any }))} />
               ))}
             </View>
 
-            <Text style={[type.label, { color: colors.textMuted, marginBottom: space.sm }]}>Minimum Grade</Text>
+            <Text style={[type.label, { color: colors.textMuted, marginBottom: space.sm }]}>MINIMUM GRADE</Text>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.sm, marginBottom: space.lg }}>
               <Chip label="Any" active={filters.minGradeIndex === null} onPress={() => setFilters(f => ({ ...f, minGradeIndex: null }))} />
               {[3, 5, 7, 9].map(g => (
@@ -247,7 +410,7 @@ export default function LogbookScreen() {
 
             {uniqueGyms.length > 0 && (
               <>
-                <Text style={[type.label, { color: colors.textMuted, marginBottom: space.sm }]}>Gym</Text>
+                <Text style={[type.label, { color: colors.textMuted, marginBottom: space.sm }]}>GYM</Text>
                 <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.sm, marginBottom: space.lg }}>
                   <Chip label="All Gyms" active={filters.gym === null} onPress={() => setFilters(f => ({ ...f, gym: null }))} />
                   {uniqueGyms.map(g => (
@@ -262,7 +425,7 @@ export default function LogbookScreen() {
               <Chip label={filters.showEmpty ? "Yes" : "No"} active={filters.showEmpty} onPress={() => setFilters(f => ({ ...f, showEmpty: !f.showEmpty }))} />
             </View>
 
-            <PrimaryButton label="Apply" onPress={() => setIsFilterModalOpen(false)} />
+            <PrimaryButton label="APPLY FILTERS" onPress={() => setIsFilterModalOpen(false)} />
           </View>
         </View>
       </Modal>

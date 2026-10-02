@@ -817,10 +817,5 @@ const styles = StyleSheet.create({
     width: 180,
     borderWidth: 1,
     zIndex: 50,
-    elevation: 5,
-    shadowColor: '#000',
-    shadowOpacity: 0.1,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
   },
 });

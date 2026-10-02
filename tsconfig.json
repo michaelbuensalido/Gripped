@@ -9,7 +9,8 @@
     },
     "types": [
       "nativewind/types",
-      "react-native-css-interop/types"
+      "react-native-css-interop/types",
+      "jest"
     ]
   },
   "include": [

@@ -15,9 +15,9 @@ function getRelativeTime(timestamp: number | null) {
   return `${days} days ago`;
 }
 
-function HoldPlaceholder({ color }: { color: string }) {
+function HoldPlaceholder({ color, bg }: { color: string; bg: string }) {
   return (
-    <View style={{ width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center', backgroundColor: '#1A1A20' }}>
+    <View style={{ width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center', backgroundColor: bg }}>
       <Svg width={80} height={80} viewBox="0 0 100 100">
         <Path
           d="M80 30 C90 20, 100 40, 95 60 C90 80, 70 90, 50 85 C30 80, 20 60, 25 40 C30 20, 70 40, 80 30Z"
@@ -96,21 +96,36 @@ export function ProjectCard({
         borderWidth: 1,
         borderColor: colors.border,
         overflow: 'hidden',
+        position: 'relative',
       }, style]}
       testID={`project-card-${project.title.replace(/\s+/g, '-')}`}
     >
+      {/* 4px left accent stripe, inset 14px from top and bottom */}
+      <View
+        style={{
+          position: 'absolute',
+          left: 0,
+          top: 14,
+          bottom: 14,
+          width: 4,
+          borderRadius: 2,
+          backgroundColor: band.solid,
+          zIndex: 10,
+        }}
+      />
+
       <View style={{ height: 120, width: '100%', backgroundColor: colors.cardMuted, position: 'relative' }}>
         {project.mediaUri ? (
           <Image source={{ uri: project.mediaUri }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
         ) : (
-          <HoldPlaceholder color={band.solid} />
+          <HoldPlaceholder color={band.solid} bg={colors.cardMuted} />
         )}
         <View style={{ position: 'absolute', top: space.sm, left: space.sm }}>
           <GradePill gradeIndex={project.normalizedDifficulty ?? project.grade_index ?? 0} label={project.gradeRaw ?? project.grade_raw ?? '—'} />
         </View>
       </View>
 
-      <View style={{ padding: space.md }}>
+      <View style={{ padding: space.md, paddingLeft: space.md + 4 }}>
         <Text style={[type.title, { color: colors.text, marginBottom: 2 }]} numberOfLines={1}>{project.title}</Text>
         {subtitle ? (
           <Text style={[type.caption, { color: colors.textMuted, marginBottom: space.sm }]} numberOfLines={1}>{subtitle}</Text>
@@ -130,7 +145,17 @@ export function ProjectCard({
           {onLogAttempt && (
             <TouchableOpacity
               onPress={onLogAttempt}
-              style={{ paddingVertical: 6, paddingHorizontal: 12, backgroundColor: colors.accent, borderRadius: radius.md }}
+              style={{
+                minHeight: 44,
+                paddingVertical: 8,
+                paddingHorizontal: 16,
+                backgroundColor: colors.accent,
+                borderRadius: radius.md,
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+              accessibilityRole="button"
+              accessibilityLabel="Log Attempt"
             >
               <Text style={[type.control, { color: colors.textOnAccent }]}>Attempt</Text>
             </TouchableOpacity>

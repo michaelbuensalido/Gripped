@@ -197,7 +197,8 @@ export default function SettingsScreen() {
                       borderWidth: 1,
                       borderColor: colors.border,
                       paddingHorizontal: space.sm,
-                      paddingVertical: 4,
+                      paddingVertical: 6,
+                      minHeight: 44,
                       minWidth: 64,
                       textAlign: 'center',
                     },
@@ -221,7 +222,8 @@ export default function SettingsScreen() {
                     }}
                     style={{
                       flex: 1,
-                      height: 48,
+                      height: 56,
+                      minHeight: 56,
                       alignItems: 'center',
                       justifyContent: 'center',
                       backgroundColor: isSelected ? colors.accentSoft : colors.cardMuted,
@@ -235,7 +237,7 @@ export default function SettingsScreen() {
                         type.heading,
                         {
                           color: isSelected ? colors.accentText : colors.textMuted,
-                          fontSize: 14,
+                          fontSize: 15,
                         },
                       ]}
                     >

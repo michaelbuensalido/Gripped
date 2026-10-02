@@ -77,13 +77,41 @@ export default function ProjectDetailScreen() {
         justifyContent: 'space-between',
         zIndex: 10,
       }}>
-        <TouchableOpacity onPress={() => router.back()} style={{ padding: space.sm, marginLeft: -space.sm }}>
-          <ChevronLeft size={24} color={colors.text} />
+        <TouchableOpacity
+          onPress={() => router.back()}
+          accessibilityRole="button"
+          accessibilityLabel="Back"
+          style={{
+            width: 48,
+            height: 48,
+            borderRadius: radius.md,
+            backgroundColor: colors.card,
+            borderWidth: 1,
+            borderColor: colors.border,
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <ChevronLeft size={22} color={colors.text} />
         </TouchableOpacity>
         
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm, marginRight: -space.sm }}>
-          <TouchableOpacity onPress={() => setShowMenu(!showMenu)} style={{ padding: space.sm }}>
-            <MoreVertical size={24} color={colors.text} />
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm }}>
+          <TouchableOpacity
+            onPress={() => setShowMenu(!showMenu)}
+            accessibilityRole="button"
+            accessibilityLabel="More options"
+            style={{
+              width: 48,
+              height: 48,
+              borderRadius: radius.md,
+              backgroundColor: colors.card,
+              borderWidth: 1,
+              borderColor: colors.border,
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <MoreVertical size={22} color={colors.text} />
           </TouchableOpacity>
         </View>
 
@@ -258,10 +286,5 @@ const styles = StyleSheet.create({
     width: 200,
     borderWidth: 1,
     zIndex: 50,
-    elevation: 5,
-    shadowColor: '#000',
-    shadowOpacity: 0.1,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
   },
 });

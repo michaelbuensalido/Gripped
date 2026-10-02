@@ -823,7 +823,7 @@ export default function ActiveSessionScreen() {
 
         {/* 6. Climbs Stream */}
         <View style={{ gap: space.sm }}>
-          <SectionHeader title="Climb Stream" count={activeClimbs.length} />
+          <SectionHeader title={activeClimbs.length > 0 ? `Climb Stream (${activeClimbs.length})` : 'Climb Stream'} />
 
           {[...activeClimbs]
             .sort((a: any, b: any) => b.logged_at - a.logged_at)

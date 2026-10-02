@@ -14,6 +14,13 @@ import { useProgressStats, useRecentSessions } from '../db/hooks';
 import { useTheme } from '../theme/useTheme';
 import { triggerHaptic } from '../utils/haptics';
 
+import GradeProgressionTimeline from '../components/analytics/GradeProgressionTimeline';
+import AscentPyramid from '../components/analytics/AscentPyramid';
+import WallAngleRadar from '../components/analytics/WallAngleRadar';
+import RootCauseFailureChart from '../components/analytics/RootCauseFailureChart';
+import { ACWRWidget } from '../components/analytics/ACWRWidget';
+import { calculateACWR } from '../services/loadCalculations';
+
 type Period = '7d' | '30d' | '90d' | '1y' | 'all';
 const PERIODS: { label: string; value: Period }[] = [
   { label: '7D', value: '7d' },
@@ -34,6 +41,13 @@ export default function ProgressScreen() {
 
   const stats = useProgressStats(period);
   const recentSessions = useRecentSessions().slice(0, 5);
+  const acwrData = React.useMemo(() => {
+    try {
+      return calculateACWR();
+    } catch (e) {
+      return null;
+    }
+  }, []);
 
   const hasData = stats.resultCounts.top > 0 || stats.resultCounts.attempt > 0 || stats.resultCounts.flash > 0;
 
@@ -56,7 +70,7 @@ export default function ProgressScreen() {
 
   return (
     <Screen title="Progress" scroll>
-      {/* Period Selector */}
+      {/* Period Selector — 52px touch targets for chalky hands */}
       <View style={{ flexDirection: 'row', gap: space.sm, marginBottom: space.xl }}>
         {PERIODS.map((p) => {
           const active = period === p.value;
@@ -64,18 +78,30 @@ export default function ProgressScreen() {
             <TouchableOpacity
               key={p.value}
               onPress={() => { triggerHaptic('light'); setPeriod(p.value); }}
+              accessibilityRole="button"
+              accessibilityState={{ selected: active }}
               style={{
                 flex: 1,
-                minHeight: 48,
+                minHeight: 52,
+                height: 52,
                 alignItems: 'center',
                 justifyContent: 'center',
                 backgroundColor: active ? colors.accentSoft : colors.card,
-                borderRadius: radius.sm,
+                borderRadius: radius.md,
                 borderWidth: 1,
                 borderColor: active ? colors.accent : colors.border,
               }}
             >
-              <Text style={[type.caption, { color: active ? colors.accentText : colors.textMuted, fontWeight: active ? '700' : '400' }]}>
+              <Text
+                style={[
+                  type.heading,
+                  {
+                    color: active ? colors.accentText : colors.textMuted,
+                    fontSize: 13,
+                    fontWeight: active ? '700' : '500',
+                  },
+                ]}
+              >
                 {p.label}
               </Text>
             </TouchableOpacity>
@@ -89,8 +115,8 @@ export default function ProgressScreen() {
          </View>
       ) : (
         <>
-          {/* Result Donut */}
-          <Card style={{ marginBottom: space.lg, paddingVertical: space.xl }}>
+          {/* Result Donut Hero Card */}
+          <Card style={{ marginBottom: space.lg, paddingVertical: space.xl, alignItems: 'center' }}>
             <ResultDonut
               flashCount={resultCounts.flash}
               topCount={resultCounts.top}
@@ -100,7 +126,7 @@ export default function ProgressScreen() {
             />
           </Card>
 
-          {/* Trend Tiles Row */}
+          {/* Trend Tiles Bento Row */}
           <View style={{ flexDirection: 'row', gap: space.sm, marginBottom: space.xl }}>
             <TrendTile
               flex
@@ -113,7 +139,7 @@ export default function ProgressScreen() {
               flex
               label="Flash Rate"
               value={`${rates.flashRate}%`}
-              data={[rates.flashRate, rates.flashRate]} // Flat line if we don't have historical
+              data={[rates.flashRate, rates.flashRate]}
               onPress={() => router.push(`/analytics/stat-detail?stat=flash&period=${period}`)}
             />
             <TrendTile
@@ -130,6 +156,16 @@ export default function ProgressScreen() {
           <Card style={{ marginBottom: space.xl }}>
             <GradePyramid data={gradePyramid} formatGrade={formatGrade} />
           </Card>
+
+          {/* Deep Dive Section */}
+          <SectionHeader title="Deep Dive" />
+          <View style={{ gap: space.lg, marginBottom: space.xl }}>
+            <GradeProgressionTimeline />
+            <AscentPyramid />
+            <WallAngleRadar />
+            <RootCauseFailureChart />
+            {acwrData && <ACWRWidget data={acwrData} />}
+          </View>
 
           {/* Recent Sessions */}
           <SectionHeader title="Recent Sessions" action={{ label: "See all", onPress: () => router.push('/profile') }} />
