@@ -1,3 +1,4 @@
+import { getDerivedProjectStatus } from '../utils/projectStatus';
 import { getDatabase } from './schema';
 
 import type { Session, BoulderGroup, BoulderLog, FailureReason, Project, ProjectStatus, Outcome, Sector, Route, Attempt, HoldType, WallAngle, RouteStatus } from '../types';
@@ -1068,4 +1069,88 @@ export function getRecentGrades(): { gradeRaw: string, gradeIndex: number }[] {
     ];
   }
   return rows.map(r => ({ gradeRaw: r.grade_raw, gradeIndex: r.grade_index }));
+}
+
+
+
+export function getRichProjects(): any[] {
+  const db = getDatabase();
+  const projects = db.getAllSync<any>(`SELECT * FROM projects WHERE deleted_at IS NULL ORDER BY created_at DESC`);
+  
+  const climbs = db.getAllSync<any>(`
+    SELECT c.project_id, c.session_id, c.logged_at, s.gym_name
+    FROM climbs c
+    LEFT JOIN sessions s ON c.session_id = s.id
+    WHERE c.project_id IS NOT NULL AND c.deleted_at IS NULL
+    ORDER BY c.logged_at DESC
+  `);
+
+  return projects.map(p => {
+    const pClimbs = climbs.filter((c: any) => c.project_id === p.id);
+    const lastClimb = pClimbs[0];
+    const gymName = lastClimb ? lastClimb.gym_name : null;
+    const lastTriedAt = lastClimb ? lastClimb.logged_at : null;
+    
+    const sessionMap = new Map();
+    for (const c of pClimbs) {
+       sessionMap.set(c.session_id, (sessionMap.get(c.session_id) || 0) + 1);
+    }
+    const burnsPerSession = Array.from(sessionMap.values()).slice(0, 6).reverse();
+
+    const statusChip = getDerivedProjectStatus(pClimbs.length, p.high_water_mark_moves, p.total_moves);
+
+    return {
+      id: p.id,
+      title: p.title,
+      gradeRaw: p.grade_raw,
+      normalizedDifficulty: p.grade_index,
+      wallAngle: p.wall_angle,
+      holdType: p.hold_type,
+      status: p.status,
+      highWaterMarkMoves: p.high_water_mark_moves,
+      totalMoves: p.total_moves,
+      microBeta: p.micro_beta,
+      attempts: pClimbs.length,
+      gymName,
+      lastTriedAt,
+      burnsPerSession,
+      statusChip,
+      createdAt: p.created_at,
+    };
+  });
+}
+
+export function getRichProjectById(id: string): any | null {
+  const all = getRichProjects();
+  return all.find((p: any) => p.id === id) || null;
+}
+
+export function getProjectHistory(projectId: string): any[] {
+  const db = getDatabase();
+  const climbs = db.getAllSync<any>(`
+    SELECT c.id, c.session_id, c.logged_at, c.attempts, c.result, s.started_at
+    FROM climbs c
+    JOIN sessions s ON c.session_id = s.id
+    WHERE c.project_id = ? AND c.deleted_at IS NULL
+    ORDER BY c.logged_at DESC
+  `, [projectId]);
+  
+  const sessions = new Map();
+  for (const c of climbs) {
+    if (!sessions.has(c.session_id)) {
+      sessions.set(c.session_id, {
+        sessionId: c.session_id,
+        date: c.started_at,
+        burns: 0,
+        bestResult: 'attempt',
+        bestMoves: 0
+      });
+    }
+    const sess = sessions.get(c.session_id);
+    sess.burns += (c.attempts || 1);
+    if (c.result === 'send' || c.result === 'top' || c.result === 'flash') {
+      sess.bestResult = 'send';
+    }
+  }
+  return Array.from(sessions.values()).sort((a, b) => b.date - a.date);
 }

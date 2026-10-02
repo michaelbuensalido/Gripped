@@ -63,3 +63,15 @@ export function useHomeSummary() {
 export function useRecentGrades() {
   return useLiveQuery(() => Q.getRecentGrades());
 }
+
+export function useRichProjects() {
+  return useLiveQuery(() => Q.getRichProjects());
+}
+
+export function useProject(id: string) {
+  return useLiveQuery(() => Q.getRichProjectById(id), [id]);
+}
+
+export function useProjectHistory(id: string) {
+  return useLiveQuery(() => Q.getProjectHistory(id), [id]);
+}
