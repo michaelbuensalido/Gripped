@@ -32,9 +32,8 @@ export function WeekStrip({ days, streak }: WeekStripProps) {
             paddingVertical: space.xs,
             borderRadius: radius.pill,
           }}>
-            <Flame size={16} color={colors.accent} />
             <Text style={[type.control, { color: colors.text }]}>
-              {plural(streak, 'week streak')}
+              {streak} wk
             </Text>
           </View>
         </View>

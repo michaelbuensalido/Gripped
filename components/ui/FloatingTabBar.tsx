@@ -149,9 +149,9 @@ export function FloatingTabBar({ state, descriptors, navigation }: any) {
 
   return (
     <>
-      <View style={[styles.container, shadow.floating, { bottom: 24, left: 16, right: 16, borderRadius: radius.pill }]}>
+      <View style={[styles.container, shadow.floating, { bottom: 24, left: 16, right: 16, borderRadius: radius.pill, overflow: 'visible' }]}>
         <BlurView intensity={40} tint="light" style={[StyleSheet.absoluteFill, { borderRadius: radius.pill, backgroundColor: colors.glass, overflow: 'hidden' }]} />
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', height: 64, paddingHorizontal: 4 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', height: 64, paddingHorizontal: 4, overflow: 'visible' }}>
           {routes.map((route: any, index: number) => {
             const { options } = descriptors[route.key];
             const isFocused = state.index === state.routes.findIndex((r: any) => r.key === route.key);

@@ -108,7 +108,7 @@ describe('getHomeSummary', () => {
 
     const summary = getHomeSummary();
     // Hardest send should be V4, not V6
-    expect(summary.recentSessions[0].hardestGradeRaw).toBe('V4');
-    expect(summary.recentSessions[0].climbs).toBe(1);
+    expect(summary.recentSessions[0].hardestLabel).toBe('V4');
+    expect(summary.recentSessions[0].climbsCount).toBe(1);
   });
 });

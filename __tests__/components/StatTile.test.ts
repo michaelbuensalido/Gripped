@@ -1,4 +1,17 @@
 import React from 'react';
+
+jest.mock('react-native', () => ({
+  View: 'View',
+  Text: 'Text',
+  StyleSheet: { create: jest.fn(), hairlineWidth: 1 },
+  Animated: { Text: 'AnimatedText', View: 'AnimatedView', Value: jest.fn(() => ({ interpolate: jest.fn() })) },
+  AccessibilityInfo: { isReduceMotionEnabled: jest.fn(() => Promise.resolve(false)) },
+  Easing: { inOut: jest.fn(), ease: jest.fn() }
+}), { virtual: true });
+jest.mock('expo-linear-gradient', () => ({
+  LinearGradient: 'LinearGradient'
+}), { virtual: true });
+
 import { StatTile } from '../../components/ui/StatTile';
 
 describe('StatTile', () => {

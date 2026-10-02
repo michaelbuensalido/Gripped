@@ -83,11 +83,17 @@ export default function HomeScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
+      {/* 7. Solid top scrim to prevent scroll content bleeding under status bar */}
+      <View style={{
+        position: 'absolute', top: 0, left: 0, right: 0,
+        height: insets.top, backgroundColor: colors.bg, zIndex: 10
+      }} />
       <Animated.ScrollView
         onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], { useNativeDriver: true })}
         scrollEventThrottle={16}
         contentContainerStyle={{
           paddingTop: Math.max(insets.top, space.xxl),
+          paddingBottom: 120, // Clear the floating tab bar
           paddingHorizontal: space.lg + space.xs, // 20px sides per design system
         }}
       >
