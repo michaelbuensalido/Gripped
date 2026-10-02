@@ -69,7 +69,7 @@ const Particle = ({ active, index }: { active: boolean; index: number }) => {
     transform: [
       { translateY: translateY.value },
       { translateX: translateX.value },
-      { rotate: `${rotate.value}deg` },
+      { rotate: rotate.value + 'deg' },
     ],
     opacity: opacity.value,
   }));
@@ -84,7 +84,7 @@ const Particle = ({ active, index }: { active: boolean; index: number }) => {
           backgroundColor: color,
           borderRadius: size / 2,
         },
-        animatedStyle,
+        animatedStyle as any,
       ]}
     />
   );
@@ -92,7 +92,7 @@ const Particle = ({ active, index }: { active: boolean; index: number }) => {
 
 export function ConfettiOverlay({ active }: ConfettiOverlayProps) {
   return (
-    <View style={StyleSheet.absoluteFillObject} pointerEvents="none">
+    <View style={StyleSheet.absoluteFill} pointerEvents="none">
       {Array.from({ length: NUM_PARTICLES }).map((_, i) => (
         <Particle key={i} index={i} active={active} />
       ))}

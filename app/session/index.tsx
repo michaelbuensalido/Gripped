@@ -449,7 +449,7 @@ export default function ActiveSessionScreen() {
       
       <UndoToast 
         visible={!!deletedClimbId || !!hardestToast} 
-        message={hardestToast || (climbs.find((c: any) => c.id === deletedClimbId)?.deleted_at === null ? "Climb logged" : "Climb deleted")}
+        message={climbs.find((c: any) => c.id === deletedClimbId)?.deleted_at === null ? 'Climb logged' : 'Climb deleted'}
         onUndo={!hardestToast ? () => {
           const isDeleted = climbs.find((c: any) => c.id === deletedClimbId)?.deleted_at !== null;
           if (isDeleted) {

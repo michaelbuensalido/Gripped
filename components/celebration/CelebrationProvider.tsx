@@ -26,27 +26,27 @@ export const CelebrationProvider: React.FC<{ children: React.ReactNode }> = ({ c
   const [bigData, setBigData] = useState<{ nickname: string; gradeRaw: string; burns: number; sessions: number } | null>(null);
   const [confetti, setConfetti] = useState(false);
 
-  const toastTimer = useRef<NodeJS.Timeout | null>(null);
-  const streakTimer = useRef<NodeJS.Timeout | null>(null);
-  const bigTimer = useRef<NodeJS.Timeout | null>(null);
-  const confettiTimer = useRef<NodeJS.Timeout | null>(null);
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const streakTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const bigTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const confettiTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const triggerSmall = useCallback(() => {
-    triggerHaptic('impactLight');
+    triggerHaptic('light');
     setConfetti(true);
     if (confettiTimer.current) clearTimeout(confettiTimer.current);
     confettiTimer.current = setTimeout(() => setConfetti(false), 3000);
   }, []);
 
   const triggerMedium = useCallback((message: string) => {
-    triggerHaptic('notificationSuccess');
+    triggerHaptic('success');
     setToast(message);
     if (toastTimer.current) clearTimeout(toastTimer.current);
     toastTimer.current = setTimeout(() => setToast(null), 3000);
   }, []);
 
   const triggerBig = useCallback((data: { nickname: string; gradeRaw: string; burns: number; sessions: number }) => {
-    triggerHaptic('notificationSuccess');
+    triggerHaptic('success');
     setBigData(data);
     setConfetti(true);
     if (bigTimer.current) clearTimeout(bigTimer.current);
@@ -57,7 +57,7 @@ export const CelebrationProvider: React.FC<{ children: React.ReactNode }> = ({ c
   }, []);
 
   const triggerStreak = useCallback((weeks: number) => {
-    triggerHaptic('notificationSuccess');
+    triggerHaptic('success');
     setStreakToast(weeks);
     setConfetti(true);
     if (streakTimer.current) clearTimeout(streakTimer.current);
@@ -68,7 +68,7 @@ export const CelebrationProvider: React.FC<{ children: React.ReactNode }> = ({ c
   }, []);
 
   const closeBig = () => {
-    triggerHaptic('impactLight');
+    triggerHaptic('light');
     setBigData(null);
     setConfetti(false);
     if (bigTimer.current) clearTimeout(bigTimer.current);

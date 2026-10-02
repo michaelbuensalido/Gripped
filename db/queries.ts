@@ -1235,11 +1235,12 @@ export function logClimbForSession(sessionId: string, payload: {
   attempts?: number;
   notes?: string;
   projectId?: string | null;
+  loggedAt?: number;
 }): string {
   const id = `climb_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
   const gradeIndex = gradeToNumeric(payload.gradeRaw);
   const outcome = payload.result === 'top' ? 'send' : payload.result;
-  const now = Date.now();
+  const now = payload.loggedAt || Date.now();
   runMutation('climbs', id, 'INSERT',
     `INSERT INTO climbs (
       id, session_id, project_id, grade_raw, grade_index, result, attempts, notes, logged_at, created_at, updated_at

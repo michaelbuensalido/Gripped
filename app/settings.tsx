@@ -12,6 +12,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Settings, Clock, Trash2, Info, ArrowLeft } from 'lucide-react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect, useRouter } from 'expo-router';
+import { seedDemoData } from '../db/seed';
 import { clearAllSessionData } from '../db/queries';
 import { FLOATING_CARD_STYLE, THEME_COLORS } from '../constants/theme';
 import { ScreenContainer } from '../components/ui/ScreenContainer';
@@ -251,6 +252,44 @@ export default function SettingsScreen() {
           </View>
         </TouchableOpacity>
       </View>
+{__DEV__ && (
+        <>
+          <SectionHeader label="Developer" />
+          <View style={FLOATING_CARD_STYLE} className="rounded-2xl mx-4 overflow-hidden">
+            <TouchableOpacity
+              onPress={() => {
+                Alert.alert(
+                  'Seed Demo Data',
+                  'This will permanently delete ALL local data first. Are you sure?',
+                  [
+                    { text: 'Cancel', style: 'cancel' },
+                    {
+                      text: 'Wipe & Seed',
+                      style: 'destructive',
+                      onPress: () => {
+                        try {
+                          seedDemoData();
+                          Alert.alert('Done', 'Demo data has been seeded.');
+                        } catch (e) {
+                          Alert.alert('Error', 'Could not seed demo data.');
+                          console.error(e);
+                        }
+                      }
+                    }
+                  ]
+                );
+              }}
+              activeOpacity={0.8}
+              className="flex-row items-center gap-3 px-4 py-4"
+            >
+              <View>
+                <Text className="text-white font-semibold">Reset and seed demo data</Text>
+                <Text className="text-muted text-xs mt-0.5">Wipes local DB and writes 10 weeks of history</Text>
+              </View>
+            </TouchableOpacity>
+          </View>
+        </>
+      )}
     </ScrollView>
   </ScreenContainer>
   );

@@ -41,3 +41,15 @@ Because CruxLog relies on native vision camera plugins and custom native modules
    ```bash
    npm run android
    ```
+
+## Demo data
+
+If you need to test the UI or take portfolio screenshots, you can populate the app with a realistic, deterministic set of mock data. This feature is only available in development builds (\`__DEV__\`).
+
+1. Open the **Profile / Logbook** tab and tap the gear icon to open **Settings**.
+2. Scroll to the bottom to find the **Developer** section.
+3. Tap **Reset and seed demo data**.
+4. Confirm the warning dialog.
+
+*Note: This will permanently wipe your actual local database before seeding. Do not use this if you have real un-synced data you want to keep.*
+
