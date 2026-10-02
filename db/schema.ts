@@ -131,6 +131,24 @@ export function getDatabase(): SQLite.SQLiteDatabase {
   return _db;
 }
 
+
+    const columnsToAdd = [
+      "ALTER TABLE sessions ADD COLUMN effort INTEGER;",
+      "ALTER TABLE sessions ADD COLUMN notes TEXT NOT NULL DEFAULT '';",
+      "ALTER TABLE sessions ADD COLUMN title TEXT NOT NULL DEFAULT '';",
+      "ALTER TABLE sessions ADD COLUMN rpe INTEGER;",
+      "ALTER TABLE climbs ADD COLUMN notes TEXT;",
+      "ALTER TABLE projects ADD COLUMN status TEXT NOT NULL DEFAULT 'not_started';",
+      "ALTER TABLE projects ADD COLUMN total_moves INTEGER;",
+      "ALTER TABLE projects ADD COLUMN high_water_mark_moves INTEGER;",
+      "ALTER TABLE projects ADD COLUMN micro_beta TEXT;",
+    ];
+    for (const sql of columnsToAdd) {
+      try {
+        _db.execSync(sql);
+      } catch (e) {}
+    }
+
 export async function initializeDatabase(): Promise<void> {
   getDatabase();
 }
