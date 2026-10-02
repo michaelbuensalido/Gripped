@@ -26,7 +26,6 @@ import { notificationEngine } from "../services/notificationEngine";
 import "../global.css";
 
 import { FloatingTabBar } from "../components/ui/FloatingTabBar";
-import { GlobalSessionBanner } from "../components/ui/GlobalSessionBanner";
 
 function TabLayout() {
   const activeSession = useActiveSession();
@@ -120,8 +119,7 @@ export default function RootLayout() {
       <SafeAreaProvider>
         <StatusBar style="dark" />
         {isDbReady ? <TabLayout /> : null}
-        {isDbReady && <GlobalSessionBanner />}
-        {/* Global floating mini-bar */}
+                {/* Global floating mini-bar */}
         
       </SafeAreaProvider>
     </GestureHandlerRootView>
