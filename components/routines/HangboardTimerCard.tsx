@@ -194,7 +194,7 @@ export function HangboardTimerCard() {
             activeOpacity={0.8}
             className="h-[42px] px-6 bg-[#141417] border border-[#27272F] rounded-lg items-center justify-center"
           >
-            <Text className="text-[#8A8A98] text-[13px] font-bold uppercase">RESET</Text>
+            <Text className="text-[#9090A0] text-[13px] font-bold uppercase">RESET</Text>
           </TouchableOpacity>
         )}
       </View>

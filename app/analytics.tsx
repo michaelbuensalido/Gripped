@@ -1,279 +1,157 @@
-import React, { useState, useCallback } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Modal, TouchableWithoutFeedback, Platform } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useFocusEffect, useRouter } from 'expo-router';
-import { Check, Settings as SettingsIcon } from 'lucide-react-native';
-import {
-  getGradePyramidData,
-  getWeeklyVolumeTrends,
-  getWallAngleBreakdown,
-  getAnalyticsOverview,
-  getRecentBoulderLogs,
-  getRecentOutcomesSummary,
-  getGradeVolumeEqualizerData,
-  getAngleMasteryBreakdown,
-  type GradePyramidDataRow,
-  type WeeklyVolumeTrendsData,
-  type WallAngleBreakdownItem,
-  type AngleMasteryItem,
-  type AnalyticsOverview,
-  type RecentBoulderLog,
-  type RecentOutcomesSummaryData,
-  type GradeVolumeEqualizerData,
-} from '../db/queries';
-import { OutcomeRingGauge } from '../components/analytics/OutcomeRingGauge';
-import { BentoMetricRow } from '../components/analytics/BentoMetricRow';
-import { SessionPacingWidget } from '../components/analytics/SessionPacingWidget';
-import { GradePyramidWidget } from '../components/analytics/GradePyramidWidget';
-import { ACWRWidget } from '../components/analytics/ACWRWidget';
-import { calculateACWR } from '../services/loadCalculations';
-import { AngleMasteryWidget } from '../components/analytics/AngleMasteryWidget';
-import { ScreenContainer } from '../components/ui/ScreenContainer';
+import React, { useState } from 'react';
+import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
+import { useRouter } from 'expo-router';
+import { Screen } from '../components/ui/Screen';
+import { SectionHeader } from '../components/ui/SectionHeader';
+import { EmptyState } from '../components/ui/EmptyState';
+import { Card } from '../components/ui/Card';
+import { ResultDonut } from '../components/ui/ResultDonut';
+import { TrendTile } from '../components/ui/TrendTile';
+import { SessionRow } from '../components/ui/SessionRow';
+import { PrimaryButton } from '../components/ui/PrimaryButton';
+import { GradePyramid } from '../components/ui/GradePyramid';
+import { useProgressStats, useRecentSessions } from '../db/hooks';
+import { useTheme } from '../theme/useTheme';
 import { triggerHaptic } from '../utils/haptics';
 
-export type TimeframeOption = 'weekly' | 'monthly' | 'all';
+type Period = '7d' | '30d' | '90d' | '1y' | 'all';
+const PERIODS: { label: string; value: Period }[] = [
+  { label: '7D', value: '7d' },
+  { label: '30D', value: '30d' },
+  { label: '3M', value: '90d' },
+  { label: '1Y', value: '1y' },
+  { label: 'ALL', value: 'all' },
+];
 
-interface DisplayRoute {
-  id: string;
-  title: string;
-  grade: string;
-  wallAngle: string | null;
-  outcome: 'Flash' | 'Send' | 'Attempt';
-  date: string;
-  attempts: number;
+function formatGrade(idx: number) {
+  return `V${idx}`;
 }
 
-export default function AnalyticsScreen() {
+export default function ProgressScreen() {
   const router = useRouter();
-  const insets = useSafeAreaInsets();
-  const [timeframe, setTimeframe] = useState<TimeframeOption>('weekly');
-  const [isTimeframeModalVisible, setIsTimeframeModalVisible] = useState<boolean>(false);
+  const { colors, type, space, radius } = useTheme();
+  const [period, setPeriod] = useState<Period>('30d');
 
-  const [outcomesSummary, setOutcomesSummary] = useState<RecentOutcomesSummaryData | null>(null);
-  const [gradeEqualizer, setGradeEqualizer] = useState<GradeVolumeEqualizerData | null>(null);
-  const [pyramidData, setPyramidData] = useState<GradePyramidDataRow[]>([]);
-  const [volumeTrends, setVolumeTrends] = useState<WeeklyVolumeTrendsData | null>(null);
-  const [wallAngleData, setWallAngleData] = useState<WallAngleBreakdownItem[]>([]);
-  const [angleMasteryData, setAngleMasteryData] = useState<AngleMasteryItem[]>([]);
-  const [overview, setOverview] = useState<AnalyticsOverview | null>(null);
-  const [recentLogs, setRecentLogs] = useState<RecentBoulderLog[]>([]);
+  const stats = useProgressStats(period);
+  const recentSessions = useRecentSessions().slice(0, 5);
 
-  const [acwrData, setAcwrData] = useState<any>(null);
+  const hasData = stats.resultCounts.top > 0 || stats.resultCounts.attempt > 0 || stats.resultCounts.flash > 0;
 
-  const loadAnalytics = useCallback((tf: TimeframeOption) => {
-    let sinceTimestamp: number | undefined;
-    const now = Date.now();
-    const queryTf: '30d' | '90d' | 'all' = tf === 'weekly' ? '30d' : tf === 'monthly' ? '30d' : 'all';
+  if (!hasData && period === 'all') {
+    return (
+      <Screen title="Progress">
+        <EmptyState
+          title="No data yet"
+          body="Log some climbs to see your stats and progression over time."
+          cta={<PrimaryButton
+            label="START SESSION"
+            onPress={() => router.push('/')}
+          />}
+        />
+      </Screen>
+    );
+  }
 
-    if (tf === 'weekly') {
-      sinceTimestamp = now - 7 * 24 * 60 * 60 * 1000;
-    } else if (tf === 'monthly') {
-      sinceTimestamp = now - 30 * 24 * 60 * 60 * 1000;
-    }
-
-    try {
-      setOutcomesSummary(getRecentOutcomesSummary(20));
-      setGradeEqualizer(getGradeVolumeEqualizerData(queryTf));
-      setPyramidData(getGradePyramidData(queryTf));
-      setVolumeTrends(getWeeklyVolumeTrends(queryTf));
-      setWallAngleData(getWallAngleBreakdown(queryTf));
-      setAngleMasteryData(getAngleMasteryBreakdown(queryTf));
-      setOverview(getAnalyticsOverview(sinceTimestamp));
-      setRecentLogs(getRecentBoulderLogs(6));
-      setAcwrData(calculateACWR());
-    } catch (err) {
-      console.error('Failed to load analytics data:', err);
-    }
-  }, []);
-
-  useFocusEffect(
-    useCallback(() => {
-      loadAnalytics(timeframe);
-    }, [loadAnalytics, timeframe])
-  );
-
-  const handleTimeframeSelect = (tf: TimeframeOption) => {
-    triggerHaptic('light');
-    setTimeframe(tf);
-    setIsTimeframeModalVisible(false);
-    loadAnalytics(tf);
-  };
-
-  const timeframeLabel = timeframe === 'weekly' ? 'Weekly ⌵' : timeframe === 'monthly' ? 'Monthly ⌵' : 'All-Time ⌵';
-
-  const displayRoutes: DisplayRoute[] = recentLogs.map((log, index) => {
-    const d = new Date(log.timestamp);
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    const dateStr = `${months[d.getMonth()]} ${d.getDate()}`;
-    return {
-      id: log.id,
-      title: `${log.gymName || 'Bouldering'}`,
-      grade: log.gradeRaw,
-      wallAngle: log.wallAngle || null,
-      outcome: log.outcome === 'flash' ? 'Flash' : log.outcome === 'send' ? 'Send' : 'Attempt',
-      date: dateStr,
-      attempts: log.attempts ?? 1,
-    };
-  });
+  const { resultCounts, avgGradeLast20, weeklyVolume, rates, hardestSend, gradePyramid } = stats;
 
   return (
-    <ScreenContainer withTopInset={true}>
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={{
-          paddingHorizontal: 16,
-          paddingTop: 48,
-          paddingBottom: 120,
-        }}
-      >
-        {/* Header Row */}
-        <View className="flex-row items-center justify-between mb-4">
-          <Text className="text-[24px] font-bold text-white tracking-[-0.8px]" numberOfLines={1}>
-            Analytics & Report
-          </Text>
-
-          <View className="flex-row items-center gap-2">
+    <Screen title="Progress" scroll>
+      {/* Period Selector */}
+      <View style={{ flexDirection: 'row', gap: space.sm, marginBottom: space.xl }}>
+        {PERIODS.map((p) => {
+          const active = period === p.value;
+          return (
             <TouchableOpacity
-              activeOpacity={0.8}
-              onPress={() => { triggerHaptic('light'); setIsTimeframeModalVisible(true); }}
-              className="bg-[#1E1E24] border border-[#2C2C35] rounded-full px-3.5 py-2 items-center justify-center"
+              key={p.value}
+              onPress={() => { triggerHaptic('light'); setPeriod(p.value); }}
+              style={{
+                flex: 1,
+                paddingVertical: 8,
+                alignItems: 'center',
+                backgroundColor: active ? colors.accentSoft : colors.card,
+                borderRadius: radius.sm,
+                borderWidth: 1,
+                borderColor: active ? colors.accent : colors.border,
+              }}
             >
-              <Text className="text-white text-[13px] font-semibold">{timeframeLabel}</Text>
+              <Text style={[type.caption, { color: active ? colors.accentText : colors.textMuted, fontWeight: active ? '700' : '400' }]}>
+                {p.label}
+              </Text>
             </TouchableOpacity>
+          );
+        })}
+      </View>
 
-            <TouchableOpacity
-              activeOpacity={0.8}
-              onPress={() => { triggerHaptic('light'); router.push('/settings'); }}
-              className="w-[40px] h-[40px] bg-[#19191D] border border-[#27272F] rounded-xl items-center justify-center"
-            >
-              <SettingsIcon size={20} color="#9090A0" />
-            </TouchableOpacity>
+      {!hasData ? (
+         <View style={{ alignItems: 'center', paddingVertical: space.xxl }}>
+           <Text style={[type.body, { color: colors.textMuted }]}>No activity in this period.</Text>
+         </View>
+      ) : (
+        <>
+          {/* Result Donut */}
+          <Card style={{ marginBottom: space.lg, paddingVertical: space.xl }}>
+            <ResultDonut
+              flashCount={resultCounts.flash}
+              topCount={resultCounts.top}
+              attemptCount={resultCounts.attempt}
+              centerGrade={formatGrade(avgGradeLast20)}
+              centerLabel="AVG LAST 20"
+            />
+          </Card>
+
+          {/* Trend Tiles Row */}
+          <View style={{ flexDirection: 'row', gap: space.sm, marginBottom: space.xl }}>
+            <TrendTile
+              flex
+              label="Weekly Vol"
+              value={weeklyVolume.length > 0 ? weeklyVolume[weeklyVolume.length - 1].count : 0}
+              data={weeklyVolume.map((v: any) => v.count)}
+              onPress={() => router.push(`/analytics/stat-detail?stat=volume&period=${period}`)}
+            />
+            <TrendTile
+              flex
+              label="Flash Rate"
+              value={`${rates.flashRate}%`}
+              data={[rates.flashRate, rates.flashRate]} // Flat line if we don't have historical
+              onPress={() => router.push(`/analytics/stat-detail?stat=flash&period=${period}`)}
+            />
+            <TrendTile
+              flex
+              label="Hardest"
+              value={hardestSend.length > 0 ? formatGrade(hardestSend[hardestSend.length - 1].max_grade) : '–'}
+              data={hardestSend.map((v: any) => v.max_grade)}
+              onPress={() => router.push(`/analytics/stat-detail?stat=hardest&period=${period}`)}
+            />
           </View>
-        </View>
 
-        {/* Hero Card */}
-        {outcomesSummary && (
-          <View className="mb-0">
-            <OutcomeRingGauge data={outcomesSummary} />
-          </View>
-        )}
+          {/* Grade Pyramid */}
+          <SectionHeader title="Sends by Grade" />
+          <Card style={{ marginBottom: space.xl }}>
+            <GradePyramid data={gradePyramid} formatGrade={formatGrade} />
+          </Card>
 
-        <BentoMetricRow 
-          peakGrade={overview?.hardestSend} 
-          flashRate={overview?.flashRate ?? 38} 
-          sparklineData={overview?.peakGradeTrend}
-        />
-
-        <SessionPacingWidget overview={overview} />
-
-        <View className="mt-4">
-          <ACWRWidget data={acwrData} />
-        </View>
-
-        {/* Section Divider */}
-        <View className="flex-row items-center gap-3 mt-7 mb-4">
-          <Text className="text-[#8A8A98] text-[11px] font-bold tracking-[1px]">DETAILED PERFORMANCE</Text>
-          <View className="flex-1 h-[1px] bg-[#2C2C35]" />
-        </View>
-
-        <View className="mb-4">
-          <GradePyramidWidget data={pyramidData} title={timeframe === 'all' ? 'ALL-TIME GRADE PYRAMID' : 'GRADE PYRAMID'} />
-        </View>
-
-        <View className="mb-4">
-          <AngleMasteryWidget data={angleMasteryData} />
-        </View>
-
-
-        {/* Recent Sends Ledger */}
-        <View className="mt-2">
-          <Text className="text-[#8A8A98] text-[12px] font-bold tracking-[0.8px] mb-2.5 uppercase">RECENT SENDS</Text>
-          <View className="bg-[#19191D] border border-[#27272F] rounded-xl overflow-hidden">
-            {displayRoutes.length === 0 ? (
-              <View className="items-center p-8">
-                <Text className="text-white text-[14px] font-bold mb-1.5">No climbs logged yet</Text>
-                <Text className="text-[#8A8A98] text-[12px] text-center">Completed boulders from your sessions will appear here.</Text>
-              </View>
-            ) : (
-              displayRoutes.map((route, idx) => {
-                const isLast = idx === displayRoutes.length - 1;
-                const isFlash = route.outcome === 'Flash';
-                const isSend = route.outcome === 'Send';
-                const badgeColor = isFlash ? '#6EE756' : isSend ? '#8E7CFF' : '#E7AE56';
-
-                return (
-                  <View key={route.id} className={`flex-row items-center justify-between px-4 py-3 ${!isLast ? 'border-b border-[#27272F]' : ''}`}>
-                    <View className="flex-row items-center flex-1 pr-4">
-                      <View className="bg-[#8E7CFF]/10 px-2 py-0.5 rounded mr-3">
-                        <Text className="text-[#8E7CFF] font-bold text-[13px]">{route.grade}</Text>
-                      </View>
-                      <View className="flex-1">
-                        <View className="flex-row items-center">
-                           <Text className="text-white text-[13px] font-bold mr-2" numberOfLines={1}>{route.title}</Text>
-                           {route.wallAngle && (
-                             <View className="bg-[#27272F] px-1.5 py-0.5 rounded">
-                               <Text className="text-[#8A8A98] text-[9px] font-bold tracking-widest uppercase">{route.wallAngle}</Text>
-                             </View>
-                           )}
-                        </View>
-                        <Text className="text-[#8A8A98] text-[11px] font-medium uppercase mt-0.5" style={{ color: badgeColor }}>{route.outcome}</Text>
-                      </View>
-                    </View>
-
-                    <View className="items-end">
-                      <Text className="text-[10px] text-[#8A8A98] uppercase tracking-[0.5px]" style={{ fontVariant: ['tabular-nums'] }}>
-                        {route.date}
-                      </Text>
-                      <Text className="text-[11px] text-[#8A8A98] font-mono mt-0.5 font-bold">
-                        # {route.attempts}x
-                      </Text>
-                    </View>
-                  </View>
-                );
-              })
-            )}
-          </View>
-        </View>
-      </ScrollView>
-
-      {/* Timeframe Selector Modal */}
-      <Modal visible={isTimeframeModalVisible} transparent animationType="fade" onRequestClose={() => setIsTimeframeModalVisible(false)}>
-        <TouchableWithoutFeedback onPress={() => setIsTimeframeModalVisible(false)}>
-          <View className="flex-1 bg-black/75 justify-end">
-            <TouchableWithoutFeedback onPress={(e) => e.stopPropagation()}>
-              <View className="bg-[#1E1E24] rounded-t-[28px] border border-[#2C2C35] p-6" style={{ paddingBottom: Math.max(insets.bottom + 20, 32) }}>
-                <View className="w-[36px] h-[4px] rounded-full bg-[#3E3E4D] self-center mb-4" />
-                <Text className="text-white text-[18px] font-bold mb-1">Select Timeframe</Text>
-                <Text className="text-[#8A8A98] text-[13px] font-medium mb-5">Choose the analysis window for your climbing metrics</Text>
-
-                {['weekly', 'monthly', 'all'].map((tf) => {
-                  const isActive = timeframe === tf;
-                  const label = tf === 'weekly' ? 'Weekly' : tf === 'monthly' ? 'Monthly' : 'All-Time';
-                  const desc = tf === 'weekly' ? 'Sunday to Saturday capsule volume & daily trends' : tf === 'monthly' ? 'Trailing 30-day send metrics and consistency' : 'Full climbing career send pyramid and lifetime stats';
-                  return (
-                    <TouchableOpacity
-                      key={tf}
-                      activeOpacity={0.8}
-                      onPress={() => handleTimeframeSelect(tf as TimeframeOption)}
-                      className={`flex-row items-center justify-between bg-[#131316] border rounded-2xl p-4 mb-2.5 ${isActive ? 'border-[#6EE756] bg-[#6ee756]/5' : 'border-[#2C2C35]'}`}
-                    >
-                      <View>
-                        <Text className={`text-[15px] font-bold mb-1 ${isActive ? 'text-[#6EE756]' : 'text-white'}`}>{label}</Text>
-                        <Text className="text-[#8A8A98] text-[12px] font-medium">{desc}</Text>
-                      </View>
-                      {isActive && (
-                        <View className="w-[24px] h-[24px] rounded-full bg-[#6EE756] items-center justify-center">
-                          <Check size={14} color="#131316" strokeWidth={3} />
-                        </View>
-                      )}
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-            </TouchableWithoutFeedback>
-          </View>
-        </TouchableWithoutFeedback>
-      </Modal>
-    </ScreenContainer>
+          {/* Recent Sessions */}
+          <SectionHeader title="Recent Sessions" action={{ label: "See all", onPress: () => router.push('/profile') }} />
+          <Card style={{ padding: 0, overflow: 'hidden', marginBottom: 40 }}>
+            {recentSessions.map((s: any, i: number) => {
+              const summary = require('../db/queries').getSessionSummary(s.id);
+              return (
+                <SessionRow
+                  key={s.id}
+                  id={s.id}
+                  gymName={s.gymName}
+                  startedAt={s.startTime}
+                  durationMs={summary.duration}
+                  climbs={summary.climbs}
+                  sends={summary.sends}
+                  hardestGrade={summary.hardestGradeRaw !== '–' ? summary.hardestGradeRaw : undefined}
+                  isLast={i === recentSessions.length - 1}
+                />
+              );
+            })}
+          </Card>
+        </>
+      )}
+    </Screen>
   );
 }

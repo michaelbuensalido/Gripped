@@ -131,7 +131,7 @@ export function RestTimerPickerSheet({
                     height: 32,
                     borderRadius: 16,
                     backgroundColor: '#16161C',
-                    borderColor: '#2C2C35',
+                    borderColor: '#27272F',
                     borderWidth: 1,
                     alignItems: 'center',
                     justifyContent: 'center',
@@ -145,7 +145,7 @@ export function RestTimerPickerSheet({
               <View
                 style={{
                   backgroundColor: '#16161C',
-                  borderColor: '#2C2C35',
+                  borderColor: '#27272F',
                   borderWidth: 1,
                   borderRadius: 20,
                   paddingVertical: 18,
@@ -179,7 +179,7 @@ export function RestTimerPickerSheet({
 
               {/* Quick Presets row */}
               <View className="mb-4">
-                <Text className="text-[#8A8A98] text-[11px] font-bold uppercase tracking-[1.2px] mb-2 px-1">
+                <Text className="text-[#9090A0] text-[11px] font-bold uppercase tracking-[1.2px] mb-2 px-1">
                   Quick Presets
                 </Text>
                 <ScrollView
@@ -196,7 +196,7 @@ export function RestTimerPickerSheet({
                         activeOpacity={0.75}
                         style={{
                           backgroundColor: isActive ? '#8E7CFF' : '#16161C',
-                          borderColor: isActive ? '#8E7CFF' : '#2C2C35',
+                          borderColor: isActive ? '#8E7CFF' : '#27272F',
                           borderWidth: 1,
                           borderRadius: 14,
                           paddingHorizontal: 16,
@@ -229,7 +229,7 @@ export function RestTimerPickerSheet({
                   style={{
                     flex: 1,
                     backgroundColor: '#16161C',
-                    borderColor: '#2C2C35',
+                    borderColor: '#27272F',
                     borderWidth: 1,
                     borderRadius: 16,
                     paddingVertical: 12,
@@ -251,7 +251,7 @@ export function RestTimerPickerSheet({
                   style={{
                     flex: 1,
                     backgroundColor: '#16161C',
-                    borderColor: '#2C2C35',
+                    borderColor: '#27272F',
                     borderWidth: 1,
                     borderRadius: 16,
                     paddingVertical: 12,

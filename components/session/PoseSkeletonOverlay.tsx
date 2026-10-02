@@ -236,7 +236,7 @@ export function PoseSkeletonOverlay({
           <View
             style={[
               styles.statusDot,
-              { backgroundColor: hasClimber ? NEON_LIME : '#8A8A98' },
+              { backgroundColor: hasClimber ? NEON_LIME : '#9090A0' },
             ]}
           />
           <Text style={[styles.statusText, hasClimber && styles.statusTextActive]}>
@@ -251,7 +251,7 @@ export function PoseSkeletonOverlay({
           <Text
             style={[
               styles.statusText,
-              isHandOnHold ? styles.contactTextActive : { color: '#8A8A98' },
+              isHandOnHold ? styles.contactTextActive : { color: '#9090A0' },
             ]}
           >
             {isHandOnHold
@@ -298,7 +298,7 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '800',
     letterSpacing: 0.7,
-    color: '#8A8A98',
+    color: '#9090A0',
   },
   statusTextActive: {
     color: NEON_LIME,

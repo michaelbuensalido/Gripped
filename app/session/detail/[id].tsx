@@ -1,705 +1,822 @@
-import React, { useState, useCallback, useEffect, useRef } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   View,
   Text,
-  ScrollView,
   TouchableOpacity,
-  Share,
+  ScrollView,
   Alert,
   Modal,
   TextInput,
-  KeyboardAvoidingView,
-  Platform,
-  Image,
-  ActivityIndicator,
+  StyleSheet,
+  Pressable,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
-  ArrowLeft,
-  Share2,
-  MoreVertical,
-  RotateCcw,
-  Edit3,
-  Trash2,
+  ChevronLeft,
+  MoreHorizontal,
+  Plus,
+  Edit2,
+  Trophy,
+  CheckCircle,
   X,
-  Check,
 } from 'lucide-react-native';
-import { captureRef } from 'react-native-view-shot';
-import * as Sharing from 'expo-sharing';
+import { Screen } from '../../../components/ui/Screen';
+import { ClimbRow } from '../../../components/ui/ClimbRow';
+import { UndoToast } from '../../../components/ui/UndoToast';
+import { ResultDonut } from '../../../components/ui/ResultDonut';
+import { ProjectCard } from '../../../components/ui/ProjectCard';
+import { SectionHeader } from '../../../components/ui/SectionHeader';
+import { Card } from '../../../components/ui/Card';
+import { PrimaryButton } from '../../../components/ui/PrimaryButton';
+import { LogSheet } from '../../../components/session/LogSheet';
+import { useTheme } from '../../../theme/useTheme';
 import {
-  getSessionDetail,
-  updateSessionNotes,
+  useSession,
+  useSessionDetail,
+  useSessionClimbs,
+  useSessionProjects,
+  useRecentSessions,
+} from '../../../db/hooks';
+import {
+  softDeleteSession,
+  undoDeleteSession,
+  softDeleteBoulderLog,
+  undoDeleteBoulderLog,
+  logClimbForSession,
+  updateClimb,
   updateSessionGym,
-  reopenSession,
-  deleteSession,
-  type SessionDetailData,
+  updateSessionNotesAndEffort,
 } from '../../../db/queries';
-import { ReadOnlyBoulderGroup } from '../../../components/session/ReadOnlyBoulderGroup';
-import { SessionPyramidChart } from '../../../components/session/SessionPyramidChart';
-import { FLOATING_CARD_STYLE } from '../../../constants/theme';
-import { ScreenContainer } from '../../../components/ui/ScreenContainer';
+import { getDatabase } from '../../../db/schema';
+import { useSessionStore } from '../../../store/sessionStore';
+import { isSend } from '../../../utils/isSend';
 import { triggerHaptic } from '../../../utils/haptics';
-import { ShareWorkoutCard } from '../../../components/session/ShareWorkoutCard';
+import { ResultType } from '../../../components/ui/ResultChip';
 
-function formatDuration(ms: number): string {
-  const totalMin = Math.round(ms / 60000);
-  const hours = Math.floor(totalMin / 60);
-  const mins = totalMin % 60;
-  if (hours > 0) {
-    return `${hours}h ${mins}m`;
+function formatSessionSubtitle(startedAt: number, endedAt?: number | null): string {
+  const startDate = new Date(startedAt);
+  const dayName = startDate.toLocaleDateString('en-US', { weekday: 'short' });
+  const dayNum = startDate.getDate();
+  const monthName = startDate.toLocaleDateString('en-US', { month: 'short' });
+  const dateStr = `${dayName} ${dayNum} ${monthName}`;
+
+  const formatTimeOnly = (d: Date) => {
+    const h = d.getHours() % 12 || 12;
+    const m = d.getMinutes().toString().padStart(2, '0');
+    return `${h}:${m}`;
+  };
+  const getAmPm = (d: Date) => (d.getHours() >= 12 ? 'PM' : 'AM');
+
+  const endDate = endedAt ? new Date(endedAt) : startDate;
+  const startAmPm = getAmPm(startDate);
+  const endAmPm = getAmPm(endDate);
+
+  let timeRangeStr = '';
+  if (startAmPm === endAmPm) {
+    timeRangeStr = `${formatTimeOnly(startDate)}-${formatTimeOnly(endDate)} ${endAmPm}`;
+  } else {
+    timeRangeStr = `${formatTimeOnly(startDate)} ${startAmPm} - ${formatTimeOnly(endDate)} ${endAmPm}`;
   }
-  return `${mins}m`;
+
+  const durationMs = Math.max(0, (endedAt || startedAt) - startedAt);
+  let durationStr = '';
+  if (durationMs < 60000) {
+    durationStr = '<1 min';
+  } else {
+    const totalMinutes = Math.floor(durationMs / 60000);
+    const hours = Math.floor(totalMinutes / 60);
+    const mins = totalMinutes % 60;
+    if (hours > 0) {
+      durationStr = `${hours}h ${mins}m`;
+    } else {
+      durationStr = `${mins} min`;
+    }
+  }
+
+  return `${dateStr} · ${timeRangeStr} · ${durationStr}`;
 }
 
-function formatSessionDate(timestamp: number): string {
-  const d = new Date(timestamp);
-  const now = new Date();
-  const isToday = d.toDateString() === now.toDateString();
-  const yesterday = new Date(now);
-  yesterday.setDate(yesterday.getDate() - 1);
-  const isYesterday = d.toDateString() === yesterday.toDateString();
-
-  const timeStr = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-  if (isToday) return `Today • ${timeStr}`;
-  if (isYesterday) return `Yesterday • ${timeStr}`;
-  return `${d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} • ${timeStr}`;
+function CompactStatTile({ label, value }: { label: string; value: string | number }) {
+  const { colors, type, radius, space } = useTheme();
+  return (
+    <View
+      style={{
+        flex: 1,
+        backgroundColor: colors.card,
+        borderRadius: radius.md,
+        padding: space.sm,
+        alignItems: 'center',
+      }}
+    >
+      <Text
+        style={[type.stat, { color: colors.text, fontSize: 22 }]}
+        numberOfLines={1}
+        adjustsFontSizeToFit
+      >
+        {value}
+      </Text>
+      <Text
+        style={[type.caption, { color: colors.textMuted, marginTop: 2 }]}
+        numberOfLines={1}
+        adjustsFontSizeToFit
+      >
+        {label}
+      </Text>
+    </View>
+  );
 }
 
-export default function SessionDetailScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+export default function SessionDetailScreen({
+  initialVariant,
+}: {
+  initialVariant?: 'summary';
+}) {
+  const params = useLocalSearchParams<{ id?: string; variant?: string }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { colors, space, type, radius, shadow } = useTheme();
+  const lastTab = useSessionStore((s) => s.lastTab);
 
-  const [data, setData] = useState<SessionDetailData | null>(null);
-  const [menuVisible, setMenuVisible] = useState(false);
-  const [editModalVisible, setEditModalVisible] = useState(false);
+  const isSummary = params.variant === 'summary' || initialVariant === 'summary';
+
+  // Session resolution
+  const recentSessions = useRecentSessions();
+  const fallbackSession = useMemo(() => {
+    return recentSessions.find((s: any) => s.endTime != null) ?? recentSessions[0] ?? null;
+  }, [recentSessions]);
+
+  const activeId = params.id || fallbackSession?.id || '';
+
+  const session = useSession(activeId);
+  const summary = useSessionDetail(activeId);
+  const climbs = useSessionClimbs(activeId);
+  const sessionProjects = useSessionProjects(activeId);
+
+  // Local UI states
+  const [showMenu, setShowMenu] = useState(false);
+  const [deletedClimbId, setDeletedClimbId] = useState<string | null>(null);
+  const [isSessionDeleted, setIsSessionDeleted] = useState(false);
+
+  // Edit / Add climb sheet state
+  const [isLogSheetOpen, setIsLogSheetOpen] = useState(false);
+  const [editingClimb, setEditingClimb] = useState<any | null>(null);
+
+  // Edit Session metadata modal
+  const [isEditSessionModalOpen, setIsEditSessionModalOpen] = useState(false);
   const [editGymName, setEditGymName] = useState('');
   const [editNotes, setEditNotes] = useState('');
-  const [isSharing, setIsSharing] = useState(false);
-  const shareCardRef = useRef<View>(null);
+  const [editEffort, setEditEffort] = useState<number | null>(null);
 
-  const loadData = useCallback(() => {
-    if (!id) return;
-    const detail = getSessionDetail(id);
-    setData(detail);
-    if (detail) {
-      setEditGymName(detail.session.gymName);
-      setEditNotes(detail.session.notes);
-    }
-  }, [id]);
+  const activeClimbs = climbs.filter((c: any) => c.deleted_at === null);
+  // Sort in ascending order (newest last, in order logged)
+  const sortedClimbs = [...activeClimbs].sort((a: any, b: any) => a.logged_at - b.logged_at);
 
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
+  const sends = activeClimbs.filter((c: any) => isSend(c.result));
+  const flashes = activeClimbs.filter((c: any) => c.result === 'flash');
+  const tops = sends.filter((c: any) => c.result !== 'flash');
+  const attempts = activeClimbs.filter((c: any) => !isSend(c.result));
 
-  const handleShare = useCallback(async () => {
-    if (!data || isSharing) return;
-    setIsSharing(true);
-    triggerHaptic('medium');
+  const hardest = sends.reduce(
+    (max: any, c: any) => (!max || c.grade_index > max.grade_index ? c : max),
+    null
+  );
+  const hardestLabel = hardest ? hardest.grade_raw : '–';
 
+  // Personal best check for summary variant: did we beat a real previous best?
+  const prevBestHighlight = useMemo(() => {
+    if (!isSummary || !session || sends.length === 0 || !hardest) return null;
     try {
-      if (shareCardRef.current) {
-        const uri = await captureRef(shareCardRef, {
-          format: 'png',
-          quality: 0.95,
-        });
+      const db = getDatabase();
+      const row = db.getFirstSync<any>(
+        `
+        SELECT MAX(c.grade_index) as max_prev, c.grade_raw
+        FROM climbs c
+        JOIN sessions s ON c.session_id = s.id
+        WHERE s.id != ? 
+          AND c.deleted_at IS NULL 
+          AND s.deleted_at IS NULL 
+          AND (c.result = 'send' OR c.result = 'top' OR c.result = 'flash')
+          AND c.logged_at < ?
+      `,
+        [session.id, session.startTime]
+      );
 
-        const isAvailable = await Sharing.isAvailableAsync();
-        if (isAvailable) {
-          await Sharing.shareAsync(uri, {
-            mimeType: 'image/png',
-            dialogTitle: 'Share CruxLog Workout',
-            UTI: 'public.png',
-          });
-          setIsSharing(false);
-          return;
-        }
+      if (row && row.max_prev !== null && hardest.grade_index > row.max_prev) {
+        return {
+          currentGrade: hardest.grade_raw,
+          prevGrade: row.grade_raw || `V${row.max_prev}`,
+        };
       }
-    } catch (err) {
-      console.warn('ViewShot export failed, falling back to text share:', err);
-    }
+    } catch {}
+    return null;
+  }, [isSummary, session?.id, session?.startTime, sends.length, hardest?.grade_index]);
 
-    // Fallback to text share
-    try {
-      const dateStr = formatSessionDate(data.session.startTime);
-      const durStr = formatDuration(data.kpis.durationMs);
-      let text = `🧗 CruxLog Workout Summary\n`;
-      text += `📍 ${data.session.gymName || 'Bouldering Session'} • ${dateStr}\n\n`;
-      text += `⏱️ Duration: ${durStr}\n`;
-      text += `🎯 Sends: ${data.kpis.totalSends} / ${data.kpis.totalClimbs}\n`;
-      text += `⚡ Flashes: ${data.kpis.totalFlashes} (${data.kpis.flashRate}%)\n`;
-      text += `🔥 Hardest Send: ${data.kpis.hardestSend ?? 'None'}\n`;
-      if (data.session.notes) {
-        text += `\n📝 Notes: ${data.session.notes}\n`;
-      }
-      if (data.pyramid.length > 0) {
-        text += `\n📊 Grade Breakdown:\n`;
-        for (const r of data.pyramid) {
-          text += `${r.gradeRaw.padEnd(4)}: ${r.flashes}⚡ ${r.sends}✓ ${r.attempts}✗\n`;
-        }
-      }
+  const toppedProjects = useMemo(() => {
+    return sessionProjects.filter((p: any) => p.isToppedInSession);
+  }, [sessionProjects]);
 
-      await Share.share({ message: text });
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setIsSharing(false);
-    }
-  }, [data, isSharing]);
-
-  const handleResume = useCallback(() => {
-    setMenuVisible(false);
-    Alert.alert(
-      'Resume Workout?',
-      'This will re-open this session in the active logger so you can continue adding sets.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Resume',
-          onPress: () => {
-            if (!id) return;
-            reopenSession(id);
-            router.replace(`/session/${id}`);
-          },
-        },
-      ]
+  if (!session && !isSessionDeleted) {
+    return (
+      <Screen title="Session Detail">
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <Text style={[type.body, { color: colors.textMuted }]}>Session not found.</Text>
+        </View>
+      </Screen>
     );
-  }, [id, router]);
+  }
 
-  const handleDelete = useCallback(() => {
-    setMenuVisible(false);
+  const handleDeleteClimb = (climbId: string) => {
+    triggerHaptic('light');
+    softDeleteBoulderLog(climbId);
+    setDeletedClimbId(climbId);
+  };
+
+  const handleUndoDeleteClimb = () => {
+    if (deletedClimbId) {
+      triggerHaptic('light');
+      undoDeleteBoulderLog(deletedClimbId);
+      setDeletedClimbId(null);
+    }
+  };
+
+  const handleDeleteSession = () => {
+    setShowMenu(false);
     Alert.alert(
-      'Delete Session?',
-      'This workout and all its logged sets will be permanently removed.',
+      'Delete Session',
+      `Are you sure you want to delete this session? ${activeClimbs.length} climb(s) will be deleted.`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
           text: 'Delete',
           style: 'destructive',
           onPress: () => {
-            if (!id) return;
-            deleteSession(id);
-            router.replace('/');
+            triggerHaptic('medium');
+            softDeleteSession(activeId);
+            setIsSessionDeleted(true);
           },
         },
       ]
     );
-  }, [id, router]);
+  };
 
-  const handleSaveEdit = useCallback(() => {
-    if (!id) return;
-    updateSessionGym(id, editGymName.trim());
-    updateSessionNotes(id, editNotes.trim());
-    setEditModalVisible(false);
-    loadData();
-  }, [id, editGymName, editNotes, loadData]);
+  const handleUndoDeleteSession = () => {
+    triggerHaptic('light');
+    undoDeleteSession(activeId);
+    setIsSessionDeleted(false);
+  };
 
-  if (!data) {
-    return (
-      <View className="flex-1 items-center justify-center">
-        <Text className="text-secondary">Session not found</Text>
-      </View>
-    );
-  }
+  const handleDismissSessionDelete = () => {
+    if (isSessionDeleted) {
+      router.back();
+    }
+  };
 
-  const { session, groups, pyramid, kpis } = data;
+  const handleOpenEditSession = () => {
+    setShowMenu(false);
+    setEditGymName(session?.gymName || '');
+    setEditNotes(session?.notes || '');
+    setEditEffort((session as any)?.effort ?? (session as any)?.rpe ?? null);
+    setIsEditSessionModalOpen(true);
+  };
 
-  // Highest grade attempted / sent across all logs
-  const allLogs = groups.flatMap((g) => g.logs);
-  const sortedAll = [...allLogs].sort(
-    (a, b) => (b.normalizedDifficulty ?? 0) - (a.normalizedDifficulty ?? 0)
-  );
-  const maxAttempt = sortedAll[0]?.gradeRaw ?? kpis.hardestSend ?? '—';
+  const handleSaveEditSession = () => {
+    triggerHaptic('light');
+    if (session) {
+      if (editGymName.trim()) {
+        updateSessionGym(session.id, editGymName.trim());
+      }
+      updateSessionNotesAndEffort(session.id, editNotes.trim(), editEffort);
+    }
+    setIsEditSessionModalOpen(false);
+  };
+
+  const handleOpenAddClimb = () => {
+    triggerHaptic('light');
+    setEditingClimb(null);
+    setIsLogSheetOpen(true);
+  };
+
+  const handleEditClimb = (climb: any) => {
+    triggerHaptic('light');
+    setEditingClimb(climb);
+    setIsLogSheetOpen(true);
+  };
+
+  const handleSaveClimb = (
+    grade: string,
+    result: ResultType,
+    attemptsCount: number,
+    notes: string
+  ) => {
+    triggerHaptic('medium');
+    if (editingClimb) {
+      updateClimb(editingClimb.id, {
+        gradeRaw: grade,
+        result,
+        attempts: attemptsCount,
+        notes,
+      });
+    } else {
+      logClimbForSession(activeId, {
+        gradeRaw: grade,
+        result,
+        attempts: attemptsCount,
+        notes,
+      });
+    }
+    setIsLogSheetOpen(false);
+    setEditingClimb(null);
+  };
+
+  const subtitleText = session
+    ? formatSessionSubtitle(session.startTime, session.endTime)
+    : '';
 
   return (
-    <ScreenContainer>
-      {/* ── Top Bar ────────────────────────────────────────────── */}
+    <View style={{ flex: 1, backgroundColor: colors.bg }}>
+      {/* Header */}
       <View
         style={{
-          borderBottomColor: '#2C2C35',
-          borderBottomWidth: 1,
-          paddingHorizontal: 16,
-          paddingVertical: 12,
+          paddingTop: Math.max(insets.top, space.lg),
+          paddingHorizontal: space.lg,
+          paddingBottom: space.md,
           flexDirection: 'row',
           alignItems: 'center',
           justifyContent: 'space-between',
+          zIndex: 10,
         }}
       >
-        {/* Left: Back arrow in 36x36pt tactile circle */}
-        <TouchableOpacity
-          onPress={() => router.back()}
-          activeOpacity={0.7}
-          style={{
-            width: 36,
-            height: 36,
-            borderRadius: 18,
-            backgroundColor: '#1E1E24',
-            borderWidth: 1,
-            borderColor: '#2C2C35',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-        >
-          <ArrowLeft size={20} color="#FFFFFF" />
-        </TouchableOpacity>
-
-        {/* Center: Title + Subtitle */}
-        <View className="flex-1 mx-3 items-center">
-          <Text
-            style={{
-              color: '#FFFFFF',
-              fontSize: 17,
-              fontWeight: '700',
-              textAlign: 'center',
-            }}
-            numberOfLines={1}
+        {/* Left Side: Back chevron (only when not summary variant) */}
+        {!isSummary ? (
+          <TouchableOpacity
+            testID="session-detail-back-btn"
+            onPress={() => router.back()}
+            accessibilityRole="button"
+            accessibilityLabel="Back"
+            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
           >
-            {session.title || session.gymName || 'Climbing Session'}
+            <ChevronLeft size={24} color={colors.text} />
+          </TouchableOpacity>
+        ) : (
+          <View style={{ width: 24 }} />
+        )}
+
+        {/* Center / Title Block */}
+        <View style={{ flex: 1, paddingHorizontal: space.sm }}>
+          <Text
+            style={[type.heading, { color: colors.text, fontSize: 18 }]}
+            numberOfLines={1}
+            adjustsFontSizeToFit
+          >
+            {session?.gymName || 'Session'}
           </Text>
           <Text
-            style={{
-              color: '#8A8A98',
-              fontSize: 12,
-              marginTop: 2,
-              textAlign: 'center',
-            }}
+            style={[type.caption, { color: colors.textMuted, marginTop: 2 }]}
             numberOfLines={1}
+            adjustsFontSizeToFit
           >
-            {session.title && session.gymName ? `${session.gymName} • ` : ''}
-            {formatSessionDate(session.startTime)}
+            {subtitleText}
           </Text>
         </View>
 
-        {/* Right: 36x36pt tactile action buttons */}
-        <View className="flex-row items-center gap-2">
+        {/* Right Side: ⋯ Menu */}
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
           <TouchableOpacity
-            onPress={handleShare}
-            disabled={isSharing}
-            activeOpacity={0.7}
-            style={{
-              width: 36,
-              height: 36,
-              borderRadius: 18,
-              backgroundColor: '#1E1E24',
-              borderWidth: 1,
-              borderColor: '#2C2C35',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
+            testID="session-detail-more-menu"
+            onPress={() => setShowMenu(!showMenu)}
+            accessibilityRole="button"
+            accessibilityLabel="More options"
+            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
           >
-            {isSharing ? (
-              <ActivityIndicator size="small" color="#8E7CFF" />
-            ) : (
-              <Share2 size={18} color="#8A8A98" />
-            )}
-          </TouchableOpacity>
-          <TouchableOpacity
-            onPress={() => setMenuVisible(true)}
-            activeOpacity={0.7}
-            style={{
-              width: 36,
-              height: 36,
-              borderRadius: 18,
-              backgroundColor: '#1E1E24',
-              borderWidth: 1,
-              borderColor: '#2C2C35',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <MoreVertical size={18} color="#8A8A98" />
+            <MoreHorizontal size={24} color={colors.text} />
           </TouchableOpacity>
         </View>
+
+        {/* Dropdown Menu */}
+        {showMenu && (
+          <View
+            style={[
+              styles.menu,
+              {
+                backgroundColor: colors.card,
+                borderColor: colors.border,
+                borderRadius: radius.md,
+                top: insets.top + 40,
+                right: space.lg,
+              },
+            ]}
+          >
+            <TouchableOpacity
+              onPress={handleOpenEditSession}
+              accessibilityRole="button"
+              accessibilityLabel="Edit session"
+              style={{
+                padding: space.md,
+                borderBottomWidth: 1,
+                borderBottomColor: colors.border,
+              }}
+            >
+              <Text style={[type.body, { color: colors.text }]}>Edit session</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={handleDeleteSession}
+              accessibilityRole="button"
+              accessibilityLabel="Delete session"
+              style={{ padding: space.md }}
+            >
+              <Text style={[type.body, { color: colors.dangerText }]}>Delete session</Text>
+            </TouchableOpacity>
+          </View>
+        )}
       </View>
 
       <ScrollView
+        contentContainerStyle={{
+          paddingHorizontal: space.lg,
+          paddingTop: space.sm,
+          paddingBottom: isSummary ? 140 : 100,
+        }}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 160 }}
       >
-        {/* ── Hero Summary Bento Capsule ─────────────────────────── */}
-        <View
-          style={[
-            FLOATING_CARD_STYLE,
-            {
-              backgroundColor: '#1E1E24',
-              borderColor: '#2C2C35',
-              borderWidth: 1,
-              borderRadius: 20,
-              padding: 16,
-              marginBottom: 16,
+        {/* Personal Best Highlights (Summary Variant only) */}
+        {isSummary && prevBestHighlight && (
+          <View
+            style={{
+              backgroundColor: colors.accentSoft,
+              borderRadius: radius.md,
+              padding: space.md,
+              marginBottom: space.lg,
               flexDirection: 'row',
               alignItems: 'center',
-              justifyContent: 'space-between',
-            },
-          ]}
-        >
-          {/* 1. SENDS */}
-          <View className="flex-1 items-center">
-            <Text
-              style={{
-                color: '#FFFFFF',
-                fontSize: 22,
-                fontWeight: '700',
-                letterSpacing: -0.3,
-              }}
-            >
-              {kpis.totalSends}/{kpis.totalClimbs}
-            </Text>
-            <Text
-              style={{
-                color: '#8A8A98',
-                fontSize: 11,
-                fontWeight: '600',
-                letterSpacing: 0.8,
-                marginTop: 4,
-              }}
-              className="uppercase"
-            >
-              SENDS
-            </Text>
+              gap: space.sm,
+            }}
+          >
+            <Trophy size={22} color={colors.accentText} />
+            <View style={{ flex: 1 }}>
+              <Text style={[type.heading, { color: colors.accentText }]}>
+                New Personal Best: {prevBestHighlight.currentGrade}!
+              </Text>
+              <Text style={[type.caption, { color: colors.accentText, marginTop: 1 }]}>
+                Beat your previous best of {prevBestHighlight.prevGrade}
+              </Text>
+            </View>
           </View>
+        )}
 
-          {/* Subtle divider */}
-          <View style={{ width: 1, height: 32, backgroundColor: '#2C2C35' }} />
-
-          {/* 2. MAX ATTEMPT */}
-          <View className="flex-1 items-center">
-            <Text
+        {/* Project Sent Celebrations (Summary Variant only) */}
+        {isSummary &&
+          toppedProjects.map((p: any) => (
+            <View
+              key={p.id}
               style={{
-                color: '#FFFFFF',
-                fontSize: 22,
-                fontWeight: '700',
-                letterSpacing: -0.3,
+                backgroundColor: colors.flashSoft,
+                borderRadius: radius.md,
+                padding: space.md,
+                marginBottom: space.lg,
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: space.sm,
               }}
             >
-              {maxAttempt}
-            </Text>
-            <Text
-              style={{
-                color: '#8A8A98',
-                fontSize: 11,
-                fontWeight: '600',
-                letterSpacing: 0.8,
-                marginTop: 4,
-              }}
-              className="uppercase"
-            >
-              MAX ATTEMPT
-            </Text>
-          </View>
+              <CheckCircle size={22} color={colors.flashText} />
+              <View style={{ flex: 1 }}>
+                <Text style={[type.heading, { color: colors.flashText }]}>Project Sent!</Text>
+                <Text style={[type.caption, { color: colors.flashText, marginTop: 1 }]}>
+                  {p.title} ({p.gradeRaw})
+                </Text>
+              </View>
+            </View>
+          ))}
 
-          {/* Subtle divider */}
-          <View style={{ width: 1, height: 32, backgroundColor: '#2C2C35' }} />
-
-          {/* 3. DURATION */}
-          <View className="flex-1 items-center">
-            <Text
-              style={{
-                color: '#FFFFFF',
-                fontSize: 22,
-                fontWeight: '700',
-                letterSpacing: -0.3,
-              }}
-            >
-              {formatDuration(kpis.durationMs)}
-            </Text>
-            <Text
-              style={{
-                color: '#8A8A98',
-                fontSize: 11,
-                fontWeight: '600',
-                letterSpacing: 0.8,
-                marginTop: 4,
-              }}
-              className="uppercase"
-            >
-              DURATION
-            </Text>
-          </View>
+        {/* 1. Stat Tiles: compact row of four */}
+        <View style={{ flexDirection: 'row', gap: space.xs, marginBottom: space.xl }}>
+          <CompactStatTile label="Climbs" value={activeClimbs.length} />
+          <CompactStatTile label="Sends" value={sends.length} />
+          <CompactStatTile label="Flashes" value={flashes.length} />
+          <CompactStatTile label="Hardest" value={hardestLabel} />
         </View>
 
-        {/* ── Session Notes Card ─────────────────────────────────── */}
-        <View
-          style={[
-            FLOATING_CARD_STYLE,
-            {
-              backgroundColor: '#1E1E24',
-              borderColor: '#2C2C35',
-              borderWidth: 1,
-              borderRadius: 20,
-              padding: 16,
-              marginBottom: 16,
-            },
-          ]}
-        >
-          <View className="flex-row items-center justify-between mb-2">
-            <Text
+        {/* 2. Result Breakdown Donut (Hidden if < 3 climbs) */}
+        {activeClimbs.length >= 3 && (
+          <Card style={{ marginBottom: space.xl, alignItems: 'center' }}>
+            <SectionHeader title="Result Breakdown" />
+            <ResultDonut
+              flashCount={flashes.length}
+              topCount={tops.length}
+              attemptCount={attempts.length}
+              centerGrade={hardestLabel !== '–' ? hardestLabel : undefined}
+              centerLabel="HARDEST"
+            />
+          </Card>
+        )}
+
+        {/* 3. Session Effort & Notes */}
+        {session?.notes || (session as any)?.effort ? (
+          <Card style={{ marginBottom: space.xl }}>
+            <View
               style={{
-                color: '#8A8A98',
-                fontSize: 11,
-                fontWeight: '700',
-                letterSpacing: 0.8,
+                flexDirection: 'row',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginBottom: space.xs,
               }}
-              className="uppercase"
             >
-              SESSION NOTES
+              <Text style={[type.label, { color: colors.textMuted }]}>
+                {(session as any)?.effort
+                  ? `EFFORT ${(session as any).effort}/5`
+                  : 'SESSION NOTES'}
+              </Text>
+              <TouchableOpacity
+                onPress={handleOpenEditSession}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                accessibilityRole="button"
+                accessibilityLabel="Edit notes"
+              >
+                <Edit2 size={16} color={colors.textMuted} />
+              </TouchableOpacity>
+            </View>
+            {session.notes ? (
+              <Text style={[type.body, { color: colors.text, marginTop: space.xs }]}>
+                {session.notes}
+              </Text>
+            ) : null}
+          </Card>
+        ) : (
+          <TouchableOpacity
+            onPress={handleOpenEditSession}
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: space.sm,
+              padding: space.md,
+              backgroundColor: colors.card,
+              borderRadius: radius.md,
+              marginBottom: space.xl,
+              borderWidth: 1,
+              borderColor: colors.border,
+            }}
+            accessibilityRole="button"
+            accessibilityLabel="Add notes"
+          >
+            <Edit2 size={16} color={colors.textMuted} />
+            <Text style={[type.body, { color: colors.textMuted }]}>
+              Add session notes & effort
             </Text>
+          </TouchableOpacity>
+        )}
+
+        {/* 4. Projects Section (only when relevant) */}
+        {sessionProjects.length > 0 && (
+          <View style={{ marginBottom: space.xl }}>
+            <SectionHeader title="Projects" />
+            <View style={{ gap: space.sm }}>
+              {sessionProjects.map((p: any) => (
+                <ProjectCard
+                  key={p.id}
+                  project={{
+                    ...p,
+                    statusChip: p.isToppedInSession ? 'Sent' : p.statusChip,
+                  }}
+                />
+              ))}
+            </View>
+          </View>
+        )}
+
+        {/* 5. Climbs List (newest last, in order logged) */}
+        <View style={{ marginBottom: space.xl }}>
+          <SectionHeader title="Climbs" />
+          <View style={{ gap: space.sm }}>
+            {sortedClimbs.map((climb: any) => (
+              <ClimbRow
+                key={climb.id}
+                climb={climb}
+                onEdit={() => handleEditClimb(climb)}
+                onDelete={() => handleDeleteClimb(climb.id)}
+              />
+            ))}
+
+            {activeClimbs.length === 0 && (
+              <View style={{ alignItems: 'center', paddingVertical: space.xl }}>
+                <Text style={[type.body, { color: colors.textMuted }]}>
+                  No climbs in this session.
+                </Text>
+              </View>
+            )}
+
+            {/* "+ Add climb" Button */}
             <TouchableOpacity
-              onPress={() => setEditModalVisible(true)}
-              activeOpacity={0.7}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              testID="add-climb-btn"
+              onPress={handleOpenAddClimb}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'center',
+                paddingVertical: space.md,
+                backgroundColor: colors.cardMuted,
+                borderRadius: radius.md,
+                marginTop: space.sm,
+                gap: space.xs,
+              }}
+              accessibilityRole="button"
+              accessibilityLabel="Add climb"
             >
-              <Text style={{ color: '#8E7CFF', fontSize: 13, fontWeight: '600' }}>Edit</Text>
+              <Plus size={18} color={colors.accent} strokeWidth={2.5} />
+              <Text
+                style={[
+                  type.heading,
+                  { color: colors.accentText, fontSize: 15, fontWeight: '600' },
+                ]}
+              >
+                Add climb
+              </Text>
             </TouchableOpacity>
           </View>
-
-          {/* Notes text */}
-          {session.notes ? (
-            <Text style={{ color: '#9A9AA6', fontSize: 14, lineHeight: 20 }}>
-              {session.notes}
-            </Text>
-          ) : (
-            <Text style={{ color: '#8A8A98', fontSize: 13, fontStyle: 'italic' }}>
-              No notes logged. Tap Edit to add reflections or crux details.
-            </Text>
-          )}
-
-          {/* Media Attachments */}
-          {session.mediaUris && session.mediaUris.length > 0 ? (
-            <View className="mt-3 pt-3 border-t border-[#2C2C35]">
-              <Text
-                style={{
-                  color: '#8A8A98',
-                  fontSize: 11,
-                  fontWeight: '700',
-                  letterSpacing: 0.8,
-                  marginBottom: 8,
-                }}
-                className="uppercase"
-              >
-                Attached Media ({session.mediaUris.length})
-              </Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} className="gap-2">
-                {session.mediaUris.map((uri, idx) => (
-                  <View
-                    key={`${uri}-${idx}`}
-                    style={{
-                      width: 72,
-                      height: 72,
-                      borderRadius: 12,
-                      overflow: 'hidden',
-                      borderWidth: 1,
-                      borderColor: '#2C2C35',
-                      marginRight: 8,
-                    }}
-                  >
-                    <Image source={{ uri }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
-                  </View>
-                ))}
-              </ScrollView>
-            </View>
-          ) : null}
-        </View>
-
-        {/* ── Session Grade Pyramid ──────────────────────────────── */}
-        <SessionPyramidChart pyramid={pyramid} />
-
-        {/* ── Boulder Groups & Sets List ─────────────────────────── */}
-        <View className="mb-2">
-          <Text
-            style={{
-              color: '#8A8A98',
-              fontSize: 11,
-              fontWeight: '700',
-              letterSpacing: 0.8,
-            }}
-            className="uppercase"
-          >
-            WALL ZONES & CLIMBS
-          </Text>
-          <Text style={{ color: '#8A8A98', fontSize: 12, marginTop: 2 }}>
-            {groups.length} zone{groups.length !== 1 ? 's' : ''} • {kpis.totalClimbs} total sets
-          </Text>
-        </View>
-
-        {groups.map((group) => (
-          <ReadOnlyBoulderGroup
-            key={group.id}
-            zoneName={group.zoneName}
-            logs={group.logs}
-          />
-        ))}
-
-        {/* ── Bottom Action Button ───────────────────────────────── */}
-        <View className="mt-2 mb-6">
-          <TouchableOpacity
-            onPress={handleShare}
-            disabled={isSharing}
-            activeOpacity={0.85}
-            style={{
-              backgroundColor: '#8E7CFF',
-              height: 52,
-              borderRadius: 26,
-              shadowColor: '#8E7CFF',
-              shadowOffset: { width: 0, height: 4 },
-              shadowOpacity: 0.4,
-              shadowRadius: 10,
-              elevation: 5,
-            }}
-            className="flex-row items-center justify-center gap-2"
-          >
-            {isSharing ? (
-              <ActivityIndicator size="small" color="#FFFFFF" />
-            ) : (
-              <>
-                <Share2 size={18} color="#FFFFFF" />
-                <Text
-                  style={{
-                    color: '#FFFFFF',
-                    fontSize: 15,
-                    fontWeight: '700',
-                    letterSpacing: 0.5,
-                  }}
-                >
-                  SHARE WORKOUT SUMMARY
-                </Text>
-              </>
-            )}
-          </TouchableOpacity>
         </View>
       </ScrollView>
 
-      {/* ── Overflow Menu Modal ─────────────────────────────────── */}
-      <Modal
-        visible={menuVisible}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setMenuVisible(false)}
-      >
-        <TouchableOpacity
-          className="flex-1 bg-black/60 justify-end"
-          activeOpacity={1}
-          onPress={() => setMenuVisible(false)}
+      {/* Done Button (Summary Variant only) */}
+      {isSummary && (
+        <View
+          style={{
+            position: 'absolute',
+            bottom: Math.max(insets.bottom, 16),
+            left: space.lg,
+            right: space.lg,
+          }}
         >
-          <View
-            style={{ paddingBottom: insets.bottom + 16 }}
-            className="bg-surface rounded-t-3xl p-6 border-t border-border"
-          >
-            <View className="w-10 h-1 bg-border rounded-full self-center mb-6" />
+          <PrimaryButton
+            testID="done-home-btn"
+            label="Done"
+            onPress={() => router.replace(lastTab as any)}
+          />
+        </View>
+      )}
 
-            <TouchableOpacity
-              onPress={() => {
-                setMenuVisible(false);
-                setEditModalVisible(true);
-              }}
-              activeOpacity={0.7}
-              className="flex-row items-center gap-3 py-3.5 border-b border-border/50"
-            >
-              <Edit3 size={18} color="#FFFFFF" />
-              <Text className="text-white font-bold text-base">Edit Gym & Notes</Text>
-            </TouchableOpacity>
+      {/* Log / Edit Climb Sheet */}
+      <LogSheet
+        visible={isLogSheetOpen}
+        onClose={() => {
+          setIsLogSheetOpen(false);
+          setEditingClimb(null);
+        }}
+        onSave={handleSaveClimb}
+        initialGrade={editingClimb?.grade_raw}
+        initialResult={editingClimb?.result === 'send' ? 'top' : editingClimb?.result}
+        initialAttempts={editingClimb?.attempts}
+        initialNotes={editingClimb?.notes}
+      />
 
-            <TouchableOpacity
-              onPress={handleResume}
-              activeOpacity={0.7}
-              className="flex-row items-center gap-3 py-3.5 border-b border-border/50"
-            >
-              <RotateCcw size={18} color="#60A5FA" />
-              <Text className="text-[#60A5FA] font-bold text-base">Resume Workout</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              onPress={handleShare}
-              activeOpacity={0.7}
-              className="flex-row items-center gap-3 py-3.5 border-b border-[#2C2C35]"
-            >
-              <Share2 size={18} color="#8E7CFF" />
-              <Text className="text-[#8E7CFF] font-bold text-base">Share Summary</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              onPress={handleDelete}
-              activeOpacity={0.7}
-              className="flex-row items-center gap-3 py-3.5 mt-2"
-            >
-              <Trash2 size={18} color="#EF4444" />
-              <Text className="text-red-400 font-bold text-base">Delete Session</Text>
-            </TouchableOpacity>
-          </View>
-        </TouchableOpacity>
-      </Modal>
-
-      {/* ── Edit Gym & Notes Modal ───────────────────────────────── */}
+      {/* Edit Session Modal */}
       <Modal
-        visible={editModalVisible}
+        visible={isEditSessionModalOpen}
+        transparent
         animationType="slide"
-        transparent
-        onRequestClose={() => setEditModalVisible(false)}
+        onRequestClose={() => setIsEditSessionModalOpen(false)}
       >
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          className="flex-1 bg-black/70 justify-end"
+        <Pressable
+          style={{ flex: 1, backgroundColor: colors.scrim, justifyContent: 'flex-end' }}
+          onPress={() => setIsEditSessionModalOpen(false)}
         >
-          <View
-            style={{ paddingBottom: insets.bottom + 20 }}
-            className="bg-surface rounded-t-3xl p-6 border-t border-border"
+          <Pressable
+            onPress={(e) => e.stopPropagation()}
+            style={{
+              backgroundColor: colors.card,
+              borderTopLeftRadius: radius.xl,
+              borderTopRightRadius: radius.xl,
+              padding: space.xl,
+              paddingBottom: insets.bottom + space.xl,
+              ...shadow.floating,
+            }}
           >
-            <View className="flex-row items-center justify-between mb-4">
-              <Text className="text-white font-bold text-lg">Edit Session Details</Text>
-              <TouchableOpacity onPress={() => setEditModalVisible(false)} className="p-1">
-                <X size={20} color="#9CA3AF" />
+            <View
+              style={{
+                flexDirection: 'row',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginBottom: space.lg,
+              }}
+            >
+              <Text style={[type.title, { color: colors.text }]}>Edit Session</Text>
+              <TouchableOpacity
+                onPress={() => setIsEditSessionModalOpen(false)}
+                accessibilityRole="button"
+                accessibilityLabel="Close"
+              >
+                <X size={22} color={colors.textMuted} />
               </TouchableOpacity>
             </View>
 
-            <Text className="text-secondary text-xs font-semibold uppercase mb-1">Gym Name</Text>
+            <SectionHeader title="Gym Name" />
             <TextInput
               value={editGymName}
               onChangeText={setEditGymName}
-              placeholder="e.g. Movement Climbing"
-              placeholderTextColor="#4B5563"
-              className="bg-card text-white px-4 py-3 rounded-xl border border-border mb-4 text-base"
-              style={{ color: '#FFFFFF' }}
+              placeholder="e.g. Brooklyn Boulders"
+              placeholderTextColor={colors.textMuted}
+              style={[
+                type.body,
+                {
+                  color: colors.text,
+                  backgroundColor: colors.cardMuted,
+                  borderRadius: radius.md,
+                  padding: space.md,
+                  marginBottom: space.lg,
+                },
+              ]}
             />
 
-            <Text className="text-secondary text-xs font-semibold uppercase mb-1">Notes</Text>
+            <SectionHeader title="Perceived Effort (1–5)" />
+            <View style={{ flexDirection: 'row', gap: space.sm, marginBottom: space.lg }}>
+              {[1, 2, 3, 4, 5].map((n) => {
+                const selected = editEffort === n;
+                return (
+                  <TouchableOpacity
+                    key={n}
+                    onPress={() => {
+                      triggerHaptic('light');
+                      setEditEffort(selected ? null : n);
+                    }}
+                    style={{
+                      flex: 1,
+                      height: 48,
+                      borderRadius: radius.md,
+                      backgroundColor: selected ? colors.accentSoft : colors.cardMuted,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      borderWidth: selected ? 1.5 : 0,
+                      borderColor: selected ? colors.accent : 'transparent',
+                    }}
+                  >
+                    <Text
+                      style={[
+                        type.heading,
+                        { color: selected ? colors.accentText : colors.text },
+                      ]}
+                    >
+                      {n}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
+            <SectionHeader title="Session Notes" />
             <TextInput
               value={editNotes}
               onChangeText={setEditNotes}
-              placeholder="How did the session feel? Crux moves, skin condition..."
-              placeholderTextColor="#4B5563"
               multiline
-              numberOfLines={4}
-              textAlignVertical="top"
-              className="bg-card text-white px-4 py-3 rounded-xl border border-border mb-6 text-base h-28"
-              style={{ color: '#FFFFFF' }}
+              numberOfLines={3}
+              placeholder="What went well? Any tweaks for next time?"
+              placeholderTextColor={colors.textMuted}
+              style={[
+                type.body,
+                {
+                  color: colors.text,
+                  backgroundColor: colors.cardMuted,
+                  borderRadius: radius.md,
+                  padding: space.md,
+                  minHeight: 80,
+                  textAlignVertical: 'top',
+                  marginBottom: space.xl,
+                },
+              ]}
             />
 
-            <TouchableOpacity
-              onPress={handleSaveEdit}
-              activeOpacity={0.85}
-              className="bg-accent py-4 rounded-xl items-center flex-row justify-center gap-2"
-            >
-              <Check size={18} color="#FFFFFF" strokeWidth={3} />
-              <Text className="text-white font-bold text-base">Save Changes</Text>
-            </TouchableOpacity>
-          </View>
-        </KeyboardAvoidingView>
+            <PrimaryButton label="Save Changes" onPress={handleSaveEditSession} />
+          </Pressable>
+        </Pressable>
       </Modal>
 
-      {/* ── Off-screen 9:16 Instagram Story Card Canvas ───────── */}
-      <View
-        style={{
-          position: 'absolute',
-          top: -9999,
-          left: 0,
-          zIndex: -1,
-        }}
-        pointerEvents="none"
-        collapsable={false}
-      >
-        <ShareWorkoutCard ref={shareCardRef} data={data} />
-      </View>
-    </ScreenContainer>
+      {/* Undo Toast for Climb Deletion */}
+      <UndoToast
+        visible={!!deletedClimbId}
+        message="Climb deleted"
+        onUndo={handleUndoDeleteClimb}
+        onDismiss={() => setDeletedClimbId(null)}
+      />
+
+      {/* Undo Toast for Session Deletion */}
+      <UndoToast
+        visible={isSessionDeleted}
+        message="Session deleted"
+        onUndo={handleUndoDeleteSession}
+        onDismiss={handleDismissSessionDelete}
+      />
+    </View>
   );
 }
+
+const styles = StyleSheet.create({
+  menu: {
+    position: 'absolute',
+    width: 180,
+    borderWidth: 1,
+    zIndex: 50,
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+  },
+});

@@ -20,7 +20,7 @@ export function ACWRWidget({ data }: ACWRWidgetProps) {
   } else if (ratio > 1.3 && ratio <= 1.5) {
     ratioColor = '#FFD60A'; // Warning color for between sweet spot and danger
   } else {
-    ratioColor = '#8A8A98'; // Under-training
+    ratioColor = '#9090A0'; // Under-training
   }
 
   // Chart configuration
@@ -31,7 +31,7 @@ export function ACWRWidget({ data }: ACWRWidgetProps) {
     <View className="bg-[#19191D] border border-[#27272F] rounded-xl p-4">
       <View className="flex-row justify-between items-center mb-4">
         <View>
-          <Text className="text-[#8A8A98] text-xs font-bold tracking-[1px] mb-1">WORKLOAD RATIO</Text>
+          <Text className="text-[#9090A0] text-xs font-bold tracking-[1px] mb-1">WORKLOAD RATIO</Text>
           <Text 
             className="text-[32px] font-bold tracking-[-1px]"
             style={{ color: ratioColor, fontVariant: ['tabular-nums'] }}
@@ -40,8 +40,8 @@ export function ACWRWidget({ data }: ACWRWidgetProps) {
           </Text>
         </View>
         <View className="items-end">
-          <Text className="text-[#8A8A98] text-[11px] font-medium">Acute (7d): {data.acuteLoad}</Text>
-          <Text className="text-[#8A8A98] text-[11px] font-medium">Chronic (28d): {data.chronicLoad.toFixed(0)}</Text>
+          <Text className="text-[#9090A0] text-[11px] font-medium">Acute (7d): {data.acuteLoad}</Text>
+          <Text className="text-[#9090A0] text-[11px] font-medium">Chronic (28d): {data.chronicLoad.toFixed(0)}</Text>
         </View>
       </View>
 

@@ -70,7 +70,7 @@ export function OutcomeDistributionBar({
               y={0}
               width={attemptW}
               height={BAR_HEIGHT}
-              fill="#484852"
+              fill="#FF453A"
               rx={flashW === 0 && sendW === 0 ? 8 : 0}
             />
           )}
@@ -80,7 +80,7 @@ export function OutcomeDistributionBar({
       {/* Breakdown Metrics Grid */}
       <View className="flex-row items-center justify-between">
         {/* Flash */}
-        <View className="flex-1 items-center bg-[#16161C] py-2.5 px-1 rounded-xl border border-[#2C2C35] mr-1.5">
+        <View className="flex-1 items-center bg-[#16161C] py-2.5 px-1 rounded-xl border border-[#27272F] mr-1.5">
           <View className="flex-row items-center gap-1 mb-0.5">
             <Zap size={11} color="#6EE756" fill="#6EE756" />
             <Text className="text-flash text-xs font-black">{flashPct}%</Text>
@@ -89,7 +89,7 @@ export function OutcomeDistributionBar({
         </View>
 
         {/* Redpoint Send */}
-        <View className="flex-1 items-center bg-[#16161C] py-2.5 px-1 rounded-xl border border-[#2C2C35] mr-1.5">
+        <View className="flex-1 items-center bg-[#16161C] py-2.5 px-1 rounded-xl border border-[#27272F] mr-1.5">
           <View className="flex-row items-center gap-1 mb-0.5">
             <Check size={11} color="#8E7CFF" strokeWidth={3} />
             <Text className="text-send text-xs font-black">{sendPct}%</Text>
@@ -98,7 +98,7 @@ export function OutcomeDistributionBar({
         </View>
 
         {/* Attempts */}
-        <View className="flex-1 items-center bg-[#16161C] py-2.5 px-1 rounded-xl border border-[#2C2C35]">
+        <View className="flex-1 items-center bg-[#16161C] py-2.5 px-1 rounded-xl border border-[#27272F]">
           <View className="flex-row items-center gap-1 mb-0.5">
             <RotateCcw size={11} color="#9A9AA6" />
             <Text className="text-muted text-xs font-black">{attemptPct}%</Text>

@@ -161,7 +161,7 @@ export const ShareWorkoutCard = forwardRef<View, ShareWorkoutCardProps>(
                 <Text style={styles.legendText}>Send</Text>
               </View>
               <View style={styles.legendItem}>
-                <View style={[styles.legendDot, { backgroundColor: '#2C2C35' }]} />
+                <View style={[styles.legendDot, { backgroundColor: '#27272F' }]} />
                 <Text style={styles.legendText}>Fail</Text>
               </View>
             </View>
@@ -210,7 +210,7 @@ export const ShareWorkoutCard = forwardRef<View, ShareWorkoutCardProps>(
                           <View
                             style={[
                               styles.barSegment,
-                              { flex: attemptFlex, backgroundColor: '#2C2C35' },
+                              { flex: attemptFlex, backgroundColor: '#27272F' },
                             ]}
                           />
                         )}
@@ -240,7 +240,7 @@ const styles = StyleSheet.create({
   cardContainer: {
     width: CARD_WIDTH,
     height: CARD_HEIGHT,
-    backgroundColor: '#131316',
+    backgroundColor: '#111113',
     borderRadius: 24,
     padding: 20,
     justifyContent: 'space-between',
@@ -416,7 +416,7 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   statLabel: {
-    color: '#8A8A98',
+    color: '#9090A0',
     fontSize: 9,
     fontWeight: '700',
     letterSpacing: 0.5,
@@ -427,7 +427,7 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   statSubValue: {
-    color: '#8A8A98',
+    color: '#9090A0',
     fontSize: 12,
     fontWeight: '600',
   },
@@ -465,7 +465,7 @@ const styles = StyleSheet.create({
     borderRadius: 3,
   },
   legendText: {
-    color: '#8A8A98',
+    color: '#9090A0',
     fontSize: 9,
     fontWeight: '600',
   },
@@ -474,7 +474,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   emptyPyramidText: {
-    color: '#8A8A98',
+    color: '#9090A0',
     fontSize: 11,
   },
   pyramidRows: {

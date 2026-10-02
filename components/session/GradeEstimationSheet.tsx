@@ -219,7 +219,7 @@ export function GradeEstimationSheet({
                       style={[
                         styles.gradePill,
                         isSelected && styles.gradePillSelected,
-                        { borderColor: isSelected ? '#8E7CFF' : '#2C2C35' },
+                        { borderColor: isSelected ? '#8E7CFF' : '#27272F' },
                       ]}
                       activeOpacity={0.75}
                     >
@@ -276,11 +276,11 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   sheetContainer: {
-    backgroundColor: '#1E1E24',
+    backgroundColor: '#19191D',
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
     borderWidth: 1,
-    borderColor: '#2C2C35',
+    borderColor: '#27272F',
     paddingHorizontal: 20,
     paddingTop: 12,
     paddingBottom: 36,
@@ -307,7 +307,7 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '800',
     letterSpacing: 1.4,
-    color: '#8A8A98',
+    color: '#9090A0',
   },
   verifiedBadge: {
     flexDirection: 'row',
@@ -344,7 +344,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#16161B',
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: '#2C2C35',
+    borderColor: '#27272F',
     paddingVertical: 18,
     paddingHorizontal: 16,
     alignItems: 'center',
@@ -416,7 +416,7 @@ const styles = StyleSheet.create({
     fontSize: 9,
     fontWeight: '800',
     letterSpacing: 1.1,
-    color: '#8A8A98',
+    color: '#9090A0',
     marginBottom: 2,
   },
   telemetryVal: {
@@ -464,7 +464,7 @@ const styles = StyleSheet.create({
   gradePillText: {
     fontSize: 13,
     fontWeight: '800',
-    color: '#8A8A98',
+    color: '#9090A0',
   },
   gradePillTextSelected: {
     color: '#FFFFFF',

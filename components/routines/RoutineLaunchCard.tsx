@@ -73,14 +73,14 @@ export function RoutineLaunchCard({
           activeOpacity={0.7}
           hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
         >
-          <MoreVertical size={17} color="#8A8A98" />
+          <MoreVertical size={17} color="#9090A0" />
         </TouchableOpacity>
       </View>
 
       {/* Footer Row */}
       <View className="flex-row items-center justify-between">
         <Text 
-          className="text-[#8A8A98] text-[12px]"
+          className="text-[#9090A0] text-[12px]"
           style={{ fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace' }}
         >
           {contextText}

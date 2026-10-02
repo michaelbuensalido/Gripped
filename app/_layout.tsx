@@ -7,133 +7,55 @@ import {
   Text,
   TouchableOpacity,
 } from "react-native";
-import { Tabs } from "expo-router";
+import { Tabs, SplashScreen } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import {
   TrendingUp,
-  Route,
+  Target,
   ChartNoAxesCombined,
   BookOpen,
   type LucideIcon,
 } from "lucide-react-native";
-import { initDatabase } from "../services/database";
-import { ActiveSessionMiniBar } from "../components/session/ActiveSessionMiniBar";
-import { useSessionStore } from "../store/sessionStore";
+import { useFonts as useSoraFonts, Sora_400Regular, Sora_600SemiBold, Sora_700Bold } from "@expo-google-fonts/sora";
+import { useFonts as useInterFonts, Inter_400Regular, Inter_500Medium, Inter_600SemiBold } from "@expo-google-fonts/inter";
+import { initializeDatabase } from "../db/schema";
+import { useSessionStore } from '../store/sessionStore';
+import { useActiveSession } from '../db/hooks';
 import { triggerHaptic } from "../utils/haptics";
 import { notificationEngine } from "../services/notificationEngine";
 import "../global.css";
 
-function CustomTabBar({ state, descriptors, navigation }: any) {
-  // STRICTLY limit the rendered tabs to the 4 core routes
-  const coreRoutes = ["index", "routines", "analytics", "logbook"];
-  const visibleRoutes = state.routes.filter((route: any) =>
-    coreRoutes.includes(route.name),
-  );
+import { FloatingTabBar } from "../components/ui/FloatingTabBar";
+import { CelebrationProvider } from "../components/celebration/CelebrationProvider";
 
-  const currentRouteName = state.routes[state.index]?.name;
-  if (!coreRoutes.includes(currentRouteName)) {
-    return null;
-  }
-
-  return (
-    <View style={styles.tabBarContainer}>
-      {visibleRoutes.map((route: any) => {
-        const { options } = descriptors[route.key];
-        const isFocused = state.routes[state.index].key === route.key;
-
-        const onPress = () => {
-          triggerHaptic("light");
-          const event = navigation.emit({
-            type: "tabPress",
-            target: route.key,
-            canPreventDefault: true,
-          });
-
-          if (!isFocused && !event.defaultPrevented) {
-            navigation.navigate(route.name, route.params);
-          }
-        };
-
-        let IconComponent: LucideIcon = TrendingUp;
-        let label = options.title || route.name;
-
-        if (route.name === "index") {
-          IconComponent = TrendingUp;
-          label = "Home";
-        } else if (route.name === "routines" || route.name === "routes") {
-          IconComponent = Route;
-          label = "Routes";
-        } else if (route.name === "analytics" || route.name === "progress") {
-          IconComponent = ChartNoAxesCombined;
-          label = "Progress";
-        } else if (route.name === "logbook") {
-          IconComponent = BookOpen;
-          label = "Logbook";
-        }
-
-        return (
-          <TouchableOpacity
-            key={route.key}
-            onPress={onPress}
-            activeOpacity={0.7}
-            style={styles.tabItem}
-          >
-            <View
-              style={[
-                styles.iconWrapper,
-                isFocused && styles.iconWrapperActive,
-              ]}
-            >
-              <IconComponent
-                size={20}
-                color={isFocused ? "#9D7BFF" : "#8A8A98"}
-                strokeWidth={isFocused ? 2.2 : 2}
-              />
-            </View>
-            <Text
-              numberOfLines={1}
-              style={[
-                styles.tabLabel,
-                {
-                  color: isFocused ? "#9D7BFF" : "#8A8A98",
-                  fontWeight: isFocused ? "700" : "500",
-                },
-              ]}
-            >
-              {label}
-            </Text>
-          </TouchableOpacity>
-        );
-      })}
-    </View>
-  );
-}
+// Prevent the splash screen from hiding until fonts + DB are ready
+SplashScreen.preventAutoHideAsync();
 
 function TabLayout() {
-  const activeSession = useSessionStore((s) => s.activeSession);
+  const activeSession = useActiveSession();
   const isSessionActive = activeSession !== null;
 
   return (
     <Tabs
-      tabBar={(props) => <CustomTabBar {...props} />}
+      tabBar={(props) => <FloatingTabBar {...props} />}
       screenOptions={{ headerShown: false }}
     >
-      <Tabs.Screen name="index" options={{ title: "Home" }} />
-      <Tabs.Screen name="routines" options={{ title: "Routes" }} />
+      <Tabs.Screen name="index"     options={{ title: "Home" }} />
+      <Tabs.Screen name="projects"  options={{ title: "Projects" }} />
       <Tabs.Screen name="analytics" options={{ title: "Progress" }} />
-      <Tabs.Screen name="logbook" options={{ title: "Logbook" }} />
+      <Tabs.Screen name="profile"   options={{ title: "Logbook" }} />
+      <Tabs.Screen name="gallery"   options={{ title: "Gallery", href: null }} />
 
-      {/* Explicitly hide all other screens so they don't become tabs */}
-      <Tabs.Screen name="settings" options={{ href: null }} />
-      <Tabs.Screen name="history" options={{ href: null }} />
-      <Tabs.Screen name="session/new" options={{ href: null }} />
-      <Tabs.Screen name="session/active" options={{ href: null }} />
-      <Tabs.Screen name="session/camera" options={{ href: null }} />
-      <Tabs.Screen name="session/[id]" options={{ href: null }} />
-      <Tabs.Screen name="session/detail/[id]" options={{ href: null }} />
-      <Tabs.Screen name="routines/editor" options={{ href: null }} />
+      {/* Hidden screens — no tab bar entry */}
+      <Tabs.Screen name="settings"             options={{ href: null }} />
+      <Tabs.Screen name="session/new"          options={{ href: null }} />
+      <Tabs.Screen name="session/active"       options={{ href: null }} />
+      <Tabs.Screen name="session/index"        options={{ href: null }} />
+      <Tabs.Screen name="session/end"          options={{ href: null }} />
+      <Tabs.Screen name="session/summary"      options={{ href: null }} />
+      <Tabs.Screen name="session/detail/[id]"  options={{ href: null }} />
     </Tabs>
   );
 }
@@ -179,30 +101,57 @@ const styles = StyleSheet.create({
 
 export default function RootLayout() {
   const [isDbReady, setIsDbReady] = React.useState(false);
+
+  const [soraLoaded, soraError] = useSoraFonts({
+    Sora_400Regular,
+    Sora_600SemiBold,
+    Sora_700Bold,
+  });
+
+  const [interLoaded, interError] = useInterFonts({
+    Inter_400Regular,
+    Inter_500Medium,
+    Inter_600SemiBold,
+  });
+
+  const fontsLoaded = soraLoaded && interLoaded;
+  const fontError = soraError ?? interError;
+
   useEffect(() => {
-    try {
-      initDatabase();
-      setIsDbReady(true);
-      // Initialize background notifications for rest timer
-      notificationEngine.requestPermissions();
-    } catch (e) {
-      console.error(e);
-    }
+    (async () => {
+      try {
+        await initializeDatabase();
+        // initActiveSession is removed
+        setIsDbReady(true);
+        notificationEngine.requestPermissions();
+      } catch (e) {
+        console.error(e);
+      }
+    })();
   }, []);
 
+  // Hide splash screen once both fonts and DB are ready
+  useEffect(() => {
+    if ((fontsLoaded || fontError) && isDbReady) {
+      SplashScreen.hideAsync();
+    }
+  }, [fontsLoaded, fontError, isDbReady]);
+
+  const isReady = (fontsLoaded || fontError) && isDbReady;
+
   return (
-    <GestureHandlerRootView style={{ flex: 1, backgroundColor: "#131316" }}>
+    <GestureHandlerRootView style={{ flex: 1, backgroundColor: "#F5F2EC" }}>
       <ImageBackground
         source={require("../assets/speckled_mat_bg.jpg")}
         style={StyleSheet.absoluteFill}
-        imageStyle={{ opacity: 0.22 }}
+        imageStyle={{ opacity: 0.04 }}
         resizeMode="cover"
       />
       <SafeAreaProvider>
-        <StatusBar style="light" />
-        {isDbReady ? <TabLayout /> : null}
-        {/* Global floating mini-bar */}
-        <ActiveSessionMiniBar />
+        <StatusBar style="dark" />
+        <CelebrationProvider>
+          {isReady ? <TabLayout /> : null}
+        </CelebrationProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );

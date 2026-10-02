@@ -5,27 +5,21 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        // App surface palette (textured speckled background shows through transparent)
-        background: "transparent",
-        surface: "rgba(30, 30, 36, 0.68)",
-        card: "rgba(30, 30, 36, 0.68)",
-        cardHero: "rgba(32, 32, 40, 0.75)",
-        cardAlt: "rgba(36, 36, 44, 0.65)",
-        border: "rgba(255, 255, 255, 0.09)",
-        borderGlint: "rgba(255, 255, 255, 0.16)",
+        // App surface palette
+        background: "#111113",
+        surface: "#19191D",
+        border: "#27272F",
+        recessed: "#141417",
+        borderRecessed: "#22222A",
         // Text & labels
         primary: "#FFFFFF",
-        secondary: "#9A9AA6",
-        muted: "#8A8A98",
-        sublabel: "#8A8A98",
-        // Accent / brand — pastel lavender
-        accent: "#8E7CFF",
-        accentLight: "#8E7CFF",
-        // Outcome colours
+        secondary: "#9090A0",
+        structural: "#555562",
+        // Functional State Accents
         flash: "#6EE756",
         send: "#8E7CFF",
-        attempt: "#E8DEB5",
-        fail: "#484852",
+        alert: "#FF453A",
+        attempt: "#3E3E48",
       },
     },
   },

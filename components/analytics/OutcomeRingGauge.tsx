@@ -82,7 +82,7 @@ export function OutcomeRingGauge({ data, onPress }: OutcomeRingGaugeProps) {
             >
               <Stop offset="0%" stopColor="#6EE756" stopOpacity="0.08" />
               <Stop offset="45%" stopColor="#8E7CFF" stopOpacity="0.03" />
-              <Stop offset="100%" stopColor="#1E1E24" stopOpacity="0" />
+              <Stop offset="100%" stopColor="#19191D" stopOpacity="0" />
             </RadialGradient>
           </Defs>
           <Rect x="0" y="0" width="100%" height="100%" fill="url(#outcomeGlow)" />
@@ -108,12 +108,12 @@ export function OutcomeRingGauge({ data, onPress }: OutcomeRingGaugeProps) {
           style={{ width: RING_SIZE, height: RING_SIZE }}
         >
           <Svg width={RING_SIZE} height={RING_SIZE}>
-            {/* Background circular track: #17171C */}
+            {/* Background circular track: #141417 */}
             <Circle
               cx={CENTER}
               cy={CENTER}
               r={RADIUS}
-              stroke="#17171C"
+              stroke="#141417"
               strokeWidth={STROKE_WIDTH}
               fill="none"
             />
@@ -213,11 +213,11 @@ export function OutcomeRingGauge({ data, onPress }: OutcomeRingGaugeProps) {
 
 const styles = StyleSheet.create({
   cardContainer: {
-    backgroundColor: '#1E1E24',
+    backgroundColor: '#19191D',
     borderRadius: 24,
     padding: 20,
     borderWidth: 1,
-    borderColor: '#2C2C35',
+    borderColor: '#27272F',
     position: 'relative',
     overflow: 'hidden',
   },
@@ -257,7 +257,7 @@ const styles = StyleSheet.create({
     letterSpacing: -0.8,
   },
   subtitleText: {
-    color: '#8A8A98',
+    color: '#9090A0',
     fontSize: 12,
     fontWeight: '500',
     textAlign: 'center',
@@ -294,7 +294,7 @@ const styles = StyleSheet.create({
     letterSpacing: -0.1,
   },
   legendCountAndPct: {
-    color: '#8A8A98',
+    color: '#9090A0',
     fontSize: 12,
     fontWeight: '500',
   },

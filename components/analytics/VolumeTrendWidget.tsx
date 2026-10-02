@@ -26,7 +26,7 @@ export function VolumeTrendWidget({ data }: VolumeTrendWidgetProps) {
       value: w.attempt_count,
       label: w.date_label.split(' ')[0] || w.week_label,
       labelTextStyle: {
-        color: '#8A8A98',
+        color: '#9090A0',
         fontSize: 10,
         fontWeight: '600',
       },
@@ -62,7 +62,7 @@ export function VolumeTrendWidget({ data }: VolumeTrendWidgetProps) {
           {isPositiveTrend ? (
             <TrendingUp size={13} color="#6EE756" />
           ) : (
-            <TrendingDown size={13} color="#8A8A98" />
+            <TrendingDown size={13} color="#9090A0" />
           )}
           <Text
             style={[
@@ -86,9 +86,9 @@ export function VolumeTrendWidget({ data }: VolumeTrendWidgetProps) {
           height={140}
           hideRules
           xAxisThickness={1}
-          xAxisColor="#2C2C35"
+          xAxisColor="#27272F"
           yAxisThickness={1}
-          yAxisColor="#2C2C35"
+          yAxisColor="#27272F"
           yAxisTextStyle={styles.axisText}
           xAxisLabelTextStyle={styles.axisText}
           isAnimated
@@ -112,11 +112,11 @@ export function VolumeTrendWidget({ data }: VolumeTrendWidgetProps) {
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: '#1E1E24',
+    backgroundColor: '#19191D',
     borderRadius: 20,
     padding: 18,
     borderWidth: 1,
-    borderColor: '#2C2C35',
+    borderColor: '#27272F',
   },
   headerRow: {
     flexDirection: 'row',
@@ -131,7 +131,7 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
   },
   cardSubtitle: {
-    color: '#8A8A98',
+    color: '#9090A0',
     fontSize: 11,
     fontWeight: '500',
     marginTop: 2,
@@ -161,7 +161,7 @@ const styles = StyleSheet.create({
     color: '#6EE756',
   },
   trendBadgeTextFlat: {
-    color: '#8A8A98',
+    color: '#9090A0',
   },
   chartContainer: {
     alignItems: 'center',
@@ -171,7 +171,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   axisText: {
-    color: '#8A8A98',
+    color: '#9090A0',
     fontSize: 10,
     fontWeight: '600',
   },
@@ -205,7 +205,7 @@ const styles = StyleSheet.create({
     marginRight: 6,
   },
   footerText: {
-    color: '#8A8A98',
+    color: '#9090A0',
     fontSize: 10,
     fontWeight: '600',
   },

@@ -12,17 +12,19 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Settings, Clock, Trash2, Info, ArrowLeft } from 'lucide-react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect, useRouter } from 'expo-router';
+import { seedDemoData } from '../db/seed';
 import { clearAllSessionData } from '../db/queries';
 import { FLOATING_CARD_STYLE, THEME_COLORS } from '../constants/theme';
 import { ScreenContainer } from '../components/ui/ScreenContainer';
 import { getHapticsEnabled, setHapticsEnabled, HAPTICS_STORAGE_KEY } from '../utils/haptics';
+import { useCelebrationStore } from '../store/celebrationStore';
 
 const REST_TIMER_KEY = '@cruxlog/rest_timer_seconds';
 const DEFAULT_REST = 90;
 
 function SectionHeader({ label }: { label: string }) {
   return (
-    <Text className="text-[#8A8A98] text-[11px] font-bold uppercase tracking-[1.2px] px-4 mt-6 mb-2.5">
+    <Text className="text-[#9090A0] text-[11px] font-bold uppercase tracking-[1.2px] px-4 mt-6 mb-2.5">
       {label}
     </Text>
   );
@@ -38,7 +40,7 @@ function SettingsRow({
   right?: React.ReactNode;
 }) {
   return (
-    <View className="flex-row items-center justify-between px-4 py-4 border-b border-[#2C2C35]/60">
+    <View className="flex-row items-center justify-between px-4 py-4 border-b border-[#27272F]/60">
       <View className="flex-1 mr-4">
         <Text className="text-white font-semibold">{label}</Text>
         {sublabel ? <Text className="text-[#9A9AA6] text-xs mt-0.5">{sublabel}</Text> : null}
@@ -54,6 +56,7 @@ export default function SettingsScreen() {
   const [restSeconds, setRestSeconds] = useState(DEFAULT_REST);
   const [restInput, setRestInput] = useState(String(DEFAULT_REST));
   const [haptics, setHaptics] = useState(getHapticsEnabled());
+  const { celebrationsEnabled, setCelebrationsEnabled } = useCelebrationStore();
 
   useFocusEffect(
     useCallback(() => {
@@ -209,6 +212,18 @@ export default function SettingsScreen() {
             />
           }
         />
+        <SettingsRow
+          label="Celebrations and animations"
+          sublabel="Visual effects for flashes & sends"
+          right={
+            <Switch
+              value={celebrationsEnabled}
+              onValueChange={setCelebrationsEnabled}
+              trackColor={{ false: '#333339', true: '#8E7CFF' }}
+              thumbColor="#FFFFFF"
+            />
+          }
+        />
       </View>
 
       {/* About section */}
@@ -237,6 +252,44 @@ export default function SettingsScreen() {
           </View>
         </TouchableOpacity>
       </View>
+{__DEV__ && (
+        <>
+          <SectionHeader label="Developer" />
+          <View style={FLOATING_CARD_STYLE} className="rounded-2xl mx-4 overflow-hidden">
+            <TouchableOpacity
+              onPress={() => {
+                Alert.alert(
+                  'Seed Demo Data',
+                  'This will permanently delete ALL local data first. Are you sure?',
+                  [
+                    { text: 'Cancel', style: 'cancel' },
+                    {
+                      text: 'Wipe & Seed',
+                      style: 'destructive',
+                      onPress: () => {
+                        try {
+                          seedDemoData();
+                          Alert.alert('Done', 'Demo data has been seeded.');
+                        } catch (e) {
+                          Alert.alert('Error', 'Could not seed demo data.');
+                          console.error(e);
+                        }
+                      }
+                    }
+                  ]
+                );
+              }}
+              activeOpacity={0.8}
+              className="flex-row items-center gap-3 px-4 py-4"
+            >
+              <View>
+                <Text className="text-white font-semibold">Reset and seed demo data</Text>
+                <Text className="text-muted text-xs mt-0.5">Wipes local DB and writes 10 weeks of history</Text>
+              </View>
+            </TouchableOpacity>
+          </View>
+        </>
+      )}
     </ScrollView>
   </ScreenContainer>
   );

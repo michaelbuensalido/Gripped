@@ -188,7 +188,7 @@ export function ClimberSkeletonOverlay({
           <View
             style={[
               styles.statusDot,
-              { backgroundColor: hasClimber ? CONTACT_LIME : '#8A8A98' },
+              { backgroundColor: hasClimber ? CONTACT_LIME : '#9090A0' },
             ]}
           />
           <Text style={[styles.diagnosticText, hasClimber && styles.diagnosticTextActive]}>
@@ -242,7 +242,7 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '700',
     letterSpacing: 0.5,
-    color: '#8A8A98',
+    color: '#9090A0',
   },
   diagnosticTextActive: {
     color: '#FFFFFF',

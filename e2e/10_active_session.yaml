@@ -1,0 +1,42 @@
+appId: com.cruxlog
+---
+- clearState
+- launchApp
+
+# Start a session
+- tapOn:
+    id: "start-session-btn"
+- tapOn: "Start"
+
+# In active session
+- assertVisible: "Session" # default gym name
+- assertVisible: "0" # Climbs tile initially 0
+
+# Tap a quick-add chip (V4 should be available if no data, as the fallback is V0-V4)
+- tapOn: "V4"
+
+# Confirm tiles update
+# Since we logged V4 top, Sends = 1, Hardest = V4
+- assertVisible: "1"
+- assertVisible: "V4"
+
+# Delete with Undo (Swipe delete)
+- swipe:
+    direction: LEFT
+    id: "delete-climb-btn" # the swipeable row would need a test ID, or we swipe the row text
+# Alternatively, since we use Swipeable, it might be tricky in Maestro.
+- tapOn: "Climb logged" # Undo toast
+- assertVisible: "UNDO"
+- tapOn: "UNDO"
+
+# Now the climb is deleted (Undo toast said Climb logged -> UNDO -> deletes it)
+# We wait for the second toast (or wait for it to disappear)
+- assertVisible: "Climb deleted"
+
+# End and see Summary
+- tapOn: "End"
+- assertVisible: "End Session"
+- tapOn: "SAVE & FINISH"
+
+# See summary
+- assertVisible: "Done"

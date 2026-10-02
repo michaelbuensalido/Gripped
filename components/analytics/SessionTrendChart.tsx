@@ -1,13 +1,9 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, Dimensions } from 'react-native';
-import Svg, { Rect } from 'react-native-svg';
-import { triggerHaptic } from '../../utils/haptics';
+import { View, Text, Dimensions, TouchableOpacity } from 'react-native';
+import { BarChart } from 'react-native-gifted-charts';
 import type { SessionTrendPoint } from '../../db/queries';
-import { THEME_COLORS } from '../../constants/theme';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
-const CONTAINER_WIDTH = SCREEN_WIDTH - 64; // inside mx-4 (32) and card p-4 (32)
-const MAX_CHART_HEIGHT = 110;
 
 interface SessionTrendChartProps {
   trends: SessionTrendPoint[];
@@ -19,156 +15,80 @@ export function SessionTrendChart({ trends }: SessionTrendChartProps) {
   if (!trends || trends.length === 0) {
     return (
       <View className="items-center py-6">
-        <Text className="text-muted text-xs">No session history yet to plot trends</Text>
+        <Text className="text-secondary text-xs">No session history yet to plot trends</Text>
       </View>
     );
   }
 
-  const maxClimbs = trends.reduce((max, t) => Math.max(max, t.totalClimbs), 1);
-  const columnWidth = Math.max(22, Math.min(36, (CONTAINER_WIDTH - (trends.length - 1) * 10) / trends.length));
-
-  const handlePointPress = (pt: SessionTrendPoint) => {
-    triggerHaptic('selection');
-    if (selectedPoint?.sessionId === pt.sessionId) {
-      setSelectedPoint(null);
-    } else {
-      setSelectedPoint(pt);
-    }
-  };
+  const stackData = trends.map(t => {
+    return {
+      stacks: [
+        { value: t.sends, color: '#8E7CFF' }, // Sends
+        { value: t.attempts, color: '#FF453A', marginBottom: 2 }, // Attempts (fails)
+      ],
+      label: t.dateLabel,
+      labelTextStyle: { color: '#9090A0', fontSize: 10, marginTop: 4 },
+      onPress: () => setSelectedPoint(t),
+    };
+  });
 
   return (
-    <View>
+    <View className="mt-2">
       {/* Interactive Tooltip Inspector */}
-      {selectedPoint ? (
-        <View
-          style={{
-            backgroundColor: THEME_COLORS.cardSurface,
-            borderColor: 'rgba(142, 124, 255, 0.4)',
-            borderTopColor: 'rgba(255, 255, 255, 0.16)',
-            borderWidth: 1,
-            borderRadius: 14,
-            padding: 12,
-            marginBottom: 16,
-          }}
-        >
+      {selectedPoint && (
+        <View className="bg-surface border border-send/40 rounded-2xl p-3 mb-4">
           <View className="flex-row items-center justify-between mb-1.5">
-            <Text className="text-white font-bold text-sm">
+            <Text className="text-primary font-bold text-sm">
               {selectedPoint.gymName}
             </Text>
-            <Text className="text-[#9A9AA6] text-xs">{selectedPoint.fullDate}</Text>
+            <Text className="text-secondary text-xs">{selectedPoint.fullDate}</Text>
           </View>
-          <View className="flex-row items-center justify-between pt-1.5 border-t border-[#2C2C35]">
+          <View className="flex-row items-center justify-between pt-1.5 border-t border-border">
             <Text className="text-secondary text-xs">
-              <Text className="text-[#8E7CFF] font-bold">{selectedPoint.sends}</Text> sends / {selectedPoint.totalClimbs} total
+              <Text className="text-send font-bold">{selectedPoint.sends}</Text> sends / {selectedPoint.totalClimbs} total
             </Text>
             {selectedPoint.hardestGrade && (
-              <View className="bg-[#8E7CFF]/20 px-2 py-0.5 rounded-full border border-[#8E7CFF]/40">
-                <Text className="text-[#8E7CFF] text-xs font-black">
+              <View className="bg-send/20 px-2 py-0.5 rounded-full border border-send/40">
+                <Text className="text-send text-xs font-black">
                   Top: {selectedPoint.hardestGrade}
                 </Text>
               </View>
             )}
-            <Text className="text-secondary text-xs">
-              ⏱ {selectedPoint.durationMinutes}m
-              {selectedPoint.avgRpe != null ? ` • RPE ${selectedPoint.avgRpe}` : ''}
-            </Text>
           </View>
         </View>
-      ) : null}
+      )}
 
-      {/* Columns Chart */}
-      <View className="flex-row items-end justify-between pt-6 pb-2" style={{ height: MAX_CHART_HEIGHT + 36 }}>
-        {trends.map((point) => {
-          const isSelected = selectedPoint?.sessionId === point.sessionId;
-          const colHeight = Math.max(16, (point.totalClimbs / maxClimbs) * MAX_CHART_HEIGHT);
-          const sendsRatio = point.totalClimbs > 0 ? point.sends / point.totalClimbs : 0;
-          const sendsHeight = colHeight * sendsRatio;
-          const attemptsHeight = Math.max(0, colHeight - sendsHeight);
+      <BarChart
+        width={SCREEN_WIDTH - 90}
+        stackData={stackData}
+        barWidth={22}
+        spacing={24}
+        roundedTop
+        roundedBottom
+        hideRules
+        xAxisThickness={1}
+        xAxisColor="#27272F"
+        yAxisThickness={0}
+        yAxisTextStyle={{ color: '#9090A0', fontSize: 10 }}
+        noOfSections={4}
+        maxValue={Math.max(...trends.map(t => t.totalClimbs)) || 10}
+        stepHeight={24}
+        isAnimated
+        animationDuration={400}
+      />
 
-          return (
-            <TouchableOpacity
-              key={point.sessionId}
-              onPress={() => handlePointPress(point)}
-              activeOpacity={0.75}
-              className="items-center"
-              style={{ width: columnWidth }}
-            >
-              {/* Top Grade Tag */}
-              {point.hardestGrade ? (
-                <Text
-                  className="text-[9px] font-black text-[#8E7CFF] mb-1 text-center"
-                  numberOfLines={1}
-                >
-                  {point.hardestGrade}
-                </Text>
-              ) : (
-                <View style={{ height: 14 }} />
-              )}
-
-              {/* Stacked Column SVG */}
-              <Svg width={columnWidth} height={colHeight}>
-                {/* Background Track */}
-                <Rect
-                  x={0}
-                  y={0}
-                  width={columnWidth}
-                  height={colHeight}
-                  fill={isSelected ? '#202026' : '#16161C'}
-                  rx={6}
-                />
-
-                {/* Attempts Segment (Top) */}
-                {attemptsHeight > 0 && (
-                  <Rect
-                    x={0}
-                    y={0}
-                    width={columnWidth}
-                    height={attemptsHeight}
-                    fill="#484852"
-                    rx={6}
-                  />
-                )}
-
-                {/* Sends Segment (Bottom) */}
-                {sendsHeight > 0 && (
-                  <Rect
-                    x={0}
-                    y={attemptsHeight}
-                    width={columnWidth}
-                    height={sendsHeight}
-                    fill="#8E7CFF"
-                    rx={attemptsHeight === 0 ? 6 : 0}
-                  />
-                )}
-              </Svg>
-
-              {/* X-Axis Date Label */}
-              <Text
-                className={`text-[10px] font-semibold mt-1.5 ${
-                  isSelected ? 'text-[#8E7CFF] font-bold' : 'text-[#9A9AA6]'
-                }`}
-              >
-                {point.dateLabel}
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
-      </View>
-
-      {/* Axis Baseline & Legend */}
-      <View className="flex-row items-center justify-between pt-2 border-t border-[#2C2C35]">
-        <View className="flex-row items-center gap-3">
-          <View className="flex-row items-center gap-1">
-            <View className="w-2.5 h-2.5 rounded-sm bg-[#8E7CFF]" />
+      <View className="flex-row items-center justify-between pt-4 mt-2 border-t border-border">
+        <View className="flex-row items-center gap-4">
+          <View className="flex-row items-center gap-1.5">
+            <View className="w-3 h-3 rounded-sm bg-send" />
             <Text className="text-secondary text-[11px] font-semibold">Sends</Text>
           </View>
-          <View className="flex-row items-center gap-1">
-            <View className="w-2.5 h-2.5 rounded-sm bg-[#484852]" />
+          <View className="flex-row items-center gap-1.5">
+            <View className="w-3 h-3 rounded-sm bg-alert" />
             <Text className="text-secondary text-[11px] font-semibold">Attempts</Text>
           </View>
         </View>
-
-        <Text className="text-muted text-[10px] italic">Tap session for stats</Text>
+        <Text className="text-structural text-[10px] italic">Tap bar for stats</Text>
       </View>
     </View>
   );

@@ -28,17 +28,17 @@ class LiveActivityManager {
 
         if (event.action === 'AdjustRest') {
            const targetMs = event.restEndDate > 0 ? event.restEndDate * 1000 : null;
-           if (targetMs !== store.restTimerTargetTimestampMs) {
-             store.updateRestTimerTarget(targetMs);
+           if (false) {
+             
            }
         } else if (event.action === 'SkipRest') {
            // Suspend updates for 1.5s so the SwiftUI SKIPPED animation can finish
            liveActivityManager.suspendUpdates(1500);
-           store.dismissRestTimer();
+           
         } else if (event.action === 'SEND' || event.action === 'ATTEMPT') {
            // Suspend updates for 1.5s so the SwiftUI Checkmark/Flame animation can finish
            liveActivityManager.suspendUpdates(1500);
-           store.logWidgetAscent(event.action as 'SEND' | 'ATTEMPT');
+           store.logGenericAscent({ gradeRaw: 'V?', outcome: event.action as 'SEND' | 'ATTEMPT' === 'SEND' ? 'send' : 'attempt' });
            
            // Clear the offline queue so AppState foreground doesn't double-count this
            if (LiveActivities.clearPendingOfflineAscents) {
@@ -47,7 +47,7 @@ class LiveActivityManager {
         } else if (event.action === 'FINISH_SESSION') {
            // If the user tapped FINISH on the widget, end the session in JS too
            // This will natively end the activity automatically because store.clearAscents calls endSession
-           store.clearAscents();
+           if (store.activeSessionId) { require('../db/queries').completeSessionWrapUp(store.activeSessionId, Date.now(), 'Session', '', '', null, []); store.setActiveSessionId(null); }
            // Also clear queue just in case
            if (LiveActivities.clearPendingOfflineAscents) {
              LiveActivities.clearPendingOfflineAscents().catch(() => {});
@@ -73,7 +73,7 @@ class LiveActivityManager {
                     const status = parts[1];
                     if (status === 'SEND' || status === 'ATTEMPT') {
                       console.log(`[LiveActivity] Dispatching queued offline ascent: ${status}`);
-                      store.logWidgetAscent(status as 'SEND' | 'ATTEMPT');
+                      store.logGenericAscent({ gradeRaw: 'V?', outcome: status as 'SEND' | 'ATTEMPT' === 'SEND' ? 'send' : 'attempt' });
                     }
                   }
                 }
@@ -94,7 +94,7 @@ class LiveActivityManager {
 
               if (action === 'SkipRest') {
                 if (LiveActivities.clearActiveRestAction) await LiveActivities.clearActiveRestAction();
-                if (store.restTimerActive) store.dismissRestTimer();
+                
                 return;
               }
 
@@ -120,8 +120,8 @@ class LiveActivityManager {
                 const targetMs = timestampSeconds * 1000;
                 const remaining = Math.max(0, Math.round((targetMs - Date.now()) / 1000));
                 const store = useSessionStore.getState();
-                if (remaining > 0 && Math.abs(targetMs - (store.restTimerTargetTimestampMs ?? 0)) > 2000) {
-                  store.updateRestTimerTarget(targetMs);
+                if (false) {
+                  
                 }
               }
             }

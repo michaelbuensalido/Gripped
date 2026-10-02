@@ -63,7 +63,7 @@ export function EmptyStateCard({
       <View style={[styles.innerContent, style]}>
         {/* Minimalist Geometric Icon Badge Frame */}
         <View style={styles.badgeFrame}>
-          <IconComponent size={28} color="#8A8A98" strokeWidth={1.8} />
+          <IconComponent size={28} color="#9090A0" strokeWidth={1.8} />
         </View>
 
         {/* Title */}
@@ -118,9 +118,9 @@ export function EmptyStateCard({
 
 const styles = StyleSheet.create({
   cardContainer: {
-    backgroundColor: '#1E1E24',
+    backgroundColor: '#19191D',
     borderWidth: 1,
-    borderColor: '#2C2C35',
+    borderColor: '#27272F',
     borderRadius: 24,
     paddingHorizontal: 24,
     paddingVertical: 36,
@@ -143,9 +143,9 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 20,
-    backgroundColor: '#1E1E24',
+    backgroundColor: '#19191D',
     borderWidth: 1,
-    borderColor: '#2C2C35',
+    borderColor: '#27272F',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 16,
@@ -167,7 +167,7 @@ const styles = StyleSheet.create({
   description: {
     fontSize: 14,
     fontWeight: '400',
-    color: '#8A8A98',
+    color: '#9090A0',
     textAlign: 'center',
     maxWidth: 280,
     lineHeight: 20,
@@ -198,7 +198,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
   },
   secondaryButtonText: {
-    color: '#8A8A98',
+    color: '#9090A0',
     fontSize: 13,
     fontWeight: '500',
     textAlign: 'center',

@@ -1,90 +1,42 @@
+import { getDerivedProjectStatus } from '../utils/projectStatus';
+import { isSend } from '../utils/isSend';
 import { getDatabase } from './schema';
-import type { Session, BoulderGroup, BoulderLog, FailureReason } from '../types';
+
+import type { Session, BoulderGroup, BoulderLog, FailureReason, Project, ProjectStatus, Outcome, Sector, Route, Attempt, HoldType, WallAngle, RouteStatus } from '../types';
+import { v4 as uuid } from 'uuid';
+import { dbEvents } from './events';
 
 // ─── Sessions ────────────────────────────────────────────────────────────────
 
+function runMutation(tableName: string, recordId: string, opType: 'INSERT' | 'UPDATE' | 'DELETE', sql: string, params: any[]) {
+  const db = getDatabase();
+  const now = Date.now();
+  db.runSync(sql, params);
+  
+  if (opType !== 'DELETE') {
+    db.runSync(`UPDATE ${tableName} SET sync_status = 'pending' WHERE id = ?`, [recordId]);
+  }
+
+  db.runSync(
+    `INSERT INTO outbox (op_id, table_name, record_id, op_type, payload, created_at) VALUES (?, ?, ?, ?, ?, ?)`,
+    [uuid(), tableName, recordId, opType, '{}', now]
+  );
+  dbEvents.emit();
+}
+
 export function insertSession(session: Omit<Session, 'endTime'>): void {
   const db = getDatabase();
-  db.runSync(
-    `INSERT INTO sessions (id, start_time, gym_name, notes)
-     VALUES (?, ?, ?, ?)`,
-    [session.id, session.startTime, session.gymName, session.notes]
+  const now = Date.now();
+  runMutation('sessions', session.id, 'INSERT', 
+    `INSERT INTO sessions (id, gym_name, started_at, notes, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?)`,
+    [session.id, session.gymName, session.startTime, session.notes, now, now]
   );
 }
 
 export function finishSession(id: string, endTime: number): void {
   const db = getDatabase();
-  db.runSync(`UPDATE sessions SET end_time = ? WHERE id = ?`, [endTime, id]);
-}
-
-export function getAllSessions(): Session[] {
-  const db = getDatabase();
-  const rows = db.getAllSync<{
-    id: string;
-    start_time: number;
-    end_time: number | null;
-    gym_name: string;
-    notes: string;
-  }>(`SELECT * FROM sessions ORDER BY start_time DESC`);
-  return rows.map(mapSession);
-}
-
-export function getSessionById(id: string): Session | null {
-  const db = getDatabase();
-  const row = db.getFirstSync<{
-    id: string;
-    start_time: number;
-    end_time: number | null;
-    gym_name: string;
-    notes: string;
-  }>(`SELECT * FROM sessions WHERE id = ?`, [id]);
-  return row ? mapSession(row) : null;
-}
-
-export function getActiveSession(): Session | null {
-  const db = getDatabase();
-  const row = db.getFirstSync<{
-    id: string;
-    start_time: number;
-    end_time: number | null;
-    gym_name: string;
-    notes: string;
-    title?: string;
-    rpe?: number | null;
-    media_uris?: string;
-  }>(
-    `SELECT * FROM sessions WHERE end_time IS NULL ORDER BY start_time DESC LIMIT 1`
-  );
-  return row ? mapSession(row) : null;
-}
-
-export function updateSessionNotes(id: string, notes: string): void {
-  const db = getDatabase();
-  db.runSync(`UPDATE sessions SET notes = ? WHERE id = ?`, [notes, id]);
-}
-
-export function updateSessionGym(id: string, gymName: string): void {
-  const db = getDatabase();
-  db.runSync(`UPDATE sessions SET gym_name = ? WHERE id = ?`, [gymName, id]);
-}
-
-export function reopenSession(id: string): void {
-  const db = getDatabase();
-  db.runSync(`UPDATE sessions SET end_time = NULL WHERE id = ?`, [id]);
-}
-
-export function deleteSession(id: string): void {
-  const db = getDatabase();
-  try {
-    const groupRows = db.getAllSync<{ id: string }>('SELECT id FROM boulder_groups WHERE session_id = ?', [id]);
-    for (const g of groupRows) {
-      db.runSync('DELETE FROM boulder_logs WHERE group_id = ?', [g.id]);
-    }
-    db.runSync('DELETE FROM boulder_groups WHERE session_id = ?', [id]);
-  } catch (err) {
-    console.warn('Cascade delete warning:', err);
-  }
-  db.runSync(`DELETE FROM sessions WHERE id = ?`, [id]);
+  runMutation('sessions', id, 'UPDATE', `UPDATE sessions SET ended_at = ?, updated_at = ? WHERE id = ?`, [endTime, Date.now(), id]);
 }
 
 export function completeSessionWrapUp(
@@ -100,45 +52,56 @@ export function completeSessionWrapUp(
 ): void {
   const db = getDatabase();
   const mediaJson = JSON.stringify(mediaUris);
-  try {
-    db.runSync(
-      `UPDATE sessions 
-       SET end_time = ?, title = ?, notes = ?, gym_name = ?, rpe = ?, media_uris = ?, skin_state = ?, finger_fatigue = ?
-       WHERE id = ?`,
-      [endTime, title, notes, gymName, rpe, mediaJson, skinState ?? null, fingerFatigue ?? null, id]
-    );
-  } catch (err) {
-    db.runSync(
-      `UPDATE sessions SET end_time = ?, notes = ?, gym_name = ? WHERE id = ?`,
-      [endTime, notes, gymName, id]
-    );
-  }
+  runMutation('sessions', id, 'UPDATE', 
+    `UPDATE sessions 
+     SET ended_at = ?, title = ?, notes = ?, gym_name = ?, rpe = ?, media_uris = ?, skin_state = ?, finger_fatigue = ?, updated_at = ?
+     WHERE id = ?`,
+    [endTime, title, notes, gymName, rpe, mediaJson, skinState ?? null, fingerFatigue ?? null, Date.now(), id]
+  );
 }
 
-function mapSession(row: {
-  id: string;
-  start_time: number;
-  end_time: number | null;
-  gym_name: string;
-  notes: string;
-  title?: string;
-  rpe?: number | null;
-  media_uris?: string;
-  skin_state?: string | null;
-  finger_fatigue?: string | null;
-}): Session {
+export function getAllSessions(): Session[] {
+  const db = getDatabase();
+  const rows = db.getAllSync<any>(`SELECT * FROM sessions ORDER BY started_at DESC`);
+  return rows.map(mapSession);
+}
+
+export function getSessionById(id: string): Session | null {
+  const db = getDatabase();
+  const row = db.getFirstSync<any>(`SELECT * FROM sessions WHERE id = ?`, [id]);
+  return row ? mapSession(row) : null;
+}
+
+export function getActiveSession(): Session | null {
+  const db = getDatabase();
+  const row = db.getFirstSync<any>(`SELECT * FROM sessions WHERE ended_at IS NULL ORDER BY started_at DESC LIMIT 1`);
+  return row ? mapSession(row) : null;
+}
+
+export function updateSessionNotes(id: string, notes: string): void {
+  const db = getDatabase();
+  runMutation('sessions', id, 'UPDATE', `UPDATE sessions SET notes = ?, updated_at = ? WHERE id = ?`, [notes, Date.now(), id]);
+}
+
+export function updateSessionGym(id: string, gymName: string): void {
+  const db = getDatabase();
+  runMutation('sessions', id, 'UPDATE', `UPDATE sessions SET gym_name = ?, updated_at = ? WHERE id = ?`, [gymName, Date.now(), id]);
+}
+
+export function deleteSession(id: string): void {
+  const db = getDatabase();
+  runMutation('sessions', id, 'DELETE', `DELETE FROM sessions WHERE id = ?`, [id]);
+}
+
+function mapSession(row: any): Session {
   let mediaUris: string[] = [];
   if (row.media_uris) {
-    try {
-      mediaUris = JSON.parse(row.media_uris);
-    } catch {
-      mediaUris = [];
-    }
+    try { mediaUris = JSON.parse(row.media_uris); } catch {}
   }
   return {
     id: row.id,
-    startTime: row.start_time,
-    endTime: row.end_time,
+    startTime: row.started_at,
+    endTime: row.ended_at,
     gymName: row.gym_name,
     notes: row.notes,
     title: row.title || '',
@@ -149,404 +112,227 @@ function mapSession(row: {
   };
 }
 
-// ─── Boulder Groups ───────────────────────────────────────────────────────────
+// ─── Shim for Boulder Groups & Logs ──────────────────────────────────────────
 
-export function insertBoulderGroup(group: BoulderGroup): void {
-  const db = getDatabase();
-  try {
-    db.runSync(
-      `INSERT INTO boulder_groups (id, session_id, zone_name, sort_order, default_rest_seconds, notes, is_completed)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      [group.id, group.sessionId, group.zoneName, group.order, group.defaultRestSeconds ?? 90, group.notes ?? '', group.isCompleted ? 1 : 0]
-    );
-  } catch {
-    db.runSync(
-      `INSERT INTO boulder_groups (id, session_id, zone_name, sort_order, default_rest_seconds)
-       VALUES (?, ?, ?, ?, ?)`,
-      [group.id, group.sessionId, group.zoneName, group.order, group.defaultRestSeconds ?? 90]
-    );
-  }
-}
-
-export function updateGroupZoneName(id: string, zoneName: string): void {
-  const db = getDatabase();
-  db.runSync(`UPDATE boulder_groups SET zone_name = ? WHERE id = ?`, [zoneName, id]);
-}
-
-export function updateGroupRestSeconds(id: string, defaultRestSeconds: number): void {
-  const db = getDatabase();
-  db.runSync(`UPDATE boulder_groups SET default_rest_seconds = ? WHERE id = ?`, [defaultRestSeconds, id]);
-}
-
-export function updateGroupNotes(id: string, notes: string): void {
-  const db = getDatabase();
-  try {
-    db.runSync(`UPDATE boulder_groups SET notes = ? WHERE id = ?`, [notes, id]);
-  } catch (err) {
-    console.warn('Failed to update group notes:', err);
-  }
-}
-
-export function updateGroupCompletion(id: string, isCompleted: boolean): void {
-  const db = getDatabase();
-  try {
-    db.runSync(`UPDATE boulder_groups SET is_completed = ? WHERE id = ?`, [isCompleted ? 1 : 0, id]);
-  } catch (err) {
-    console.warn('Failed to update group completion:', err);
-  }
-}
-
-export function deleteBoulderGroup(id: string): void {
-  const db = getDatabase();
-  db.runSync(`DELETE FROM boulder_logs WHERE group_id = ?`, [id]);
-  db.runSync(`DELETE FROM boulder_groups WHERE id = ?`, [id]);
-}
-
-export function updateGroupOrder(id: string, sortOrder: number): void {
-  const db = getDatabase();
-  db.runSync(`UPDATE boulder_groups SET sort_order = ? WHERE id = ?`, [sortOrder, id]);
-}
+export function insertBoulderGroup(group: BoulderGroup): void {}
+export function updateGroupZoneName(id: string, zoneName: string): void {}
+export function updateGroupRestSeconds(id: string, defaultRestSeconds: number): void {}
+export function updateGroupNotes(id: string, notes: string): void {}
+export function updateGroupCompletion(id: string, isCompleted: boolean): void {}
+export function deleteBoulderGroup(id: string): void {}
+export function updateGroupOrder(id: string, sortOrder: number): void {}
 
 export function getGroupsForSession(sessionId: string): BoulderGroup[] {
-  const db = getDatabase();
-  const rows = db.getAllSync<{
-    id: string;
-    session_id: string;
-    zone_name: string;
-    sort_order: number;
-    default_rest_seconds?: number | null;
-    notes?: string | null;
-    is_completed?: number | null;
-  }>(
-    `SELECT * FROM boulder_groups WHERE session_id = ? ORDER BY sort_order`,
-    [sessionId]
-  );
-  return rows.map((r) => ({
-    id: r.id,
-    sessionId: r.session_id,
-    zoneName: r.zone_name,
-    order: r.sort_order,
-    defaultRestSeconds: r.default_rest_seconds ?? 90,
-    notes: r.notes ?? '',
-    isCompleted: Boolean(r.is_completed),
-  }));
+  return [{
+    id: `group-${sessionId}`,
+    sessionId,
+    zoneName: 'Main Wall',
+    order: 0,
+    defaultRestSeconds: 90,
+    notes: '',
+    isCompleted: false,
+  }];
 }
-
-// ─── Boulder Logs ─────────────────────────────────────────────────────────────
 
 export function insertBoulderLog(log: BoulderLog): void {
   const db = getDatabase();
-  db.runSync(
-    `INSERT INTO boulder_logs
-       (id, group_id, grade_raw, normalized_difficulty, rpe, attempts, outcome, timestamp, media_uri, media_type, notes, failure_reason, wall_angle)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+  let sessionId = log.groupId.replace('group-', '');
+  if (!sessionId.includes('-')) {
+    const active = getActiveSession();
+    if(active) sessionId = active.id;
+  }
+  const now = Date.now();
+  runMutation('climbs', log.id, 'INSERT', 
+    `INSERT INTO climbs (
+      id, session_id, grade_index, grade_raw, result, attempts, rating, notes, photo_url, logged_at, failure_reason, wall_angle, created_at, updated_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
-      log.id,
-      log.groupId,
-      log.gradeRaw,
-      log.normalizedDifficulty,
-      log.rpe ?? null,
-      log.attempts,
-      log.outcome,
-      log.timestamp,
-      log.media_uri ?? null,
-      log.media_type ?? null,
-      log.notes ?? null,
-      log.failureReason ?? log.failure_reason ?? null,
-      log.wallAngle ?? null,
+      log.id, sessionId, log.normalizedDifficulty, log.gradeRaw, log.outcome, log.attempts, (log.rpe ?? null), (log.notes ?? null), (log.media_uri ?? null), log.timestamp, (log.failureReason ?? log.failure_reason ?? null), (log.wallAngle ?? null), now, now
     ]
   );
 }
 
 export function updateBoulderLog(log: BoulderLog): void {
   const db = getDatabase();
-  db.runSync(
-    `UPDATE boulder_logs
-     SET grade_raw = ?, normalized_difficulty = ?, rpe = ?, attempts = ?, outcome = ?, media_uri = ?, media_type = ?, notes = ?, failure_reason = ?, wall_angle = ?
-     WHERE id = ?`,
-    [
-      log.gradeRaw,
-      log.normalizedDifficulty,
-      log.rpe ?? null,
-      log.attempts,
-      log.outcome,
-      log.media_uri ?? null,
-      log.media_type ?? null,
-      log.notes ?? null,
-      log.failureReason ?? log.failure_reason ?? null,
-      log.wallAngle ?? null,
-      log.id,
-    ]
+  runMutation('climbs', log.id, 'UPDATE', 
+    `UPDATE climbs SET grade_raw = ?, grade_index = ?, rating = ?, attempts = ?, result = ?, photo_url = ?, notes = ?, failure_reason = ?, wall_angle = ?, updated_at = ? WHERE id = ?`,
+    [log.gradeRaw, log.normalizedDifficulty, (log.rpe ?? null), log.attempts, log.outcome, (log.media_uri ?? null), (log.notes ?? null), (log.failureReason ?? log.failure_reason ?? null), (log.wallAngle ?? null), Date.now(), log.id]
   );
 }
 
-export function updateBoulderLogFailureReason(
-  id: string,
-  failureReason: FailureReason | null
-): void {
+export function updateBoulderLogFailureReason(id: string, failureReason: FailureReason | null): void {
+  const db = getDatabase();
+  runMutation('climbs', id, 'UPDATE', `UPDATE climbs SET failure_reason = ?, updated_at = ? WHERE id = ?`, [failureReason, Date.now(), id]);
+}
+
+export function updateBoulderLogMedia(id: string, mediaUri: string | null, mediaType: string | null): void {
+  const db = getDatabase();
+  db.runSync(`UPDATE climbs SET photo_url = ?, updated_at = ? WHERE id = ?`, [mediaUri, Date.now(), id]);
+}
+
+export function updateBoulderLogGradeAndMedia(id: string, gradeRaw: string, normalizedDifficulty: number, mediaUri: string | null, mediaType: string | null, notes?: string | null): void {
   const db = getDatabase();
   db.runSync(
-    `UPDATE boulder_logs
-     SET failure_reason = ?
-     WHERE id = ?`,
-    [failureReason, id]
+    `UPDATE climbs SET grade_raw = ?, grade_index = ?, photo_url = ?, notes = ?, updated_at = ? WHERE id = ?`,
+    [gradeRaw, normalizedDifficulty, mediaUri, notes ?? null, Date.now(), id]
   );
 }
 
-export function updateBoulderLogMedia(
-  id: string,
-  mediaUri: string | null,
-  mediaType: 'video' | 'photo' | null
-): void {
-  const db = getDatabase();
-  db.runSync(
-    `UPDATE boulder_logs
-     SET media_uri = ?, media_type = ?
-     WHERE id = ?`,
-    [mediaUri, mediaType, id]
-  );
-}
 
-export function updateBoulderLogGradeAndMedia(
-  id: string,
-  gradeRaw: string,
-  normalizedDifficulty: number,
-  mediaUri: string | null,
-  mediaType: 'video' | 'photo' | null,
-  notes?: string | null
-): void {
-  const db = getDatabase();
-  db.runSync(
-    `UPDATE boulder_logs
-     SET grade_raw = ?, normalized_difficulty = ?, media_uri = ?, media_type = ?, notes = ?
-     WHERE id = ?`,
-    [gradeRaw, normalizedDifficulty, mediaUri, mediaType, notes ?? null, id]
-  );
+export function softDeleteBoulderLog(id: string): void {
+  runMutation('climbs', id, 'UPDATE', `UPDATE climbs SET deleted_at = ?, updated_at = ? WHERE id = ?`, [Date.now(), Date.now(), id]);
+}
+export function undoDeleteBoulderLog(id: string): void {
+  runMutation('climbs', id, 'UPDATE', `UPDATE climbs SET deleted_at = NULL, updated_at = ? WHERE id = ?`, [Date.now(), id]);
 }
 
 export function deleteBoulderLog(id: string): void {
   const db = getDatabase();
-  db.runSync(`DELETE FROM boulder_logs WHERE id = ?`, [id]);
+  runMutation('climbs', id, 'DELETE', `DELETE FROM climbs WHERE id = ?`, [id]);
 }
 
 export function getLogsForGroup(groupId: string): BoulderLog[] {
   const db = getDatabase();
-  const rows = db.getAllSync<{
-    id: string;
-    group_id: string;
-    grade_raw: string;
-    normalized_difficulty: number;
-    rpe: number | null;
-    attempts: number;
-    outcome: string;
-    timestamp: number;
-    media_uri?: string | null;
-    media_type?: string | null;
-    notes?: string | null;
-    failure_reason?: string | null;
-    wall_angle?: string | null;
-  }>(
-    `SELECT * FROM boulder_logs WHERE group_id = ? ORDER BY timestamp`,
-    [groupId]
-  );
-  return rows.map((r: any) => ({
-    id: r.id,
-    groupId: r.group_id,
-    gradeRaw: r.grade_raw,
-    normalizedDifficulty: r.normalized_difficulty,
-    rpe: r.rpe ?? null,
-    attempts: r.attempts,
-    outcome: r.outcome as BoulderLog['outcome'],
-    timestamp: r.timestamp,
-    media_uri: r.media_uri ?? null,
-    media_type: (r.media_type as 'video' | 'photo') ?? null,
-    notes: r.notes ?? null,
-    failureReason: (r.failure_reason as FailureReason) ?? null,
-    failure_reason: (r.failure_reason as FailureReason) ?? null,
-    wallAngle: (r.wall_angle as any) ?? null,
-  }));
+  let sessionId = groupId.replace('group-', '');
+  const rows = db.getAllSync<any>(`SELECT * FROM climbs WHERE session_id = ? ORDER BY logged_at`, [sessionId]);
+  return rows.map(mapClimbToLog);
 }
 
 export function getLogsForSession(sessionId: string): BoulderLog[] {
   const db = getDatabase();
-  const rows = db.getAllSync<{
-    id: string;
-    group_id: string;
-    grade_raw: string;
-    normalized_difficulty: number;
-    rpe: number | null;
-    attempts: number;
-    outcome: string;
-    timestamp: number;
-    media_uri?: string | null;
-    media_type?: string | null;
-    notes?: string | null;
-    failure_reason?: string | null;
-    wall_angle?: string | null;
-  }>(
-    `SELECT bl.* FROM boulder_logs bl
-     JOIN boulder_groups bg ON bl.group_id = bg.id
-     WHERE bg.session_id = ?
-     ORDER BY bl.timestamp`,
-    [sessionId]
-  );
-  return rows.map((r: any) => ({
+  const rows = db.getAllSync<any>(`SELECT * FROM climbs WHERE session_id = ? ORDER BY logged_at`, [sessionId]);
+  return rows.map(mapClimbToLog);
+}
+
+function mapClimbToLog(r: any): BoulderLog {
+  return {
     id: r.id,
-    groupId: r.group_id,
+    groupId: `group-${r.session_id}`,
     gradeRaw: r.grade_raw,
-    normalizedDifficulty: r.normalized_difficulty,
-    rpe: r.rpe ?? null,
+    normalizedDifficulty: r.grade_index,
+    rpe: r.rating ?? null,
     attempts: r.attempts,
-    outcome: r.outcome as BoulderLog['outcome'],
-    timestamp: r.timestamp,
-    media_uri: r.media_uri ?? null,
-    media_type: (r.media_type as 'video' | 'photo') ?? null,
+    outcome: r.result as BoulderLog['outcome'],
+    timestamp: r.logged_at,
+    media_uri: r.photo_url ?? null,
+    media_type: r.photo_url ? 'photo' : null,
     notes: r.notes ?? null,
-    failureReason: (r.failure_reason as FailureReason) ?? null,
-    failure_reason: (r.failure_reason as FailureReason) ?? null,
-    wallAngle: (r.wall_angle as any) ?? null,
+    failureReason: r.failure_reason as FailureReason ?? null,
+    failure_reason: r.failure_reason as FailureReason ?? null,
+    wallAngle: r.wall_angle ?? null,
+  };
+}
+
+// ─── Ascents Shim ────────────────────────────────────────────────────────────
+export function insertAscentMock(id: string, sessionId: string, gradeScalar: number, status: string, timestamp: number): void {
+  const db = getDatabase();
+  const now = Date.now();
+  db.runSync(
+    `INSERT INTO climbs (
+      id, session_id, grade_index, grade_raw, result, attempts, logged_at, created_at, updated_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [id, sessionId, gradeScalar, `V${gradeScalar}`, status.toLowerCase(), 1, timestamp, now, now]
+  );
+}
+
+export function getAscentsForSession(sessionId: string): any[] {
+  const db = getDatabase();
+  const rows = db.getAllSync<any>(`SELECT * FROM climbs WHERE session_id = ? ORDER BY logged_at ASC`, [sessionId]);
+  return rows.map(r => ({
+    id: r.id,
+    sessionId: r.session_id,
+    gradeScalar: r.grade_index,
+    status: r.result.toUpperCase(),
+    timestamp: r.logged_at,
+    isSynced: 0,
+  }));
+}
+
+// ─── Projects ────────────────────────────────────────────────────────────────
+
+export function createProject(p: Omit<Project, 'id' | 'createdAt' | 'updatedAt'>): string {
+  const db = getDatabase();
+  const id = uuid();
+  const now = Date.now();
+  db.runSync(
+    `INSERT INTO projects (id, title, grade_raw, grade_index, wall_angle, hold_type, status, high_water_mark_moves, total_moves, micro_beta, photo_url, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [id, p.title, p.gradeRaw, p.normalizedDifficulty, p.wallAngle, p.holdType, p.status, p.highWaterMarkMoves, p.totalMoves ?? null, p.microBeta ?? null, p.mediaUri ?? null, now, now]
+  );
+  return id;
+}
+
+export function updateProjectStatus(id: string, status: ProjectStatus): void {
+  getDatabase().runSync(`UPDATE projects SET status = ?, updated_at = ? WHERE id = ?`, [status, Date.now(), id]);
+}
+export function updateProjectHighWaterMark(id: string, moves: number): void {
+  getDatabase().runSync(`UPDATE projects SET high_water_mark_moves = ?, updated_at = ? WHERE id = ?`, [moves, Date.now(), id]);
+}
+export function updateProjectBeta(id: string, microBeta: string, mediaUri?: string | null): void {
+  getDatabase().runSync(`UPDATE projects SET micro_beta = ?, photo_url = COALESCE(?, photo_url), updated_at = ? WHERE id = ?`, [microBeta, mediaUri ?? null, Date.now(), id]);
+}
+export function deleteProject(id: string): void {
+  getDatabase().runSync(`DELETE FROM projects WHERE id = ?`, [id]);
+}
+export function getAllProjects(): Project[] {
+  const rows = getDatabase().getAllSync<any>(`SELECT * FROM projects ORDER BY created_at DESC`);
+  return rows.map(r => ({
+    id: r.id,
+    title: r.title,
+    gradeRaw: r.grade_raw,
+    normalizedDifficulty: r.grade_index,
+    wallAngle: r.wall_angle,
+    holdType: r.hold_type,
+    status: r.status,
+    highWaterMarkMoves: r.high_water_mark_moves,
+    totalMoves: r.total_moves,
+    microBeta: r.micro_beta,
+    mediaUri: r.photo_url,
+    createdAt: r.created_at,
+    updatedAt: r.updated_at,
   }));
 }
 
 // ─── Analytics ────────────────────────────────────────────────────────────────
 
-export interface GradePyramidRow {
-  gradeRaw: string;
-  normalizedDifficulty: number;
-  flashes: number;
-  sends: number;
-  attempts: number;
-}
-
-/** Aggregate sends/flashes/attempts per grade — pass null for lifetime */
-export function getGradePyramid(sessionId: string | null, sinceTimestamp?: number): GradePyramidRow[] {
-  const db = getDatabase();
-  const conditions: string[] = [];
-  const params: (string | number)[] = [];
-
-  let join = '';
-  if (sessionId) {
-    join = 'JOIN boulder_groups bg ON bl.group_id = bg.id';
-    conditions.push('bg.session_id = ?');
-    params.push(sessionId);
-  }
-
-  if (sinceTimestamp != null) {
-    conditions.push('bl.timestamp >= ?');
-    params.push(sinceTimestamp);
-  }
-
-  const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
-
-  const rows = db.getAllSync<{
-    grade_raw: string;
-    normalized_difficulty: number;
-    flashes: number;
-    sends: number;
-    attempts: number;
-  }>(
-    `SELECT
-       bl.grade_raw,
-       bl.normalized_difficulty,
-       SUM(CASE WHEN bl.outcome = 'flash'   THEN 1 ELSE 0 END) AS flashes,
-       SUM(CASE WHEN bl.outcome = 'send'    THEN 1 ELSE 0 END) AS sends,
-       SUM(CASE WHEN bl.outcome = 'attempt' THEN 1 ELSE 0 END) AS attempts
-     FROM boulder_logs bl
-     ${join}
-     ${where}
-     GROUP BY bl.grade_raw, bl.normalized_difficulty
-     ORDER BY bl.normalized_difficulty DESC`,
-    params
-  );
-  return rows.map((r) => ({
-    gradeRaw: r.grade_raw,
-    normalizedDifficulty: r.normalized_difficulty,
-    flashes: r.flashes,
-    sends: r.sends,
-    attempts: r.attempts,
-  }));
-}
-
-export interface GradePyramidDataRow {
-  grade_raw: string;
-  normalized_difficulty: number;
-  flash_count: number;
-  top_count: number;
-  attempt_count: number;
-  total_sends: number;
-  total_attempts: number;
-}
-
-/** Returns counts grouped by grade_raw (V0 to V13+) split into flash_count, top_count, attempt_count */
-export function getGradePyramidData(
-  timeframe: '30d' | '90d' | 'all' = 'all'
-): GradePyramidDataRow[] {
+export function getGradePyramidData(timeframe: '30d' | '90d' | 'all' = 'all'): any[] {
   const db = getDatabase();
   const conditions: string[] = [];
   const params: number[] = [];
   const now = Date.now();
 
   if (timeframe === '30d') {
-    conditions.push('timestamp >= ?');
+    conditions.push('logged_at >= ?');
     params.push(now - 30 * 24 * 60 * 60 * 1000);
   } else if (timeframe === '90d') {
-    conditions.push('timestamp >= ?');
+    conditions.push('logged_at >= ?');
     params.push(now - 90 * 24 * 60 * 60 * 1000);
   }
 
   const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
-
-  const rows = db.getAllSync<{
-    grade_raw: string;
-    normalized_difficulty: number;
-    flash_count: number;
-    top_count: number;
-    attempt_count: number;
-    total_attempts: number;
-  }>(
+  const rows = db.getAllSync<any>(
     `SELECT
        grade_raw,
-       normalized_difficulty,
-       SUM(CASE WHEN outcome = 'flash' THEN 1 ELSE 0 END) AS flash_count,
-       SUM(CASE WHEN outcome IN ('send', 'top') THEN 1 ELSE 0 END) AS top_count,
-       SUM(CASE WHEN outcome = 'attempt' THEN 1 ELSE 0 END) AS attempt_count,
+       grade_index as normalized_difficulty,
+       SUM(CASE WHEN result = 'flash' THEN 1 ELSE 0 END) AS flash_count,
+       SUM(CASE WHEN result IN ('send', 'top') THEN 1 ELSE 0 END) AS top_count,
+       SUM(CASE WHEN result = 'attempt' THEN 1 ELSE 0 END) AS attempt_count,
        COUNT(*) AS total_attempts
-     FROM boulder_logs
+     FROM climbs
      ${where}
-     GROUP BY grade_raw, normalized_difficulty
-     ORDER BY normalized_difficulty ASC`,
+     GROUP BY grade_raw, grade_index
+     ORDER BY grade_index ASC`,
     params
   );
-
-  const rowMap = new Map<
-    number,
-    {
-      grade_raw: string;
-      flash_count: number;
-      top_count: number;
-      attempt_count: number;
-      total_attempts: number;
-    }
-  >();
-
-  for (const r of rows) {
-    rowMap.set(r.normalized_difficulty, {
-      grade_raw: r.grade_raw,
-      flash_count: r.flash_count,
-      top_count: r.top_count,
-      attempt_count: r.attempt_count,
-      total_attempts: r.total_attempts,
-    });
-  }
-
+  
+  const result: any[] = [];
   let maxDiff = 8;
+  const rowMap = new Map();
   for (const r of rows) {
-    if (r.normalized_difficulty > maxDiff) {
-      maxDiff = Math.min(13, r.normalized_difficulty);
-    }
+    if (r.normalized_difficulty > maxDiff) maxDiff = Math.min(13, r.normalized_difficulty);
+    rowMap.set(r.normalized_difficulty, r);
   }
 
-  const result: GradePyramidDataRow[] = [];
   for (let diff = 0; diff <= maxDiff; diff++) {
     const existing = rowMap.get(diff);
     const flash_count = existing?.flash_count ?? 0;
@@ -564,80 +350,42 @@ export function getGradePyramidData(
       total_attempts: existing?.total_attempts ?? (flash_count + top_count + attempt_count),
     });
   }
-
   return result;
 }
 
-export interface WeeklyVolumeTrendsData {
-  weeks: {
-    week_label: string;
-    date_label: string;
-    week_index: number;
-    send_count: number;
-    attempt_count: number;
-    avg_grade: string;
-  }[];
-  trend_percentage: number;
-  trend_direction: 'up' | 'down' | 'flat';
-  trend_label: string;
-}
-
-/** Returns send counts and total attempts aggregated per week for the last 8 weeks */
-export function getWeeklyVolumeTrends(
-  timeframe: '30d' | '90d' | 'all' = 'all'
-): WeeklyVolumeTrendsData {
+export function getWeeklyVolumeTrends(timeframe: '30d' | '90d' | 'all' = 'all'): any {
   const db = getDatabase();
   const ONE_WEEK_MS = 7 * 24 * 60 * 60 * 1000;
   const now = Date.now();
   const weeksCount = 8;
-  const totalWindowMs = weeksCount * ONE_WEEK_MS;
-  const windowStart = now - totalWindowMs;
+  const windowStart = now - (weeksCount * ONE_WEEK_MS);
 
-  const rows = db.getAllSync<{
-    timestamp: number;
-    outcome: string;
-    attempts: number;
-    normalized_difficulty: number;
-  }>(
-    `SELECT timestamp, outcome, attempts, normalized_difficulty
-     FROM boulder_logs
-     WHERE timestamp >= ?
-     ORDER BY timestamp ASC`,
-    [windowStart]
+  const rows = db.getAllSync<any>(
+    `SELECT logged_at, result, attempts, grade_index
+     FROM climbs WHERE logged_at >= ? ORDER BY logged_at ASC`, [windowStart]
   );
 
-  const buckets = Array.from({ length: weeksCount }, () => ({
-    sends: 0,
-    attempts: 0,
-    grades: [] as number[],
-  }));
+  const buckets = Array.from({ length: weeksCount }, () => ({ sends: 0, attempts: 0, grades: [] as number[] }));
 
   for (const log of rows) {
-    const elapsed = log.timestamp - windowStart;
-    const weekIdx = Math.min(
-      weeksCount - 1,
-      Math.max(0, Math.floor(elapsed / ONE_WEEK_MS))
-    );
-    const isSend = log.outcome === 'flash' || log.outcome === 'send' || log.outcome === 'top';
+    const elapsed = log.logged_at - windowStart;
+    const weekIdx = Math.min(weeksCount - 1, Math.max(0, Math.floor(elapsed / ONE_WEEK_MS)));
+    const isSend = log.result === 'flash' || log.result === 'send' || log.result === 'top';
     if (isSend) {
       buckets[weekIdx].sends += 1;
-      buckets[weekIdx].grades.push(log.normalized_difficulty);
+      buckets[weekIdx].grades.push(log.grade_index);
     }
     buckets[weekIdx].attempts += Math.max(1, log.attempts);
   }
 
   const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-
   const weeks = buckets.map((b, i) => {
     const weekStart = windowStart + i * ONE_WEEK_MS;
     const d = new Date(weekStart);
-    const date_label = `${months[d.getMonth()]} ${d.getDate()}`;
-    const avgScore =
-      b.grades.length > 0 ? b.grades.reduce((acc, c) => acc + c, 0) / b.grades.length : 0;
-
+    const avgScore = b.grades.length > 0 ? b.grades.reduce((acc, c) => acc + c, 0) / b.grades.length : 0;
     return {
       week_label: `W${i + 1}`,
-      date_label,
+      date_label: `${months[d.getMonth()]} ${d.getDate()}`,
       week_index: i,
       send_count: b.sends,
       attempt_count: b.attempts,
@@ -647,110 +395,32 @@ export function getWeeklyVolumeTrends(
 
   const currentWeekBurns = weeks[7]?.attempt_count ?? 0;
   const prevWeekBurns = weeks[6]?.attempt_count ?? 0;
+  let trend_percentage = prevWeekBurns > 0 ? Math.round(((currentWeekBurns - prevWeekBurns) / prevWeekBurns) * 100) : (currentWeekBurns > 0 ? 100 : 0);
+  let trend_direction = trend_percentage > 0 ? 'up' : (trend_percentage < 0 ? 'down' : 'flat');
 
-  let trend_percentage = 0;
-  let trend_direction: 'up' | 'down' | 'flat' = 'flat';
-
-  if (prevWeekBurns > 0) {
-    trend_percentage = Math.round(((currentWeekBurns - prevWeekBurns) / prevWeekBurns) * 100);
-  } else if (currentWeekBurns > 0) {
-    trend_percentage = 100;
-  }
-
-  if (trend_percentage > 0) {
-    trend_direction = 'up';
-  } else if (trend_percentage < 0) {
-    trend_direction = 'down';
-  }
-
-  const sign = trend_percentage > 0 ? '+' : '';
-  const trend_label = `${sign}${trend_percentage}% vs last week`;
-
-  return {
-    weeks,
-    trend_percentage,
-    trend_direction,
-    trend_label,
-  };
+  return { weeks, trend_percentage, trend_direction, trend_label: `${trend_percentage > 0 ? '+' : ''}${trend_percentage}% vs last week` };
 }
 
-export interface WallAngleBreakdownItem {
-  style: 'Overhang' | 'Slab' | 'Vertical' | 'Roof';
-  percentage: number;
-  count: number;
-  color: string;
-}
-
-/** Calculates percentage distribution of wall styles ('Overhang', 'Slab', 'Vertical', 'Roof') */
-export function getWallAngleBreakdown(
-  timeframe: '30d' | '90d' | 'all' = 'all'
-): WallAngleBreakdownItem[] {
+export function getWallAngleBreakdown(timeframe: '30d' | '90d' | 'all' = 'all'): any[] {
   const db = getDatabase();
-  const conditions: string[] = [];
-  const params: number[] = [];
-  const now = Date.now();
-
-  if (timeframe === '30d') {
-    conditions.push('bl.timestamp >= ?');
-    params.push(now - 30 * 24 * 60 * 60 * 1000);
-  } else if (timeframe === '90d') {
-    conditions.push('bl.timestamp >= ?');
-    params.push(now - 90 * 24 * 60 * 60 * 1000);
-  }
-
-  const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
-
-  const rows = db.getAllSync<{
-    log_notes: string | null;
-    zone_name: string | null;
-    group_notes: string | null;
-    outcome: string;
-  }>(
-    `SELECT
-       bl.notes AS log_notes,
-       bg.zone_name,
-       bg.notes AS group_notes,
-       bl.outcome
-     FROM boulder_logs bl
-     JOIN boulder_groups bg ON bl.group_id = bg.id
-     ${where}`,
-    params
-  );
-
-  const counts: Record<'Overhang' | 'Slab' | 'Vertical' | 'Roof', number> = {
-    Overhang: 0,
-    Slab: 0,
-    Vertical: 0,
-    Roof: 0,
-  };
-
+  const rows = db.getAllSync<any>(`SELECT wall_angle, notes, result FROM climbs`);
+  const counts = { Overhang: 0, Slab: 0, Vertical: 0, Roof: 0 };
+  
   for (const r of rows) {
-    const text = `${r.log_notes ?? ''} ${r.group_notes ?? ''} ${r.zone_name ?? ''}`.toLowerCase();
-
-    if (text.includes('roof') || text.includes('cave')) {
-      counts.Roof += 1;
-    } else if (text.includes('overhang') || text.includes('steep')) {
-      counts.Overhang += 1;
-    } else if (text.includes('slab')) {
-      counts.Slab += 1;
-    } else {
-      counts.Vertical += 1;
-    }
+    const text = `${r.notes ?? ''} ${r.wall_angle ?? ''}`.toLowerCase();
+    if (text.includes('roof') || text.includes('cave')) counts.Roof += 1;
+    else if (text.includes('overhang') || text.includes('steep')) counts.Overhang += 1;
+    else if (text.includes('slab')) counts.Slab += 1;
+    else counts.Vertical += 1;
   }
-
   const total = counts.Overhang + counts.Slab + counts.Vertical + counts.Roof;
-
-  if (total === 0) {
-    return [
-      { style: 'Overhang', percentage: 42, count: 0, color: '#8E7CFF' },
-      { style: 'Slab', percentage: 26, count: 0, color: '#6EE756' },
-      { style: 'Vertical', percentage: 20, count: 0, color: '#38BDF8' },
-      { style: 'Roof', percentage: 12, count: 0, color: '#F59E0B' },
-    ];
-  }
-
+  if (total === 0) return [
+    { style: 'Overhang', percentage: 42, count: 0, color: '#8E7CFF' },
+    { style: 'Slab', percentage: 26, count: 0, color: '#6EE756' },
+    { style: 'Vertical', percentage: 20, count: 0, color: '#38BDF8' },
+    { style: 'Roof', percentage: 12, count: 0, color: '#F59E0B' },
+  ];
   const calcPct = (cnt: number) => Math.round((cnt / total) * 100);
-
   return [
     { style: 'Overhang', percentage: calcPct(counts.Overhang), count: counts.Overhang, color: '#8E7CFF' },
     { style: 'Slab', percentage: calcPct(counts.Slab), count: counts.Slab, color: '#6EE756' },
@@ -759,1418 +429,1195 @@ export function getWallAngleBreakdown(
   ];
 }
 
-export interface AngleMasteryItem {
-  angle: 'Overhang' | 'Slab' | 'Vertical';
-  sendRate: number;
-  totalSends: number;
-  totalAttempts: number;
-  color: string;
-}
-
-/**
- * Returns send completion rate and volume by wall profile:
- * Overhang, Slab, and Vertical.
- */
-export function getAngleMasteryBreakdown(
-  timeframe: '30d' | '90d' | 'all' = 'all'
-): AngleMasteryItem[] {
-  const db = getDatabase();
-  const conditions: string[] = [];
-  const params: number[] = [];
-  const now = Date.now();
-
-  if (timeframe === '30d') {
-    conditions.push('bl.timestamp >= ?');
-    params.push(now - 30 * 24 * 60 * 60 * 1000);
-  } else if (timeframe === '90d') {
-    conditions.push('bl.timestamp >= ?');
-    params.push(now - 90 * 24 * 60 * 60 * 1000);
-  }
-
-  const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
-
-  let rows: {
-    log_notes: string | null;
-    zone_name: string | null;
-    group_notes: string | null;
-    outcome: string;
-    attempts: number;
-  }[] = [];
-
-  try {
-    rows = db.getAllSync<{
-      log_notes: string | null;
-      zone_name: string | null;
-      group_notes: string | null;
-      outcome: string;
-      attempts: number;
-    }>(
-      `SELECT
-         bl.notes AS log_notes,
-         bg.zone_name,
-         bg.notes AS group_notes,
-         bl.outcome,
-         bl.attempts
-       FROM boulder_logs bl
-       JOIN boulder_groups bg ON bl.group_id = bg.id
-       ${where}`,
-      params
-    );
-  } catch (err) {
-    console.warn('Error querying angle mastery:', err);
-  }
-
-  const stats: Record<'Overhang' | 'Slab' | 'Vertical', { sends: number; attempts: number }> = {
-    Overhang: { sends: 0, attempts: 0 },
-    Slab: { sends: 0, attempts: 0 },
-    Vertical: { sends: 0, attempts: 0 },
-  };
-
-  for (const r of rows) {
-    const text = `${r.log_notes ?? ''} ${r.group_notes ?? ''} ${r.zone_name ?? ''}`.toLowerCase();
-    let angle: 'Overhang' | 'Slab' | 'Vertical' = 'Vertical';
-    if (text.includes('roof') || text.includes('cave') || text.includes('overhang') || text.includes('steep')) {
-      angle = 'Overhang';
-    } else if (text.includes('slab')) {
-      angle = 'Slab';
-    } else {
-      angle = 'Vertical';
-    }
-
-    const isSend = r.outcome === 'flash' || r.outcome === 'top' || r.outcome === 'send';
-    if (isSend) {
-      stats[angle].sends += 1;
-    }
-    stats[angle].attempts += Math.max(1, r.attempts || 1);
-  }
-
-  const totalLogs = rows.length;
-
-  if (totalLogs === 0) {
-    // Actionable baseline profile matching reference metrics
-    return [
-      { angle: 'Overhang', sendRate: 68, totalSends: 17, totalAttempts: 25, color: '#6EE756' },
-      { angle: 'Slab', sendRate: 42, totalSends: 8, totalAttempts: 19, color: '#8E7CFF' },
-      { angle: 'Vertical', sendRate: 55, totalSends: 11, totalAttempts: 20, color: '#8E7CFF' },
-    ];
-  }
-
-  const angles: ('Overhang' | 'Slab' | 'Vertical')[] = ['Overhang', 'Slab', 'Vertical'];
-  return angles.map((angle) => {
-    const { sends, attempts } = stats[angle];
-    const sendRate = attempts > 0 ? Math.round((sends / attempts) * 100) : 50;
-    const color = sendRate >= 60 ? '#6EE756' : '#8E7CFF';
-    return {
-      angle,
-      sendRate,
-      totalSends: sends,
-      totalAttempts: attempts,
-      color,
-    };
-  });
-}
-
-export interface GradePyramidAllTimeRow {
-  gradeRaw: string;
-  normalizedDifficulty: number;
-  flash: number;
-  top: number;
-  attempt: number;
-  totalSends: number;
-  totalBurns: number;
-}
-
-/** Groups sends by V-grade (V0–V14) and outcome ('flash', 'top', 'attempt') */
-export function getGradePyramidAllTime(sinceTimestamp?: number): GradePyramidAllTimeRow[] {
-  const db = getDatabase();
-  const conditions: string[] = [];
-  const params: number[] = [];
-
-  if (sinceTimestamp != null) {
-    conditions.push('timestamp >= ?');
-    params.push(sinceTimestamp);
-  }
-
-  const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
-
-  const rows = db.getAllSync<{
-    grade_raw: string;
-    normalized_difficulty: number;
-    flash: number;
-    top: number;
-    attempt: number;
-    total_burns: number;
-  }>(
-    `SELECT
-       grade_raw,
-       normalized_difficulty,
-       SUM(CASE WHEN outcome = 'flash' THEN 1 ELSE 0 END) AS flash,
-       SUM(CASE WHEN outcome IN ('send', 'top') THEN 1 ELSE 0 END) AS top,
-       SUM(CASE WHEN outcome = 'attempt' THEN 1 ELSE 0 END) AS attempt,
-       COUNT(*) AS total_burns
-     FROM boulder_logs
-     ${where}
-     GROUP BY grade_raw, normalized_difficulty
-     ORDER BY normalized_difficulty ASC`,
-    params
-  );
-
-  const rowMap = new Map<
-    number,
-    {
-      gradeRaw: string;
-      flash: number;
-      top: number;
-      attempt: number;
-      totalBurns: number;
-    }
-  >();
-
-  for (const r of rows) {
-    rowMap.set(r.normalized_difficulty, {
-      gradeRaw: r.grade_raw,
-      flash: r.flash,
-      top: r.top,
-      attempt: r.attempt,
-      totalBurns: r.total_burns,
-    });
-  }
-
-  // Find max difficulty logged, up to 14, at least 8 (V8)
-  let maxDiff = 8;
-  for (const r of rows) {
-    if (r.normalized_difficulty > maxDiff) {
-      maxDiff = Math.min(14, r.normalized_difficulty);
-    }
-  }
-
-  const result: GradePyramidAllTimeRow[] = [];
-  for (let diff = 0; diff <= maxDiff; diff++) {
-    const existing = rowMap.get(diff);
-    const flash = existing?.flash ?? 0;
-    const top = existing?.top ?? 0;
-    const attempt = existing?.attempt ?? 0;
-    result.push({
-      gradeRaw: existing?.gradeRaw ?? `V${diff}`,
-      normalizedDifficulty: diff,
-      flash,
-      top,
-      attempt,
-      totalSends: flash + top,
-      totalBurns: existing?.totalBurns ?? (flash + top + attempt),
-    });
-  }
-
-  return result;
-}
-
-export interface WeeklyVolumeStat {
-  weekIndex: number;
-  weekLabel: string;
-  startDate: number;
-  endDate: number;
-  sends: number;
-  totalBurns: number;
-  avgGradeScore: number;
-  avgGradeLabel: string;
-}
-
-/** Returns sends and burns per week for the last 8 weeks */
-export function getMonthlyVolumeStats(weeksCount = 8): WeeklyVolumeStat[] {
-  const db = getDatabase();
-  const ONE_WEEK_MS = 7 * 24 * 60 * 60 * 1000;
-  const now = Date.now();
-  const totalWindowMs = weeksCount * ONE_WEEK_MS;
-  const windowStart = now - totalWindowMs;
-
-  const rows = db.getAllSync<{
-    timestamp: number;
-    outcome: string;
-    attempts: number;
-    normalized_difficulty: number;
-  }>(
-    `SELECT timestamp, outcome, attempts, normalized_difficulty
-     FROM boulder_logs
-     WHERE timestamp >= ?
-     ORDER BY timestamp ASC`,
-    [windowStart]
-  );
-
-  const buckets: {
-    sends: number;
-    burns: number;
-    gradeScores: number[];
-  }[] = Array.from({ length: weeksCount }, () => ({
-    sends: 0,
-    burns: 0,
-    gradeScores: [],
-  }));
-
-  for (const log of rows) {
-    const elapsed = log.timestamp - windowStart;
-    const weekIdx = Math.min(
-      weeksCount - 1,
-      Math.max(0, Math.floor(elapsed / ONE_WEEK_MS))
-    );
-    const isSend = log.outcome === 'flash' || log.outcome === 'send' || log.outcome === 'top';
-    if (isSend) {
-      buckets[weekIdx].sends += 1;
-      buckets[weekIdx].gradeScores.push(log.normalized_difficulty);
-    }
-    buckets[weekIdx].burns += Math.max(1, log.attempts);
-  }
-
-  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-
-  return buckets.map((b, i) => {
-    const weekStart = windowStart + i * ONE_WEEK_MS;
-    const weekEnd = weekStart + ONE_WEEK_MS;
-    const d = new Date(weekStart);
-    const label = `${months[d.getMonth()]} ${d.getDate()}`;
-
-    const avgScore =
-      b.gradeScores.length > 0
-        ? b.gradeScores.reduce((acc, val) => acc + val, 0) / b.gradeScores.length
-        : 0;
-
-    return {
-      weekIndex: i,
-      weekLabel: label,
-      startDate: weekStart,
-      endDate: weekEnd,
-      sends: b.sends,
-      totalBurns: b.burns,
-      avgGradeScore: Math.round(avgScore * 10) / 10,
-      avgGradeLabel: b.gradeScores.length > 0 ? `V${Math.round(avgScore)}` : '—',
-    };
-  });
-}
-
-export interface DisciplineSplitItem {
-  id: string;
-  label: string;
-  count: number;
-  percentage: number;
-  color: string;
-}
-
-/** Returns distribution of tags ('overhang', 'slab', 'roof', 'vertical', etc.) */
-export function getDisciplineSplit(sinceTimestamp?: number): DisciplineSplitItem[] {
-  const db = getDatabase();
-  const conditions: string[] = [];
-  const params: number[] = [];
-
-  if (sinceTimestamp != null) {
-    conditions.push('bl.timestamp >= ?');
-    params.push(sinceTimestamp);
-  }
-
-  const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
-
-  const rows = db.getAllSync<{
-    log_notes: string | null;
-    zone_name: string | null;
-    group_notes: string | null;
-    outcome: string;
-  }>(
-    `SELECT
-       bl.notes AS log_notes,
-       bg.zone_name,
-       bg.notes AS group_notes,
-       bl.outcome
-     FROM boulder_logs bl
-     JOIN boulder_groups bg ON bl.group_id = bg.id
-     ${where}`,
-    params
-  );
-
-  const counts: Record<'slab' | 'overhang' | 'crimpy' | 'dynamic', number> = {
-    slab: 0,
-    overhang: 0,
-    crimpy: 0,
-    dynamic: 0,
-  };
-
-  for (const r of rows) {
-    const text = `${r.log_notes ?? ''} ${r.group_notes ?? ''} ${r.zone_name ?? ''}`.toLowerCase();
-
-    if (text.includes('slab')) {
-      counts.slab += 1;
-    }
-    if (text.includes('overhang') || text.includes('steep') || text.includes('roof') || text.includes('cave')) {
-      counts.overhang += 1;
-    }
-    if (text.includes('crimp') || text.includes('crimpy') || text.includes('technical') || text.includes('finger')) {
-      counts.crimpy += 1;
-    }
-    if (text.includes('dyno') || text.includes('dynamic') || text.includes('power') || text.includes('jump')) {
-      counts.dynamic += 1;
-    }
-  }
-
-  const total = counts.slab + counts.overhang + counts.crimpy + counts.dynamic;
-
-  // Calibrated baseline if user hasn't tagged climbs yet
-  if (total === 0) {
-    return [
-      { id: 'overhang', label: 'Overhang', count: 0, percentage: 38, color: '#8E7CFF' },
-      { id: 'slab', label: 'Slab', count: 0, percentage: 28, color: '#6EE756' },
-      { id: 'crimpy', label: 'Crimpy', count: 0, percentage: 20, color: '#F59E0B' },
-      { id: 'dynamic', label: 'Dynamic', count: 0, percentage: 14, color: '#38BDF8' },
-    ];
-  }
-
-  const calcPct = (cnt: number) => Math.round((cnt / total) * 100);
-
+export function getAngleMasteryBreakdown(timeframe: '30d' | '90d' | 'all' = 'all'): any[] {
   return [
-    { id: 'overhang', label: 'Overhang', count: counts.overhang, percentage: calcPct(counts.overhang), color: '#8E7CFF' },
-    { id: 'slab', label: 'Slab', count: counts.slab, percentage: calcPct(counts.slab), color: '#6EE756' },
-    { id: 'crimpy', label: 'Crimpy', count: counts.crimpy, percentage: calcPct(counts.crimpy), color: '#F59E0B' },
-    { id: 'dynamic', label: 'Dynamic', count: counts.dynamic, percentage: calcPct(counts.dynamic), color: '#38BDF8' },
+    { angle: 'Overhang', sendRate: 0, totalSends: 0, totalAttempts: 0, color: '#8E7CFF' },
+    { angle: 'Slab', sendRate: 0, totalSends: 0, totalAttempts: 0, color: '#6EE756' },
+    { angle: 'Vertical', sendRate: 0, totalSends: 0, totalAttempts: 0, color: '#38BDF8' }
   ];
 }
 
-export interface LifetimeStats {
-  totalSessions: number;
-  totalSends: number;
-  totalAttempts: number;
-  avgSessionMinutes: number;
-  hardestSend: string | null;
-}
-
-export function getLifetimeStats(): LifetimeStats {
-  const db = getDatabase();
-  const counts = db.getFirstSync<{
-    total_sessions: number;
-    total_sends: number;
-    total_attempts: number;
-  }>(
-    `SELECT
-       (SELECT COUNT(*) FROM sessions) AS total_sessions,
-       SUM(CASE WHEN outcome IN ('send','flash') THEN 1 ELSE 0 END) AS total_sends,
-       SUM(CASE WHEN outcome = 'attempt' THEN 1 ELSE 0 END) AS total_attempts
-     FROM boulder_logs`
-  );
-  const avgRow = db.getFirstSync<{ avg_minutes: number | null }>(
-    `SELECT AVG((end_time - start_time) / 60000.0) AS avg_minutes
-     FROM sessions WHERE end_time IS NOT NULL`
-  );
-  const hardestRow = db.getFirstSync<{ grade_raw: string | null }>(
-    `SELECT grade_raw FROM boulder_logs
-     WHERE outcome IN ('send','flash')
-     ORDER BY normalized_difficulty DESC LIMIT 1`
-  );
+export function getHomeStats(): any { 
   return {
-    totalSessions: counts?.total_sessions ?? 0,
-    totalSends: counts?.total_sends ?? 0,
-    totalAttempts: counts?.total_attempts ?? 0,
-    avgSessionMinutes: Math.round(avgRow?.avg_minutes ?? 0),
-    hardestSend: hardestRow?.grade_raw ?? null,
-  };
+    sendsThisWeek: 0,
+    attemptsThisWeek: 0,
+    restDaysRatio: 0,
+    hardestSendRaw: 'V0',
+    hardestSendDiff: 0,
+    sessionsThisWeek: 0,
+    recentSessions: []
+  }; 
 }
 
-export interface AnalyticsOverview {
-  totalSessions: number;
-  totalSends: number;
-  totalFlashes: number;
-  totalAttempts: number;
-  totalClimbs: number;
-  sendRate: number;
-  flashRate: number;
-  attemptsPerSend: string;
-  avgSessionMinutes: number;
-  hardestSend: string | null;
-  outcomeBreakdown: {
-    flashes: number;
-    sends: number;
-    attempts: number;
-    flashPct: number;
-    sendPct: number;
-    attemptPct: number;
-  };
-  peakGradeTrend: number[];
-}
+export function seedDefaultRoutinesIfEmpty(): void {}
 
-export function getAnalyticsOverview(sinceTimestamp?: number): AnalyticsOverview {
+
+export function insertAttempt(attempt: any): void {
   const db = getDatabase();
-  const timeWhere = sinceTimestamp != null ? 'WHERE timestamp >= ?' : '';
-  const sessionTimeWhere = sinceTimestamp != null ? 'WHERE start_time >= ?' : '';
-  const params: (number | string)[] = sinceTimestamp != null ? [sinceTimestamp] : [];
-
-  const counts = db.getFirstSync<{
-    total_sends: number;
-    total_flashes: number;
-    total_attempts: number;
-    total_climbs: number;
-  }>(
-    `SELECT
-       SUM(CASE WHEN outcome IN ('send','flash') THEN 1 ELSE 0 END) AS total_sends,
-       SUM(CASE WHEN outcome = 'flash' THEN 1 ELSE 0 END) AS total_flashes,
-       SUM(CASE WHEN outcome = 'attempt' THEN 1 ELSE 0 END) AS total_attempts,
-       COUNT(*) AS total_climbs
-     FROM boulder_logs ${timeWhere}`,
-    params
+  const now = Date.now();
+  runMutation('climbs', attempt.id, 'INSERT', 
+    `INSERT INTO climbs (
+      id, session_id, project_id, grade_raw, grade_index, wall_angle, hold_type, result, attempts, logged_at, failure_reason, created_at, updated_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      attempt.id,
+      attempt.sessionId,
+      attempt.projectId || null,
+      attempt.gradeRaw,
+      attempt.normalizedDifficulty,
+      (attempt.wallAngle ?? null),
+      (attempt.holdType ?? null),
+      (attempt.outcome ?? null),
+      attempt.attemptNumber,
+      attempt.timestamp,
+      attempt.failureReason || null,
+      now, now
+    ]
   );
-
-  const sessionCounts = db.getFirstSync<{ total_sessions: number; avg_minutes: number | null }>(
-    `SELECT
-       COUNT(*) AS total_sessions,
-       AVG(CASE WHEN end_time IS NOT NULL THEN (end_time - start_time) / 60000.0 ELSE NULL END) AS avg_minutes
-     FROM sessions ${sessionTimeWhere}`,
-    params
-  );
-
-  const hardestRow = db.getFirstSync<{ grade_raw: string | null }>(
-    `SELECT grade_raw FROM boulder_logs
-     ${timeWhere ? timeWhere + " AND outcome IN ('send','flash')" : "WHERE outcome IN ('send','flash')"}
-     ORDER BY normalized_difficulty DESC LIMIT 1`,
-    params
-  );
-
-  const totalSends = counts?.total_sends ?? 0;
-  const totalFlashes = counts?.total_flashes ?? 0;
-  const totalAttempts = counts?.total_attempts ?? 0;
-  const totalClimbs = counts?.total_climbs ?? 0;
-  const totalSessions = sessionCounts?.total_sessions ?? 0;
-  const avgSessionMinutes = Math.round(sessionCounts?.avg_minutes ?? 0);
-
-  const sendRate = totalClimbs > 0 ? Math.round((totalSends / totalClimbs) * 100) : 0;
-  const flashRate = totalSends > 0 ? Math.round((totalFlashes / totalSends) * 100) : 0;
-  const attemptsPerSend = totalSends > 0 ? (totalAttempts / totalSends).toFixed(1) : '—';
-
-  const flashPct = totalClimbs > 0 ? Math.round((totalFlashes / totalClimbs) * 100) : 0;
-  const redpointSends = Math.max(0, totalSends - totalFlashes);
-  const sendPct = totalClimbs > 0 ? Math.round((redpointSends / totalClimbs) * 100) : 0;
-  const attemptPct = totalClimbs > 0 ? Math.max(0, 100 - flashPct - sendPct) : 0;
-
-  let peakGradeTrend: number[] = [];
-  try {
-    const trendRows = db.getAllSync<{ max_diff: number }>(
-      `SELECT MAX(bl.normalized_difficulty) as max_diff
-       FROM boulder_logs bl
-       JOIN boulder_groups bg ON bl.group_id = bg.id
-       ${sessionTimeWhere ? sessionTimeWhere.replace('start_time', 'bg.session_id IN (SELECT id FROM sessions WHERE start_time') + ')' : ''}
-       ${sessionTimeWhere ? "AND" : "WHERE"} bl.outcome IN ('send','flash', 'top')
-       GROUP BY bg.session_id
-       ORDER BY MIN(bl.timestamp) ASC`,
-      params
-    );
-    peakGradeTrend = trendRows.map(r => r.max_diff);
-  } catch (err) {
-    console.warn('peakGradeTrend failed', err);
-  }
-
-  return {
-    totalSessions,
-    totalSends,
-    totalFlashes,
-    totalAttempts,
-    totalClimbs,
-    sendRate,
-    flashRate,
-    attemptsPerSend,
-    avgSessionMinutes,
-    hardestSend: hardestRow?.grade_raw ?? null,
-    outcomeBreakdown: {
-      flashes: totalFlashes,
-      sends: redpointSends,
-      attempts: totalAttempts,
-      flashPct,
-      sendPct,
-      attemptPct,
-    },
-    peakGradeTrend,
-  };
 }
 
-export interface SessionTrendPoint {
-  sessionId: string;
-  dateLabel: string;
-  fullDate: string;
-  gymName: string;
-  totalClimbs: number;
-  sends: number;
-  attempts: number;
-  hardestGrade: string | null;
-  durationMinutes: number;
-  avgRpe: number | null;
-}
-
-export function getRecentSessionTrends(limit = 7): SessionTrendPoint[] {
+export function updateAttemptFailureReason(attemptId: string, reason: string | null): void {
   const db = getDatabase();
-  const sessionRows = db.getAllSync<{
-    id: string;
-    start_time: number;
-    end_time: number | null;
-    gym_name: string;
-  }>(
-    `SELECT id, start_time, end_time, gym_name FROM sessions
-     ORDER BY start_time DESC LIMIT ?`,
-    [limit]
-  );
-
-  return sessionRows.reverse().map((s) => {
-    const logs = getLogsForSession(s.id);
-    const sent = logs.filter((l) => l.outcome === 'send' || l.outcome === 'flash');
-    const attempts = logs.filter((l) => l.outcome === 'attempt');
-    const hardest = [...sent].sort((a, b) => b.normalizedDifficulty - a.normalizedDifficulty)[0]?.gradeRaw ?? null;
-
-    const d = new Date(s.start_time);
-    const dateLabel = d.toLocaleDateString('en-US', { month: 'numeric', day: 'numeric' });
-    const fullDate = d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
-    const durationMinutes = s.end_time ? Math.round((s.end_time - s.start_time) / 60000) : 0;
-
-    const logsWithRpe = logs.filter((l) => l.rpe != null);
-    const avgRpe =
-      logsWithRpe.length > 0
-        ? Math.round((logsWithRpe.reduce((acc, l) => acc + (l.rpe ?? 0), 0) / logsWithRpe.length) * 10) / 10
-        : null;
-
-    return {
-      sessionId: s.id,
-      dateLabel,
-      fullDate,
-      gymName: s.gym_name || 'Session',
-      totalClimbs: logs.length,
-      sends: sent.length,
-      attempts: attempts.length,
-      hardestGrade: hardest,
-      durationMinutes,
-      avgRpe,
-    };
-  });
+  runMutation('climbs', attemptId, 'UPDATE', `UPDATE climbs SET failure_reason = ?, updated_at = ? WHERE id = ?`, [reason, Date.now(), attemptId]);
 }
 
-export interface SessionSummary extends Session {
-  sendCount: number;
-  flashCount: number;
-  gradesSent: string[];
-  hardestGrade: string | null;
-  durationMinutes: number;
-  hasMedia: boolean;
-}
+export type SessionDetailData = any;
+export type GradePyramidRow = any;
+export type GradePyramidDataRow = any;
+export type GradePyramidAllTimeRow = any;
+export type AngleMasteryItem = any;
+export type RecentBoulderLog = any;
+export type HomeStats = any;
+export type SessionSummary = any;
+export type WeeklyCapsuleOverviewData = any;
+export type GradeVolumeEqualizerData = any;
+export type SessionTrendPoint = any;
+export type AnalyticsOverview = any;
+export type RecentOutcomesSummaryData = any;
+export type OutcomeSegmentData = any;
+export type WallAngleBreakdownItem = any;
+export type WeeklyVolumeTrendsData = any;
+export type DisciplineSplitItem = any;
+export type FailureBreakdownData = any;
+export type WeeklyVolumeStat = any;
 
-export function getAllSessionSummaries(): SessionSummary[] {
-  const sessions = getAllSessions();
-  return sessions.map((s) => {
-    const logs = getLogsForSession(s.id);
-    const sent = logs.filter((l) => l.outcome === 'send' || l.outcome === 'flash');
-    const sortedSends = [...sent].sort((a, b) => b.normalizedDifficulty - a.normalizedDifficulty);
-    const hardestSend = sortedSends[0]?.gradeRaw ?? null;
-    const sortedAll = [...logs].sort((a, b) => b.normalizedDifficulty - a.normalizedDifficulty);
-    const hardestGrade = hardestSend ?? sortedAll[0]?.gradeRaw ?? null;
-    const uniqueGrades = [...new Set(sent.map((l) => l.gradeRaw))]
-      .sort((a, b) => parseInt(b.replace('V', ''), 10) - parseInt(a.replace('V', ''), 10))
-      .slice(0, 5);
-    const durationMinutes = s.endTime ? Math.max(1, Math.round((s.endTime - s.startTime) / 60000)) : 0;
-    const hasMedia = logs.some((l) => l.media_uri !== null && l.media_uri !== undefined);
-    return {
-      ...s,
-      sendCount: sent.length,
-      flashCount: logs.filter((l) => l.outcome === 'flash').length,
-      gradesSent: uniqueGrades,
-      hardestGrade,
-      durationMinutes,
-      hasMedia,
-    };
-  });
-}
+export function updateSessionConditions(sessionId: string, conditions: string[]): void {}
 
-export interface SessionKPIs {
-  durationMs: number;
-  totalSends: number;
-  totalFlashes: number;
-  totalAttempts: number;
-  totalClimbs: number;
-  hardestSend: string | null;
-  flashRate: number;
-  avgRpe: number | null;
-}
-
-export interface SessionDetailData {
-  session: Session;
-  groups: {
-    id: string;
-    sessionId: string;
-    zoneName: string;
-    order: number;
-    logs: BoulderLog[];
-  }[];
-  pyramid: GradePyramidRow[];
-  kpis: SessionKPIs;
-}
-
-export function getSessionDetail(sessionId: string): SessionDetailData | null {
-  const session = getSessionById(sessionId);
-  if (!session) return null;
-
-  const rawGroups = getGroupsForSession(sessionId);
-  const groups = rawGroups.map((g) => ({
-    ...g,
-    logs: getLogsForGroup(g.id),
-  }));
-
-  const allLogs = groups.flatMap((g) => g.logs);
-  const sentLogs = allLogs.filter((l) => l.outcome === 'send' || l.outcome === 'flash');
-  const flashLogs = allLogs.filter((l) => l.outcome === 'flash');
-  const totalAttempts = allLogs.reduce((acc, l) => acc + l.attempts, 0);
-
-  // Hardest send
-  const sortedSends = [...sentLogs].sort((a, b) => b.normalizedDifficulty - a.normalizedDifficulty);
-  const hardestSend = sortedSends.length > 0 ? sortedSends[0].gradeRaw : null;
-
-  // Flash rate: percent of sends that were flashes
-  const flashRate = sentLogs.length > 0 ? Math.round((flashLogs.length / sentLogs.length) * 100) : 0;
-
-  // Average RPE across logged sets
-  const logsWithRpe = allLogs.filter((l) => l.rpe != null);
-  const avgRpe =
-    logsWithRpe.length > 0
-      ? Math.round((logsWithRpe.reduce((acc, l) => acc + (l.rpe ?? 0), 0) / logsWithRpe.length) * 10) / 10
-      : null;
-
-  const durationMs = (session.endTime ?? Date.now()) - session.startTime;
-
-  const pyramid = getGradePyramid(sessionId);
-
-  return {
-    session,
-    groups,
-    pyramid,
-    kpis: {
-      durationMs,
-      totalSends: sentLogs.length,
-      totalFlashes: flashLogs.length,
-      totalAttempts,
-      totalClimbs: allLogs.length,
-      hardestSend,
-      flashRate,
-      avgRpe,
-    },
-  };
-}
-
-// ─── Home Screen Stats ────────────────────────────────────────────────────────
-
-export interface HomeStats {
-  totalSessions: number;
-  totalSends: number;
-  totalFlashes: number;
-  totalProjects: number;
-  hardestSend: string | null;
-  activeProject?: { grade: string; title: string; burns: number } | null;
-  activeSession: { id: string; gymName: string; startTime: number } | null;
-}
-
-export function getHomeStats(): HomeStats {
+export function insertProject(project: any): void {
   const db = getDatabase();
-
-  const counts = db.getFirstSync<{
-    total_sessions: number;
-    total_sends: number;
-    total_flashes: number;
-    total_projects: number;
-  }>(
-    `SELECT
-       (SELECT COUNT(*) FROM sessions) AS total_sessions,
-       (SELECT COUNT(*) FROM boulder_logs WHERE outcome IN ('send','flash')) AS total_sends,
-       (SELECT COUNT(*) FROM boulder_logs WHERE outcome = 'flash') AS total_flashes,
-       (SELECT COUNT(*) FROM boulder_logs WHERE outcome IN ('attempt','fail')) AS total_projects`
+  const now = Date.now();
+  runMutation('projects', project.id, 'INSERT', 
+    `INSERT INTO projects (id, title, grade_raw, grade_index, wall_angle, hold_type, status, high_water_mark_moves, total_moves, micro_beta, photo_url, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [project.id, project.title, project.gradeRaw, project.normalizedDifficulty, project.wallAngle, project.holdType, project.status, project.highWaterMarkMoves, project.totalMoves ?? null, (project.microBeta ?? null), (project.mediaUri ?? null), now, now]
   );
-
-  const hardestRow = db.getFirstSync<{ grade_raw: string | null }>(
-    `SELECT grade_raw FROM boulder_logs
-     WHERE outcome IN ('send','flash')
-     ORDER BY normalized_difficulty DESC LIMIT 1`
-  );
-
-  const projectRow = db.getFirstSync<{
-    grade_raw: string;
-    attempts: number;
-    notes: string | null;
-  }>(
-    `SELECT grade_raw, attempts, notes FROM boulder_logs
-     WHERE outcome IN ('attempt','fail')
-     ORDER BY timestamp DESC LIMIT 1`
-  );
-
-  const activeRow = db.getFirstSync<{
-    id: string;
-    gym_name: string;
-    start_time: number;
-  }>(
-    `SELECT id, gym_name, start_time FROM sessions
-     WHERE end_time IS NULL
-     ORDER BY start_time DESC LIMIT 1`
-  );
-
-  return {
-    totalSessions: counts?.total_sessions ?? 0,
-    totalSends: counts?.total_sends ?? 0,
-    totalFlashes: counts?.total_flashes ?? 0,
-    totalProjects: counts?.total_projects && counts.total_projects > 0 ? counts.total_projects : 3,
-    hardestSend: hardestRow?.grade_raw ?? 'V7',
-    activeProject: projectRow
-      ? {
-          grade: projectRow.grade_raw || 'V9',
-          title: projectRow.notes ? `${projectRow.notes}` : 'Cave Roof Project',
-          burns: projectRow.attempts || 2,
-        }
-      : {
-          grade: 'V9',
-          title: 'Cave Roof Project',
-          burns: 2,
-        },
-    activeSession: activeRow
-      ? { id: activeRow.id, gymName: activeRow.gym_name, startTime: activeRow.start_time }
-      : null,
-  };
 }
 
+export function gradeToNumeric(gradeRaw: string): number {
+  return parseInt(gradeRaw.replace('V', '')) || 0;
+}
+
+export function getClimbsForSession(sessionId: string): any[] {
+  const db = getDatabase();
+  return db.getAllSync(`
+    SELECT c.*, p.title as projectTitle 
+    FROM climbs c 
+    LEFT JOIN projects p ON c.project_id = p.id 
+    WHERE c.session_id = ? AND c.deleted_at IS NULL
+    ORDER BY c.logged_at ASC
+  `, [sessionId]);
+}
+
+export function getAllSessionSummaries(): any[] {
+  const db = getDatabase();
+  const rows = db.getAllSync<any>(`SELECT * FROM sessions ORDER BY started_at DESC`);
+  return rows.map(mapSession);
+}
+
+export function getAnalyticsOverview(): AnalyticsOverview { return {}; }
+export function getRecentBoulderLogs(): RecentBoulderLog[] { return []; }
+export function getRecentOutcomesSummary(): RecentOutcomesSummaryData { return {}; }
+export function getGradeVolumeEqualizerData(): GradeVolumeEqualizerData { return {}; }
 export function clearAllSessionData(): void {
   const db = getDatabase();
-  db.execSync('DELETE FROM boulder_logs; DELETE FROM boulder_groups; DELETE FROM sessions;');
+  db.runSync(`DELETE FROM climbs`);
+  db.runSync(`DELETE FROM sessions`);
+  db.runSync(`DELETE FROM outbox`);
+  dbEvents.emit();
 }
 
-export interface RecentBoulderLog {
-  id: string;
-  gradeRaw: string;
-  outcome: 'send' | 'flash' | 'attempt';
-  attempts: number;
-  timestamp: number;
-  gymName: string;
-  wallAngle: string | null;
-}
-
-export function getRecentBoulderLogs(limit = 10): RecentBoulderLog[] {
+export function getSessionSummary(sessionId: string) {
   const db = getDatabase();
-  const rows = db.getAllSync<{
-    id: string;
-    grade_raw: string;
-    outcome: string;
-    attempts: number;
-    timestamp: number;
-    gym_name: string;
-    wall_angle: string | null;
-  }>(
-    `SELECT bl.id, bl.grade_raw, bl.outcome, bl.attempts, bl.timestamp, s.gym_name, bl.wall_angle
-     FROM boulder_logs bl
-     JOIN boulder_groups bg ON bl.group_id = bg.id
-     JOIN sessions s ON bg.session_id = s.id
-     ORDER BY bl.timestamp DESC
-     LIMIT ?`,
-    [limit]
-  );
-  return rows.map((r) => ({
-    id: r.id,
-    gradeRaw: r.grade_raw,
-    outcome: r.outcome as 'send' | 'flash' | 'attempt',
-    attempts: r.attempts,
-    timestamp: r.timestamp,
-    gymName: r.gym_name || 'Climbing Session',
-    wallAngle: r.wall_angle,
-  }));
-}
+  const session = db.getFirstSync<any>(`SELECT * FROM sessions WHERE id = ? AND deleted_at IS NULL`, [sessionId]);
+  const climbs = db.getAllSync<any>(`SELECT * FROM climbs WHERE session_id = ? AND deleted_at IS NULL`, [sessionId]);
 
-// ─── Project Book & Beta Vault ────────────────────────────────────────────────
+  const sends = climbs.filter((c: any) => isSend(c.result));
+  const flashes = climbs.filter((c: any) => c.result === 'flash');
+  const hardest = sends.reduce((max: any, c: any) => {
+    if (!max || c.grade_index > max.grade_index) return c;
+    return max;
+  }, null);
 
-export interface ProjectBookItem {
-  id: string;
-  gradeRaw: string;
-  normalizedDifficulty: number;
-  zoneName: string;
-  gymName: string;
-  totalAttempts: number;
-  lastAttempted: number;
-  gradeTier: string;
-}
-
-export function getProjectBookLogs(): ProjectBookItem[] {
-  const db = getDatabase();
-  try {
-    const rows = db.getAllSync<{
-      id: string;
-      grade_raw: string;
-      normalized_difficulty: number;
-      title: string;
-      gym_name: string;
-      total_attempts: number;
-      last_attempted: number;
-    }>(
-      `SELECT
-         MIN(bl.id) AS id,
-         bl.grade_raw,
-         bl.normalized_difficulty,
-         COALESCE(TRIM(bg.zone_name), 'Main Wall') AS title,
-         s.gym_name,
-         SUM(bl.attempts) AS total_attempts,
-         MAX(bl.timestamp) AS last_attempted
-       FROM boulder_logs bl
-       JOIN boulder_groups bg ON bl.group_id = bg.id
-       JOIN sessions s ON bg.session_id = s.id
-       WHERE bl.outcome = 'attempt'
-       GROUP BY bl.grade_raw, title
-       ORDER BY bl.normalized_difficulty DESC, last_attempted DESC`
-    );
-
-    return rows.map((r) => {
-      let gradeTier = 'V0–V3';
-      if (r.normalized_difficulty >= 8) {
-        gradeTier = 'V8+';
-      } else if (r.normalized_difficulty >= 6) {
-        gradeTier = 'V6–V7';
-      } else if (r.normalized_difficulty >= 4) {
-        gradeTier = 'V4–V5';
-      }
-      return {
-        id: r.id,
-        gradeRaw: r.grade_raw,
-        normalizedDifficulty: r.normalized_difficulty,
-        zoneName: r.title,
-        gymName: r.gym_name || 'Gym Session',
-        totalAttempts: r.total_attempts,
-        lastAttempted: r.last_attempted,
-        gradeTier,
-      };
-    });
-  } catch (err) {
-    console.error('Failed to get project book logs:', err);
-    return [];
-  }
-}
-
-export interface BetaVaultItem {
-  id: string;
-  gradeRaw: string;
-  title: string;
-  zoneName: string;
-  gymName: string;
-  durationSeconds: number;
-  mediaUri?: string | null;
-  mediaType?: 'video' | 'photo' | null;
-  outcome?: string;
-  failureReason?: FailureReason | null;
-  date: string;
-}
-
-export function getBetaVaultLogs(): BetaVaultItem[] {
-  const db = getDatabase();
-  try {
-    const tableInfo = db.getAllSync<{ name: string }>('PRAGMA table_info(boulder_logs);');
-    const hasMediaCol = tableInfo.some((c) => c.name === 'media_uri');
-    if (!hasMediaCol) {
-      return [];
-    }
-    const rows = db.getAllSync<{
-      id: string;
-      grade_raw: string;
-      media_uri: string;
-      media_type?: string | null;
-      outcome: string;
-      zone_name: string;
-      gym_name: string;
-      timestamp: number;
-      failure_reason?: string | null;
-    }>(
-      `SELECT bl.id, bl.grade_raw, bl.media_uri, bl.media_type, bl.outcome, bg.zone_name, s.gym_name, bl.timestamp, bl.failure_reason
-       FROM boulder_logs bl
-       JOIN boulder_groups bg ON bl.group_id = bg.id
-       JOIN sessions s ON bg.session_id = s.id
-       WHERE bl.media_uri IS NOT NULL AND bl.media_uri != ''
-       ORDER BY bl.timestamp DESC`
-    );
-    return rows.map((r) => {
-      const d = new Date(r.timestamp);
-      return {
-        id: r.id,
-        gradeRaw: r.grade_raw,
-        title: `${r.zone_name || 'Boulder'} Beta`,
-        zoneName: r.zone_name || 'Boulder',
-        gymName: r.gym_name || 'Gym Session',
-        durationSeconds: 24,
-        mediaUri: r.media_uri,
-        mediaType: (r.media_type as 'video' | 'photo') || 'video',
-        outcome: r.outcome,
-        failureReason: (r.failure_reason as FailureReason) ?? null,
-        date: d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-      };
-    });
-  } catch {
-    return [];
-  }
-}
-
-// ─── Bento Capsule & Equalizer Aggregations ──────────────────────────────────
-
-export interface WeeklyCapsuleDayData {
-  dayIndex: number;
-  dayLabel: 'Sun' | 'Mon' | 'Tue' | 'Wed' | 'Thu' | 'Fri' | 'Sat';
-  dateLabel: string;
-  dayTimestamp: number;
-  sendCount: number;
-  flashCount: number;
-  attemptCount: number;
-  totalClimbs: number;
-  fillPercentage: number;
-  isToday: boolean;
-  isPeak: boolean;
-  valueLabel: string;
-}
-
-export interface WeeklyCapsuleOverviewData {
-  days: WeeklyCapsuleDayData[];
-  totalWeeklySends: number;
-  totalWeeklyFlashes: number;
-  totalWeeklyAttempts: number;
-  weeklyGoalSends: number;
-  goalCompletionRate: number;
-  peakDayIndex: number;
-  activeDayIndex: number;
-  rangeLabel: string;
-}
-
-/** Computes Sunday-to-Saturday daily climbing volume and goal completion for the weekly capsule chart */
-export function getWeeklyCapsuleData(refTimestamp: number = Date.now()): WeeklyCapsuleOverviewData {
-  const db = getDatabase();
-  const refDate = new Date(refTimestamp);
-  const currentDayOfWeek = refDate.getDay();
-
-  const sunday = new Date(refDate.getFullYear(), refDate.getMonth(), refDate.getDate() - currentDayOfWeek, 0, 0, 0, 0);
-  const saturdayEnd = new Date(sunday.getFullYear(), sunday.getMonth(), sunday.getDate() + 6, 23, 59, 59, 999);
-
-  const startMs = sunday.getTime();
-  const endMs = saturdayEnd.getTime();
-
-  let logs: { outcome: string; attempts: number; timestamp: number }[] = [];
-  try {
-    logs = db.getAllSync<{
-      outcome: string;
-      attempts: number;
-      timestamp: number;
-    }>(
-      `SELECT outcome, attempts, timestamp
-       FROM boulder_logs
-       WHERE timestamp >= ? AND timestamp <= ?
-       ORDER BY timestamp ASC`,
-      [startMs, endMs]
-    );
-  } catch (err) {
-    console.warn('Error querying weekly capsule logs:', err);
-  }
-
-  const dayLabels: ('Sun' | 'Mon' | 'Tue' | 'Wed' | 'Thu' | 'Fri' | 'Sat')[] = [
-    'Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'
-  ];
-  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-
-  const dayBuckets = Array.from({ length: 7 }, (_, i) => {
-    const dayStart = new Date(sunday.getFullYear(), sunday.getMonth(), sunday.getDate() + i, 0, 0, 0, 0).getTime();
-    const d = new Date(dayStart);
-    return {
-      dayIndex: i,
-      dayLabel: dayLabels[i],
-      dateLabel: `${months[d.getMonth()]} ${d.getDate()}`,
-      dayTimestamp: dayStart,
-      sends: 0,
-      flashes: 0,
-      attempts: 0,
-      totalClimbs: 0,
-    };
-  });
-
-  for (const l of logs) {
-    const d = new Date(l.timestamp);
-    const dayIdx = d.getDay();
-    if (dayIdx >= 0 && dayIdx <= 6) {
-      const isSend = l.outcome === 'send' || l.outcome === 'flash' || l.outcome === 'top';
-      const isFlash = l.outcome === 'flash';
-      if (isSend) dayBuckets[dayIdx].sends += 1;
-      if (isFlash) dayBuckets[dayIdx].flashes += 1;
-      dayBuckets[dayIdx].attempts += Math.max(1, l.attempts);
-      dayBuckets[dayIdx].totalClimbs += 1;
-    }
-  }
-
-  const maxSends = Math.max(4, ...dayBuckets.map((b) => b.sends));
-  let peakIdx = 0;
-  let highestSends = -1;
-  dayBuckets.forEach((b, idx) => {
-    if (b.sends > highestSends) {
-      highestSends = b.sends;
-      peakIdx = idx;
-    }
-  });
-
-  if (highestSends === 0) {
-    peakIdx = currentDayOfWeek;
-  }
-
-  const days: WeeklyCapsuleDayData[] = dayBuckets.map((b) => {
-    const isToday = b.dayIndex === currentDayOfWeek;
-    const isPeak = b.dayIndex === peakIdx && b.sends > 0;
-    const fillPercentage = b.sends > 0 ? Math.min(100, Math.max(18, Math.round((b.sends / maxSends) * 100))) : 0;
-    return {
-      dayIndex: b.dayIndex,
-      dayLabel: b.dayLabel,
-      dateLabel: b.dateLabel,
-      dayTimestamp: b.dayTimestamp,
-      sendCount: b.sends,
-      flashCount: b.flashes,
-      attemptCount: b.attempts,
-      totalClimbs: b.totalClimbs,
-      fillPercentage,
-      isToday,
-      isPeak,
-      valueLabel: b.sends > 0 ? `${b.sends}` : '0',
-    };
-  });
-
-  const totalWeeklySends = days.reduce((acc, d) => acc + d.sendCount, 0);
-  const totalWeeklyFlashes = days.reduce((acc, d) => acc + d.flashCount, 0);
-  const totalWeeklyAttempts = days.reduce((acc, d) => acc + d.attemptCount, 0);
-
-  const weeklyGoalSends = 20;
-  const rawCompletion = (totalWeeklySends / weeklyGoalSends) * 100;
-  const goalCompletionRate = Math.min(100, Math.round(rawCompletion * 10) / 10);
-
-  const sunMonth = months[sunday.getMonth()];
-  const satMonth = months[saturdayEnd.getMonth()];
-  const rangeLabel = sunMonth === satMonth
-    ? `${sunMonth} ${sunday.getDate()} – ${saturdayEnd.getDate()}`
-    : `${sunMonth} ${sunday.getDate()} – ${satMonth} ${saturdayEnd.getDate()}`;
+  const duration = session
+    ? ((session.ended_at || Date.now()) - session.started_at)
+    : 0;
 
   return {
-    days,
-    totalWeeklySends,
-    totalWeeklyFlashes,
-    totalWeeklyAttempts,
-    weeklyGoalSends,
-    goalCompletionRate: goalCompletionRate > 0 ? goalCompletionRate : 85.5,
-    peakDayIndex: peakIdx,
-    activeDayIndex: currentDayOfWeek,
-    rangeLabel,
+    id: sessionId,
+    duration,
+    climbs: climbs.length,
+    sends: sends.length,
+    flashes: flashes.length,
+    hardestGradeRaw: hardest?.grade_raw ?? '–',
+    hardestGradeIndex: hardest?.grade_index ?? 0,
+    gymName: session?.gym_name ?? '',
+    startedAt: session?.started_at ?? 0,
+    endedAt: session?.ended_at ?? 0,
+    notes: session?.notes ?? '',
+    effort: session?.effort ?? session?.rpe ?? null,
   };
 }
 
-export interface GradeVolumeEqualizerItem {
-  grade: string;
-  sends: number;
-  heightPercent: number;
-  color: string;
+
+const PERIOD_MS = {
+  '7d': 7 * 24 * 60 * 60 * 1000,
+  '30d': 30 * 24 * 60 * 60 * 1000,
+  '90d': 90 * 24 * 60 * 60 * 1000,
+  '1y': 365 * 24 * 60 * 60 * 1000,
+  'all': 0
+};
+
+export type ProgressPeriod = keyof typeof PERIOD_MS;
+
+function getSince(period: ProgressPeriod, nowMs: number = Date.now()): number {
+  const ms = PERIOD_MS[period] || 0;
+  return ms === 0 ? 0 : nowMs - ms;
 }
 
-export interface GradeVolumeEqualizerData {
-  grades: GradeVolumeEqualizerItem[];
-  totalSends: number;
-  trendPercentage: number;
-  trendDirection: 'up' | 'down' | 'flat';
-  trendLabel: string;
-}
-
-/** Returns multi-bar grade distribution and send velocity for the Bento Volume by Grade card */
-export function getGradeVolumeEqualizerData(
-  timeframe: '30d' | '90d' | 'all' = 'all'
-): GradeVolumeEqualizerData {
+// 1. Result counts (Flash / Send / Attempt) for donut
+export function getResultCounts(period: ProgressPeriod, nowMs: number = Date.now()) {
+  const since = getSince(period, nowMs);
   const db = getDatabase();
-  const conditions: string[] = ["outcome IN ('send', 'flash', 'top')"];
-  const params: number[] = [];
-  const now = Date.now();
-
-  if (timeframe === '30d') {
-    conditions.push('timestamp >= ?');
-    params.push(now - 30 * 24 * 60 * 60 * 1000);
-  } else if (timeframe === '90d') {
-    conditions.push('timestamp >= ?');
-    params.push(now - 90 * 24 * 60 * 60 * 1000);
-  }
-
-  const where = `WHERE ${conditions.join(' AND ')}`;
-
-  let rows: { grade_raw: string; normalized_difficulty: number; send_count: number }[] = [];
-  try {
-    rows = db.getAllSync<{
-      grade_raw: string;
-      normalized_difficulty: number;
-      send_count: number;
-    }>(
-      `SELECT grade_raw, normalized_difficulty, COUNT(*) as send_count
-       FROM boulder_logs
-       ${where}
-       GROUP BY grade_raw, normalized_difficulty
-       ORDER BY normalized_difficulty ASC`,
-      params
-    );
-  } catch (err) {
-    console.warn('Error querying grade volume equalizer:', err);
-  }
-
-  const totalSends = rows.reduce((acc, r) => acc + r.send_count, 0);
-
-  let items = rows;
-  if (items.length === 0) {
-    items = [
-      { grade_raw: 'V4', normalized_difficulty: 4, send_count: 8 },
-      { grade_raw: 'V5', normalized_difficulty: 5, send_count: 6 },
-      { grade_raw: 'V6', normalized_difficulty: 6, send_count: 7 },
-      { grade_raw: 'V7', normalized_difficulty: 7, send_count: 3 },
-    ];
-  } else if (items.length > 5) {
-    items = [...items]
-      .sort((a, b) => b.send_count - a.send_count)
-      .slice(0, 5)
-      .sort((a, b) => a.normalized_difficulty - b.normalized_difficulty);
-  }
-
-  const maxSends = Math.max(1, ...items.map((i) => i.send_count));
-  const palette = ['#6EE756', '#8E7CFF', '#6EE756', '#8E7CFF', '#6EE756'];
-
-  const grades: GradeVolumeEqualizerItem[] = items.map((it, idx) => ({
-    grade: it.grade_raw,
-    sends: it.send_count,
-    heightPercent: Math.max(25, Math.min(100, Math.round((it.send_count / maxSends) * 100))),
-    color: palette[idx % palette.length],
-  }));
-
-  return {
-    grades,
-    totalSends: totalSends > 0 ? totalSends : 24,
-    trendPercentage: 15,
-    trendDirection: 'up',
-    trendLabel: '▲ 15%',
-  };
-}
-
-// ─── Send Outcome Ring Gauge Aggregation ─────────────────────────────────────
-
-export interface OutcomeSegmentData {
-  label: 'Flash' | 'Top' | 'Projecting';
-  count: number;
-  percentage: number;
-  color: string;
-}
-
-export interface RecentOutcomesSummaryData {
-  segments: OutcomeSegmentData[];
-  averageGrade: string;
-  medianGrade: string;
-  totalLogs: number;
-  limit: number;
-  subtitle: string;
-}
-
-/**
- * Returns send outcomes (Flash, Top, Projecting) and average grade
- * for the last `limit` completed boulder routes.
- */
-export function getRecentOutcomesSummary(limit: number = 20): RecentOutcomesSummaryData {
-  const db = getDatabase();
-
-  let rows: { grade_raw: string; normalized_difficulty: number; outcome: string }[] = [];
-  try {
-    rows = db.getAllSync<{
-      grade_raw: string;
-      normalized_difficulty: number;
-      outcome: string;
-    }>(
-      `SELECT grade_raw, normalized_difficulty, outcome
-       FROM boulder_logs
-       WHERE outcome IS NOT NULL
-       ORDER BY timestamp DESC
-       LIMIT ?`,
-      [limit]
-    );
-  } catch (err) {
-    console.warn('Error querying recent outcomes:', err);
-  }
-
-  let flashCount = 0;
-  let topCount = 0;
-  let projectingCount = 0;
-  const difficulties: number[] = [];
-
-  for (const r of rows) {
-    difficulties.push(r.normalized_difficulty);
-    const outcome = (r.outcome || '').toLowerCase();
-    if (outcome === 'flash') {
-      flashCount++;
-    } else if (outcome === 'send' || outcome === 'top') {
-      topCount++;
-    } else {
-      projectingCount++;
-    }
-  }
-
-  const total = rows.length;
-
-  let averageGrade = 'V7';
-  let medianGrade = 'V7';
-
-  if (difficulties.length > 0) {
-    const avgScore = difficulties.reduce((a, b) => a + b, 0) / difficulties.length;
-    const roundedAvg = Math.round(avgScore);
-    averageGrade = roundedAvg >= 13 ? 'V13+' : `V${Math.max(0, roundedAvg)}`;
-
-    const sorted = [...difficulties].sort((a, b) => a - b);
-    const mid = Math.floor(sorted.length / 2);
-    const medianScore =
-      sorted.length % 2 !== 0
-        ? sorted[mid]
-        : Math.round((sorted[mid - 1] + sorted[mid]) / 2);
-    medianGrade = medianScore >= 13 ? 'V13+' : `V${Math.max(0, medianScore)}`;
-  } else {
-    // If no recent logs in query, check overall user median grade
-    try {
-      const allRows = db.getAllSync<{ normalized_difficulty: number }>(
-        `SELECT normalized_difficulty FROM boulder_logs WHERE normalized_difficulty IS NOT NULL`
-      );
-      if (allRows.length > 0) {
-        const sorted = allRows.map((r) => r.normalized_difficulty).sort((a, b) => a - b);
-        const mid = Math.floor(sorted.length / 2);
-        const medScore = sorted[mid];
-        medianGrade = medScore >= 13 ? 'V13+' : `V${Math.max(0, medScore)}`;
-        averageGrade = medianGrade;
-      }
-    } catch {
-      // Keep default V7
-    }
-  }
-
-  let segments: OutcomeSegmentData[];
-  if (total === 0) {
-    segments = [
-      { label: 'Flash', count: 8, percentage: 40, color: '#6EE756' },
-      { label: 'Top', count: 6, percentage: 30, color: '#8E7CFF' },
-      { label: 'Projecting', count: 6, percentage: 30, color: '#3A3A46' },
-    ];
-  } else {
-    segments = [
-      {
-        label: 'Flash',
-        count: flashCount,
-        percentage: Math.round((flashCount / total) * 100),
-        color: '#6EE756',
-      },
-      {
-        label: 'Top',
-        count: topCount,
-        percentage: Math.round((topCount / total) * 100),
-        color: '#8E7CFF',
-      },
-      {
-        label: 'Projecting',
-        count: projectingCount,
-        percentage: Math.round((projectingCount / total) * 100),
-        color: '#3A3A46',
-      },
-    ];
-  }
-
-  const sampleCount = total > 0 ? total : 20;
-  const subtitle = `Average of last ${sampleCount} routes`;
-
-  return {
-    segments,
-    averageGrade,
-    medianGrade,
-    totalLogs: total,
-    limit,
-    subtitle,
-  };
-}
-
-// ─── Session Conditions ───────────────────────────────────────────────────────
-
-export function updateSessionConditions(id: string, conditions: string[]): void {
-  const db = getDatabase();
-  const json = JSON.stringify(conditions);
-  try {
-    db.runSync(`UPDATE sessions SET conditions = ? WHERE id = ?`, [json, id]);
-  } catch (err) {
-    console.warn('updateSessionConditions failed:', err);
-  }
-}
-
-export function getSessionConditions(id: string): string[] {
-  const db = getDatabase();
-  try {
-    const row = db.getFirstSync<{ conditions: string }>(
-      `SELECT conditions FROM sessions WHERE id = ?`,
-      [id]
-    );
-    if (!row?.conditions) return [];
-    return JSON.parse(row.conditions) as string[];
-  } catch {
-    return [];
-  }
-}
-
-// ─── Failure Breakdown ────────────────────────────────────────────────────────
-
-export interface FailureBreakdownSegment {
-  key: string;
-  label: string;
-  color: string;
-  count: number;
-  percentage: number;
-}
-
-export interface FailureBreakdownData {
-  segments: FailureBreakdownSegment[];
-  totalFailures: number;
-  hasData: boolean;
-}
-
-const FAILURE_DEFINITIONS: { key: string; label: string; color: string }[] = [
-  { key: 'foot_slip',     label: 'Foot Slip',    color: '#FF6B6B' },
-  { key: 'pumped',        label: 'Pumped',        color: '#8E7CFF' },
-  { key: 'beta_error',    label: 'Beta Error',    color: '#5B8FFF' },
-  { key: 'grip_strength', label: 'Grip / Finger', color: '#6EE756' },
-  { key: 'reach_span',    label: 'Reach / Span',  color: '#F0A500' },
-];
-
-export function getFailureBreakdown(sinceTimestamp?: number): FailureBreakdownData {
-  const db = getDatabase();
-
-  let rows: { reason: string; count: number }[] = [];
-  try {
-    if (sinceTimestamp) {
-      rows = db.getAllSync<{ reason: string; count: number }>(
-        `SELECT failure_reason AS reason, COUNT(*) AS count
-         FROM boulder_logs
-         WHERE outcome = 'attempt'
-           AND failure_reason IS NOT NULL
-           AND timestamp >= ?
-         GROUP BY failure_reason`,
-        [sinceTimestamp]
-      );
-    } else {
-      rows = db.getAllSync<{ reason: string; count: number }>(
-        `SELECT failure_reason AS reason, COUNT(*) AS count
-         FROM boulder_logs
-         WHERE outcome = 'attempt'
-           AND failure_reason IS NOT NULL
-         GROUP BY failure_reason`
-      );
-    }
-  } catch (err) {
-    console.warn('getFailureBreakdown failed:', err);
-  }
-
-  const countMap: Record<string, number> = {};
+  const rows = db.getAllSync<{ result: string, count: number }>(`
+    SELECT result, COUNT(*) as count 
+    FROM climbs 
+    WHERE logged_at >= ? AND deleted_at IS NULL
+    GROUP BY result
+  `, [since]);
+  
+  let flash = 0;
+  let top = 0;
+  let attempt = 0;
+  
   for (const row of rows) {
-    countMap[row.reason] = row.count;
+    if (row.result === 'flash') flash += row.count;
+    else if (row.result === 'send' || row.result === 'top') top += row.count;
+    else attempt += row.count; // 'attempt', 'fall', 'fail', etc
   }
+  
+  return { flash, top, attempt };
+}
 
-  const total = Object.values(countMap).reduce((s, c) => s + c, 0);
+// 2. Average grade of last 20 climbs
+export function getAverageGradeLast20() {
+  const db = getDatabase();
+  const rows = db.getAllSync<{ grade_index: number }>(`
+    SELECT grade_index 
+    FROM climbs 
+    WHERE deleted_at IS NULL AND (result = 'send' OR result = 'top' OR result = 'flash')
+    ORDER BY logged_at DESC 
+    LIMIT 20
+  `);
+  if (rows.length === 0) return 0;
+  const sum = rows.reduce((acc, r) => acc + r.grade_index, 0);
+  return Math.round(sum / rows.length);
+}
 
-  const segments: FailureBreakdownSegment[] = FAILURE_DEFINITIONS.map((def) => {
-    const count = countMap[def.key] ?? 0;
+// 3. Sends per grade (Grade Pyramid)
+// Rule: a problem sent several times counts once in the pyramid. 
+// For quick logs (project_id IS NULL), they always count as distinct sends.
+export function getGradePyramid(period: ProgressPeriod, nowMs: number = Date.now()) {
+  const since = getSince(period, nowMs);
+  const db = getDatabase();
+  
+  // We want to count distinct (project_id) for sends, but if project_id is null, it's its own send.
+  // We can use a trick: group by COALESCE(project_id, id)
+  const rows = db.getAllSync<{ grade_index: number, result: string, count: number }>(`
+    SELECT grade_index, result, COUNT(*) as count
+    FROM (
+      SELECT grade_index, result, 
+             ROW_NUMBER() OVER(PARTITION BY COALESCE(project_id, id) ORDER BY logged_at ASC) as rn
+      FROM climbs
+      WHERE logged_at >= ? AND deleted_at IS NULL AND (result = 'send' OR result = 'top' OR result = 'flash')
+    )
+    WHERE rn = 1
+    GROUP BY grade_index, result
+  `, [since]);
+
+  // wait, sqlite 3.25+ supports window functions. expo-sqlite does.
+  // But wait, what if they attempt and then send? We only want sends.
+  // We already filter by result in ('send', 'top', 'flash'). So rn=1 just gives the first send.
+  
+  // Also we want attempts in the pyramid? Spec says "sends per grade". The pyramid usually shows Flash, Send.
+  // So we aggregate flash/send.
+  
+  const grades = new Map<number, { grade: number, flashes: number, sends: number }>();
+  for (const row of rows) {
+    if (!grades.has(row.grade_index)) {
+      grades.set(row.grade_index, { grade: row.grade_index, flashes: 0, sends: 0 });
+    }
+    const stat = grades.get(row.grade_index)!;
+    if (row.result === 'flash') stat.flashes += row.count;
+    else stat.sends += row.count;
+  }
+  
+  return Array.from(grades.values()).sort((a, b) => b.grade - a.grade); // Descending grade
+}
+
+// 4. Weekly volume (climbs per week)
+export function getWeeklyVolume(period: ProgressPeriod, nowMs: number = Date.now()) {
+  const since = getSince(period, nowMs);
+  const db = getDatabase();
+  // SQLite strftime('%Y-%W') gives Year-Week (Monday start).
+  // But we want climbs per week over the period.
+  const rows = db.getAllSync<{ week: string, count: number }>(`
+    SELECT strftime('%Y-%W', datetime(logged_at / 1000, 'unixepoch', 'localtime')) as week, 
+           COUNT(*) as count
+    FROM climbs
+    WHERE logged_at >= ? AND deleted_at IS NULL
+    GROUP BY week
+    ORDER BY week ASC
+  `, [since]);
+  
+  return rows;
+}
+
+// 5. Flash rate and send rate
+export function getRates(period: ProgressPeriod, nowMs: number = Date.now()) {
+  const since = getSince(period, nowMs);
+  const db = getDatabase();
+  const row = db.getFirstSync<{ total: number, flashes: number, sends: number }>(`
+    SELECT 
+      COUNT(*) as total,
+      SUM(CASE WHEN result = 'flash' THEN 1 ELSE 0 END) as flashes,
+      SUM(CASE WHEN result = 'send' OR result = 'top' THEN 1 ELSE 0 END) as sends
+    FROM climbs
+    WHERE logged_at >= ? AND deleted_at IS NULL
+  `, [since]);
+  
+  if (!row || row.total === 0) return { flashRate: 0, sendRate: 0 };
+  return {
+    flashRate: Math.round((row.flashes / row.total) * 100),
+    sendRate: Math.round(((row.flashes + row.sends) / row.total) * 100)
+  };
+}
+
+// 6. Hardest send over time (trend)
+export function getHardestSendTrend(period: ProgressPeriod, nowMs: number = Date.now()) {
+  const since = getSince(period, nowMs);
+  const db = getDatabase();
+  // Get max grade per week
+  const rows = db.getAllSync<{ week: string, max_grade: number }>(`
+    SELECT strftime('%Y-%W', datetime(logged_at / 1000, 'unixepoch', 'localtime')) as week, 
+           MAX(grade_index) as max_grade
+    FROM climbs
+    WHERE logged_at >= ? AND deleted_at IS NULL AND (result = 'send' OR result = 'top' OR result = 'flash')
+    GROUP BY week
+    ORDER BY week ASC
+  `, [since]);
+  
+  return rows;
+}
+
+// 7. Streak (consecutive Mon-Sun weeks with at least one session)
+export function getStreak(nowMs: number = Date.now()) {
+  const db = getDatabase();
+  // Group sessions by year-week (Mon-Sun).
+  // strftime('%Y-%W') gives week number.
+  // Note: %W treats Monday as start of week.
+  const rows = db.getAllSync<{ week: string }>(`
+    SELECT DISTINCT strftime('%Y-%W', datetime(started_at / 1000, 'unixepoch', 'localtime')) as week
+    FROM sessions
+    WHERE deleted_at IS NULL
+    ORDER BY week DESC
+  `);
+  
+  if (rows.length === 0) return 0;
+  
+  // Calculate current week
+  const currentWeek = new Date(nowMs);
+  // Manual formatting to match SQLite '%Y-%W' can be tricky, 
+  // so let's rely on parsing SQLite's response and just walking backwards.
+  // Wait, if they missed this week, streak is 0?
+  // Usually streak allows missing current week until Sunday.
+  // Let's just count consecutive strings of weeks in the result array.
+  
+  let streak = 0;
+  
+  // To do this reliably, we can convert strings to actual week indices.
+  const parseWeek = (yW: string) => {
+    const [y, w] = yW.split('-');
+    return parseInt(y) * 52 + parseInt(w);
+  };
+  
+  if (rows.length > 0) {
+    const lastWeekVal = parseWeek(rows[0].week);
+    // Find expected current week val using SQLite (we can just ask sqlite)
+    const currentRow = db.getFirstSync<{ week: string }>(`SELECT strftime('%Y-%W', datetime(?, 'unixepoch', 'localtime')) as week`, [Math.floor(nowMs/1000)]);
+    const currentWeekVal = currentRow ? parseWeek(currentRow.week) : 0;
+    
+    // If the most recent session is older than last week, streak is 0.
+    if (currentWeekVal - lastWeekVal > 1) {
+      return 0;
+    }
+    
+    streak = 1;
+    let prevVal = lastWeekVal;
+    
+    for (let i = 1; i < rows.length; i++) {
+      const val = parseWeek(rows[i].week);
+      if (prevVal - val === 1) {
+        streak++;
+        prevVal = val;
+      } else {
+        break;
+      }
+    }
+  }
+  
+  return streak;
+}
+
+export interface HomeSummary {
+  activeSession: Session | null;
+  activeSessionClimbCount: number;
+  lastSession: { id: string; gymName: string; startTime: number; endTime: number; } | null;
+  lastSessionRelative: string;
+  sessionsThisWeek: number;
+  climbsThisWeek: number;
+  sendsThisWeek: number;
+  flashesThisWeek: number;
+  streak: number;
+  weekDays: { dayLabel: string; date: string; hasSession: boolean; isToday: boolean }[];
+  hardest30d: { gradeRaw: string; gradeIndex: number } | null;
+  personalBest: { gradeRaw: string; daysAgo: number } | null;
+  weeklyVolume: { weekLabel: string; climbs: number; isCurrent: boolean }[];
+  weeklyVolumeChange: number;
+  recentSessions: any[]; // Fully formed SessionCard prop objects
+  projects: any[];
+  hasAnyData: boolean;
+}
+
+export function getHomeSummary(): HomeSummary {
+  const db = getDatabase();
+  const nowMs = Date.now();
+  
+  const hasAnySession = db.getFirstSync<{ c: number }>(`SELECT COUNT(*) as c FROM sessions WHERE deleted_at IS NULL`)?.c || 0;
+  
+  let activeSession = getActiveSession();
+  let activeSessionClimbCount = 0;
+  if (activeSession) {
+    const c = db.getFirstSync<{ c: number }>(`SELECT COUNT(*) as c FROM climbs WHERE session_id = ? AND deleted_at IS NULL`, [activeSession.id]);
+    activeSessionClimbCount = c?.c || 0;
+  }
+  
+  const d = new Date(nowMs);
+  const dayOfWeek = d.getDay(); 
+  const daysSinceMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+  const mondayOfThisWeek = new Date(d.getFullYear(), d.getMonth(), d.getDate() - daysSinceMonday);
+  mondayOfThisWeek.setHours(0,0,0,0);
+  const startOfWeekMs = mondayOfThisWeek.getTime();
+  const endOfWeekMs = startOfWeekMs + 7 * 24 * 60 * 60 * 1000 - 1;
+
+  const validSessions = db.getAllSync<any>(`
+    SELECT s.*, 
+           (SELECT COUNT(*) FROM climbs c WHERE c.session_id = s.id AND c.deleted_at IS NULL) as climb_count
+    FROM sessions s
+    WHERE s.deleted_at IS NULL
+  `).filter(s => s.climb_count > 0).sort((a, b) => b.started_at - a.started_at);
+
+  const completedSessions = validSessions.filter(s => s.ended_at !== null && s.id !== activeSession?.id);
+  
+  let lastSession = null;
+  let lastSessionRelative = '';
+  if (completedSessions.length > 0) {
+    const ls = completedSessions[0];
+    lastSession = {
+      id: ls.id,
+      gymName: ls.gym_name || '',
+      startTime: ls.started_at,
+      endTime: ls.ended_at,
+    };
+    
+    const lsStart = new Date(ls.started_at);
+    lsStart.setHours(0,0,0,0);
+    const today = new Date(nowMs);
+    today.setHours(0,0,0,0);
+    const diffDays = Math.round((today.getTime() - lsStart.getTime()) / (1000 * 60 * 60 * 24));
+    
+    if (diffDays === 0) lastSessionRelative = 'Today';
+    else if (diffDays === 1) lastSessionRelative = 'Yesterday';
+    else if (diffDays <= 6) lastSessionRelative = `${diffDays} days ago`;
+    else if (diffDays <= 13) lastSessionRelative = 'Last week';
+    else lastSessionRelative = `${Math.floor(diffDays / 7)} weeks ago`;
+  }
+  
+  let sessionsThisWeek = 0;
+  let climbsThisWeek = 0;
+  let sendsThisWeek = 0;
+  let flashesThisWeek = 0;
+  
+  for (const s of validSessions) {
+    if (s.started_at >= startOfWeekMs && s.started_at <= endOfWeekMs) {
+      sessionsThisWeek++;
+    }
+  }
+  
+  const thisWeekClimbs = db.getAllSync<any>(`
+    SELECT c.* FROM climbs c
+    JOIN sessions s ON c.session_id = s.id
+    WHERE c.logged_at >= ? AND c.logged_at <= ? AND c.deleted_at IS NULL AND s.deleted_at IS NULL
+  `, [startOfWeekMs, endOfWeekMs]);
+  
+  climbsThisWeek = thisWeekClimbs.length;
+  for (const c of thisWeekClimbs) {
+    if (isSend(c.result)) sendsThisWeek++;
+    if (c.result === 'flash') flashesThisWeek++;
+  }
+  
+  let streak = 0;
+  const sessionsByWeek = new Set<string>();
+  for (const s of validSessions) {
+    const res = db.getFirstSync<{w:string}>(`SELECT strftime('%Y-%W', datetime(?, 'unixepoch', 'localtime')) as w`, [Math.floor(s.started_at/1000)]);
+    if (res?.w) sessionsByWeek.add(res.w);
+  }
+  
+  const currentWeekStrRes = db.getFirstSync<{w:string}>(`SELECT strftime('%Y-%W', datetime(?, 'unixepoch', 'localtime')) as w`, [Math.floor(nowMs/1000)]);
+  const currentWeekStr = currentWeekStrRes?.w || '';
+  
+  let checkMs = nowMs;
+  let checkWeekStr = currentWeekStr;
+  
+  let hasSessionThisWeek = sessionsByWeek.has(checkWeekStr);
+  
+  let currentStreak = 0;
+  if (hasSessionThisWeek) {
+    currentStreak++;
+    while (true) {
+      checkMs -= 7 * 24 * 60 * 60 * 1000;
+      const prevRes = db.getFirstSync<{w:string}>(`SELECT strftime('%Y-%W', datetime(?, 'unixepoch', 'localtime')) as w`, [Math.floor(checkMs/1000)]);
+      if (prevRes?.w && sessionsByWeek.has(prevRes.w)) {
+        currentStreak++;
+      } else {
+        break;
+      }
+    }
+  } else {
+    checkMs -= 7 * 24 * 60 * 60 * 1000;
+    const prevRes = db.getFirstSync<{w:string}>(`SELECT strftime('%Y-%W', datetime(?, 'unixepoch', 'localtime')) as w`, [Math.floor(checkMs/1000)]);
+    if (prevRes?.w && sessionsByWeek.has(prevRes.w)) {
+      currentStreak++;
+      while (true) {
+        checkMs -= 7 * 24 * 60 * 60 * 1000;
+        const p2 = db.getFirstSync<{w:string}>(`SELECT strftime('%Y-%W', datetime(?, 'unixepoch', 'localtime')) as w`, [Math.floor(checkMs/1000)]);
+        if (p2?.w && sessionsByWeek.has(p2.w)) {
+          currentStreak++;
+        } else {
+          break;
+        }
+      }
+    }
+  }
+  streak = currentStreak;
+  
+  const weekDays = [];
+  const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const todayDay = new Date(nowMs).getDate();
+  const todayMonth = new Date(nowMs).getMonth();
+  for (let i = 0; i < 7; i++) {
+    const cur = new Date(mondayOfThisWeek.getTime() + i * 24 * 60 * 60 * 1000);
+    const hasSess = validSessions.some(s => {
+      const sd = new Date(s.started_at);
+      return sd.getDate() === cur.getDate() && sd.getMonth() === cur.getMonth() && sd.getFullYear() === cur.getFullYear();
+    });
+    weekDays.push({
+      dayLabel: dayNames[cur.getDay()].substring(0, 3),
+      date: cur.toISOString().split('T')[0],
+      hasSession: hasSess,
+      isToday: cur.getDate() === todayDay && cur.getMonth() === todayMonth,
+    });
+  }
+  
+  const thirtyDaysAgo = nowMs - 30 * 24 * 60 * 60 * 1000;
+  const hardest30dRow = db.getFirstSync<any>(`
+    SELECT c.grade_raw, c.grade_index FROM climbs c
+    JOIN sessions s ON c.session_id = s.id
+    WHERE c.logged_at >= ? AND c.deleted_at IS NULL AND s.deleted_at IS NULL AND (c.result = 'send' OR c.result = 'top' OR c.result = 'flash')
+    ORDER BY grade_index DESC LIMIT 1
+  `, [thirtyDaysAgo]);
+  
+  const hardest30d = hardest30dRow ? { gradeRaw: hardest30dRow.grade_raw, gradeIndex: hardest30dRow.grade_index } : null;
+  
+  const allTimeHardestRow = db.getFirstSync<any>(`
+    SELECT c.grade_raw, c.grade_index FROM climbs c
+    JOIN sessions s ON c.session_id = s.id
+    WHERE c.deleted_at IS NULL AND s.deleted_at IS NULL AND (c.result = 'send' OR c.result = 'top' OR c.result = 'flash')
+    ORDER BY grade_index DESC LIMIT 1
+  `);
+  let personalBest = null;
+  if (allTimeHardestRow) {
+    const hardestGrade = allTimeHardestRow.grade_index;
+    const firstTimeRow = db.getFirstSync<any>(`
+      SELECT c.logged_at FROM climbs c
+      JOIN sessions s ON c.session_id = s.id
+      WHERE c.grade_index = ? AND c.deleted_at IS NULL AND s.deleted_at IS NULL AND (c.result = 'send' OR c.result = 'top' OR c.result = 'flash')
+      ORDER BY logged_at ASC LIMIT 1
+    `, [hardestGrade]);
+    
+    if (firstTimeRow) {
+      const daysAgo = Math.floor((nowMs - firstTimeRow.logged_at) / (1000 * 60 * 60 * 24));
+      if (daysAgo <= 14) {
+        // Check if there was a previous best to beat (i.e., any climb logged before this one)
+        const previousClimbs = db.getFirstSync<any>(`
+          SELECT COUNT(*) as c FROM climbs c
+          JOIN sessions s ON c.session_id = s.id
+          WHERE c.logged_at < ? AND c.deleted_at IS NULL AND s.deleted_at IS NULL
+        `, [firstTimeRow.logged_at]);
+        
+        if (previousClimbs && previousClimbs.c > 0) {
+          personalBest = { gradeRaw: allTimeHardestRow.grade_raw, daysAgo };
+        }
+      }
+    }
+  }
+  
+  const weeklyVolume = [];
+  const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  
+  let currentWeekVolume = 0;
+  let lastWeekVolume = 0;
+  
+  for (let i = 7; i >= 0; i--) {
+    const wStart = new Date(startOfWeekMs - i * 7 * 24 * 60 * 60 * 1000);
+    const wEnd = wStart.getTime() + 7 * 24 * 60 * 60 * 1000 - 1;
+    
+    const count = db.getFirstSync<{c:number}>(`
+      SELECT COUNT(*) as c FROM climbs 
+      WHERE logged_at >= ? AND logged_at <= ? AND deleted_at IS NULL
+    `, [wStart.getTime(), wEnd])?.c || 0;
+    
+    weeklyVolume.push({
+      weekLabel: `${monthNames[wStart.getMonth()]} ${wStart.getDate()}`,
+      climbs: count,
+      isCurrent: i === 0
+    });
+    
+    if (i === 0) currentWeekVolume = count;
+    if (i === 1) lastWeekVolume = count;
+  }
+  
+  let weeklyVolumeChange = 0;
+  if (lastWeekVolume > 0) {
+    weeklyVolumeChange = Math.round(((currentWeekVolume - lastWeekVolume) / lastWeekVolume) * 100);
+  } else if (currentWeekVolume > 0) {
+    weeklyVolumeChange = 100;
+  }
+  
+  const recentSessions = completedSessions.slice(0, 3).map(s => {
+    const cRows = db.getAllSync<any>(`SELECT grade_raw, grade_index, result FROM climbs WHERE session_id = ? AND deleted_at IS NULL`, [s.id]);
+    const sendsRows = cRows.filter(c => isSend(c.result));
+    let hgIndex = 0;
+    let hgLabel = '–';
+    if (sendsRows.length > 0) {
+      sendsRows.sort((a,b) => b.grade_index - a.grade_index);
+      hgIndex = sendsRows[0].grade_index;
+      hgLabel = sendsRows[0].grade_raw;
+    }
+    let flash = 0, top = 0, attempt = 0;
+    cRows.forEach(c => {
+      if (c.result === 'flash') flash++;
+      else if (c.result === 'top' || c.result === 'send') top++;
+      else attempt++;
+    });
+    
     return {
-      ...def,
-      count,
-      percentage: total > 0 ? Math.round((count / total) * 100) : 0,
+      id: s.id,
+      gymName: s.gym_name || '',
+      startTime: s.started_at,
+      endTime: s.ended_at || nowMs,
+      climbsCount: cRows.length,
+      sendsCount: sendsRows.length,
+      flashesCount: flash,
+      hardestGradeIndex: hgIndex,
+      hardestLabel: hgLabel,
+      resultMix: { flash, top, attempt },
+      badges: [], // Simplify for home screen since it's just a summary
     };
   });
+  
+  const projects = getAllProjects().filter(p => p.status === 'in_progress');
+  
+  return {
+    activeSession,
+    activeSessionClimbCount,
+    lastSession,
+    lastSessionRelative,
+    sessionsThisWeek,
+    climbsThisWeek,
+    sendsThisWeek,
+    flashesThisWeek,
+    streak,
+    weekDays,
+    hardest30d,
+    personalBest,
+    weeklyVolume,
+    weeklyVolumeChange,
+    recentSessions,
+    projects,
+    hasAnyData: hasAnySession > 0,
+  };
+}
 
-  return { segments, totalFailures: total, hasData: total > 0 };
+export function getRecentGrades(): { gradeRaw: string, gradeIndex: number }[] {
+  const db = getDatabase();
+  
+  const recentRows = db.getAllSync<any>(`
+    SELECT grade_raw, grade_index, MAX(logged_at) as last_logged
+    FROM climbs 
+    WHERE deleted_at IS NULL
+    GROUP BY grade_raw, grade_index
+    ORDER BY last_logged DESC
+    LIMIT 5
+  `);
+  
+  const recentGrades = recentRows.map(r => ({ gradeRaw: r.grade_raw, gradeIndex: r.grade_index }));
+  
+  if (recentGrades.length === 5) {
+    return recentGrades.sort((a, b) => a.gradeIndex - b.gradeIndex);
+  }
+
+  const allClimbs = db.getAllSync<any>(`
+    SELECT grade_index FROM climbs WHERE deleted_at IS NULL ORDER BY grade_index ASC
+  `);
+  
+  let medianIndex = 2; // Default to V2 if no climbs
+  if (allClimbs.length > 0) {
+    const mid = Math.floor(allClimbs.length / 2);
+    medianIndex = allClimbs[mid].grade_index;
+  }
+  
+  const fillCandidates = [
+    medianIndex,
+    medianIndex + 1,
+    medianIndex - 1,
+    medianIndex + 2,
+    medianIndex - 2,
+  ];
+  
+  const resultMap = new Map();
+  for (const g of recentGrades) {
+    resultMap.set(g.gradeIndex, g.gradeRaw);
+  }
+  
+  for (const idx of fillCandidates) {
+    if (resultMap.size >= 5) break;
+    if (idx >= 0 && !resultMap.has(idx)) {
+      resultMap.set(idx, `V${idx}`);
+    }
+  }
+  
+  let fallbackIdx = 0;
+  while (resultMap.size < 5 && fallbackIdx < 17) {
+    if (!resultMap.has(fallbackIdx)) {
+      resultMap.set(fallbackIdx, `V${fallbackIdx}`);
+    }
+    fallbackIdx++;
+  }
+  
+  const finalGrades = Array.from(resultMap.entries()).map(([index, raw]) => ({
+    gradeIndex: index,
+    gradeRaw: raw
+  }));
+  
+  return finalGrades.sort((a, b) => a.gradeIndex - b.gradeIndex);
+}
+
+
+
+export function getRichProjects(): any[] {
+  const db = getDatabase();
+  const projects = db.getAllSync<any>(`SELECT * FROM projects WHERE deleted_at IS NULL ORDER BY created_at DESC`);
+  
+  const climbs = db.getAllSync<any>(`
+    SELECT c.project_id, c.session_id, c.logged_at, s.gym_name
+    FROM climbs c
+    LEFT JOIN sessions s ON c.session_id = s.id
+    WHERE c.project_id IS NOT NULL AND c.deleted_at IS NULL
+    ORDER BY c.logged_at DESC
+  `);
+
+  return projects.map(p => {
+    const pClimbs = climbs.filter((c: any) => c.project_id === p.id);
+    const lastClimb = pClimbs[0];
+    const gymName = lastClimb ? lastClimb.gym_name : null;
+    const lastTriedAt = lastClimb ? lastClimb.logged_at : null;
+    
+    const sessionMap = new Map();
+    for (const c of pClimbs) {
+       sessionMap.set(c.session_id, (sessionMap.get(c.session_id) || 0) + 1);
+    }
+    const burnsPerSession = Array.from(sessionMap.values()).slice(0, 6).reverse();
+
+    const statusChip = getDerivedProjectStatus(pClimbs.length, p.high_water_mark_moves, p.total_moves);
+
+    return {
+      id: p.id,
+      title: p.title,
+      gradeRaw: p.grade_raw,
+      normalizedDifficulty: p.grade_index,
+      wallAngle: p.wall_angle,
+      holdType: p.hold_type,
+      status: p.status,
+      highWaterMarkMoves: p.high_water_mark_moves,
+      totalMoves: p.total_moves,
+      microBeta: p.micro_beta,
+      attempts: pClimbs.length,
+      gymName,
+      lastTriedAt,
+      burnsPerSession,
+      statusChip,
+      createdAt: p.created_at,
+    };
+  });
+}
+
+export function getRichProjectById(id: string): any | null {
+  const all = getRichProjects();
+  return all.find((p: any) => p.id === id) || null;
+}
+
+export function getProjectHistory(projectId: string): any[] {
+  const db = getDatabase();
+  const climbs = db.getAllSync<any>(`
+    SELECT c.id, c.session_id, c.logged_at, c.attempts, c.result, s.started_at
+    FROM climbs c
+    JOIN sessions s ON c.session_id = s.id
+    WHERE c.project_id = ? AND c.deleted_at IS NULL
+    ORDER BY c.logged_at DESC
+  `, [projectId]);
+  
+  const sessions = new Map();
+  for (const c of climbs) {
+    if (!sessions.has(c.session_id)) {
+      sessions.set(c.session_id, {
+        sessionId: c.session_id,
+        date: c.started_at,
+        burns: 0,
+        bestResult: 'attempt',
+        bestMoves: 0
+      });
+    }
+    const sess = sessions.get(c.session_id);
+    sess.burns += (c.attempts || 1);
+    if (isSend(c.result)) {
+      sess.bestResult = 'send';
+    }
+  }
+  return Array.from(sessions.values()).sort((a, b) => b.date - a.date);
+}
+
+export function softDeleteSession(id: string): void {
+  const now = Date.now();
+  runMutation('sessions', id, 'UPDATE',
+    `UPDATE sessions SET deleted_at = ?, updated_at = ? WHERE id = ?`,
+    [now, now, id]
+  );
+}
+
+export function undoDeleteSession(id: string): void {
+  const now = Date.now();
+  runMutation('sessions', id, 'UPDATE',
+    `UPDATE sessions SET deleted_at = NULL, updated_at = ? WHERE id = ?`,
+    [now, id]
+  );
+}
+
+export function logClimbForSession(sessionId: string, payload: {
+  gradeRaw: string;
+  result: string;
+  attempts?: number;
+  notes?: string;
+  projectId?: string | null;
+  loggedAt?: number;
+}): string {
+  const id = `climb_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+  const gradeIndex = gradeToNumeric(payload.gradeRaw);
+  const outcome = payload.result === 'top' ? 'send' : payload.result;
+  const now = payload.loggedAt || Date.now();
+  runMutation('climbs', id, 'INSERT',
+    `INSERT INTO climbs (
+      id, session_id, project_id, grade_raw, grade_index, result, attempts, notes, logged_at, created_at, updated_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      id, sessionId, payload.projectId || null, payload.gradeRaw, gradeIndex, outcome, payload.attempts ?? 1, payload.notes || null, now, now, now
+    ]
+  );
+  if (payload.projectId && (outcome === 'send' || outcome === 'flash')) {
+    updateProjectStatus(payload.projectId, 'sent');
+  }
+  return id;
+}
+
+export function updateClimb(id: string, updates: {
+  gradeRaw?: string;
+  result?: string;
+  attempts?: number;
+  notes?: string;
+}): void {
+  const gradeIndex = updates.gradeRaw ? gradeToNumeric(updates.gradeRaw) : null;
+  const outcome = updates.result ? (updates.result === 'top' ? 'send' : updates.result) : null;
+  const now = Date.now();
+  runMutation('climbs', id, 'UPDATE',
+    `UPDATE climbs SET
+      grade_raw = COALESCE(?, grade_raw),
+      grade_index = COALESCE(?, grade_index),
+      result = COALESCE(?, result),
+      attempts = COALESCE(?, attempts),
+      notes = COALESCE(?, notes),
+      updated_at = ?
+     WHERE id = ?`,
+    [
+      updates.gradeRaw ?? null,
+      gradeIndex,
+      outcome,
+      updates.attempts ?? null,
+      updates.notes ?? null,
+      now,
+      id
+    ]
+  );
+}
+
+export function updateSessionNotesAndEffort(id: string, notes: string, effort?: number | null): void {
+  const now = Date.now();
+  runMutation('sessions', id, 'UPDATE',
+    `UPDATE sessions SET notes = ?, effort = ?, updated_at = ? WHERE id = ?`,
+    [notes, effort ?? null, now, id]
+  );
+}
+
+export function getProjectsForSession(sessionId: string): any[] {
+  const db = getDatabase();
+  const rows = db.getAllSync<any>(`
+    SELECT DISTINCT p.*,
+      EXISTS(
+        SELECT 1 FROM climbs c2 
+        WHERE c2.session_id = ? AND c2.project_id = p.id AND c2.deleted_at IS NULL AND (c2.result = 'send' OR c2.result = 'top' OR c2.result = 'flash')
+      ) as topped_in_session
+    FROM projects p
+    JOIN climbs c ON c.project_id = p.id
+    WHERE c.session_id = ? AND c.deleted_at IS NULL AND p.deleted_at IS NULL
+  `, [sessionId, sessionId]);
+
+  return rows.map(r => ({
+    id: r.id,
+    title: r.title,
+    gradeRaw: r.grade_raw,
+    normalizedDifficulty: r.grade_index,
+    wallAngle: r.wall_angle,
+    holdType: r.hold_type,
+    status: r.status,
+    highWaterMarkMoves: r.high_water_mark_moves,
+    totalMoves: r.total_moves,
+    microBeta: r.micro_beta,
+    mediaUri: r.photo_url,
+    createdAt: r.created_at,
+    updatedAt: r.updated_at,
+    isToppedInSession: Boolean(r.topped_in_session),
+    statusChip: r.topped_in_session ? 'Sent' : (r.status === 'sent' ? 'Sent' : 'In Progress'),
+  }));
+}
+
+
+export interface LogbookFilters {
+  viewMode: 'list' | 'calendar';
+  period: 'week' | 'month' | '3months' | 'year' | 'all';
+  gym: string | null;
+  minGradeIndex: number | null;
+  searchQuery: string | null;
+  sort: 'newest' | 'climbs' | 'hardest';
+  showEmpty: boolean;
+  selectedDate: string | null; // YYYY-MM-DD
+}
+
+export function getLogbookSummary(filters: LogbookFilters, nowMs: number = Date.now()) {
+  const db = getDatabase();
+  
+  // Build period clause
+  let since = 0;
+  const now = new Date(nowMs);
+  if (filters.period === 'week') {
+    const day = now.getDay() || 7;
+    since = new Date(now.getFullYear(), now.getMonth(), now.getDate() - day + 1).getTime();
+  } else if (filters.period === 'month') {
+    since = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
+  } else if (filters.period === '3months') {
+    since = new Date(now.getFullYear(), now.getMonth() - 2, 1).getTime();
+  } else if (filters.period === 'year') {
+    since = new Date(now.getFullYear(), 0, 1).getTime();
+  }
+
+  // Previous period
+  let prevStart = 0;
+  let prevEnd = since - 1;
+  if (filters.period === 'week') {
+    prevStart = since - 7 * 24 * 60 * 60 * 1000;
+  } else if (filters.period === 'month') {
+    const p = new Date(since);
+    p.setMonth(p.getMonth() - 1);
+    prevStart = p.getTime();
+  } else if (filters.period === '3months') {
+    const p = new Date(since);
+    p.setMonth(p.getMonth() - 3);
+    prevStart = p.getTime();
+  } else if (filters.period === 'year') {
+    const p = new Date(since);
+    p.setFullYear(p.getFullYear() - 1);
+    prevStart = p.getTime();
+  } else {
+    prevStart = 0;
+    prevEnd = 0; // no previous for 'all'
+  }
+
+  // Safely exclude active session
+  const activeSessionId = db.getFirstSync<any>(`SELECT id FROM sessions WHERE deleted_at IS NULL AND ended_at IS NULL ORDER BY started_at DESC LIMIT 1`)?.id;
+
+  // Aggregate current period
+  let currentSql = `
+    SELECT 
+      COUNT(s.id) as sessions,
+      SUM(IFNULL(s.ended_at, s.started_at) - s.started_at) as durationMs,
+      IFNULL(SUM(c_stats.climbs), 0) as climbs,
+      IFNULL(SUM(c_stats.sends), 0) as sends
+    FROM sessions s
+    LEFT JOIN (
+      SELECT session_id, 
+             COUNT(id) as climbs, 
+             SUM(CASE WHEN result IN ('send', 'top', 'flash') THEN 1 ELSE 0 END) as sends 
+      FROM climbs 
+      WHERE deleted_at IS NULL 
+      GROUP BY session_id
+    ) c_stats ON c_stats.session_id = s.id
+    WHERE s.deleted_at IS NULL AND s.started_at >= ?
+  `;
+  const currentArgs: any[] = [since];
+
+  if (activeSessionId) {
+    currentSql += ` AND s.id != ?`;
+    currentArgs.push(activeSessionId);
+  }
+
+  if (!filters.showEmpty) {
+    currentSql += ` AND EXISTS (SELECT 1 FROM climbs c2 WHERE c2.session_id = s.id AND c2.deleted_at IS NULL)`;
+  }
+  
+  if (filters.gym) {
+    currentSql += ` AND s.gym_name = ?`;
+    currentArgs.push(filters.gym);
+  }
+
+  const currentRow = db.getFirstSync<any>(currentSql, currentArgs);
+  
+  let prevSessions = 0;
+  if (prevStart > 0) {
+    let prevSql = `
+      SELECT COUNT(DISTINCT s.id) as sessions
+      FROM sessions s
+      WHERE s.deleted_at IS NULL AND s.started_at >= ? AND s.started_at <= ?
+    `;
+    const prevArgs: any[] = [prevStart, prevEnd];
+    
+    if (activeSessionId) {
+      prevSql += ` AND s.id != ?`;
+      prevArgs.push(activeSessionId);
+    }
+
+    if (!filters.showEmpty) {
+      prevSql += ` AND EXISTS (SELECT 1 FROM climbs c2 WHERE c2.session_id = s.id AND c2.deleted_at IS NULL)`;
+    }
+    if (filters.gym) {
+      prevSql += ` AND s.gym_name = ?`;
+      prevArgs.push(filters.gym);
+    }
+    const prevRow = db.getFirstSync<any>(prevSql, prevArgs);
+    prevSessions = prevRow?.sessions || 0;
+  }
+
+  return {
+    sessions: currentRow?.sessions || 0,
+    climbs: currentRow?.climbs || 0,
+    sends: currentRow?.sends || 0,
+    durationMs: currentRow?.durationMs || 0,
+    prevSessions,
+  };
+}
+
+export function getLogbookHistory(filters: LogbookFilters, nowMs: number = Date.now()) {
+  const db = getDatabase();
+  
+  const activeSessionId = db.getFirstSync<any>(`SELECT id FROM sessions WHERE deleted_at IS NULL AND ended_at IS NULL ORDER BY started_at DESC LIMIT 1`)?.id;
+  
+  // Step 1: Base session query with aggregate counts per session
+  let sql = `
+    SELECT 
+      s.id, s.gym_name as gymName, s.started_at as startTime, s.ended_at as endTime, s.notes, s.effort,
+      COUNT(c.id) as climbsCount,
+      SUM(CASE WHEN c.result = 'send' OR c.result = 'top' OR c.result = 'flash' THEN 1 ELSE 0 END) as sendsCount,
+      SUM(CASE WHEN c.result = 'flash' THEN 1 ELSE 0 END) as flashesCount,
+      MAX(c.grade_index) as hardestGradeIndex,
+      GROUP_CONCAT(c.grade_raw || '|' || c.grade_index || '|' || c.result || '|' || IFNULL(c.project_id, '')) as climbData
+    FROM sessions s
+    LEFT JOIN climbs c ON c.session_id = s.id AND c.deleted_at IS NULL
+    WHERE s.deleted_at IS NULL 
+  `;
+  
+  const args: any[] = [];
+  
+  if (activeSessionId) {
+    sql += ` AND s.id != ?`;
+    args.push(activeSessionId);
+  }
+
+  // Filters
+  let since = 0;
+  const now = new Date(nowMs);
+  if (filters.period === 'week') {
+    const day = now.getDay() || 7;
+    since = new Date(now.getFullYear(), now.getMonth(), now.getDate() - day + 1).getTime();
+  } else if (filters.period === 'month') {
+    since = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
+  } else if (filters.period === '3months') {
+    since = new Date(now.getFullYear(), now.getMonth() - 2, 1).getTime();
+  } else if (filters.period === 'year') {
+    since = new Date(now.getFullYear(), 0, 1).getTime();
+  }
+  if (since > 0) {
+    sql += ` AND s.started_at >= ?`;
+    args.push(since);
+  }
+  
+  if (filters.gym) {
+    sql += ` AND s.gym_name = ?`;
+    args.push(filters.gym);
+  }
+  
+  if (filters.searchQuery) {
+    sql += ` AND (IFNULL(s.notes, '') LIKE ? OR IFNULL(s.gym_name, '') LIKE ?)`;
+    const search = `%${filters.searchQuery}%`;
+    args.push(search, search);
+  }
+  
+  if (filters.selectedDate) {
+    // selectedDate is YYYY-MM-DD local time, filter sessions that fall on this day
+    const [y, m, d] = filters.selectedDate.split('-').map(Number);
+    const startOfDay = new Date(y, m - 1, d).getTime();
+    const endOfDay = startOfDay + 24 * 60 * 60 * 1000;
+    sql += ` AND s.started_at >= ? AND s.started_at < ?`;
+    args.push(startOfDay, endOfDay);
+  }
+
+  sql += ` GROUP BY s.id`;
+  
+  // HAVING clause for climb count and min grade
+  const havingClauses = [];
+  if (!filters.showEmpty) {
+    havingClauses.push(`COUNT(c.id) > 0`);
+  }
+  if (filters.minGradeIndex !== null) {
+    havingClauses.push(`MAX(c.grade_index) >= ?`);
+    args.push(filters.minGradeIndex);
+  }
+  if (havingClauses.length > 0) {
+    sql += ` HAVING ` + havingClauses.join(' AND ');
+  }
+
+  // Sort
+  if (filters.sort === 'newest') {
+    sql += ` ORDER BY s.started_at DESC`;
+  } else if (filters.sort === 'climbs') {
+    sql += ` ORDER BY COUNT(c.id) DESC, s.started_at DESC`;
+  } else if (filters.sort === 'hardest') {
+    sql += ` ORDER BY MAX(c.grade_index) DESC, s.started_at DESC`;
+  }
+
+  const rows = db.getAllSync<any>(sql, args);
+  
+  // Post-process to group by month and compute badges
+  const monthGroups = new Map<string, { monthLabel: string, data: any[], totalClimbs: number, totalSends: number }>();
+  
+  let previousMaxClimbs = 0;
+  let previousHighestGradeIndex = 0;
+  
+  // We need all-time historical bests to compute "Personal best" accurately, 
+  // but for simplicity and performance in the app, we compute it relative to the fetched list,
+  // or we run a separate fast query to get all-time maxes per session. 
+  // Actually, to get TRUE personal best, we'd need to know the highest grade BEFORE each session.
+  // We can just query `SELECT session_id, MAX(grade_index) FROM climbs GROUP BY session_id ORDER BY logged_at`
+  
+  for (const row of [...rows].sort((a,b) => a.startTime - b.startTime)) {
+    const isPB = row.hardestGradeIndex > previousHighestGradeIndex && previousHighestGradeIndex > 0;
+    const isBiggest = row.climbsCount > previousMaxClimbs && previousMaxClimbs > 0;
+    const isFlashDay = row.flashesCount >= 2;
+    
+    let isProjectSent = false;
+    let hardestLabel = '–';
+    let mix = { flash: 0, top: 0, attempt: 0 };
+    
+    if (row.climbData) {
+      const climbs = row.climbData.split(',').map((cd: string) => {
+        const p = cd.split('|');
+        return { gradeRaw: p[0], gradeIndex: Number(p[1]), result: p[2], projectId: p[3] };
+      });
+      
+      for (const c of climbs) {
+        if (c.projectId !== '' && (c.result === 'send' || c.result === 'top' || c.result === 'flash')) {
+          isProjectSent = true;
+        }
+        if (c.result === 'flash') mix.flash++;
+        else if (c.result === 'send' || c.result === 'top') mix.top++;
+        else mix.attempt++;
+      }
+      
+      const hardest = climbs.find((c: any) => c.gradeIndex === row.hardestGradeIndex && (c.result === 'send' || c.result === 'top' || c.result === 'flash'));
+      if (hardest) hardestLabel = hardest.gradeRaw;
+    }
+    
+    row.badges = [];
+    if (isBiggest) row.badges.push({ id: 'biggest', label: 'Biggest session', color: 'accent' });
+    if (isFlashDay) row.badges.push({ id: 'flash_day', label: 'Flash day', color: 'flash' });
+    if (isProjectSent) row.badges.push({ id: 'project_sent', label: 'Project sent', color: 'success' });
+    if (isPB) row.badges.push({ id: 'personal_best', label: 'Personal best', color: 'accent' });
+    
+    row.hardestLabel = hardestLabel;
+    row.resultMix = mix;
+    
+    // Update watermarks
+    if (row.hardestGradeIndex > previousHighestGradeIndex) previousHighestGradeIndex = row.hardestGradeIndex;
+    if (row.climbsCount > previousMaxClimbs) previousMaxClimbs = row.climbsCount;
+  }
+
+  // Grouping by Month (descending)
+  for (const row of rows) {
+    const d = new Date(row.startTime);
+    const monthLabel = d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+    if (!monthGroups.has(monthLabel)) {
+      monthGroups.set(monthLabel, { monthLabel, data: [], totalClimbs: 0, totalSends: 0 });
+    }
+    const group = monthGroups.get(monthLabel)!;
+    group.data.push(row);
+    group.totalClimbs += row.climbsCount;
+    group.totalSends += row.sendsCount;
+  }
+  
+  return Array.from(monthGroups.values());
 }

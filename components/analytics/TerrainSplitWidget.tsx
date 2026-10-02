@@ -67,11 +67,11 @@ export function TerrainSplitWidget({ data }: TerrainSplitWidgetProps) {
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: '#1E1E24',
+    backgroundColor: '#19191D',
     borderRadius: 20,
     padding: 18,
     borderWidth: 1,
-    borderColor: '#2C2C35',
+    borderColor: '#27272F',
   },
   headerRow: {
     flexDirection: 'row',
@@ -86,7 +86,7 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
   },
   cardSubtitle: {
-    color: '#8A8A98',
+    color: '#9090A0',
     fontSize: 11,
     fontWeight: '500',
     marginTop: 2,
@@ -137,7 +137,7 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   countText: {
-    color: '#8A8A98',
+    color: '#9090A0',
     fontSize: 10,
     fontWeight: '600',
   },

@@ -21,7 +21,7 @@ export function AngleMasteryWidget({ data }: AngleMasteryWidgetProps) {
       {/* Header */}
       <View className="mb-3">
         <Text className="text-white text-[15px] font-bold tracking-[-0.2px]">Terrain & Angle Mastery</Text>
-        <Text className="text-[#8A8A98] text-[12px] font-medium mt-1">Send completion rate by wall profile</Text>
+        <Text className="text-[#9090A0] text-[12px] font-medium mt-1">Send completion rate by wall profile</Text>
       </View>
 
       {/* Rows */}
@@ -52,7 +52,7 @@ export function AngleMasteryWidget({ data }: AngleMasteryWidgetProps) {
 
               {/* Metric Text */}
               <View className="items-end min-w-[70px]">
-                <Text className="text-[#8A8A98] text-[10px] font-medium tracking-[0.5px] uppercase" style={{ fontVariant: ['tabular-nums'] }}>
+                <Text className="text-[#9090A0] text-[10px] font-medium tracking-[0.5px] uppercase" style={{ fontVariant: ['tabular-nums'] }}>
                   {item.totalSends}/{item.totalAttempts} ({trueRate}%)
                 </Text>
               </View>

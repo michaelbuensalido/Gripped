@@ -16,7 +16,7 @@ export function SessionPacingWidget({ overview }: SessionPacingWidgetProps) {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Activity size={14} color="#E7AE56" />
+        <Activity size={14} color="#3E3E48" />
         <Text style={styles.title}>SESSION PACING</Text>
       </View>
       
@@ -42,11 +42,11 @@ export function SessionPacingWidget({ overview }: SessionPacingWidgetProps) {
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: '#1E1E24',
+    backgroundColor: '#19191D',
     borderRadius: 20,
     padding: 16,
     borderWidth: 1,
-    borderColor: '#2C2C35',
+    borderColor: '#27272F',
     marginTop: 12,
   },
   header: {
@@ -56,7 +56,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   title: {
-    color: '#8A8A98',
+    color: '#9090A0',
     fontSize: 11,
     fontWeight: '700',
     letterSpacing: 0.8,
@@ -74,7 +74,7 @@ const styles = StyleSheet.create({
   divider: {
     width: 1,
     height: 24,
-    backgroundColor: '#2C2C35',
+    backgroundColor: '#27272F',
   },
   metricValue: {
     color: '#FFFFFF',
@@ -85,7 +85,7 @@ const styles = StyleSheet.create({
     fontVariant: ['tabular-nums'],
   },
   metricSub: {
-    color: '#8A8A98',
+    color: '#9090A0',
     fontSize: 10,
     fontWeight: '700',
     letterSpacing: 0.5,

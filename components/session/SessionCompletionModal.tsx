@@ -200,7 +200,7 @@ export function SessionCompletionModal({
     >
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        style={{ flex: 1, backgroundColor: '#131316' }}
+        style={{ flex: 1, backgroundColor: '#111113' }}
       >
         <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
           <View style={{ flex: 1 }}>
@@ -292,7 +292,7 @@ export function SessionCompletionModal({
                 value={title}
                 onChangeText={setTitle}
                 placeholder="Session Title"
-                placeholderTextColor="#8A8A98"
+                placeholderTextColor="#9090A0"
                 style={{
                   color: '#FFFFFF',
                   fontSize: 26,
@@ -315,7 +315,7 @@ export function SessionCompletionModal({
                 gap: 5,
                 marginTop: 8,
                 backgroundColor: 'rgba(30, 30, 36, 0.7)',
-                borderColor: '#2C2C35',
+                borderColor: '#27272F',
                 borderWidth: 1,
                 borderRadius: 14,
                 paddingHorizontal: 12,
@@ -327,7 +327,7 @@ export function SessionCompletionModal({
                 value={gymName}
                 onChangeText={setGymName}
                 placeholder="Gym Name"
-                placeholderTextColor="#8A8A98"
+                placeholderTextColor="#9090A0"
                 style={{
                   color: '#9A9AA6',
                   fontSize: 13,
@@ -363,7 +363,7 @@ export function SessionCompletionModal({
             <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
               <Text
                 style={{
-                  color: '#8A8A98',
+                  color: '#9090A0',
                   fontSize: 10,
                   fontWeight: '700',
                   letterSpacing: 0.8,
@@ -398,7 +398,7 @@ export function SessionCompletionModal({
             <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
               <Text
                 style={{
-                  color: '#8A8A98',
+                  color: '#9090A0',
                   fontSize: 10,
                   fontWeight: '700',
                   letterSpacing: 0.8,
@@ -429,7 +429,7 @@ export function SessionCompletionModal({
             <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
               <Text
                 style={{
-                  color: '#8A8A98',
+                  color: '#9090A0',
                   fontSize: 10,
                   fontWeight: '700',
                   letterSpacing: 0.8,
@@ -461,7 +461,7 @@ export function SessionCompletionModal({
                   </Text>
                 </View>
               ) : (
-                <Text style={{ color: '#8A8A98', fontSize: 20, fontWeight: '700' }}>
+                <Text style={{ color: '#9090A0', fontSize: 20, fontWeight: '700' }}>
                   —
                 </Text>
               )}
@@ -472,7 +472,7 @@ export function SessionCompletionModal({
           <View style={{ marginBottom: 18 }}>
             <Text
               style={{
-                color: '#8A8A98',
+                color: '#9090A0',
                 fontSize: 11,
                 fontWeight: '700',
                 letterSpacing: 1.2,
@@ -562,7 +562,7 @@ export function SessionCompletionModal({
             >
               <Text
                 style={{
-                  color: '#8A8A98',
+                  color: '#9090A0',
                   fontSize: 11,
                   fontWeight: '700',
                   letterSpacing: 1.2,
@@ -637,7 +637,7 @@ export function SessionCompletionModal({
           <View style={{ marginBottom: 18 }}>
             <Text
               style={{
-                color: '#8A8A98',
+                color: '#9090A0',
                 fontSize: 11,
                 fontWeight: '700',
                 letterSpacing: 1.2,
@@ -673,7 +673,7 @@ export function SessionCompletionModal({
                           justifyContent: 'center',
                         }}
                       >
-                        <Text style={{ color: isSelected ? '#FFFFFF' : '#8A8A98', fontSize: 12, fontWeight: isSelected ? '700' : '600' }}>{s}</Text>
+                        <Text style={{ color: isSelected ? '#FFFFFF' : '#9090A0', fontSize: 12, fontWeight: isSelected ? '700' : '600' }}>{s}</Text>
                       </TouchableOpacity>
                     );
                   })}
@@ -705,7 +705,7 @@ export function SessionCompletionModal({
                           justifyContent: 'center',
                         }}
                       >
-                        <Text style={{ color: isSelected ? '#FFFFFF' : '#8A8A98', fontSize: 12, fontWeight: isSelected ? '700' : '600' }}>{f}</Text>
+                        <Text style={{ color: isSelected ? '#FFFFFF' : '#9090A0', fontSize: 12, fontWeight: isSelected ? '700' : '600' }}>{f}</Text>
                       </TouchableOpacity>
                     );
                   })}
@@ -718,7 +718,7 @@ export function SessionCompletionModal({
           <View style={{ marginBottom: 16 }}>
             <Text
               style={{
-                color: '#8A8A98',
+                color: '#9090A0',
                 fontSize: 11,
                 fontWeight: '700',
                 letterSpacing: 1.2,

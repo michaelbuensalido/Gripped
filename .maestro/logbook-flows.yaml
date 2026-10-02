@@ -1,0 +1,43 @@
+appId: com.michaelbuensalido.cruxlog
+---
+- launchApp
+- tapOn: "Logbook"
+
+# Switch to calendar view
+- tapOn: "List View"
+- assertVisible: "Calendar" # Validates it switched
+
+# Tap a day (just testing tapping any element with 15)
+- tapOn: "15"
+
+# Change period
+- tapOn: "This month"
+- assertVisible: "This month"
+
+# Search a note
+- tapOn: "Search notes or gym..."
+- inputText: "Test note"
+- pressKey: enter
+
+# Clear search (assuming there's an X icon)
+- tapOn:
+    id: "lucide-x"
+
+# Switch back to list and swipe delete
+- tapOn: "Calendar" # toggles back to List View
+- swipe:
+    direction: LEFT
+    from:
+      id: "Session at *" # Depends on accessibility label, let's just swipe center of screen
+    duration: 500
+
+- assertVisible: "Delete"
+- tapOn: "Delete"
+- assertVisible: "Delete Session" # alert title
+- tapOn: "Delete" # alert confirm
+
+# Undo
+- tapOn: "UNDO"
+
+# Open a session
+- tapOn: "Session at *"

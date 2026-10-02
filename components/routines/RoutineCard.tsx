@@ -197,7 +197,7 @@ export function RoutineCard({
             justifyContent: "center",
           }}
         >
-          <MoreVertical size={18} color="#8A8A98" />
+          <MoreVertical size={18} color="#9090A0" />
         </TouchableOpacity>
       </View>
 

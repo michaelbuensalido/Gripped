@@ -4,13 +4,13 @@
     "slug": "cruxlog",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/ios-icon/AppIcon~ios-marketing.png",
-    "userInterfaceStyle": "dark",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
     "scheme": "cruxlog",
     "splash": {
-      "image": "./assets/ios-icon/AppIcon~ios-marketing.png",
+      "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#0F0F0F"
+      "backgroundColor": "#F5F2EC"
     },
     "ios": {
       "supportsTablet": false,

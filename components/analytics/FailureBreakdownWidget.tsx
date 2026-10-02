@@ -20,7 +20,7 @@ export function FailureBreakdownWidget({ data }: FailureBreakdownWidgetProps) {
   return (
     <View className="bg-[#19191D] border border-[#27272F] rounded-xl p-4 mt-4">
       <View className="mb-4">
-        <Text className="text-[#8A8A98] text-[11px] font-bold tracking-[1px] uppercase">
+        <Text className="text-[#9090A0] text-[11px] font-bold tracking-[1px] uppercase">
           FALL DIAGNOSTICS
         </Text>
         <Text className="text-[#5A5A65] text-[12px] font-medium mt-1">
@@ -34,7 +34,7 @@ export function FailureBreakdownWidget({ data }: FailureBreakdownWidgetProps) {
             <Circle cx="12" cy="12" r="10" stroke="#555562" strokeWidth="2" strokeDasharray="4 4" />
             <Path d="M12 8V16M8 12H16" stroke="#555562" strokeWidth="2" strokeLinecap="round" />
           </Svg>
-          <Text className="text-[#8A8A98] text-xs text-center mt-2 leading-tight">
+          <Text className="text-[#9090A0] text-xs text-center mt-2 leading-tight">
             Tag fall reasons (e.g., pumped, slipped, bad beta) on your attempts to generate diagnostic insights.
           </Text>
         </View>
@@ -52,7 +52,7 @@ export function FailureBreakdownWidget({ data }: FailureBreakdownWidgetProps) {
               <Text className="text-white text-[12px] font-medium">
                 {seg.label}
               </Text>
-              <Text className="text-[#8A8A98] text-[10px] font-bold" style={{ fontVariant: ['tabular-nums'] }}>
+              <Text className="text-[#9090A0] text-[10px] font-bold" style={{ fontVariant: ['tabular-nums'] }}>
                 {seg.percentage}%
               </Text>
             </View>

@@ -17,8 +17,8 @@ export function ReadOnlyBoulderGroup({ zoneName, logs }: ReadOnlyBoulderGroupPro
       style={[
         FLOATING_CARD_STYLE,
         {
-          backgroundColor: '#1E1E24',
-          borderColor: '#2C2C35',
+          backgroundColor: '#19191D',
+          borderColor: '#27272F',
           borderWidth: 1,
           borderRadius: 20,
           overflow: 'hidden',
@@ -29,9 +29,9 @@ export function ReadOnlyBoulderGroup({ zoneName, logs }: ReadOnlyBoulderGroupPro
       {/* Header */}
       <View
         style={{
-          borderBottomColor: '#2C2C35',
+          borderBottomColor: '#27272F',
           borderBottomWidth: 1,
-          backgroundColor: '#17171C',
+          backgroundColor: '#141417',
           paddingHorizontal: 16,
           paddingVertical: 12,
           flexDirection: 'row',
@@ -41,7 +41,7 @@ export function ReadOnlyBoulderGroup({ zoneName, logs }: ReadOnlyBoulderGroupPro
       >
         <Text
           style={{
-            color: '#8A8A98',
+            color: '#9090A0',
             fontSize: 12,
             fontWeight: '700',
             letterSpacing: 0.8,
@@ -52,15 +52,15 @@ export function ReadOnlyBoulderGroup({ zoneName, logs }: ReadOnlyBoulderGroupPro
         </Text>
         <View
           style={{
-            backgroundColor: '#1E1E24',
-            borderColor: '#2C2C35',
+            backgroundColor: '#19191D',
+            borderColor: '#27272F',
             borderWidth: 1,
             paddingHorizontal: 10,
             paddingVertical: 3,
             borderRadius: 9999,
           }}
         >
-          <Text style={{ color: '#8A8A98', fontSize: 12, fontWeight: '600' }}>
+          <Text style={{ color: '#9090A0', fontSize: 12, fontWeight: '600' }}>
             <Text style={{ color: '#FFFFFF', fontWeight: '700' }}>{sends}</Text>/{logs.length} sends
           </Text>
         </View>

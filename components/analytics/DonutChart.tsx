@@ -36,8 +36,8 @@ export function DonutChart({
       : [
           { label: 'Flash', value: 42, color: '#6EE756' },
           { label: 'Top', value: 28, color: '#8E7CFF' },
-          { label: 'Attempt', value: 18, color: '#E8DEB5' },
-          { label: 'Fail', value: 12, color: '#484852' },
+          { label: 'Attempt', value: 18, color: '#3E3E48' },
+          { label: 'Fail', value: 12, color: '#FF453A' },
         ];
 
   const effectiveTotal = effectiveSegments.reduce((sum, s) => sum + s.value, 0);

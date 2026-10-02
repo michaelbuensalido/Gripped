@@ -1,0 +1,37 @@
+appId: com.cruxlog
+---
+# E2E-4: Delete a climb, then Undo within 5 seconds
+# testIDs needed: delete-climb-btn, undo-toast-btn
+
+- launchApp:
+    clearState: true
+
+# Start session and log one climb
+- tapOn:
+    id: "start-session-btn"
+- tapOn:
+- tapOn:
+- tapOn:
+    id: "log-climb-btn"
+- tapOn:
+    id: "save-climb-btn"
+
+# Wait for list to render
+- assertVisible:
+    id: "climb-list"
+
+# Swipe or tap delete (assuming we have a delete button per row)
+- tapOn:
+    id: "delete-climb-btn"
+
+# Undo toast appears
+- assertVisible:
+    id: "undo-toast-btn"
+
+# Tap undo
+- tapOn:
+    id: "undo-toast-btn"
+
+# Climb is restored (list is visible again, or specific climb is back)
+- assertVisible:
+    id: "climb-list"

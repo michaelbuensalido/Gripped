@@ -113,7 +113,7 @@ export const SkeletonOverlay: React.FC<Props> = ({ keypoints, containerWidth, co
               cy={kp.y * containerHeight}
               r={isContact ? 6 : 4}
               fill={isContact ? '#6EE756' : '#FFFFFF'}
-              stroke={isContact ? '#131316' : '#8E7CFF'}
+              stroke={isContact ? '#111113' : '#8E7CFF'}
               strokeWidth={1.5}
             />
           );

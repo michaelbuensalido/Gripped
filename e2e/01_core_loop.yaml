@@ -1,0 +1,56 @@
+appId: com.cruxlog
+---
+# E2E-1: Core loop in ≤3 taps — Start, Log, End, Summary, Done, Home
+# testIDs needed: start-session-btn, log-climb-btn, save-climb-btn, end-session-btn, finish-session-btn, done-home-btn
+
+- launchApp:
+    clearState: true
+
+# If onboarding is present, skip it
+- optional:
+    steps:
+      - tapOn:
+          id: "onboarding-skip-btn"
+
+# Home: tap Start Session
+- tapOn:
+    id: "start-session-btn"                    # Tap 1
+
+# Select Gym: tap "Local Gym" preset (pre-selects, then tap Start)
+- tapOn:
+- tapOn:
+
+# Active Session visible
+- assertVisible:
+    id: "log-climb-btn"
+
+# Tap 4: + Log Climb
+- tapOn:
+    id: "log-climb-btn"
+
+# Sheet: result is Top by default; just tap Save (grade defaults to last/V0)
+- tapOn:
+    id: "save-climb-btn"                       # Tap 5
+
+# Climb should appear in list
+- assertVisible:
+    id: "climb-list"
+
+# End session
+- tapOn:
+    id: "end-session-btn"                      # Tap 6
+
+# End screen: tap Finish
+- tapOn:
+    id: "finish-session-btn"                   # Tap 7
+
+# Summary screen
+- assertVisible:
+    id: "session-summary-screen"
+
+# Tap Done → Home
+- tapOn:
+    id: "done-home-btn"                        # Tap 8
+
+- assertVisible:
+    id: "start-session-btn"

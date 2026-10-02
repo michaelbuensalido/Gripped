@@ -1,0 +1,35 @@
+appId: com.cruxlog.app # replace with actual
+---
+- clearState
+- launchApp
+
+# Skip directly to projects tab
+- tapOn:
+    id: "projects-tab"
+- assertVisible: "No active projects"
+
+# Tap FAB
+- tapOn:
+    id: "add-project-fab"
+
+# Fill out form
+- tapOn:
+    id: "project-nickname-input"
+- inputText: "Pink Panther"
+- hideKeyboard
+
+# Select Grade
+- tapOn:
+    id: "grade-chip-V5"
+
+# Save
+- tapOn:
+    id: "project-save-btn"
+
+# Confirm card appears
+- assertVisible: "Pink Panther"
+- assertVisible:
+    id: "project-card-Pink-Panther"
+
+# Assert Home is never shown
+- assertNotVisible: "LEDGER HUB"

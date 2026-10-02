@@ -1,11 +1,89 @@
-export type Outcome = 'flash' | 'send' | 'attempt';
+export type Outcome = 'flash' | 'send' | 'attempt' | 'fall' | 'zone';
 
+// Root-cause failure taxonomy — mirrors `attempts.failure_reason` column values
 export type FailureReason =
-  | 'foot_slip'
+  | 'pump'         // Forearm pump / endurance failure
+  | 'foot_slip'    // Foot cut or smear failure
+  | 'power'        // Insufficient contact / raw strength
+  | 'beta_error'   // Wrong sequence / movement mistake
+  | 'fear'         // Mental / commitment failure
+  // Legacy values — kept for backward-compat with existing boulder_logs rows
   | 'pumped'
-  | 'beta_error'
   | 'reach_span'
   | 'grip_strength';
+
+export type HoldType = 'crimps' | 'slopers' | 'pinches' | 'pockets' | 'volumes';
+export type WallAngle = 'slab' | 'vertical' | 'overhang' | 'roof';
+export type RouteStatus = 'unattempted' | 'attempted' | 'sent' | 'flashed' | 'project';
+
+// ─── Sectors ──────────────────────────────────────────────────────────────────
+export interface Sector {
+  id: string;
+  name: string;
+  gymName: string;
+  description?: string | null;
+  createdAt: number;
+}
+
+// ─── Routes ───────────────────────────────────────────────────────────────────
+export interface Route {
+  id: string;
+  sectorId: string;
+  setterGrade: string;        // Gym-set grade e.g. "V5"
+  holdColor: string;          // e.g. "blue", "yellow"
+  holdType?: HoldType | null;
+  wallAngle?: WallAngle | null;
+  status: RouteStatus;
+  createdAt: number;
+}
+
+export type ProjectStatus = 'in_progress' | 'sent' | 'abandoned';
+
+// ─── Projects (Personal Hit-List) ─────────────────────────────────────────────
+export interface Project {
+  id: string;
+  title: string;
+  gradeRaw: string;
+  normalizedDifficulty: number;
+  wallAngle: WallAngle;
+  holdType: HoldType;
+  status: ProjectStatus;
+  highWaterMarkMoves: number;
+  totalMoves?: number | null;
+  microBeta?: string | null;
+  mediaUri?: string | null;
+  createdAt: number;
+  updatedAt: number;
+}
+
+// ─── Generic Ascents ──────────────────────────────────────────────────────────
+export interface GenericAscentPayload {
+  gradeRaw: string;
+  wallAngle: WallAngle;
+  holdType: HoldType;
+  outcome: Outcome;
+  failureReason?: FailureReason | null;
+  movesLinked?: number;
+  projectId?: string | null;
+}
+
+// ─── Attempts ─────────────────────────────────────────────────────────────────
+export interface Attempt {
+  id: string;
+  sessionId: string;
+  projectId?: string | null;
+  routeId?: string | null;     // Legacy support
+  gradeRaw: string;
+  normalizedDifficulty: number;
+  wallAngle: WallAngle;
+  holdType: HoldType;
+  outcome: Outcome;
+  failureReason?: FailureReason | null;
+  movesLinked?: number;
+  attemptNumber: number;
+  timestamp: number;          // unix ms
+  restDurationSeconds?: number | null;
+}
 
 export interface Session {
   id: string;

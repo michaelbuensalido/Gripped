@@ -40,7 +40,7 @@ export function ReadOnlySetRow({ log, index }: ReadOnlySetRowProps) {
       <View className="flex-row items-center gap-3">
         <Text
           style={{
-            color: '#8A8A98',
+            color: '#9090A0',
             fontSize: 12,
             fontWeight: '700',
             width: 20,
@@ -51,8 +51,8 @@ export function ReadOnlySetRow({ log, index }: ReadOnlySetRowProps) {
         </Text>
         <View
           style={{
-            backgroundColor: '#17171C',
-            borderColor: '#2C2C35',
+            backgroundColor: '#141417',
+            borderColor: '#27272F',
             borderWidth: 1,
             paddingHorizontal: 10,
             paddingVertical: 4,
@@ -97,15 +97,15 @@ export function ReadOnlySetRow({ log, index }: ReadOnlySetRowProps) {
         {/* Attempts count */}
         <View
           style={{
-            backgroundColor: '#17171C',
-            borderColor: '#2C2C35',
+            backgroundColor: '#141417',
+            borderColor: '#27272F',
             borderWidth: 1,
             paddingHorizontal: 8,
             paddingVertical: 4,
             borderRadius: 8,
           }}
         >
-          <Text style={{ color: '#8A8A98', fontSize: 12, fontWeight: '600' }}>
+          <Text style={{ color: '#9090A0', fontSize: 12, fontWeight: '600' }}>
             {log.attempts} {log.attempts === 1 ? 'att' : 'atts'}
           </Text>
         </View>
