@@ -116,6 +116,8 @@ function CenterSessionButton({ activeSession, startOrResume, onOpenStartSheet }:
   );
 }
 
+const visibleTabs = ['index', 'projects', 'analytics', 'profile'];
+
 export function FloatingTabBar({ state, descriptors, navigation }: any) {
   const { colors, radius, shadow, type } = useTheme();
   const [keyboardVisible, setKeyboardVisible] = useState(false);
@@ -142,8 +144,7 @@ export function FloatingTabBar({ state, descriptors, navigation }: any) {
 
   if (keyboardVisible || state.routes[state.index].name.startsWith('session/')) return null;
 
-  const visibleTabs = ['index', 'projects', 'analytics', 'profile'];
-  const routes = state.routes.filter((r: any) => visibleTabs.includes(r.name));
+    const routes = state.routes.filter((r: any) => visibleTabs.includes(r.name));
 
   return (
     <>
