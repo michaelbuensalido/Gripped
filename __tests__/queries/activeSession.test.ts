@@ -3,7 +3,8 @@ import { getDatabase } from '../../db/schema';
 import { insertSession, softDeleteBoulderLog, undoDeleteBoulderLog, deleteSession, getClimbsForSession } from '../../db/queries';
 
 jest.mock('expo-sqlite', () => require('../../__mocks__/expo-sqlite'));
-jest.mock('uuid', () => ({ v4: () => 'test-uuid' }));
+let idCounter = 0;
+jest.mock('uuid', () => ({ v4: () => `test-uuid-${idCounter++}` }));
 
 describe('Active Session queries', () => {
   let db: any;

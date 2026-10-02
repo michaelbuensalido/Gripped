@@ -2,7 +2,8 @@ import { jest, describe, it, expect, beforeEach } from '@jest/globals';
 import { getDatabase } from '../../db/schema';
 import { getRichProjects, insertProject, insertSession, softDeleteBoulderLog } from '../../db/queries';
 
-jest.mock('uuid', () => ({ v4: () => 'test-uuid' }));
+let idCounter = 0;
+jest.mock('uuid', () => ({ v4: () => `test-uuid-${idCounter++}` }));
 
 describe('getRichProjects', () => {
   let db: any;
