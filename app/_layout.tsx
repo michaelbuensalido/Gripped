@@ -29,6 +29,7 @@ import "../global.css";
 
 import { FloatingTabBar } from "../components/ui/FloatingTabBar";
 import { CelebrationProvider } from "../components/celebration/CelebrationProvider";
+import { colors } from "../theme/tokens";
 
 // Prevent the splash screen from hiding until fonts + DB are ready
 SplashScreen.preventAutoHideAsync();
@@ -40,7 +41,10 @@ function TabLayout() {
   return (
     <Tabs
       tabBar={(props) => <FloatingTabBar {...props} />}
-      screenOptions={{ headerShown: false }}
+      screenOptions={{
+        headerShown: false,
+        sceneStyle: { backgroundColor: colors.bg },
+      }}
     >
       <Tabs.Screen name="index"     options={{ title: "Home" }} />
       <Tabs.Screen name="projects"  options={{ title: "Projects" }} />
@@ -140,7 +144,7 @@ export default function RootLayout() {
   const isReady = (fontsLoaded || fontError) && isDbReady;
 
   return (
-    <GestureHandlerRootView style={{ flex: 1, backgroundColor: "#101014" }}>
+    <GestureHandlerRootView style={{ flex: 1, backgroundColor: colors.bg }}>
       <SafeAreaProvider>
         <StatusBar style="light" />
         <CelebrationProvider>

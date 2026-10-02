@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text } from 'react-native';
+import { View, Text, ViewStyle, StyleProp } from 'react-native';
 import { useTheme } from '../../theme/useTheme';
 
 // Keep getGradeBandColors for backward-compat (used in some files)
@@ -9,33 +9,52 @@ export function getGradeBandColors(gradeIndex: number, colors: any) {
 }
 
 function gradeBandStatic(gradeIndex: number) {
-  if (gradeIndex <= 2) return { bg: 'rgba(96, 165, 250, 0.15)', text: '#93C5FD', solid: '#3B82F6' };
-  if (gradeIndex <= 5) return { bg: 'rgba(74, 222, 128, 0.15)', text: '#86EFAC', solid: '#22C55E' };
-  if (gradeIndex <= 8) return { bg: 'rgba(251, 146, 60, 0.15)', text: '#FDBA74', solid: '#F97316' };
-  return { bg: 'rgba(192, 132, 252, 0.15)', text: '#D8B4FE', solid: '#A855F7' };
+  if (gradeIndex <= 2) return { bg: '#2D303B', text: '#B3C2DE', solid: '#8FA3C7' };
+  if (gradeIndex <= 5) return { bg: '#1D363A', text: '#6BDDD9', solid: '#2FC7C2' };
+  if (gradeIndex <= 8) return { bg: '#3C3124', text: '#F6C46E', solid: '#F0A93B' };
+  return { bg: '#38283B', text: '#E59BDB', solid: '#D473C8' };
 }
 
 interface GradePillProps {
   gradeIndex: number;
   label?: string;
+  style?: StyleProp<ViewStyle>;
 }
 
-export function GradePill({ gradeIndex, label }: GradePillProps) {
-  const { type, gradeBand } = useTheme();
+export function GradePill({ gradeIndex, label, style }: GradePillProps) {
+  const { type, gradeBand, radius } = useTheme();
   const band = gradeBand(gradeIndex);
-  const displayLabel = label || `V${gradeIndex}`;
+  const displayLabel = label || (gradeIndex !== undefined && gradeIndex !== null ? `V${gradeIndex}` : '—');
 
   return (
-    <View style={{
-      backgroundColor: band.bg,
-      paddingHorizontal: 8,
-      paddingVertical: 3,
-      borderRadius: 8,
-      alignSelf: 'flex-start',
-      minWidth: 36,
-      alignItems: 'center',
-    }}>
-      <Text style={{ color: band.text, fontFamily: type.display.fontFamily, fontSize: 13, fontWeight: '600', lineHeight: 18 }}>
+    <View
+      style={[
+        {
+          backgroundColor: band.bg,
+          paddingHorizontal: 8,
+          paddingVertical: 3,
+          borderRadius: radius.sm,
+          borderWidth: 1,
+          borderColor: band.solid + '40', // Neon perimeter glow / rim
+          alignSelf: 'flex-start',
+          minWidth: 38,
+          alignItems: 'center',
+          justifyContent: 'center',
+        },
+        style,
+      ]}
+    >
+      <Text
+        style={{
+          color: band.text,
+          fontFamily: type.display.fontFamily,
+          fontSize: 13,
+          fontWeight: '700',
+          lineHeight: 18,
+          fontVariant: ['tabular-nums'],
+          letterSpacing: 0.6,
+        }}
+      >
         {displayLabel}
       </Text>
     </View>

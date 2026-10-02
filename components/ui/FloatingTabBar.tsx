@@ -150,7 +150,7 @@ export function FloatingTabBar({ state, descriptors, navigation }: any) {
   return (
     <>
       <View style={[styles.container, shadow.floating, { bottom: 24, left: 16, right: 16, borderRadius: radius.pill, overflow: 'visible' }]}>
-        <View style={[StyleSheet.absoluteFill, { borderRadius: radius.pill, backgroundColor: colors.cardMuted, borderWidth: 1, borderColor: colors.border, overflow: 'hidden' }]} />
+        <View style={[StyleSheet.absoluteFill, { borderRadius: radius.pill, backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border, overflow: 'hidden' }]} />
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', height: 64, paddingHorizontal: 4, overflow: 'visible' }}>
           {routes.map((route: any, index: number) => {
             const { options } = descriptors[route.key];

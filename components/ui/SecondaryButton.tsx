@@ -1,5 +1,6 @@
 import React from 'react';
 import { TouchableOpacity, Text, ViewStyle, StyleProp } from 'react-native';
+import * as Haptics from 'expo-haptics';
 import { useTheme } from '../../theme/useTheme';
 
 interface SecondaryButtonProps {
@@ -8,18 +9,36 @@ interface SecondaryButtonProps {
   onPress: () => void;
   style?: StyleProp<ViewStyle>;
   variant?: 'muted' | 'accentSoft';
+  disabled?: boolean;
 }
 
-export function SecondaryButton({ testID, label, onPress, style, variant = 'accentSoft' }: SecondaryButtonProps) {
+export function SecondaryButton({
+  testID,
+  label,
+  onPress,
+  style,
+  variant = 'accentSoft',
+  disabled,
+}: SecondaryButtonProps) {
   const { colors, radius, type } = useTheme();
 
   const isAccent = variant === 'accentSoft';
 
+  const handlePress = () => {
+    if (disabled) return;
+    try {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    } catch (_) {}
+    onPress();
+  };
+
   return (
     <TouchableOpacity
       testID={testID}
-      onPress={onPress}
-      activeOpacity={0.7}
+      onPress={handlePress}
+      activeOpacity={0.75}
+      accessibilityRole="button"
+      accessibilityState={{ disabled }}
       style={[
         {
           backgroundColor: isAccent ? colors.accentSoft : colors.cardMuted,
@@ -28,9 +47,10 @@ export function SecondaryButton({ testID, label, onPress, style, variant = 'acce
           borderRadius: radius.md,
           alignItems: 'center',
           justifyContent: 'center',
-          paddingHorizontal: 16,
+          paddingHorizontal: 20,
           borderWidth: 1,
           borderColor: isAccent ? 'transparent' : colors.border,
+          opacity: disabled ? 0.45 : 1,
         },
         style,
       ]}
@@ -40,6 +60,8 @@ export function SecondaryButton({ testID, label, onPress, style, variant = 'acce
           type.heading,
           {
             color: isAccent ? colors.accentText : colors.text,
+            fontSize: 16,
+            letterSpacing: 0.3,
           },
         ]}
       >
