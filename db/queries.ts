@@ -1382,12 +1382,19 @@ export function getLogbookSummary(filters: LogbookFilters, nowMs: number = Date.
   // Aggregate current period
   let currentSql = `
     SELECT 
-      COUNT(DISTINCT s.id) as sessions,
-      COUNT(c.id) as climbs,
-      SUM(CASE WHEN c.result = 'send' OR c.result = 'top' OR c.result = 'flash' THEN 1 ELSE 0 END) as sends,
-      SUM(IFNULL(s.ended_at, s.started_at) - s.started_at) as durationMs
+      COUNT(s.id) as sessions,
+      SUM(IFNULL(s.ended_at, s.started_at) - s.started_at) as durationMs,
+      IFNULL(SUM(c_stats.climbs), 0) as climbs,
+      IFNULL(SUM(c_stats.sends), 0) as sends
     FROM sessions s
-    LEFT JOIN climbs c ON c.session_id = s.id AND c.deleted_at IS NULL
+    LEFT JOIN (
+      SELECT session_id, 
+             COUNT(id) as climbs, 
+             SUM(CASE WHEN result IN ('send', 'top', 'flash') THEN 1 ELSE 0 END) as sends 
+      FROM climbs 
+      WHERE deleted_at IS NULL 
+      GROUP BY session_id
+    ) c_stats ON c_stats.session_id = s.id
     WHERE s.deleted_at IS NULL AND s.started_at >= ?
   `;
   const currentArgs: any[] = [since];

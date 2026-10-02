@@ -116,7 +116,7 @@ export function SessionCard({ session, onDelete }: SessionCardProps) {
   };
 
   return (
-    <Swipeable ref={swipeableRef} renderRightActions={renderRightActions} overshootRight={false}>
+    <Swipeable ref={swipeableRef} renderRightActions={renderRightActions} overshootRight={false} containerStyle={{ overflow: 'visible', paddingBottom: 4 }}>
       <TouchableOpacity
         activeOpacity={0.7}
         onPress={() => router.push(`/session/detail/${session.id}?variant=summary`)}
@@ -174,16 +174,19 @@ export function SessionCard({ session, onDelete }: SessionCardProps) {
           </View>
         </View>
 
-        {/* Mini result mix bar */}
+        {/* Result mix bar with min width and legend */}
         {totalMix > 0 && (
-          <View 
-            style={{ flexDirection: 'row', height: 6, borderRadius: radius.pill, overflow: 'hidden', marginBottom: space.md }}
-            accessible={true}
-            accessibilityLabel={`Result mix: ${session.resultMix.flash} flashes, ${session.resultMix.top} tops, ${session.resultMix.attempt} attempts`}
-          >
-            {session.resultMix.flash > 0 && <View style={{ flex: session.resultMix.flash, backgroundColor: colors.flash }} />}
-            {session.resultMix.top > 0 && <View style={{ flex: session.resultMix.top, backgroundColor: colors.top }} />}
-            {session.resultMix.attempt > 0 && <View style={{ flex: session.resultMix.attempt, backgroundColor: colors.attempt }} />}
+          <View style={{ marginBottom: space.md }} accessible={true} accessibilityLabel={`Result mix: ${session.resultMix.flash} flashes, ${session.resultMix.top} tops, ${session.resultMix.attempt} attempts`}>
+            <View style={{ flexDirection: 'row', height: 6, borderRadius: radius.pill, overflow: 'hidden', gap: 1 }}>
+              {session.resultMix.flash > 0 && <View style={{ flex: Math.max(session.resultMix.flash, totalMix * 0.1), backgroundColor: colors.flash }} />}
+              {session.resultMix.top > 0 && <View style={{ flex: Math.max(session.resultMix.top, totalMix * 0.1), backgroundColor: colors.top }} />}
+              {session.resultMix.attempt > 0 && <View style={{ flex: Math.max(session.resultMix.attempt, totalMix * 0.1), backgroundColor: colors.attempt }} />}
+            </View>
+            <View style={{ flexDirection: 'row', gap: space.sm, marginTop: 4 }}>
+              {session.resultMix.flash > 0 && <Text style={[type.caption, { color: colors.textMuted, fontSize: 10 }]}>{session.resultMix.flash} Flash</Text>}
+              {session.resultMix.top > 0 && <Text style={[type.caption, { color: colors.textMuted, fontSize: 10 }]}>{session.resultMix.top} Top</Text>}
+              {session.resultMix.attempt > 0 && <Text style={[type.caption, { color: colors.textMuted, fontSize: 10 }]}>{session.resultMix.attempt} Attempt</Text>}
+            </View>
           </View>
         )}
 

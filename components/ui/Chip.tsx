@@ -1,31 +1,32 @@
 import React from 'react';
-import { TouchableOpacity, Text } from 'react-native';
+import { TouchableOpacity, Text, View } from 'react-native';
 import { useTheme } from '../../theme/useTheme';
 
-interface ChipProps {
-  label: string;
-  selected?: boolean;
-  onPress?: () => void;
-}
-
-export function Chip({ label, selected, onPress }: ChipProps) {
-  const { colors, radius, space, type } = useTheme();
-
-  return (
-    <TouchableOpacity
-      onPress={onPress}
-      activeOpacity={0.7}
+export function Chip({ label, active = false, onPress }: { label: string; active?: boolean; onPress?: () => void }) {
+  const { colors, type, space, radius } = useTheme();
+  
+  const content = (
+    <View
       style={{
-        backgroundColor: selected ? colors.accentSoft : colors.cardMuted,
-        paddingHorizontal: space.md,
-        paddingVertical: 8,
+        backgroundColor: active ? colors.accent : colors.card,
         borderRadius: radius.pill,
-        alignSelf: 'flex-start',
+        paddingHorizontal: 16,
+        paddingVertical: 8,
       }}
     >
-      <Text style={[{ color: selected ? colors.accentText : colors.textMuted }, type.caption, { fontWeight: selected ? '600' : '400' }]}>
+      <Text style={[type.body, { color: active ? colors.textOnAccent : colors.text }]}>
         {label}
       </Text>
-    </TouchableOpacity>
+    </View>
   );
+
+  if (onPress) {
+    return (
+      <TouchableOpacity activeOpacity={0.7} onPress={onPress}>
+        {content}
+      </TouchableOpacity>
+    );
+  }
+
+  return content;
 }

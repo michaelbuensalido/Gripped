@@ -6,6 +6,7 @@ import { X, Filter, ChevronDown, Plus, Flag } from 'lucide-react-native';
 import { useTheme } from '../theme/useTheme';
 import { ProjectCard } from '../components/ui/ProjectCard';
 import { EmptyState } from '../components/ui/EmptyState';
+import { Chip } from '../components/ui/Chip';
 import { Button as PrimaryButton } from '../components/ui/Button';
 import { useRichProjects } from '../db/hooks';
 import { triggerHaptic } from '../utils/haptics';
@@ -308,18 +309,14 @@ export default function ProjectsScreen() {
             <Text style={[type.label, { color: colors.textMuted, marginBottom: 12 }]}>Wall Angle</Text>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 24 }}>
               {WALL_ANGLES.map(a => (
-                <TouchableOpacity key={a.key} onPress={() => setWallAngleFilter(wallAngleFilter === a.key ? null : a.key)} style={{ backgroundColor: wallAngleFilter === a.key ? colors.accent : colors.card, paddingHorizontal: 16, paddingVertical: 8, borderRadius: radius.pill }}>
-                  <Text style={[type.body, { color: wallAngleFilter === a.key ? colors.textOnAccent : colors.text }]}>{a.label}</Text>
-                </TouchableOpacity>
+                <Chip key={a.key} label={a.label} active={wallAngleFilter === a.key} onPress={() => setWallAngleFilter(wallAngleFilter === a.key ? null : a.key)} />
               ))}
             </View>
 
             <Text style={[type.label, { color: colors.textMuted, marginBottom: 12 }]}>Hold Type</Text>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 24 }}>
               {HOLD_TYPES.map(h => (
-                <TouchableOpacity key={h.key} onPress={() => setHoldTypeFilter(holdTypeFilter === h.key ? null : h.key)} style={{ backgroundColor: holdTypeFilter === h.key ? colors.accent : colors.card, paddingHorizontal: 16, paddingVertical: 8, borderRadius: radius.pill }}>
-                  <Text style={[type.body, { color: holdTypeFilter === h.key ? colors.textOnAccent : colors.text }]}>{h.label}</Text>
-                </TouchableOpacity>
+                <Chip key={h.key} label={h.label} active={holdTypeFilter === h.key} onPress={() => setHoldTypeFilter(holdTypeFilter === h.key ? null : h.key)} />
               ))}
             </View>
 

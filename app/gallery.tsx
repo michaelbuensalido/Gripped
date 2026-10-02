@@ -50,7 +50,7 @@ export default function GalleryScreen() {
       <SectionHeader title="Chips & Badges" />
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.md, marginBottom: space.xl }}>
         <Chip label="Unselected" />
-        <Chip label="Selected" selected />
+        <Chip label="Selected" active />
         <ResultChip result="flash" />
         <ResultChip result="top" />
         <ResultChip result="attempt" />
