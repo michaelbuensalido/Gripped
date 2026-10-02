@@ -803,7 +803,7 @@ export interface HomeSummary {
   personalBest: { gradeRaw: string; daysAgo: number } | null;
   weeklyVolume: { weekLabel: string; climbs: number; isCurrent: boolean }[];
   weeklyVolumeChange: number;
-  recentSessions: { id: string; gymName: string; startTime: number; durationMs: number; climbs: number; sends: number; hardestGradeRaw: string }[];
+  recentSessions: any[]; // Fully formed SessionCard prop objects
   projects: any[];
   hasAnyData: boolean;
 }
@@ -1026,19 +1026,32 @@ export function getHomeSummary(): HomeSummary {
   const recentSessions = completedSessions.slice(0, 3).map(s => {
     const cRows = db.getAllSync<any>(`SELECT grade_raw, grade_index, result FROM climbs WHERE session_id = ? AND deleted_at IS NULL`, [s.id]);
     const sendsRows = cRows.filter(c => isSend(c.result));
-    let hg = '–';
+    let hgIndex = 0;
+    let hgLabel = '–';
     if (sendsRows.length > 0) {
       sendsRows.sort((a,b) => b.grade_index - a.grade_index);
-      hg = sendsRows[0].grade_raw;
+      hgIndex = sendsRows[0].grade_index;
+      hgLabel = sendsRows[0].grade_raw;
     }
+    let flash = 0, top = 0, attempt = 0;
+    cRows.forEach(c => {
+      if (c.result === 'flash') flash++;
+      else if (c.result === 'top' || c.result === 'send') top++;
+      else attempt++;
+    });
+    
     return {
       id: s.id,
       gymName: s.gym_name || '',
       startTime: s.started_at,
-      durationMs: (s.ended_at || nowMs) - s.started_at,
-      climbs: cRows.length,
-      sends: sendsRows.length,
-      hardestGradeRaw: hg
+      endTime: s.ended_at || nowMs,
+      climbsCount: cRows.length,
+      sendsCount: sendsRows.length,
+      flashesCount: flash,
+      hardestGradeIndex: hgIndex,
+      hardestLabel: hgLabel,
+      resultMix: { flash, top, attempt },
+      badges: [], // Simplify for home screen since it's just a summary
     };
   });
   

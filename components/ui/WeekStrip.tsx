@@ -2,6 +2,8 @@ import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { useTheme } from '../../theme/useTheme';
 import { Card } from './Card';
+import { Flame } from 'lucide-react-native';
+import { plural } from '../../utils/string';
 
 export interface WeekStripProps {
   days: { dayLabel: string; hasSession: boolean; isToday: boolean }[];
@@ -42,7 +44,7 @@ export function WeekStrip({ days, streak }: WeekStripProps) {
         </View>
         {streak > 0 && (
           <View style={{ marginLeft: space.md, justifyContent: 'center', alignItems: 'center' }}>
-            <Text style={[type.heading, { color: colors.text }]}>🔥 {streak}w</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}><Flame size={20} color={colors.accent} /><Text style={[type.heading, { color: colors.text }]}>{plural(streak, 'week streak')}</Text></View>
           </View>
         )}
       </View>

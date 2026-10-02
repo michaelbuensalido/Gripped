@@ -10,7 +10,8 @@ import { ProjectCard } from '../components/ui/ProjectCard';
 import { PrimaryButton } from '../components/ui/PrimaryButton';
 import { StatTile } from '../components/ui/StatTile';
 import { SectionHeader } from '../components/ui/SectionHeader';
-import { SessionRow } from '../components/ui/SessionRow';
+import { SessionCard } from '../components/ui/SessionCard';
+import * as Q from '../db/queries';
 import { GradePill } from '../components/ui/GradePill';
 import { WeekStrip } from '../components/ui/WeekStrip';
 import { VolumeChart } from '../components/ui/VolumeChart';
@@ -206,36 +207,11 @@ export default function HomeScreen() {
                   </Card>
                 ) : (
                   data.projects.slice(0, 5).map((p: any) => (
-                    <Card
+                    <ProjectCard
                       key={p.id}
-                      onPress={() => router.push('/projects')}
-                      style={{ width: 160, padding: space.md }}
-                    >
-                      <GradePill
-                        gradeIndex={p.normalizedDifficulty ?? p.grade_index ?? 0}
-                        label={p.gradeRaw ?? p.grade_raw ?? '—'}
-                      />
-                      <Text
-                        style={[type.heading, { color: colors.text, marginTop: space.sm, marginBottom: space.xs }]}
-                        numberOfLines={1}
-                      >
-                        {p.title}
-                      </Text>
-                      <View style={{ flexDirection: 'row', gap: space.lg }}>
-                        <View>
-                          <Text style={[type.caption, { color: colors.textMuted }]}>Burns</Text>
-                          <Text style={[type.heading, { color: colors.text, fontSize: 14 }]}>{p.attempts || 0}</Text>
-                        </View>
-                        {(p.highWaterMarkMoves ?? p.high_water_mark_moves) ? (
-                          <View>
-                            <Text style={[type.caption, { color: colors.textMuted }]}>Linked</Text>
-                            <Text style={[type.heading, { color: colors.text, fontSize: 14 }]}>
-                              {p.highWaterMarkMoves ?? p.high_water_mark_moves}
-                            </Text>
-                          </View>
-                        ) : null}
-                      </View>
-                    </Card>
+                      project={p}
+                      style={{ width: 260 }}
+                    />
                   ))
                 )}
               </View>
@@ -282,21 +258,17 @@ export default function HomeScreen() {
           {data.recentSessions.length > 0 && (
             <View style={{ marginBottom: space.xxl }}>
               <SectionHeader title="Recent Sessions" />
-              <Card style={{ padding: 0, overflow: 'hidden' }}>
-                {data.recentSessions.map((s: any, i: number) => (
-                  <SessionRow
+              <View style={{ gap: space.md }}>
+                {data.recentSessions.map((s: any) => (
+                  <SessionCard
                     key={s.id}
-                    id={s.id}
-                    gymName={s.gymName}
-                    startedAt={s.startTime}
-                    durationMs={s.durationMs}
-                    climbs={s.climbs}
-                    sends={s.sends}
-                    hardestGrade={s.hardestGradeRaw}
-                    isLast={i === data.recentSessions.length - 1}
+                    session={s}
+                    onDelete={(id) => {
+                      Q.deleteSession(id);
+                    }}
                   />
                 ))}
-              </Card>
+              </View>
             </View>
           )}
         </>

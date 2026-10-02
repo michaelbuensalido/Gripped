@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { TextInput, TextInputProps } from 'react-native';
+import { TextInput, TextInputProps, Text } from 'react-native';
 import Animated, {
   useSharedValue,
   useAnimatedProps,
@@ -23,7 +23,7 @@ export function AnimatedCounter({
   className, 
   ...rest 
 }: AnimatedCounterProps) {
-  const sv = useSharedValue(value);
+  const sv = useSharedValue(0);
   const reducedMotion = useReducedMotion();
   const celebrationsEnabled = useCelebrationStore((state) => state.celebrationsEnabled);
 
@@ -38,8 +38,18 @@ export function AnimatedCounter({
   const animatedProps = useAnimatedProps(() => {
     return {
       text: Math.round(sv.value).toString(),
+      defaultValue: Math.round(sv.value).toString(),
     } as any;
   });
+
+  // If animations are off, return a regular Text component to guarantee visibility and style inheritance.
+  if (reducedMotion || !celebrationsEnabled) {
+    return (
+      <Text style={style} className={className}>
+        {value.toString()}
+      </Text>
+    );
+  }
 
   return (
     <AnimatedTextInput
@@ -47,6 +57,8 @@ export function AnimatedCounter({
       editable={false}
       style={style}
       className={className}
+      defaultValue={value.toString()}
+      value={value.toString()}
       {...rest}
     />
   );

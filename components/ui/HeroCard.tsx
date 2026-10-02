@@ -7,21 +7,12 @@ import { useTheme } from '../../theme/useTheme';
 // Decorative climbing-hold silhouette (abstract rounded shapes, 6% opacity)
 function HoldSilhouette() {
   return (
-    <Svg width={80} height={80} viewBox="0 0 80 80" accessible={false}>
-      {/* Large pinch hold */}
+    <Svg width={120} height={120} viewBox="0 0 100 100" accessible={false} style={{ transform: [{ translateX: 20 }, { translateY: -10 }] }}>
       <Path
-        d="M55 20 C60 15, 72 18, 70 30 C68 42, 58 45, 52 38 C46 31, 50 25, 55 20Z"
+        d="M80 30 C90 20, 100 40, 95 60 C90 80, 70 90, 50 85 C30 80, 20 60, 25 40 C30 20, 70 40, 80 30Z"
         fill="#1C1B22"
-        opacity={0.06}
+        opacity={0.08}
       />
-      {/* Small crimp */}
-      <Path
-        d="M30 50 C34 46, 42 48, 40 56 C38 64, 28 62, 26 55 C24 48, 26 54, 30 50Z"
-        fill="#1C1B22"
-        opacity={0.04}
-      />
-      {/* Round volume */}
-      <Circle cx="65" cy="60" r="10" fill="#1C1B22" opacity={0.04} />
     </Svg>
   );
 }
