@@ -3,7 +3,6 @@ import { View, Text, TouchableOpacity, ScrollView, Modal, TextInput, KeyboardAvo
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { X, Filter, ChevronDown, Plus, Flag } from 'lucide-react-native';
-import { Screen } from '../components/ui/Screen';
 import { useTheme } from '../theme/useTheme';
 import { ProjectCard } from '../components/ui/ProjectCard';
 import { EmptyState } from '../components/ui/EmptyState';
@@ -138,108 +137,106 @@ export default function ProjectsScreen() {
   };
 
   return (
-    <>
-      <Screen>
-        <View style={{ paddingHorizontal: 20, paddingTop: insets.top + space.lg }}>
-          {/* Header */}
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-            <Text style={[type.display, { color: colors.text }]}>Projects</Text>
+    <View style={{ flex: 1, backgroundColor: colors.bg }}>
+      <View style={{ paddingHorizontal: 20, paddingTop: Math.max(insets.top, 16) + 8 }}>
+        {/* Header */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+          <Text style={[type.display, { color: colors.text }]}>Projects</Text>
+          <TouchableOpacity
+            onPress={() => { triggerHaptic('light'); setIsAddModalOpen(true); }}
+            style={{ backgroundColor: colors.accent, paddingHorizontal: 12, paddingVertical: 6, borderRadius: radius.pill, flexDirection: 'row', alignItems: 'center', gap: 4 }}
+            accessibilityLabel="New project"
+            accessibilityRole="button"
+          >
+            <Plus size={16} color={colors.textOnAccent} />
+            <Text style={[type.label, { color: colors.textOnAccent }]}>New</Text>
+          </TouchableOpacity>
+        </View>
+        
+        {/* Caption */}
+        <Text style={[type.caption, { color: colors.textMuted, marginBottom: 12 }]}>
+          {`${activeProjects.length} active · ${sentProjects.length} sent · ${totalBurns} burns`}
+        </Text>
+
+        {/* Control Row */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+          <View style={{ flexDirection: 'row', backgroundColor: colors.card, borderRadius: radius.pill, padding: 2 }}>
             <TouchableOpacity
-              onPress={() => { triggerHaptic('light'); setIsAddModalOpen(true); }}
-              style={{ backgroundColor: colors.accent, paddingHorizontal: 12, paddingVertical: 6, borderRadius: radius.pill, flexDirection: 'row', alignItems: 'center', gap: 4 }}
-              accessibilityLabel="New project"
+              onPress={() => { triggerHaptic('light'); setActiveTab('in_progress'); }}
+              style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: radius.pill, backgroundColor: activeTab === 'in_progress' ? colors.bg : 'transparent' }}
+              accessibilityLabel="In progress projects"
               accessibilityRole="button"
             >
-              <Plus size={16} color={colors.textOnAccent} />
-              <Text style={[type.label, { color: colors.textOnAccent }]}>New</Text>
+              <Text style={[type.label, { color: activeTab === 'in_progress' ? colors.text : colors.textMuted }]}>
+                In progress ({activeProjects.length})
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => { triggerHaptic('light'); setActiveTab('sent'); }}
+              style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: radius.pill, backgroundColor: activeTab === 'sent' ? colors.bg : 'transparent' }}
+              accessibilityLabel="Sent projects"
+              accessibilityRole="button"
+            >
+              <Text style={[type.label, { color: activeTab === 'sent' ? colors.text : colors.textMuted }]}>
+                Sent ({sentProjects.length})
+              </Text>
             </TouchableOpacity>
           </View>
-          
-          {/* Caption */}
-          <Text style={[type.caption, { color: colors.textMuted, marginBottom: 12 }]}>
-            {`${activeProjects.length} active · ${sentProjects.length} sent · ${totalBurns} burns`}
-          </Text>
 
-          {/* Control Row */}
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-            <View style={{ flexDirection: 'row', backgroundColor: colors.card, borderRadius: radius.pill, padding: 2 }}>
-              <TouchableOpacity
-                onPress={() => { triggerHaptic('light'); setActiveTab('in_progress'); }}
-                style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: radius.pill, backgroundColor: activeTab === 'in_progress' ? colors.bg : 'transparent' }}
-                accessibilityLabel="In progress projects"
-                accessibilityRole="button"
-              >
-                <Text style={[type.label, { color: activeTab === 'in_progress' ? colors.text : colors.textMuted }]}>
-                  In progress ({activeProjects.length})
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={() => { triggerHaptic('light'); setActiveTab('sent'); }}
-                style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: radius.pill, backgroundColor: activeTab === 'sent' ? colors.bg : 'transparent' }}
-                accessibilityLabel="Sent projects"
-                accessibilityRole="button"
-              >
-                <Text style={[type.label, { color: activeTab === 'sent' ? colors.text : colors.textMuted }]}>
-                  Sent ({sentProjects.length})
-                </Text>
-              </TouchableOpacity>
-            </View>
-
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-              <TouchableOpacity onPress={openSortMenu} style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }} accessibilityRole="button" accessibilityLabel="Sort projects">
-                <Text style={[type.body, { color: colors.text }]}>Sort: {sortOption}</Text>
-                <ChevronDown size={16} color={colors.textMuted} />
-              </TouchableOpacity>
-              
-              <TouchableOpacity onPress={() => setIsFilterModalOpen(true)} accessibilityRole="button" accessibilityLabel="Filter projects" style={{ position: 'relative' }}>
-                <Filter size={20} color={hasActiveFilters ? colors.accent : colors.text} />
-                {hasActiveFilters && (
-                  <View style={{ position: 'absolute', top: -2, right: -2, width: 8, height: 8, borderRadius: 4, backgroundColor: colors.accent }} />
-                )}
-              </TouchableOpacity>
-            </View>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+            <TouchableOpacity onPress={openSortMenu} style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }} accessibilityRole="button" accessibilityLabel="Sort projects">
+              <Text style={[type.body, { color: colors.text }]}>Sort: {sortOption}</Text>
+              <ChevronDown size={16} color={colors.textMuted} />
+            </TouchableOpacity>
+            
+            <TouchableOpacity onPress={() => setIsFilterModalOpen(true)} accessibilityRole="button" accessibilityLabel="Filter projects" style={{ position: 'relative' }}>
+              <Filter size={20} color={hasActiveFilters ? colors.accent : colors.text} />
+              {hasActiveFilters && (
+                <View style={{ position: 'absolute', top: -2, right: -2, width: 8, height: 8, borderRadius: 4, backgroundColor: colors.accent }} />
+              )}
+            </TouchableOpacity>
           </View>
         </View>
+      </View>
 
-        <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 160, gap: 16 }} showsVerticalScrollIndicator={false}>
-          {displayedProjects.length === 0 ? (
-            hasActiveFilters ? (
-              <View>
-                <EmptyState 
-                  icon={<Filter size={24} color={colors.textMuted} />} 
-                  title="No matching projects" 
-                  body="Try changing your filters." 
-                />
-                <TouchableOpacity onPress={handleClearFilters} style={{ alignSelf: 'center', marginTop: 16 }}>
-                  <Text style={[type.body, { color: colors.accent }]}>Clear filters</Text>
-                </TouchableOpacity>
-              </View>
-            ) : activeTab === 'in_progress' ? (
+      <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 120, gap: 16 }} showsVerticalScrollIndicator={false}>
+        {displayedProjects.length === 0 ? (
+          hasActiveFilters ? (
+            <View>
               <EmptyState 
-                icon={<Flag size={24} color={colors.textMuted} />} 
-                title="No active projects" 
-                body="Add something to work on next." 
+                icon={<Filter size={24} color={colors.textMuted} />} 
+                title="No matching projects" 
+                body="Try changing your filters." 
               />
-            ) : (
-              <EmptyState 
-                icon={<Flag size={24} color={colors.textMuted} />} 
-                title="No sent projects" 
-                body="Your first send will show up here." 
-              />
-            )
+              <TouchableOpacity onPress={handleClearFilters} style={{ alignSelf: 'center', marginTop: 16 }}>
+                <Text style={[type.body, { color: colors.accent }]}>Clear filters</Text>
+              </TouchableOpacity>
+            </View>
+          ) : activeTab === 'in_progress' ? (
+            <EmptyState 
+              icon={<Flag size={24} color={colors.textMuted} />} 
+              title="No active projects" 
+              body="Add something to work on next." 
+            />
           ) : (
-            displayedProjects.map((p: any) => (
-              <ProjectCard 
-                key={p.id}
-                project={p} 
-                onLogAttempt={activeTab === 'in_progress' ? () => Alert.alert('Log Attempt', 'Use active session.') : undefined} 
-                onArchive={activeTab === 'in_progress' ? () => handleArchive(p.id) : undefined}
-                style={{ marginBottom: 16 }}
-              />
-            ))
-          )}
-        </ScrollView>
-      </Screen>
+            <EmptyState 
+              icon={<Flag size={24} color={colors.textMuted} />} 
+              title="No sent projects" 
+              body="Your first send will show up here." 
+            />
+          )
+        ) : (
+          displayedProjects.map((p: any) => (
+            <ProjectCard 
+              key={p.id}
+              project={p} 
+              onLogAttempt={activeTab === 'in_progress' ? () => Alert.alert('Log Attempt', 'Use active session.') : undefined} 
+              onArchive={activeTab === 'in_progress' ? () => handleArchive(p.id) : undefined}
+            />
+          ))
+        )}
+      </ScrollView>
+    </View>
 
       <Modal visible={isAddModalOpen} animationType="slide" transparent>
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>

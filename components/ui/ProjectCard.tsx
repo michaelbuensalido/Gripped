@@ -67,7 +67,6 @@ export function ProjectCard({
           justifyContent: 'center',
           alignItems: 'center',
           borderRadius: radius.lg,
-          marginBottom: space.md,
         }}
         onPress={() => {
           swipeableRef.current?.close();
@@ -98,7 +97,6 @@ export function ProjectCard({
           justifyContent: 'center',
           alignItems: 'center',
           borderRadius: radius.lg,
-          marginBottom: space.md,
           marginLeft: space.sm,
         }}
         onPress={() => {
@@ -132,7 +130,7 @@ export function ProjectCard({
     <TouchableOpacity
       activeOpacity={0.7}
       onPress={() => router.push(`/project/${project.id}` as any)}
-      style={[{ backgroundColor: colors.card, borderRadius: radius.lg, padding: space.md, marginBottom: space.md }, shadow.card, style]}
+      style={[{ backgroundColor: colors.card, borderRadius: radius.lg, padding: space.md }, shadow.card, style]}
       testID={`project-card-${project.title.replace(/\\s+/g, '-')}`}
     >
       {/* Row 1 */}
