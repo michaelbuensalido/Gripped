@@ -23,7 +23,7 @@ import { Card } from '../../components/ui/Card';
 import { useTheme } from '../../theme/useTheme';
 import { useActiveSession, useSessionClimbs } from '../../db/hooks';
 import { useSessionStore } from '../../store/sessionStore';
-import { deleteBoulderLog, softDeleteBoulderLog, undoDeleteBoulderLog } from '../../db/queries';
+import { deleteBoulderLog, softDeleteBoulderLog, undoDeleteBoulderLog, deleteSession } from '../../db/queries';
 import { UndoToast } from '../../components/ui/UndoToast';
 import { LogSheet } from '../../components/session/LogSheet';
 import { triggerHaptic } from '../../utils/haptics';
@@ -52,7 +52,7 @@ export default function ActiveSessionScreen() {
 
   const session = useActiveSession();
   const climbs = useSessionClimbs(session?.id ?? '');
-  const { isLogSheetOpen, setLogSheetOpen, logGenericAscent } = useSessionStore();
+  const { isLogSheetOpen, setLogSheetOpen, logGenericAscent, setActiveSessionId } = useSessionStore();
 
   const [elapsed, setElapsed] = useState(0);
   const [projectPromptAttemptId, setProjectPromptAttemptId] = useState<string | null>(null);
@@ -121,6 +121,27 @@ export default function ActiveSessionScreen() {
     }
   };
 
+  
+  const handleDiscardSession = () => {
+    Alert.alert(
+      'Discard Session',
+      'Are you sure you want to discard this session? All logged climbs will be permanently deleted.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Discard', 
+          style: 'destructive',
+          onPress: () => {
+            triggerHaptic('heavy');
+            deleteSession(session!.id);
+            setActiveSessionId(null);
+            router.replace('/');
+          }
+        }
+      ]
+    );
+  };
+
   const handleEditClimb = (climb: any) => {
     // Delete existing entry and re-open sheet pre-filled
     deleteBoulderLog(climb.id);
@@ -139,10 +160,15 @@ export default function ActiveSessionScreen() {
         subtitle={formatDuration(elapsed)}
         scroll
         headerRight={
-          <SecondaryButton
-            label="End"
-            onPress={() => router.push('/session/end')}
-          />
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.md }}>
+            <TouchableOpacity onPress={handleDiscardSession} style={{ padding: 8 }}>
+              <Trash2 size={20} color="#FF3B30" />
+            </TouchableOpacity>
+            <SecondaryButton
+              label="End"
+              onPress={() => router.push('/session/end')}
+            />
+          </View>
         }
       >
         {/* Stats row */}

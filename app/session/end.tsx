@@ -17,7 +17,7 @@ import { SectionHeader } from '../../components/ui/SectionHeader';
 import { Card } from '../../components/ui/Card';
 import { useTheme } from '../../theme/useTheme';
 import { useActiveSession } from '../../db/hooks';
-import { completeSessionWrapUp } from '../../db/queries';
+import { completeSessionWrapUp, deleteSession } from '../../db/queries';
 import { useSessionStore } from '../../store/sessionStore';
 import { triggerHaptic } from '../../utils/haptics';
 
@@ -49,6 +49,27 @@ export default function EndSessionScreen() {
     );
     setActiveSessionId(null);
     router.replace('/session/summary');
+  };
+
+
+  const handleDiscard = () => {
+    Alert.alert(
+      'Discard Session',
+      'Are you sure you want to discard this session? All logged climbs will be permanently deleted.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Discard', 
+          style: 'destructive',
+          onPress: () => {
+            triggerHaptic('heavy');
+            deleteSession(session.id);
+            setActiveSessionId(null);
+            router.replace('/');
+          }
+        }
+      ]
+    );
   };
 
   const handleCancel = () => {
@@ -127,7 +148,13 @@ export default function EndSessionScreen() {
 
         <View style={{ gap: space.md, paddingBottom: space.xl }}>
           <PrimaryButton testID="finish-session-btn" label="SAVE & FINISH" onPress={handleFinish} />
-          <SecondaryButton label="Back to Session" onPress={handleCancel} />
+                    <SecondaryButton label="Back to Session" onPress={handleCancel} />
+          <TouchableOpacity 
+            onPress={handleDiscard}
+            style={{ paddingVertical: space.md, alignItems: 'center', marginTop: space.sm }}
+          >
+            <Text style={[type.heading, { color: '#FF3B30' }]}>Discard Session</Text>
+          </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
     </Screen>
