@@ -104,8 +104,8 @@ export default function EndSessionScreen() {
                       backgroundColor: selected ? colors.accentSoft : colors.cardMuted,
                       alignItems: 'center',
                       justifyContent: 'center',
-                      borderWidth: selected ? 1.5 : 0,
-                      borderColor: selected ? colors.accent : 'transparent',
+                      borderWidth: selected ? 1.5 : 1,
+                      borderColor: selected ? colors.accent : colors.border,
                     }}
                   >
                     <Text style={[type.heading, { color: selected ? colors.accentText : colors.text }]}>
@@ -153,7 +153,9 @@ export default function EndSessionScreen() {
                     <SecondaryButton label="Back to Session" onPress={handleCancel} />
           <TouchableOpacity 
             onPress={handleDiscard}
-            style={{ paddingVertical: space.md, alignItems: 'center', marginTop: space.sm }}
+            style={{ minHeight: 48, justifyContent: 'center', alignItems: 'center', marginTop: space.xs }}
+            accessibilityRole="button"
+            accessibilityLabel="Discard Session"
           >
             <Text style={[type.heading, { color: colors.danger }]}>Discard Session</Text>
           </TouchableOpacity>

@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text } from 'react-native';
+import { useTheme } from '../../theme/useTheme';
 
 interface RestTimerPillProps {
   seconds: number;
@@ -11,13 +12,36 @@ function pad(n: number): string {
 }
 
 export function RestTimerPill({ seconds, active }: RestTimerPillProps) {
+  const { colors, type, radius } = useTheme();
+
   if (!active) return null;
   const m = Math.floor(seconds / 60);
   const s = seconds % 60;
 
   return (
-    <View className="flex-row items-center bg-blue-900 px-2.5 py-1 rounded-full">
-      <Text className="text-blue-300 text-xs font-bold font-mono">
+    <View
+      style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: colors.accentSoft,
+        borderColor: colors.border,
+        borderWidth: 1,
+        paddingHorizontal: 10,
+        paddingVertical: 4,
+        borderRadius: radius.pill,
+      }}
+    >
+      <Text
+        style={[
+          type.label,
+          {
+            color: colors.accentText,
+            fontSize: 11,
+            fontVariant: ['tabular-nums'],
+            letterSpacing: 0.8,
+          },
+        ]}
+      >
         REST {pad(m)}:{pad(s)}
       </Text>
     </View>
