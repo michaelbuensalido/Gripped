@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, Modal, TextInput, KeyboardAvoidingView, Platform, Alert, ActionSheetIOS } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { X, Filter, ChevronDown, Plus, Flag } from 'lucide-react-native';
+import { X, Filter, ChevronDown, Plus, Flag, ArrowUpDown } from 'lucide-react-native';
 import { useTheme } from '../theme/useTheme';
 import { ProjectCard } from '../components/ui/ProjectCard';
 import { EmptyState } from '../components/ui/EmptyState';
@@ -151,7 +151,7 @@ export default function ProjectsScreen() {
             accessibilityRole="button"
           >
             <Plus size={16} color={colors.textOnAccent} />
-            <Text style={[type.label, { color: colors.textOnAccent }]}>New</Text>
+            <Text style={[type.heading, { color: colors.textOnAccent, fontSize: 15 }]}>New</Text>
           </TouchableOpacity>
         </View>
         
@@ -161,44 +161,64 @@ export default function ProjectsScreen() {
         </Text>
 
         {/* Control Row */}
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-          <View style={{ flexDirection: 'row', backgroundColor: colors.card, borderRadius: radius.pill, padding: 2 }}>
-            <TouchableOpacity
-              onPress={() => { triggerHaptic('light'); setActiveTab('in_progress'); }}
-              style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: radius.pill, backgroundColor: activeTab === 'in_progress' ? colors.bg : 'transparent' }}
-              accessibilityLabel="In progress projects"
-              accessibilityRole="button"
-            >
-              <Text style={[type.label, { color: activeTab === 'in_progress' ? colors.text : colors.textMuted }]}>
-                In progress ({activeProjects.length})
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={() => { triggerHaptic('light'); setActiveTab('sent'); }}
-              style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: radius.pill, backgroundColor: activeTab === 'sent' ? colors.bg : 'transparent' }}
-              accessibilityLabel="Sent projects"
-              accessibilityRole="button"
-            >
-              <Text style={[type.label, { color: activeTab === 'sent' ? colors.text : colors.textMuted }]}>
-                Sent ({sentProjects.length})
-              </Text>
-            </TouchableOpacity>
-          </View>
 
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-            <TouchableOpacity onPress={openSortMenu} style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }} accessibilityRole="button" accessibilityLabel="Sort projects">
-              <Text style={[type.body, { color: colors.text }]}>Sort: {sortOption}</Text>
-              <ChevronDown size={16} color={colors.textMuted} />
-            </TouchableOpacity>
-            
-            <TouchableOpacity onPress={() => setIsFilterModalOpen(true)} accessibilityRole="button" accessibilityLabel="Filter projects" style={{ position: 'relative' }}>
-              <Filter size={20} color={hasActiveFilters ? colors.accent : colors.text} />
-              {hasActiveFilters && (
-                <View style={{ position: 'absolute', top: -2, right: -2, width: 8, height: 8, borderRadius: 4, backgroundColor: colors.accent }} />
-              )}
-            </TouchableOpacity>
+        <View style={{ marginBottom: 12 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+            <View style={{ flex: 1, flexDirection: 'row', backgroundColor: colors.card, borderRadius: radius.pill, padding: 2 }}>
+              <TouchableOpacity
+                onPress={() => { triggerHaptic('light'); setActiveTab('in_progress'); }}
+                style={{ flex: 1, alignItems: 'center', paddingVertical: 6, borderRadius: radius.pill, backgroundColor: activeTab === 'in_progress' ? colors.bg : 'transparent' }}
+                accessibilityLabel="In progress projects"
+                accessibilityRole="button"
+              >
+                <Text style={[type.body, { color: activeTab === 'in_progress' ? colors.text : colors.textMuted, fontWeight: activeTab === 'in_progress' ? '600' : '400' }]}>
+                  In progress ({activeProjects.length})
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => { triggerHaptic('light'); setActiveTab('sent'); }}
+                style={{ flex: 1, alignItems: 'center', paddingVertical: 6, borderRadius: radius.pill, backgroundColor: activeTab === 'sent' ? colors.bg : 'transparent' }}
+                accessibilityLabel="Sent projects"
+                accessibilityRole="button"
+              >
+                <Text style={[type.body, { color: activeTab === 'sent' ? colors.text : colors.textMuted, fontWeight: activeTab === 'sent' ? '600' : '400' }]}>
+                  Sent ({sentProjects.length})
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              <TouchableOpacity onPress={openSortMenu} style={{ width: 40, height: 40, backgroundColor: colors.card, borderRadius: radius.pill, alignItems: 'center', justifyContent: 'center' }} accessibilityRole="button" accessibilityLabel="Sort projects">
+                <ArrowUpDown size={20} color={colors.text} />
+              </TouchableOpacity>
+              
+              <TouchableOpacity onPress={() => setIsFilterModalOpen(true)} accessibilityRole="button" accessibilityLabel="Filter projects" style={{ width: 40, height: 40, backgroundColor: colors.card, borderRadius: radius.pill, alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
+                <Filter size={20} color={hasActiveFilters ? colors.accent : colors.text} />
+                {hasActiveFilters && (
+                  <View style={{ position: 'absolute', top: 8, right: 8, width: 8, height: 8, borderRadius: 4, backgroundColor: colors.accent }} />
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+          
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 8, paddingHorizontal: 4 }}>
+            <Text style={[type.caption, { color: colors.textMuted, flex: 1 }]} numberOfLines={1} ellipsizeMode="tail">
+              {(() => {
+                const parts = [`Sort: ${sortOption}`];
+                if (gymFilter) parts.push(gymFilter);
+                if (wallAngleFilter) parts.push(wallAngleFilter);
+                if (holdTypeFilter) parts.push(holdTypeFilter);
+                return parts.join(' · ');
+              })()}
+            </Text>
+            {hasActiveFilters && (
+              <TouchableOpacity onPress={handleClearFilters} style={{ marginLeft: 8 }}>
+                <Text style={[type.caption, { color: colors.accent }]}>Clear</Text>
+              </TouchableOpacity>
+            )}
           </View>
         </View>
+
       </View>
 
       <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 120, gap: 16 }} showsVerticalScrollIndicator={false}>
@@ -251,16 +271,14 @@ export default function ProjectsScreen() {
             </View>
 
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: space.lg, paddingBottom: 100 }}>
-              <Text style={[type.label, { color: colors.textMuted, marginBottom: space.xs }]}>Project Nickname</Text>
-              <TextInput testID="project-nickname-input" value={newTitle} onChangeText={setNewTitle} placeholder="e.g. Cave Roof V6" placeholderTextColor={colors.textMuted} style={[{ backgroundColor: colors.card, borderRadius: radius.md, padding: space.md, marginBottom: space.lg, color: colors.text }, type.body]} />
+              <Text style={[type.label, { color: colors.textMuted, marginBottom: space.xs }]}>Project name</Text>
+              <TextInput testID="project-nickname-input" value={newTitle} onChangeText={setNewTitle} placeholder="e.g. Blue sloper on the prow" placeholderTextColor={colors.textMuted} style={[{ backgroundColor: colors.card, borderRadius: radius.md, padding: space.md, marginBottom: space.lg, color: colors.text }, type.body]} />
 
               <Text style={[type.label, { color: colors.textMuted, marginBottom: space.xs }]}>Target Grade</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: space.lg }}>
                 <View style={{ flexDirection: 'row', gap: space.sm }}>
                   {GRADES.map(g => (
-                    <TouchableOpacity key={g} onPress={() => { triggerHaptic('light'); setNewGrade(g); }} style={{ backgroundColor: newGrade === g ? colors.accent : colors.card, paddingHorizontal: space.md, paddingVertical: space.sm, borderRadius: radius.md }}>
-                      <Text style={[type.body, { color: newGrade === g ? colors.textOnAccent : colors.text }]}>{g}</Text>
-                    </TouchableOpacity>
+                    <Chip key={g} label={g} active={newGrade === g} onPress={() => { triggerHaptic('light'); setNewGrade(g); }} />
                   ))}
                 </View>
               </ScrollView>
@@ -268,18 +286,14 @@ export default function ProjectsScreen() {
               <Text style={[type.label, { color: colors.textMuted, marginBottom: space.xs }]}>Wall Angle</Text>
               <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.sm, marginBottom: space.lg }}>
                 {WALL_ANGLES.map(a => (
-                  <TouchableOpacity key={a.key} onPress={() => { triggerHaptic('light'); setNewAngle(a.key); }} style={{ backgroundColor: newAngle === a.key ? colors.accent : colors.card, paddingHorizontal: space.md, paddingVertical: space.sm, borderRadius: radius.md }}>
-                    <Text style={[type.body, { color: newAngle === a.key ? colors.textOnAccent : colors.text }]}>{a.label}</Text>
-                  </TouchableOpacity>
+                  <Chip key={a.key} label={a.label} active={newAngle === a.key} onPress={() => { triggerHaptic('light'); setNewAngle(a.key); }} />
                 ))}
               </View>
 
               <Text style={[type.label, { color: colors.textMuted, marginBottom: space.xs }]}>Hold Type</Text>
               <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.sm, marginBottom: space.lg }}>
                 {HOLD_TYPES.map(h => (
-                  <TouchableOpacity key={h.key} onPress={() => { triggerHaptic('light'); setNewHoldType(h.key); }} style={{ backgroundColor: newHoldType === h.key ? colors.accent : colors.card, paddingHorizontal: space.md, paddingVertical: space.sm, borderRadius: radius.md }}>
-                    <Text style={[type.body, { color: newHoldType === h.key ? colors.textOnAccent : colors.text }]}>{h.label}</Text>
-                  </TouchableOpacity>
+                  <Chip key={h.key} label={h.label} active={newHoldType === h.key} onPress={() => { triggerHaptic('light'); setNewHoldType(h.key); }} />
                 ))}
               </View>
 

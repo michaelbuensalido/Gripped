@@ -94,7 +94,7 @@ export const gradeBands = [
   // Band 1: Intermediate V3-V5 — green soft
   { bg: '#DDF1D3', text: '#1F6B3A', solid: '#3BA462', label: 'Intermediate' },
   // Band 2: Advanced V6-V8 — amber/rose soft
-  { bg: '#FBE3E6', text: '#9B2C3A', solid: '#C0392B', label: 'Advanced' },
+  { bg: '#FEF0D8', text: '#9B5B00', solid: '#E07A00', label: 'Advanced' },
   // Band 3: Expert V9+ — purple soft
   { bg: '#ECE8FB', text: '#5440B5', solid: '#6A52D1', label: 'Expert' },
 ] as const;

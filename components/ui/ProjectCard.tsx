@@ -139,11 +139,12 @@ export function ProjectCard({
       <View style={{
         position: 'absolute',
         left: 0,
-        top: 0,
-        bottom: 0,
+        top: 14,
+        bottom: 14,
         width: 4,
-        borderTopLeftRadius: radius.lg,
-        borderBottomLeftRadius: radius.lg,
+        borderRadius: 2,
+        
+        
         backgroundColor: stripeColor,
       }} />
 
@@ -193,7 +194,7 @@ export function ProjectCard({
               style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingVertical: 4, paddingHorizontal: 8, backgroundColor: colors.accentSoft, borderRadius: radius.sm }}
             >
               <Plus size={14} color={colors.accentText} />
-              <Text style={[type.label, { color: colors.accentText, marginTop: 1 }]}>Log attempt</Text>
+              <Text style={[type.body, { color: colors.accentText, fontWeight: '600', marginTop: 1 }]}>Log attempt</Text>
             </TouchableOpacity>
           )}
         </View>

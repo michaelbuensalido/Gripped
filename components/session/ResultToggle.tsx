@@ -42,8 +42,8 @@ export function ResultToggle({ value, onChange }: ResultToggleProps) {
             }}
           >
             <Text style={[
-              type.label,
-              { color: isActive ? opt.activeText : colors.textMuted }
+              type.body,
+              { color: isActive ? opt.activeText : colors.textMuted, fontWeight: isActive ? '600' : '400' }
             ]}>
               {opt.label}
             </Text>

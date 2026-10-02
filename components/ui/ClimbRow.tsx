@@ -108,19 +108,18 @@ export function ClimbRow({ climb, onEdit, onDelete, animateEntry, isNewFlash }: 
         <View style={{
           position: 'absolute',
           left: 0,
-          top: 0,
-          bottom: 0,
+          top: 14,
+          bottom: 14,
           width: 4,
-          borderTopLeftRadius: radius.md,
-          borderBottomLeftRadius: radius.md,
+          borderRadius: 2,
+          
+          
           backgroundColor: stripeColor,
         }} />
 
         {isNewFlash && (
           <Reanimated.View style={[{
             position: 'absolute',
-            top: 0,
-            bottom: 0,
             width: 80,
             backgroundColor: '#FFFFFF',
             transform: [{ skewX: '-20deg' }],
