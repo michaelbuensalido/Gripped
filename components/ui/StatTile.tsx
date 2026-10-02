@@ -40,7 +40,7 @@ export function StatTile({ value, label, trend, flex, icon, tintBg }: StatTilePr
           {value}
         </Text>
       )}
-      <Text style={[{ color: colors.textMuted }, type.caption]} numberOfLines={1}>
+      <Text style={[{ color: colors.textMuted }, type.label]} numberOfLines={1}>
         {label}
       </Text>
       {trend ? (

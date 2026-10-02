@@ -22,14 +22,58 @@ function GradePicker({ value, onChange }: { value: string; onChange: (g: string)
 
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.md }}>
-      <TouchableOpacity onPress={prev} disabled={idx === 0} style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: colors.cardMuted, alignItems: 'center', justifyContent: 'center', opacity: idx === 0 ? 0.3 : 1 }}>
-        <ChevronLeft size={20} color={colors.text} />
+      <TouchableOpacity
+        onPress={prev}
+        disabled={idx === 0}
+        accessibilityRole="button"
+        accessibilityLabel="Previous grade"
+        style={{
+          width: 56,
+          height: 56,
+          borderRadius: 28,
+          backgroundColor: colors.cardMuted,
+          borderWidth: 1,
+          borderColor: colors.border,
+          alignItems: 'center',
+          justifyContent: 'center',
+          opacity: idx === 0 ? 0.3 : 1,
+        }}
+      >
+        <ChevronLeft size={24} color={colors.text} />
       </TouchableOpacity>
-      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.accentSoft, borderRadius: radius.md, paddingVertical: space.md }}>
+      <View
+        style={{
+          flex: 1,
+          minHeight: 56,
+          alignItems: 'center',
+          justifyContent: 'center',
+          backgroundColor: colors.accentSoft,
+          borderRadius: radius.md,
+          borderWidth: 1,
+          borderColor: colors.border,
+          paddingVertical: space.sm,
+        }}
+      >
         <Text style={[type.stat, { color: colors.accentText }]}>{value}</Text>
       </View>
-      <TouchableOpacity onPress={next} disabled={idx === GRADES.length - 1} style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: colors.cardMuted, alignItems: 'center', justifyContent: 'center', opacity: idx === GRADES.length - 1 ? 0.3 : 1 }}>
-        <ChevronRight size={20} color={colors.text} />
+      <TouchableOpacity
+        onPress={next}
+        disabled={idx === GRADES.length - 1}
+        accessibilityRole="button"
+        accessibilityLabel="Next grade"
+        style={{
+          width: 56,
+          height: 56,
+          borderRadius: 28,
+          backgroundColor: colors.cardMuted,
+          borderWidth: 1,
+          borderColor: colors.border,
+          alignItems: 'center',
+          justifyContent: 'center',
+          opacity: idx === GRADES.length - 1 ? 0.3 : 1,
+        }}
+      >
+        <ChevronRight size={24} color={colors.text} />
       </TouchableOpacity>
     </View>
   );
@@ -52,9 +96,19 @@ function ResultSelector({ value, onChange }: { value: ResultType; onChange: (r: 
             testID={o.testID}
             key={o.result}
             onPress={() => { triggerHaptic('light'); onChange(o.result); }}
-            style={{ flex: 1, paddingVertical: space.lg, borderRadius: radius.md, backgroundColor: selected ? o.bg : colors.cardMuted, alignItems: 'center', justifyContent: 'center', borderWidth: selected ? 1.5 : 0, borderColor: selected ? o.color : 'transparent' }}
+            style={{
+              flex: 1,
+              height: 56,
+              minHeight: 56,
+              borderRadius: radius.md,
+              backgroundColor: selected ? o.bg : colors.cardMuted,
+              alignItems: 'center',
+              justifyContent: 'center',
+              borderWidth: 1,
+              borderColor: selected ? o.color : colors.border,
+            }}
           >
-            <Text style={[type.heading, { color: selected ? o.color : colors.textMuted }]}>{o.label}</Text>
+            <Text style={[type.heading, { color: selected ? o.color : colors.textMuted, fontSize: 16 }]}>{o.label}</Text>
           </TouchableOpacity>
         );
       })}
@@ -66,14 +120,55 @@ function AttemptsStepper({ value, onChange }: { value: number; onChange: (n: num
   const { colors, space, radius, type } = useTheme();
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.md }}>
-      <TouchableOpacity onPress={() => { if (value > 1) { triggerHaptic('light'); onChange(value - 1); } }} style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: colors.cardMuted, alignItems: 'center', justifyContent: 'center', opacity: value <= 1 ? 0.3 : 1 }}>
-        <Minus size={18} color={colors.text} />
+      <TouchableOpacity
+        onPress={() => { if (value > 1) { triggerHaptic('light'); onChange(value - 1); } }}
+        disabled={value <= 1}
+        accessibilityRole="button"
+        accessibilityLabel="Decrease attempts"
+        style={{
+          width: 56,
+          height: 56,
+          borderRadius: 28,
+          backgroundColor: colors.cardMuted,
+          borderWidth: 1,
+          borderColor: colors.border,
+          alignItems: 'center',
+          justifyContent: 'center',
+          opacity: value <= 1 ? 0.3 : 1,
+        }}
+      >
+        <Minus size={22} color={colors.text} />
       </TouchableOpacity>
-      <View style={{ flex: 1, alignItems: 'center' }}>
+      <View
+        style={{
+          flex: 1,
+          minHeight: 56,
+          alignItems: 'center',
+          justifyContent: 'center',
+          backgroundColor: colors.cardMuted,
+          borderRadius: radius.md,
+          borderWidth: 1,
+          borderColor: colors.border,
+        }}
+      >
         <Text style={[type.stat, { color: colors.text }]}>{value}</Text>
       </View>
-      <TouchableOpacity onPress={() => { triggerHaptic('light'); onChange(value + 1); }} style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: colors.cardMuted, alignItems: 'center', justifyContent: 'center' }}>
-        <Plus size={18} color={colors.text} />
+      <TouchableOpacity
+        onPress={() => { triggerHaptic('light'); onChange(value + 1); }}
+        accessibilityRole="button"
+        accessibilityLabel="Increase attempts"
+        style={{
+          width: 56,
+          height: 56,
+          borderRadius: 28,
+          backgroundColor: colors.cardMuted,
+          borderWidth: 1,
+          borderColor: colors.border,
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        <Plus size={22} color={colors.text} />
       </TouchableOpacity>
     </View>
   );
@@ -119,7 +214,7 @@ export function LogSheet({
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <Pressable style={{ flex: 1, backgroundColor: colors.scrim, justifyContent: 'flex-end' }} onPress={onClose}>
         <Pressable onPress={(e) => e.stopPropagation()}>
-          <View style={{ backgroundColor: colors.card, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl, padding: space.xl, paddingBottom: space.xxl + 20, ...shadow.floating }}>
+          <View style={{ backgroundColor: colors.card, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl, borderWidth: 1, borderColor: colors.border, padding: space.xl, paddingBottom: space.xxl + 24, ...shadow.floating }}>
             
             <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: colors.border, alignSelf: 'center', marginBottom: space.lg }} />
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: space.xl }}>
@@ -150,9 +245,26 @@ export function LogSheet({
 
             <SectionHeader title="Notes (optional)" />
             <TextInput
-              value={notes} onChangeText={setNotes} placeholder="Beta, holds, feeling…" placeholderTextColor={colors.textMuted}
-              multiline numberOfLines={2}
-              style={[type.body, { color: colors.text, backgroundColor: colors.cardMuted, borderRadius: radius.md, padding: space.md, marginBottom: space.xl, minHeight: 64, textAlignVertical: 'top' }]}
+              value={notes}
+              onChangeText={setNotes}
+              placeholder="Beta, holds, feeling…"
+              placeholderTextColor={colors.textMuted}
+              multiline
+              numberOfLines={2}
+              style={[
+                type.body,
+                {
+                  color: colors.text,
+                  backgroundColor: colors.cardMuted,
+                  borderRadius: radius.md,
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                  padding: space.md,
+                  marginBottom: space.xl,
+                  minHeight: 64,
+                  textAlignVertical: 'top',
+                },
+              ]}
             />
             <PrimaryButton testID="save-climb-btn" label="SAVE CLIMB" onPress={() => onSave(grade, result, result === 'flash' ? 1 : attempts, notes)} />
           </View>

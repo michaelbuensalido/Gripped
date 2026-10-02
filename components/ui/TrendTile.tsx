@@ -25,9 +25,11 @@ export function TrendTile({ label, value, data, onPress, flex }: TrendTileProps)
         flex: flex ? 1 : undefined,
         backgroundColor: colors.card,
         borderRadius: radius.lg,
+        borderWidth: 1,
+        borderColor: colors.border,
         padding: space.md,
         justifyContent: 'space-between',
-        height: 100,
+        height: 104,
       }}
     >
       <View>

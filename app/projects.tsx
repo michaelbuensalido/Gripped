@@ -7,7 +7,7 @@ import { useTheme } from '../theme/useTheme';
 import { ProjectCard } from '../components/ui/ProjectCard';
 import { EmptyState } from '../components/ui/EmptyState';
 import { Chip } from '../components/ui/Chip';
-import { Button as PrimaryButton } from '../components/ui/Button';
+import { PrimaryButton } from '../components/ui/PrimaryButton';
 import { useRichProjects } from '../db/hooks';
 import { triggerHaptic } from '../utils/haptics';
 import * as Q from '../db/queries';
@@ -142,15 +142,24 @@ export default function ProjectsScreen() {
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
       <View style={{ paddingHorizontal: 20, paddingTop: Math.max(insets.top, 16) + 8 }}>
         {/* Header */}
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
           <Text style={[type.display, { color: colors.text }]}>Projects</Text>
           <TouchableOpacity
             onPress={() => { triggerHaptic('light'); setIsAddModalOpen(true); }}
-            style={{ backgroundColor: colors.accent, paddingHorizontal: 12, paddingVertical: 6, borderRadius: radius.pill, flexDirection: 'row', alignItems: 'center', gap: 4 }}
+            style={{
+              backgroundColor: colors.accent,
+              height: 48,
+              paddingHorizontal: 16,
+              borderRadius: radius.pill,
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 6,
+            }}
             accessibilityLabel="New project"
             accessibilityRole="button"
           >
-            <Plus size={16} color={colors.textOnAccent} />
+            <Plus size={18} color={colors.textOnAccent} />
             <Text style={[type.heading, { color: colors.textOnAccent, fontSize: 15 }]}>New</Text>
           </TouchableOpacity>
         </View>
@@ -161,41 +170,90 @@ export default function ProjectsScreen() {
         </Text>
 
         {/* Control Row */}
-
         <View style={{ marginBottom: 12 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-            <View style={{ flex: 1, flexDirection: 'row', backgroundColor: colors.card, borderRadius: radius.pill, padding: 2 }}>
+            <View style={{
+              flex: 1,
+              flexDirection: 'row',
+              backgroundColor: colors.card,
+              borderRadius: radius.md,
+              borderWidth: 1,
+              borderColor: colors.border,
+              height: 48,
+              padding: 4,
+            }}>
               <TouchableOpacity
                 onPress={() => { triggerHaptic('light'); setActiveTab('in_progress'); }}
-                style={{ flex: 1, alignItems: 'center', paddingVertical: 6, borderRadius: radius.pill, backgroundColor: activeTab === 'in_progress' ? colors.bg : 'transparent' }}
+                style={{
+                  flex: 1,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  borderRadius: radius.sm,
+                  backgroundColor: activeTab === 'in_progress' ? colors.accentSoft : 'transparent',
+                }}
                 accessibilityLabel="In progress projects"
                 accessibilityRole="button"
               >
-                <Text style={[type.body, { color: activeTab === 'in_progress' ? colors.text : colors.textMuted, fontWeight: activeTab === 'in_progress' ? '600' : '400' }]}>
+                <Text style={[type.heading, { color: activeTab === 'in_progress' ? colors.accentText : colors.textMuted, fontSize: 13 }]}>
                   In progress ({activeProjects.length})
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={() => { triggerHaptic('light'); setActiveTab('sent'); }}
-                style={{ flex: 1, alignItems: 'center', paddingVertical: 6, borderRadius: radius.pill, backgroundColor: activeTab === 'sent' ? colors.bg : 'transparent' }}
+                style={{
+                  flex: 1,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  borderRadius: radius.sm,
+                  backgroundColor: activeTab === 'sent' ? colors.accentSoft : 'transparent',
+                }}
                 accessibilityLabel="Sent projects"
                 accessibilityRole="button"
               >
-                <Text style={[type.body, { color: activeTab === 'sent' ? colors.text : colors.textMuted, fontWeight: activeTab === 'sent' ? '600' : '400' }]}>
+                <Text style={[type.heading, { color: activeTab === 'sent' ? colors.accentText : colors.textMuted, fontSize: 13 }]}>
                   Sent ({sentProjects.length})
                 </Text>
               </TouchableOpacity>
             </View>
 
             <View style={{ flexDirection: 'row', gap: 8 }}>
-              <TouchableOpacity onPress={openSortMenu} style={{ width: 40, height: 40, backgroundColor: colors.card, borderRadius: radius.pill, alignItems: 'center', justifyContent: 'center' }} accessibilityRole="button" accessibilityLabel="Sort projects">
+              <TouchableOpacity
+                onPress={openSortMenu}
+                style={{
+                  width: 48,
+                  height: 48,
+                  backgroundColor: colors.card,
+                  borderRadius: radius.md,
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+                accessibilityRole="button"
+                accessibilityLabel="Sort projects"
+              >
                 <ArrowUpDown size={20} color={colors.text} />
               </TouchableOpacity>
               
-              <TouchableOpacity onPress={() => setIsFilterModalOpen(true)} accessibilityRole="button" accessibilityLabel="Filter projects" style={{ width: 40, height: 40, backgroundColor: colors.card, borderRadius: radius.pill, alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
-                <Filter size={20} color={hasActiveFilters ? colors.accent : colors.text} />
+              <TouchableOpacity
+                onPress={() => setIsFilterModalOpen(true)}
+                accessibilityRole="button"
+                accessibilityLabel="Filter projects"
+                style={{
+                  width: 48,
+                  height: 48,
+                  backgroundColor: colors.card,
+                  borderRadius: radius.md,
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  position: 'relative',
+                }}
+              >
+                <Filter size={20} color={hasActiveFilters ? colors.accentText : colors.text} />
                 {hasActiveFilters && (
-                  <View style={{ position: 'absolute', top: 8, right: 8, width: 8, height: 8, borderRadius: 4, backgroundColor: colors.accent }} />
+                  <View style={{ position: 'absolute', top: 10, right: 10, width: 8, height: 8, borderRadius: 4, backgroundColor: colors.accent }} />
                 )}
               </TouchableOpacity>
             </View>

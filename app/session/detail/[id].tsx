@@ -105,8 +105,12 @@ function CompactStatTile({ label, value }: { label: string; value: string | numb
         flex: 1,
         backgroundColor: colors.card,
         borderRadius: radius.md,
+        borderWidth: 1,
+        borderColor: colors.border,
+        minHeight: 64,
         padding: space.sm,
         alignItems: 'center',
+        justifyContent: 'center',
       }}
     >
       <Text
@@ -117,7 +121,7 @@ function CompactStatTile({ label, value }: { label: string; value: string | numb
         {value}
       </Text>
       <Text
-        style={[type.caption, { color: colors.textMuted, marginTop: 2 }]}
+        style={[type.label, { color: colors.textMuted, fontSize: 10, marginTop: 2 }]}
         numberOfLines={1}
         adjustsFontSizeToFit
       >

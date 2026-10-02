@@ -137,6 +137,8 @@ export default function EndSessionScreen() {
                   color: colors.text,
                   backgroundColor: colors.cardMuted,
                   borderRadius: radius.md,
+                  borderWidth: 1,
+                  borderColor: colors.border,
                   padding: space.md,
                   minHeight: 100,
                   textAlignVertical: 'top',
@@ -153,7 +155,7 @@ export default function EndSessionScreen() {
             onPress={handleDiscard}
             style={{ paddingVertical: space.md, alignItems: 'center', marginTop: space.sm }}
           >
-            <Text style={[type.heading, { color: '#FF3B30' }]}>Discard Session</Text>
+            <Text style={[type.heading, { color: colors.danger }]}>Discard Session</Text>
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>

@@ -59,7 +59,7 @@ function CompactStatTile({ label, value, highlightAnim }: { label: string, value
     : colors.card;
 
   return (
-    <Animated.View style={{ flex: 1, backgroundColor: bg, borderRadius: radius.md, padding: space.sm, alignItems: 'center' }}>
+    <Animated.View style={{ flex: 1, backgroundColor: bg, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, minHeight: 64, padding: space.sm, alignItems: 'center', justifyContent: 'center' }}>
       <Text style={[type.stat, { color: colors.text, fontSize: 22 }]} numberOfLines={1} adjustsFontSizeToFit>{value}</Text>
       <Text style={[type.caption, { color: colors.textMuted, marginTop: 2 }]} numberOfLines={1} adjustsFontSizeToFit>{label}</Text>
     </Animated.View>
@@ -346,6 +346,38 @@ export default function ActiveSessionScreen() {
           <View style={{ marginBottom: space.md }}>
             <ResultToggle value={quickResult} onChange={setQuickResult} />
           </View>
+
+          {/* Quick +1 Attempt button (56px) */}
+          <TouchableOpacity
+            activeOpacity={0.7}
+            onPress={() => {
+              const lastClimb = activeClimbs[0];
+              const gradeToUse = lastClimb ? { gradeRaw: lastClimb.grade_raw, gradeIndex: lastClimb.grade_index } : (recentGrades[0] || { gradeRaw: 'V4', gradeIndex: 4 });
+              handleQuickAdd(gradeToUse);
+            }}
+            accessibilityRole="button"
+            accessibilityLabel="Quick +1 Attempt on current grade"
+            style={{
+              height: 56,
+              minHeight: 56,
+              backgroundColor: colors.cardMuted,
+              borderRadius: radius.md,
+              borderWidth: 1,
+              borderColor: colors.border,
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'center',
+              paddingHorizontal: space.md,
+              gap: space.xs,
+              marginBottom: space.md,
+            }}
+          >
+            <Plus size={20} color={colors.accentText} />
+            <Text style={[type.heading, { color: colors.text }]}>
+              +1 Attempt on {activeClimbs[0]?.grade_raw || recentGrades[0]?.gradeRaw || 'V4'}
+            </Text>
+          </TouchableOpacity>
+
           <Text style={[type.caption, { color: colors.textMuted, marginBottom: space.sm, textTransform: 'uppercase', letterSpacing: 1 }]}>
             Tap a grade to log
           </Text>
@@ -360,6 +392,20 @@ export default function ActiveSessionScreen() {
                     setLogSheetOpen(true);
                   }}
                   delayLongPress={400}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Log ${g.gradeRaw}`}
+                  style={{
+                    height: 56,
+                    minHeight: 56,
+                    minWidth: 64,
+                    paddingHorizontal: space.md,
+                    backgroundColor: colors.card,
+                    borderRadius: radius.md,
+                    borderWidth: 1,
+                    borderColor: colors.border,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
                 >
                   <GradePill gradeIndex={g.gradeIndex} label={g.gradeRaw} />
                 </TouchableOpacity>

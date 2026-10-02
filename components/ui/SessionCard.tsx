@@ -121,7 +121,14 @@ export function SessionCard({ session, onDelete }: SessionCardProps) {
         activeOpacity={0.7}
         onPress={() => router.push(`/session/detail/${session.id}?variant=summary`)}
         style={[
-          { backgroundColor: colors.card, borderRadius: radius.lg, padding: space.md, marginBottom: space.lg },
+          {
+            backgroundColor: colors.card,
+            borderRadius: radius.lg,
+            borderWidth: 1,
+            borderColor: colors.border,
+            padding: space.md,
+            marginBottom: space.lg,
+          },
           shadow.card,
         ]}
         accessibilityRole="button"

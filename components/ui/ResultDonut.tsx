@@ -18,9 +18,9 @@ export function ResultDonut({ flashCount, topCount, attemptCount, centerGrade, c
   const pieData = total === 0 ? [
     { value: 1, color: colors.border }
   ] : [
-    { value: flashCount, color: colors.flashText },
-    { value: topCount, color: colors.topText },
-    { value: attemptCount, color: colors.attemptText },
+    { value: flashCount, color: colors.flash },
+    { value: topCount, color: colors.top },
+    { value: attemptCount, color: colors.attempt },
   ];
 
   return (
@@ -39,9 +39,9 @@ export function ResultDonut({ flashCount, topCount, attemptCount, centerGrade, c
       />
       {total > 0 && (
         <View style={{ flexDirection: 'row', gap: space.md, marginTop: space.lg }}>
-          <LegendItem color={colors.flashText} label="Flash" count={flashCount} />
-          <LegendItem color={colors.topText} label="Top" count={topCount} />
-          <LegendItem color={colors.attemptText} label="Attempt" count={attemptCount} />
+          <LegendItem color={colors.flash} label="Flash" count={flashCount} />
+          <LegendItem color={colors.top} label="Top" count={topCount} />
+          <LegendItem color={colors.attempt} label="Attempt" count={attemptCount} />
         </View>
       )}
     </View>

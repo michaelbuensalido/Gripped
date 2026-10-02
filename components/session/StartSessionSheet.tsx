@@ -31,7 +31,7 @@ export function StartSessionSheet({ visible, onClose, onStart, title = "Start a 
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
       <Pressable style={{ flex: 1, backgroundColor: colors.scrim, justifyContent: 'flex-end' }} onPress={onClose}>
         <Pressable onPress={(e) => e.stopPropagation()}>
-          <View style={{ backgroundColor: colors.card, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl, padding: space.xl, paddingBottom: space.xxl + 20, ...shadow.floating }}>
+          <View style={{ backgroundColor: colors.card, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl, borderWidth: 1, borderColor: colors.border, padding: space.xl, paddingBottom: space.xxl + 24, ...shadow.floating }}>
             
             <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: colors.border, alignSelf: 'center', marginBottom: space.lg }} />
             <View style={{ marginBottom: space.xl }}>
@@ -43,7 +43,7 @@ export function StartSessionSheet({ visible, onClose, onStart, title = "Start a 
             <TextInput 
               value={gymName} 
               onChangeText={setGymName} 
-              style={[type.body, { backgroundColor: colors.cardMuted, borderRadius: radius.md, padding: space.md, marginBottom: space.xl, color: colors.text }]} 
+              style={[type.body, { backgroundColor: colors.cardMuted, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, minHeight: 56, padding: space.md, marginBottom: space.xl, color: colors.text }]} 
             />
 
             <PrimaryButton testID="start-session-submit-btn" label="Start session" onPress={() => onStart(gymName)} style={{ marginBottom: space.md }} />

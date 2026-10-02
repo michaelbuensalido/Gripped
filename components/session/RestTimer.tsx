@@ -114,11 +114,11 @@ export function RestTimer() {
       {!isComplete && (
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2, paddingRight: 4 }}>
           <View style={{ width: 1, height: 16, backgroundColor: colors.border, marginHorizontal: 4 }} />
-          <TouchableOpacity testID="add-30s-btn" onPress={handleAdd30s} style={{ padding: 4 }}>
-            <Plus size={16} color={colors.textMuted} />
+          <TouchableOpacity testID="add-30s-btn" onPress={handleAdd30s} hitSlop={{ top: 12, bottom: 12, left: 8, right: 8 }} style={{ padding: 8, justifyContent: 'center', alignItems: 'center' }}>
+            <Plus size={16} color={colors.text} />
           </TouchableOpacity>
-          <TouchableOpacity testID="skip-rest-btn" onPress={handleSkip} style={{ padding: 4 }}>
-            <FastForward size={16} color={colors.textMuted} />
+          <TouchableOpacity testID="skip-rest-btn" onPress={handleSkip} hitSlop={{ top: 12, bottom: 12, left: 8, right: 8 }} style={{ padding: 8, justifyContent: 'center', alignItems: 'center' }}>
+            <FastForward size={16} color={colors.text} />
           </TouchableOpacity>
         </View>
       )}

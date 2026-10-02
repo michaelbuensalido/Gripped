@@ -66,8 +66,9 @@ export default function ProgressScreen() {
               onPress={() => { triggerHaptic('light'); setPeriod(p.value); }}
               style={{
                 flex: 1,
-                paddingVertical: 8,
+                minHeight: 48,
                 alignItems: 'center',
+                justifyContent: 'center',
                 backgroundColor: active ? colors.accentSoft : colors.card,
                 borderRadius: radius.sm,
                 borderWidth: 1,

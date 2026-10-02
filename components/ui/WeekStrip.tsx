@@ -28,11 +28,14 @@ export function WeekStrip({ days, streak }: WeekStripProps) {
             alignItems: 'center',
             gap: space.xs,
             backgroundColor: colors.cardMuted,
+            borderWidth: 1,
+            borderColor: colors.border,
             paddingHorizontal: space.md,
             paddingVertical: space.xs,
             borderRadius: radius.pill,
           }}>
-            <Text style={[type.control, { color: colors.text }]}>
+            <Flame size={14} color={colors.accentText} />
+            <Text style={[type.control, { color: colors.text, fontWeight: '600' }]}>
               {streak} wk
             </Text>
           </View>

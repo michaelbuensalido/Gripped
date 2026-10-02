@@ -9,10 +9,10 @@ export function getGradeBandColors(gradeIndex: number, colors: any) {
 }
 
 function gradeBandStatic(gradeIndex: number) {
-  if (gradeIndex <= 2) return { bg: '#E8EAF0', text: '#3D4166', solid: '#7C85C4' };
-  if (gradeIndex <= 5) return { bg: '#DDF1D3', text: '#1F6B3A', solid: '#3BA462' };
-  if (gradeIndex <= 8) return { bg: '#FBE3E6', text: '#9B2C3A', solid: '#C0392B' };
-  return { bg: '#ECE8FB', text: '#5440B5', solid: '#6A52D1' };
+  if (gradeIndex <= 2) return { bg: 'rgba(96, 165, 250, 0.15)', text: '#93C5FD', solid: '#3B82F6' };
+  if (gradeIndex <= 5) return { bg: 'rgba(74, 222, 128, 0.15)', text: '#86EFAC', solid: '#22C55E' };
+  if (gradeIndex <= 8) return { bg: 'rgba(251, 146, 60, 0.15)', text: '#FDBA74', solid: '#F97316' };
+  return { bg: 'rgba(192, 132, 252, 0.15)', text: '#D8B4FE', solid: '#A855F7' };
 }
 
 interface GradePillProps {

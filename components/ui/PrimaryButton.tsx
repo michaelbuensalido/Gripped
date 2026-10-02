@@ -24,7 +24,8 @@ export function PrimaryButton({ testID, style, label, icon, loading, disabled, o
       style={[
         {
           backgroundColor: isDisabled ? colors.border : colors.accent,
-          height: 52,
+          height: 56,
+          minHeight: 56,
           borderRadius: radius.md,
           flexDirection: 'row',
           alignItems: 'center',

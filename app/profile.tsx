@@ -73,9 +73,9 @@ export default function LogbookScreen() {
   };
 
   const renderStat = (label: string, value: string | number) => (
-    <View style={{ flex: 1, backgroundColor: colors.card, padding: space.sm, borderRadius: radius.md, alignItems: 'center' }}>
+    <View style={{ flex: 1, backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border, minHeight: 64, padding: space.sm, borderRadius: radius.md, alignItems: 'center', justifyContent: 'center' }}>
       <Text style={[type.stat, { fontSize: 20, color: colors.text }]} adjustsFontSizeToFit numberOfLines={1}>{value}</Text>
-      <Text style={[type.caption, { color: colors.textMuted }]} numberOfLines={1}>{label}</Text>
+      <Text style={[type.label, { color: colors.textMuted, fontSize: 10, marginTop: 2 }]} numberOfLines={1}>{label}</Text>
     </View>
   );
 

@@ -129,21 +129,39 @@ export default function ProjectDetailScreen() {
         )}
 
         {/* Stats Row */}
-        <View style={{ flexDirection: 'row', gap: space.lg, marginBottom: space.xxl }}>
-          <View>
-            <Text style={[type.label, { color: colors.textMuted, marginBottom: 4 }]}>TOTAL BURNS</Text>
-            <Text style={[type.heading, { color: colors.text, fontSize: 24 }]}>{project.attempts || 0}</Text>
+        <View style={{ flexDirection: 'row', gap: space.md, marginBottom: space.xl }}>
+          <View style={{
+            flex: 1,
+            backgroundColor: colors.card,
+            borderRadius: radius.md,
+            borderWidth: 1,
+            borderColor: colors.border,
+            padding: space.md,
+            minHeight: 72,
+            justifyContent: 'center',
+          }}>
+            <Text style={[type.label, { color: colors.textMuted, fontSize: 10, marginBottom: 4 }]}>TOTAL BURNS</Text>
+            <Text style={[type.stat, { color: colors.text, fontSize: 24 }]}>{project.attempts || 0}</Text>
           </View>
-          <View>
-            <Text style={[type.label, { color: colors.textMuted, marginBottom: 4 }]}>HIGH-WATER MARK</Text>
-            <Text style={[type.heading, { color: colors.text, fontSize: 24 }]}>
+          <View style={{
+            flex: 1,
+            backgroundColor: colors.card,
+            borderRadius: radius.md,
+            borderWidth: 1,
+            borderColor: colors.border,
+            padding: space.md,
+            minHeight: 72,
+            justifyContent: 'center',
+          }}>
+            <Text style={[type.label, { color: colors.textMuted, fontSize: 10, marginBottom: 4 }]}>HIGH-WATER MARK</Text>
+            <Text style={[type.stat, { color: colors.text, fontSize: 24 }]}>
               {project.highWaterMarkMoves ? `${project.highWaterMarkMoves}` : '0'}
             </Text>
           </View>
         </View>
 
         {/* Notes */}
-        <View style={{ marginBottom: space.xxl }}>
+        <View style={{ marginBottom: space.xl }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: space.sm }}>
             <Text style={[type.label, { color: colors.textMuted, textTransform: 'uppercase', letterSpacing: 1 }]}>Notes</Text>
             {!isEditingNotes && (
@@ -153,31 +171,39 @@ export default function ProjectDetailScreen() {
             )}
           </View>
           
-          {isEditingNotes ? (
-            <View>
-              <TextInput
-                value={notesDraft}
-                onChangeText={setNotesDraft}
-                multiline
-                autoFocus
-                style={[{ backgroundColor: colors.card, borderRadius: radius.md, padding: space.md, color: colors.text, minHeight: 80 }, type.body]}
-                placeholder="Add micro-beta or sequence notes..."
-                placeholderTextColor={colors.textMuted}
-              />
-              <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginTop: space.sm, gap: space.sm }}>
-                <SecondaryButton label="Cancel" onPress={() => setIsEditingNotes(false)} />
-                <PrimaryButton label="Save" onPress={handleSaveNotes} />
+          <View style={{
+            backgroundColor: colors.card,
+            borderRadius: radius.md,
+            borderWidth: 1,
+            borderColor: colors.border,
+            padding: space.md,
+          }}>
+            {isEditingNotes ? (
+              <View>
+                <TextInput
+                  value={notesDraft}
+                  onChangeText={setNotesDraft}
+                  multiline
+                  autoFocus
+                  style={[{ backgroundColor: colors.cardMuted, borderRadius: radius.sm, borderWidth: 1, borderColor: colors.border, padding: space.md, color: colors.text, minHeight: 80 }, type.body]}
+                  placeholder="Add micro-beta or sequence notes..."
+                  placeholderTextColor={colors.textMuted}
+                />
+                <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginTop: space.md, gap: space.sm }}>
+                  <SecondaryButton label="Cancel" onPress={() => setIsEditingNotes(false)} />
+                  <PrimaryButton label="Save" onPress={handleSaveNotes} />
+                </View>
               </View>
-            </View>
-          ) : (
-            <TouchableOpacity onPress={() => { setNotesDraft(project.microBeta || ''); setIsEditingNotes(true); }}>
-              {project.microBeta ? (
-                <Text style={[type.body, { color: colors.text }]}>{project.microBeta}</Text>
-              ) : (
-                <Text style={[type.body, { color: colors.textMuted, fontStyle: 'italic' }]}>Tap to add notes...</Text>
-              )}
-            </TouchableOpacity>
-          )}
+            ) : (
+              <TouchableOpacity onPress={() => { setNotesDraft(project.microBeta || ''); setIsEditingNotes(true); }}>
+                {project.microBeta ? (
+                  <Text style={[type.body, { color: colors.text }]}>{project.microBeta}</Text>
+                ) : (
+                  <Text style={[type.body, { color: colors.textMuted, fontStyle: 'italic' }]}>Tap to add notes...</Text>
+                )}
+              </TouchableOpacity>
+            )}
+          </View>
         </View>
 
         {/* History */}

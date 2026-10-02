@@ -94,6 +94,9 @@ export function ClimbRow({ climb, onEdit, onDelete, animateEntry, isNewFlash }: 
         style={{
           backgroundColor: colors.card,
           borderRadius: radius.md,
+          borderWidth: 1,
+          borderColor: colors.border,
+          minHeight: 56,
           flexDirection: 'row',
           alignItems: 'center',
           paddingLeft: space.md + 8,
