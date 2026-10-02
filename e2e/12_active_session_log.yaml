@@ -1,0 +1,31 @@
+appId: com.cruxlog
+---
+- clearState
+- launchApp
+
+# Start a session
+- tapOn: "Start session" # From Home Screen
+# Or wait, what is the ID? In previous tests it was "start-session-btn" or similar.
+# In app/index.tsx, it's a tile with label "Start session" or something.
+# Let's just use the exact text.
+- tapOn: "Start session" # On home screen
+
+# Verify we are on Active Session
+# And there is NO Floating Tab Bar. We can check by asserting that a tab like 'Projects' is hidden.
+# Assuming FloatingTabBar has labels "Home", "Projects" etc.
+- assertNotVisible: "Projects-tab"
+
+# Check Log Climb button is visible
+- assertVisible: "LOG CLIMB"
+
+# Tap Log Climb button
+- tapOn: "LOG CLIMB"
+
+# Ensure bottom sheet opened
+- assertVisible: "SAVE CLIMB"
+- tapOn: "V4"
+- tapOn: "SAVE CLIMB"
+
+# End session
+- tapOn: "End"
+- tapOn: "FINISH SESSION"

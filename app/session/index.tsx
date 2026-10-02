@@ -1,10 +1,9 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, Alert, StyleSheet, Keyboard } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, TouchableOpacity, ScrollView, Alert, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { ChevronLeft, Trash2, Plus, MoreHorizontal } from 'lucide-react-native';
+import { ChevronLeft, Plus, MoreHorizontal } from 'lucide-react-native';
 import { Screen } from '../../components/ui/Screen';
-import { StatTile } from '../../components/ui/StatTile';
 import { PrimaryButton } from '../../components/ui/PrimaryButton';
 import { SecondaryButton } from '../../components/ui/SecondaryButton';
 import { EmptyState } from '../../components/ui/EmptyState';
@@ -38,6 +37,16 @@ function LiveTimer({ startTime, textStyle }: { startTime: number, textStyle: any
   }, [startTime]);
 
   return <Text style={textStyle}>{formatDuration(elapsed)}</Text>;
+}
+
+function CompactStatTile({ label, value }: { label: string, value: string | number }) {
+  const { colors, type, radius, space } = useTheme();
+  return (
+    <View style={{ flex: 1, backgroundColor: colors.card, borderRadius: radius.md, padding: space.sm, alignItems: 'center' }}>
+      <Text style={[type.stat, { color: colors.text, fontSize: 22 }]} numberOfLines={1} adjustsFontSizeToFit>{value}</Text>
+      <Text style={[type.caption, { color: colors.textMuted, marginTop: 2 }]} numberOfLines={1} adjustsFontSizeToFit>{label}</Text>
+    </View>
+  );
 }
 
 export default function ActiveSessionScreen() {
@@ -90,9 +99,6 @@ export default function ActiveSessionScreen() {
       movesLinked: 1,
       notes: '',
     });
-    // Add quick undo toast for quick add as requested.
-    // Wait, prompt says: "One tap logs a Top at that grade ... and shows a toast with Undo"
-    // Using existing softDelete / undoDelete logic here
     setDeletedClimbId(attemptId);
   };
 
@@ -119,13 +125,13 @@ export default function ActiveSessionScreen() {
   const handleDeleteClimb = (id: string) => {
     triggerHaptic('light');
     softDeleteBoulderLog(id);
-    setDeletedClimbId(id); // Using the same toast state for deletes
+    setDeletedClimbId(id); 
   };
 
   const handleUndoDelete = () => {
     if (deletedClimbId) {
       triggerHaptic('light');
-      undoDeleteBoulderLog(deletedClimbId); // restores deleted climb
+      undoDeleteBoulderLog(deletedClimbId); 
       setDeletedClimbId(null);
     }
   };
@@ -173,31 +179,34 @@ export default function ActiveSessionScreen() {
         justifyContent: 'space-between',
         zIndex: 10,
       }}>
+        {/* Left Side (Chevron) */}
         <TouchableOpacity
           onPress={() => router.back()}
-          style={{ padding: space.sm, marginLeft: -space.sm }}
           accessibilityRole="button"
           accessibilityLabel="Back"
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
           <ChevronLeft size={24} color={colors.text} />
         </TouchableOpacity>
 
-        <View style={{ flex: 1, alignItems: 'center' }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.xs }}>
-            <Text style={[type.heading, { color: colors.text }]} numberOfLines={1}>
+        {/* Center Title Block - Absolute positioned to guarantee true center */}
+        <View style={{ position: 'absolute', left: 0, right: 0, top: Math.max(insets.top, space.lg) - 4, alignItems: 'center', pointerEvents: 'none' }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.xs, marginBottom: 2 }}>
+            <Text style={[type.heading, { color: colors.text, fontSize: 16 }]} numberOfLines={1}>
               {session.gymName || 'Session'}
             </Text>
             <SyncChip state="synced" />
           </View>
-          <LiveTimer startTime={session.startTime} textStyle={[type.stat, { color: colors.text, fontSize: 32, marginTop: space.xs }]} />
+          <LiveTimer startTime={session.startTime} textStyle={[type.stat, { color: colors.text, fontSize: 32 }]} />
         </View>
 
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm, marginRight: -space.sm }}>
+        {/* Right Side (More Options + End) */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm }}>
           <TouchableOpacity 
             onPress={() => setShowMenu(!showMenu)} 
-            style={{ padding: space.sm }}
             accessibilityRole="button"
             accessibilityLabel="More options"
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
             <MoreHorizontal size={24} color={colors.text} />
           </TouchableOpacity>
@@ -211,9 +220,9 @@ export default function ActiveSessionScreen() {
         {showMenu && (
           <View style={[
             styles.menu, 
-            { backgroundColor: colors.card, borderColor: colors.border, borderRadius: radius.md, top: insets.top + 50, right: space.lg }
+            { backgroundColor: colors.card, borderColor: colors.border, borderRadius: radius.md, top: insets.top + 40, right: space.lg }
           ]}>
-            <TouchableOpacity style={{ padding: space.md, borderBottomWidth: 1, borderBottomColor: colors.border }}>
+            <TouchableOpacity style={{ padding: space.md, borderBottomWidth: 1, borderBottomColor: colors.border }} onPress={() => setShowMenu(false)}>
               <Text style={[type.body, { color: colors.text }]}>Change gym</Text>
             </TouchableOpacity>
             <TouchableOpacity onPress={handleDiscardSession} style={{ padding: space.md }}>
@@ -224,20 +233,18 @@ export default function ActiveSessionScreen() {
       </View>
 
       <ScrollView contentContainerStyle={{ paddingHorizontal: space.lg, paddingBottom: 160 }}>
-        {/* Stat Tiles */}
-        <View style={{ flexDirection: 'row', gap: space.sm, marginBottom: space.md }}>
-          <StatTile flex label="Climbs" value={activeClimbs.length} />
-          <StatTile flex label="Sends" value={sends.length} />
-        </View>
-        <View style={{ flexDirection: 'row', gap: space.sm, marginBottom: space.xl }}>
-          <StatTile flex label="Flashes" value={flashes.length} />
-          <StatTile flex label="Hardest" value={hardestLabel} />
+        {/* Compact Stat Tiles */}
+        <View style={{ flexDirection: 'row', gap: space.xs, marginBottom: space.xl, marginTop: space.sm }}>
+          <CompactStatTile label="Climbs" value={activeClimbs.length} />
+          <CompactStatTile label="Sends" value={sends.length} />
+          <CompactStatTile label="Flashes" value={flashes.length} />
+          <CompactStatTile label="Hardest" value={hardestLabel} />
         </View>
 
         {/* Quick Add Row */}
         <View style={{ marginBottom: space.lg }}>
           <Text style={[type.caption, { color: colors.textMuted, marginBottom: space.sm, textTransform: 'uppercase', letterSpacing: 1 }]}>
-            Quick Add
+            Tap a grade to log a Top. Hold for more options.
           </Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -space.lg }}>
             <View style={{ flexDirection: 'row', paddingHorizontal: space.lg, gap: space.sm }}>
@@ -283,13 +290,13 @@ export default function ActiveSessionScreen() {
       <View
         style={{
           position: 'absolute',
-          bottom: Math.max(insets.bottom, space.md),
+          bottom: Math.max(insets.bottom, 16),
           left: space.lg,
           right: space.lg,
         }}
-        pointerEvents="box-none"
       >
         <PrimaryButton
+          testID="log-climb-btn"
           icon={<Plus color={colors.textOnAccent} size={20} strokeWidth={2.5} />}
           label="LOG CLIMB"
           onPress={() => {
@@ -308,9 +315,6 @@ export default function ActiveSessionScreen() {
         initialAttempts={editingClimb?.attempts}
       />
       
-      {/* Undo Toast - Note: handling both quick add and delete undo via the same state variable, 
-          with slightly different functions. In a real app we might distinguish them, but for now 
-          deletedClimbId holds the ID we just manipulated. */}
       <UndoToast 
         visible={!!deletedClimbId} 
         message={climbs.find((c: any) => c.id === deletedClimbId)?.deleted_at === null ? "Climb logged" : "Climb deleted"}
