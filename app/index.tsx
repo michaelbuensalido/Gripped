@@ -139,19 +139,18 @@ export default function HomeScreen() {
       {/* 2. Today's Session Card — the ONE primary action */}
       <View style={{ marginBottom: space.xl }}>
         {data.activeSession ? (
-          <Card>
-            <View style={{ marginBottom: space.lg }}>
-              <Text style={[type.label, { color: colors.accentText, marginBottom: space.xs }]}>Session in progress</Text>
-              <Text style={[type.stat, { color: colors.text, marginBottom: space.xs }]}>{formatDuration(elapsed)}</Text>
-              <Text style={[type.caption, { color: colors.textMuted }]}>{plural(data.activeSessionClimbCount, 'climb')} logged</Text>
-            </View>
+          <HeroCard
+            title="SESSION IN PROGRESS"
+            value={formatDuration(elapsed)}
+            subtitle={`${plural(data.activeSessionClimbCount, 'climb')} logged`}
+          >
             <PrimaryButton
               testID="resume-session-btn"
               label="Resume session"
               icon={<PlayCircle color={colors.textOnAccent} size={20} />}
               onPress={handleStartSession}
             />
-          </Card>
+          </HeroCard>
         ) : (
           <>
             {!data.hasAnyData && (
@@ -166,22 +165,17 @@ export default function HomeScreen() {
                 resizeMode="cover"
               />
             )}
-            <Card>
-              <View style={{ marginBottom: space.lg }}>
-                <Text style={[type.label, { color: colors.textMuted, marginBottom: space.xs }]}>
-                  {data.hasAnyData ? "Today's session" : 'Log your first session'}
-                </Text>
-                <Text style={[type.heading, { color: colors.text }]}>
-                  {data.lastSession ? `${data.lastSession.gymName} · ${data.lastSessionRelative}` : 'Tap below to get started'}
-                </Text>
-              </View>
+            <HeroCard
+              title={data.hasAnyData ? "TODAY'S SESSION" : 'LOG YOUR FIRST SESSION'}
+              subtitle={data.lastSession ? `${data.lastSession.gymName} · ${data.lastSessionRelative}` : 'Tap below to get started'}
+            >
               <PrimaryButton
                 testID="start-session-btn"
                 label="Start session"
                 icon={<PlayCircle color={colors.textOnAccent} size={20} />}
                 onPress={handleStartSession}
               />
-            </Card>
+            </HeroCard>
           </>
         )}
       </View>

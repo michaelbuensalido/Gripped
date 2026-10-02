@@ -187,7 +187,7 @@ export default function ProjectsScreen() {
             <View style={{
               flex: 1,
               flexDirection: 'row',
-              backgroundColor: colors.card,
+              backgroundColor: colors.cardMuted,
               borderRadius: radius.md,
               borderWidth: 1,
               borderColor: colors.border,
@@ -197,33 +197,39 @@ export default function ProjectsScreen() {
             }}>
               <TouchableOpacity
                 onPress={() => { triggerHaptic('light'); setActiveTab('in_progress'); }}
+                accessibilityRole="button"
+                accessibilityState={{ selected: activeTab === 'in_progress' }}
+                accessibilityLabel="In progress projects"
                 style={{
                   flex: 1,
                   alignItems: 'center',
                   justifyContent: 'center',
                   borderRadius: radius.sm,
-                  backgroundColor: activeTab === 'in_progress' ? colors.accentSoft : 'transparent',
+                  backgroundColor: activeTab === 'in_progress' ? colors.card : 'transparent',
+                  borderWidth: activeTab === 'in_progress' ? 1 : 0,
+                  borderColor: colors.border,
                 }}
-                accessibilityLabel="In progress projects"
-                accessibilityRole="button"
               >
-                <Text style={[type.heading, { color: activeTab === 'in_progress' ? colors.accentText : colors.textMuted, fontSize: 13 }]}>
+                <Text style={[type.heading, { color: activeTab === 'in_progress' ? colors.text : colors.textMuted, fontSize: 13, fontWeight: activeTab === 'in_progress' ? '700' : '500' }]}>
                   In progress ({activeProjects.length})
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={() => { triggerHaptic('light'); setActiveTab('sent'); }}
+                accessibilityRole="button"
+                accessibilityState={{ selected: activeTab === 'sent' }}
+                accessibilityLabel="Sent projects"
                 style={{
                   flex: 1,
                   alignItems: 'center',
                   justifyContent: 'center',
                   borderRadius: radius.sm,
-                  backgroundColor: activeTab === 'sent' ? colors.accentSoft : 'transparent',
+                  backgroundColor: activeTab === 'sent' ? colors.card : 'transparent',
+                  borderWidth: activeTab === 'sent' ? 1 : 0,
+                  borderColor: colors.border,
                 }}
-                accessibilityLabel="Sent projects"
-                accessibilityRole="button"
               >
-                <Text style={[type.heading, { color: activeTab === 'sent' ? colors.accentText : colors.textMuted, fontSize: 13 }]}>
+                <Text style={[type.heading, { color: activeTab === 'sent' ? colors.flashText : colors.textMuted, fontSize: 13, fontWeight: activeTab === 'sent' ? '700' : '500' }]}>
                   Sent ({sentProjects.length})
                 </Text>
               </TouchableOpacity>

@@ -27,16 +27,16 @@ export function WeekStrip({ days, streak }: WeekStripProps) {
             flexDirection: 'row',
             alignItems: 'center',
             gap: space.xs,
-            backgroundColor: colors.cardMuted,
+            backgroundColor: colors.accentSoft,
             borderWidth: 1,
-            borderColor: colors.border,
+            borderColor: colors.accent + '33',
             paddingHorizontal: space.md,
-            paddingVertical: space.xs,
+            paddingVertical: 6,
             borderRadius: radius.pill,
           }}>
             <Flame size={14} color={colors.accentText} />
-            <Text style={[type.control, { color: colors.text, fontWeight: '600' }]}>
-              {streak} wk
+            <Text style={[type.control, { color: colors.accentText, fontWeight: '700', fontSize: 13 }]}>
+              {streak} wk streak
             </Text>
           </View>
         </View>
@@ -48,26 +48,41 @@ export function WeekStrip({ days, streak }: WeekStripProps) {
           const filled = day.hasSession;
           return (
             <View key={index} style={{ alignItems: 'center', flex: 1 }}>
-              <Text style={[type.caption, { color: colors.textMuted, marginBottom: space.sm }]}>
+              <Text
+                style={[
+                  type.caption,
+                  {
+                    color: day.isToday ? colors.accentText : colors.textMuted,
+                    fontWeight: day.isToday ? '700' : '400',
+                    marginBottom: space.sm,
+                  },
+                ]}
+              >
                 {day.dayLabel}
               </Text>
               <View style={{ width: 36, height: 36, justifyContent: 'center', alignItems: 'center' }}>
                 {day.isToday && (
-                  <View style={{
-                    position: 'absolute',
-                    width: 36,
-                    height: 36,
-                    borderRadius: 18,
-                    borderWidth: 2,
-                    borderColor: colors.accent,
-                  }} />
+                  <View
+                    style={{
+                      position: 'absolute',
+                      width: 36,
+                      height: 36,
+                      borderRadius: 18,
+                      borderWidth: 1.5,
+                      borderColor: colors.accent,
+                    }}
+                  />
                 )}
-                <View style={{
-                  width: 28,
-                  height: 28,
-                  borderRadius: 14,
-                  backgroundColor: filled ? colors.accent : colors.cardMuted,
-                }} />
+                <View
+                  style={{
+                    width: 26,
+                    height: 26,
+                    borderRadius: 13,
+                    backgroundColor: filled ? colors.accent : colors.cardMuted,
+                    borderWidth: 1,
+                    borderColor: filled ? colors.accent : colors.border,
+                  }}
+                />
               </View>
             </View>
           );

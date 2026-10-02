@@ -7,6 +7,8 @@ import { GradePill } from '../../components/ui/GradePill';
 import { Chip } from '../../components/ui/Chip';
 import { PrimaryButton } from '../../components/ui/PrimaryButton';
 import { SecondaryButton } from '../../components/ui/SecondaryButton';
+import { VideoPlayerView } from '../../components/ui/VideoPlayerView';
+import Svg, { Path } from 'react-native-svg';
 import { useTheme } from '../../theme/useTheme';
 import { useProject, useProjectHistory } from '../../db/hooks';
 import { updateProjectStatus, deleteProject, updateProjectBeta } from '../../db/queries';
@@ -16,7 +18,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 export default function ProjectDetailScreen() {
   const { id } = useLocalSearchParams();
   const router = useRouter();
-  const { colors, space, type, radius } = useTheme();
+  const { colors, space, type, radius, gradeBand } = useTheme();
   const insets = useSafeAreaInsets();
   
   const project = useProject(id as string);
@@ -133,6 +135,40 @@ export default function ProjectDetailScreen() {
       </View>
 
       <ScrollView contentContainerStyle={{ paddingHorizontal: space.lg, paddingBottom: 120 }}>
+        {/* Media Header (Video/Photo/Hold Placeholder) */}
+        <View
+          style={{
+            width: '100%',
+            height: 200,
+            backgroundColor: colors.card,
+            borderRadius: radius.lg,
+            borderWidth: 1,
+            borderColor: colors.border,
+            overflow: 'hidden',
+            marginBottom: space.lg,
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          {project.mediaUri ? (
+            <VideoPlayerView
+              uri={project.mediaUri}
+              style={{ width: '100%', height: '100%', backgroundColor: colors.card }}
+              contentFit="cover"
+            />
+          ) : (
+            <View style={{ width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center', backgroundColor: colors.cardMuted }}>
+              <Svg width={90} height={90} viewBox="0 0 100 100">
+                <Path
+                  d="M80 30 C90 20, 100 40, 95 60 C90 80, 70 90, 50 85 C30 80, 20 60, 25 40 C30 20, 70 40, 80 30Z"
+                  fill={gradeBand(project.normalizedDifficulty ?? 0).solid}
+                  opacity={0.16}
+                />
+              </Svg>
+            </View>
+          )}
+        </View>
+
         {/* Header */}
         <View style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: space.md, gap: space.md }}>
           <GradePill gradeIndex={project.normalizedDifficulty} label={project.gradeRaw} />
@@ -169,7 +205,7 @@ export default function ProjectDetailScreen() {
             justifyContent: 'center',
           }}>
             <Text style={[type.label, { color: colors.textMuted, fontSize: 10, marginBottom: 4 }]}>TOTAL BURNS</Text>
-            <Text style={[type.stat, { color: colors.text, fontSize: 24 }]}>{project.attempts || 0}</Text>
+            <Text style={[type.stat, { color: colors.text, fontSize: 24, fontVariant: ['tabular-nums'] }]}>{project.attempts || 0}</Text>
           </View>
           <View style={{
             flex: 1,
@@ -182,7 +218,7 @@ export default function ProjectDetailScreen() {
             justifyContent: 'center',
           }}>
             <Text style={[type.label, { color: colors.textMuted, fontSize: 10, marginBottom: 4 }]}>HIGH-WATER MARK</Text>
-            <Text style={[type.stat, { color: colors.text, fontSize: 24 }]}>
+            <Text style={[type.stat, { color: colors.text, fontSize: 24, fontVariant: ['tabular-nums'] }]}>
               {project.highWaterMarkMoves ? `${project.highWaterMarkMoves}` : '0'}
             </Text>
           </View>
@@ -193,8 +229,20 @@ export default function ProjectDetailScreen() {
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: space.sm }}>
             <Text style={[type.label, { color: colors.textMuted, textTransform: 'uppercase', letterSpacing: 1 }]}>Notes</Text>
             {!isEditingNotes && (
-              <TouchableOpacity onPress={() => { setNotesDraft(project.microBeta || ''); setIsEditingNotes(true); }} style={{ padding: 4 }}>
-                <Edit2 size={16} color={colors.textMuted} />
+              <TouchableOpacity
+                onPress={() => { setNotesDraft(project.microBeta || ''); setIsEditingNotes(true); }}
+                accessibilityRole="button"
+                accessibilityLabel="Edit notes"
+                style={{
+                  width: 32,
+                  height: 32,
+                  borderRadius: radius.sm,
+                  backgroundColor: colors.cardMuted,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <Edit2 size={15} color={colors.accentText} />
               </TouchableOpacity>
             )}
           </View>
@@ -213,21 +261,37 @@ export default function ProjectDetailScreen() {
                   onChangeText={setNotesDraft}
                   multiline
                   autoFocus
-                  style={[{ backgroundColor: colors.cardMuted, borderRadius: radius.sm, borderWidth: 1, borderColor: colors.border, padding: space.md, color: colors.text, minHeight: 80 }, type.body]}
+                  style={[
+                    type.body,
+                    {
+                      backgroundColor: colors.cardMuted,
+                      borderRadius: radius.sm,
+                      borderWidth: 1,
+                      borderColor: colors.border,
+                      padding: space.md,
+                      color: colors.text,
+                      minHeight: 96,
+                      textAlignVertical: 'top',
+                    },
+                  ]}
                   placeholder="Add micro-beta or sequence notes..."
                   placeholderTextColor={colors.textMuted}
                 />
                 <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginTop: space.md, gap: space.sm }}>
-                  <SecondaryButton label="Cancel" onPress={() => setIsEditingNotes(false)} />
-                  <PrimaryButton label="Save" onPress={handleSaveNotes} />
+                  <SecondaryButton label="Cancel" onPress={() => setIsEditingNotes(false)} style={{ flex: 1 }} />
+                  <PrimaryButton label="Save" onPress={handleSaveNotes} style={{ flex: 1 }} />
                 </View>
               </View>
             ) : (
-              <TouchableOpacity onPress={() => { setNotesDraft(project.microBeta || ''); setIsEditingNotes(true); }}>
+              <TouchableOpacity
+                activeOpacity={0.7}
+                onPress={() => { setNotesDraft(project.microBeta || ''); setIsEditingNotes(true); }}
+                style={{ minHeight: 48, justifyContent: 'center' }}
+              >
                 {project.microBeta ? (
-                  <Text style={[type.body, { color: colors.text }]}>{project.microBeta}</Text>
+                  <Text style={[type.body, { color: colors.text, lineHeight: 22 }]}>{project.microBeta}</Text>
                 ) : (
-                  <Text style={[type.body, { color: colors.textMuted, fontStyle: 'italic' }]}>Tap to add notes...</Text>
+                  <Text style={[type.body, { color: colors.textMuted, fontStyle: 'italic' }]}>Tap to add micro-beta or sequence notes...</Text>
                 )}
               </TouchableOpacity>
             )}
