@@ -72,9 +72,21 @@ export const type = {
     letterSpacing: -0.5,
   },
   title: { fontFamily: "Sora_600SemiBold", fontSize: 22, lineHeight: 28 },
-  stat: { fontFamily: "Sora_600SemiBold", fontSize: 34, lineHeight: 38 },
+  stat: {
+    fontFamily: "Sora_600SemiBold",
+    fontSize: 34,
+    lineHeight: 38,
+    fontVariant: ["tabular-nums" as const],
+  },
+  statSm: {
+    fontFamily: "Sora_600SemiBold",
+    fontSize: 24,
+    lineHeight: 28,
+    fontVariant: ["tabular-nums" as const],
+  },
   heading: { fontFamily: "Inter_600SemiBold", fontSize: 17, lineHeight: 22 },
   body: { fontFamily: "Inter_400Regular", fontSize: 15, lineHeight: 22 },
+  control: { fontFamily: "Inter_500Medium", fontSize: 14, lineHeight: 20 }, // chips, buttons, toggles: sentence case
   label: {
     fontFamily: "Inter_500Medium",
     fontSize: 12,
@@ -85,7 +97,15 @@ export const type = {
   caption: { fontFamily: "Inter_400Regular", fontSize: 12, lineHeight: 16 },
 };
 
-export const motion = { fast: 120, base: 200, slow: 320 }; // ms
+export const motion = {
+  duration: { fast: 120, base: 200, slow: 320, celebrate: 900 }, // ms
+  easing: {
+    standard: [0.2, 0, 0, 1],
+    enter: [0, 0, 0, 1],
+    exit: [0.4, 0, 1, 1],
+  },
+  spring: { damping: 18, stiffness: 220 },
+};
 
 // Grade band colours — one source of truth used by pills, stripes, charts
 export const gradeBands = [

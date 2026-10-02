@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, TouchableOpacity, StyleSheet, ViewProps } from 'react-native';
+import { View, TouchableOpacity, ViewProps, Animated } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../../theme/useTheme';
 
@@ -16,7 +16,7 @@ export function Card({ children, variant = 'default', onPress, style, ...props }
     borderRadius: radius.lg,
     padding: space.lg,
     backgroundColor: variant === 'muted' ? colors.cardMuted : colors.card,
-    ...(variant !== 'muted' ? shadow.card : {}),
+    ...(variant === 'muted' ? {} : shadow.card),
   };
 
   const content = variant === 'hero' ? (
@@ -35,7 +35,11 @@ export function Card({ children, variant = 'default', onPress, style, ...props }
   );
 
   if (onPress) {
-    return <TouchableOpacity onPress={onPress} activeOpacity={0.8}>{content}</TouchableOpacity>;
+    return (
+      <TouchableOpacity onPress={onPress} activeOpacity={0.85}>
+        {content}
+      </TouchableOpacity>
+    );
   }
   return content;
 }

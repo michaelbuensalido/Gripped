@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Animated, Dimensions, Image } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Animated, Image } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Settings as SettingsIcon, Plus, PlayCircle, Trophy } from 'lucide-react-native';
-import { Screen } from '../components/ui/Screen';
 import { Card } from '../components/ui/Card';
 import { HeroCard } from '../components/ui/HeroCard';
 import { ProjectCard } from '../components/ui/ProjectCard';
@@ -24,6 +23,7 @@ import { useHomeSummary } from '../db/hooks';
 import { useSessionActions } from '../hooks/useSessionActions';
 import { StartSessionSheet } from '../components/session/StartSessionSheet';
 import { triggerHaptic } from '../utils/haptics';
+import { plural } from '../utils/string';
 
 function formatDuration(ms: number) {
   const totalSecs = Math.floor(ms / 1000);
@@ -86,31 +86,49 @@ export default function HomeScreen() {
       <Animated.ScrollView
         onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], { useNativeDriver: true })}
         scrollEventThrottle={16}
-        contentContainerStyle={{ paddingTop: Math.max(insets.top, space.xxl), paddingHorizontal: space.lg }}
+        contentContainerStyle={{
+          paddingTop: Math.max(insets.top, space.xxl),
+          paddingHorizontal: space.lg + space.xs, // 20px sides per design system
+        }}
       >
-      {/* 1. Header */}
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: space.xl }}>
-        <View style={{ flex: 1, alignItems: 'flex-start' }}>
-          <Text style={[type.body, { color: colors.textMuted, marginBottom: space.xs }]}>{greeting}</Text>
-          <Text style={[type.display, { color: colors.text }]}>Welcome back</Text>
+      {/* 1. Header — greeting, best grade chip, settings */}
+      <View style={{
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'flex-start',
+        marginBottom: space.xl,
+      }}>
+        <View style={{ flex: 1 }}>
+          <Text style={[type.caption, { color: colors.textMuted, marginBottom: space.xs }]}>
+            {greeting}
+          </Text>
+          <Text style={[type.display, { color: colors.text }]}>
+            CruxLog
+          </Text>
           {data.hardest30d && (
             <View style={{ marginTop: space.sm }}>
-               <GradePill gradeIndex={data.hardest30d.gradeIndex} label={`Best ${data.hardest30d.gradeRaw}`} />
+              <GradePill
+                gradeIndex={data.hardest30d.gradeIndex}
+                label={`Best ${data.hardest30d.gradeRaw}`}
+              />
             </View>
           )}
         </View>
         <TouchableOpacity
           onPress={() => router.push('/settings')}
           style={{
-            padding: space.sm,
+            width: 44,
+            height: 44,
+            justifyContent: 'center',
+            alignItems: 'center',
             backgroundColor: colors.card,
             borderRadius: radius.md,
-            borderWidth: 1,
-            borderColor: colors.border,
-            marginTop: space.sm
+            ...shadow.card,
           }}
+          accessibilityLabel="Settings"
+          accessibilityRole="button"
         >
-          <SettingsIcon size={20} color={colors.text} />
+          <SettingsIcon size={20} color={colors.textMuted} />
         </TouchableOpacity>
       </View>
 
@@ -118,9 +136,9 @@ export default function HomeScreen() {
       <View style={{ marginBottom: space.xl }}>
         {data.activeSession ? (
           <HeroCard
-            title="SESSION IN PROGRESS"
+            title="Session in progress"
             value={formatDuration(elapsed)}
-            subtitle={`${data.activeSessionClimbCount} climb${data.activeSessionClimbCount !== 1 ? 's' : ''} logged`}
+            subtitle={plural(data.activeSessionClimbCount, 'climb') + ' logged'}
           >
             <PrimaryButton
               testID="resume-session-btn"
@@ -134,12 +152,17 @@ export default function HomeScreen() {
             {!data.hasAnyData && (
               <Image
                 source={require('../assets/images/welcome-hero.png')}
-                style={{ width: '100%', height: 180, borderRadius: radius.xl, marginBottom: space.lg }}
+                style={{
+                  width: '100%',
+                  height: 180,
+                  borderRadius: radius.xl,
+                  marginBottom: space.lg,
+                }}
                 resizeMode="cover"
               />
             )}
             <HeroCard
-              title={data.hasAnyData ? 'READY TO CLIMB?' : 'LOG YOUR FIRST SESSION'}
+              title={data.hasAnyData ? 'Ready to climb?' : 'Log your first session'}
               subtitle={
                 data.lastSession
                   ? `${data.lastSession.gymName} · ${data.lastSessionRelative}`
@@ -159,47 +182,94 @@ export default function HomeScreen() {
 
       {/* First-time user: stop here */}
       {!data.hasAnyData ? (
-        <View style={{ marginTop: space.lg }}>
+        <View style={{ marginTop: space.lg, paddingBottom: space.xxl }}>
           <Text style={[type.body, { color: colors.textMuted, textAlign: 'center' }]}>
             Start your first session to see your stats, streaks and progress here.
           </Text>
         </View>
       ) : (
         <>
-          {/* 3. WeekStrip */}
+          {/* 3. WeekStrip — the hero visual */}
           <View style={{ marginBottom: space.xl }}>
             <WeekStrip days={data.weekDays} streak={data.streak} />
           </View>
 
-          {/* 4. Three StatTiles */}
-          <View style={{ flexDirection: 'row', gap: space.sm, marginBottom: space.xl }}>
-            <StatTile flex label="SESSIONS" value={data.sessionsThisWeek} tintBg={colors.accentSoft} />
-            <StatTile flex label="CLIMBS" value={data.climbsThisWeek} />
+          {/* 4. Three StatTiles — big numbers, neutral cards */}
+          <View style={{ flexDirection: 'row', gap: space.md, marginBottom: space.xl }}>
+            <StatTile flex label="Sessions" value={data.sessionsThisWeek} />
+            <StatTile flex label="Climbs" value={data.climbsThisWeek} />
             <StatTile
               flex
-              label="SENDS"
+              label="Sends"
               value={data.sendsThisWeek}
-              tintBg={colors.flashSoft}
-              trend={data.flashesThisWeek > 0 ? `${data.flashesThisWeek} flash${data.flashesThisWeek !== 1 ? 'es' : ''}` : undefined}
+              trend={data.flashesThisWeek > 0 ? plural(data.flashesThisWeek, 'flash', 'flashes') : undefined}
             />
           </View>
 
-          {/* 5. Projects strip */}
+          {/* 5. Personal best banner */}
+          {data.personalBest && (
+            <Card style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: space.md,
+              marginBottom: space.xl,
+            }}>
+              <View style={{
+                width: 40,
+                height: 40,
+                borderRadius: 20,
+                backgroundColor: colors.accentSoft,
+                justifyContent: 'center',
+                alignItems: 'center',
+              }}>
+                <Trophy size={20} color={colors.accentText} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[type.heading, { color: colors.text }]}>
+                  New best: {data.personalBest.gradeRaw}
+                </Text>
+                <Text style={[type.caption, { color: colors.textMuted }]}>
+                  {data.personalBest.daysAgo === 0
+                    ? 'Today'
+                    : data.personalBest.daysAgo === 1
+                    ? 'Yesterday'
+                    : `${data.personalBest.daysAgo} days ago`}
+                </Text>
+              </View>
+            </Card>
+          )}
+
+          {/* 6. Projects strip — shared compact ProjectCard */}
           <View style={{ marginBottom: space.xl }}>
             <SectionHeader
               title="Projects"
               action={{ label: 'See all', onPress: () => router.push('/projects') }}
             />
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -space.lg }}>
-              <View style={{ flexDirection: 'row', paddingHorizontal: space.lg, gap: space.md }}>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={{ marginHorizontal: -(space.lg + space.xs) }}
+              contentContainerStyle={{ paddingHorizontal: space.lg + space.xs }}
+            >
+              <View style={{ flexDirection: 'row', gap: space.md }}>
                 {data.projects.length === 0 ? (
                   <Card
                     onPress={() => router.push('/projects')}
-                    style={{ width: 160, padding: space.lg }}
+                    style={{ width: 220, padding: space.xl }}
                   >
-                    <Plus size={20} color={colors.textMuted} style={{ marginBottom: space.sm }} />
+                    <View style={{
+                      width: 44,
+                      height: 44,
+                      borderRadius: 22,
+                      backgroundColor: colors.accentSoft,
+                      justifyContent: 'center',
+                      alignItems: 'center',
+                      marginBottom: space.md,
+                    }}>
+                      <Plus size={22} color={colors.accentText} />
+                    </View>
                     <Text style={[type.heading, { color: colors.text, marginBottom: space.xs }]}>
-                      Add your first project
+                      Add a project
                     </Text>
                     <Text style={[type.caption, { color: colors.textMuted }]}>
                       Track a climb you're working on
@@ -218,46 +288,20 @@ export default function HomeScreen() {
             </ScrollView>
           </View>
 
-          {/* 6. Weekly volume chart */}
+          {/* 7. Weekly volume chart */}
           {data.weeklyVolume.length > 0 && (
             <View style={{ marginBottom: space.xl }}>
               <VolumeChart
                 data={data.weeklyVolume}
-                
                 onPress={() => router.push('/analytics')}
               />
-            </View>
-          )}
-
-          {/* 7. PersonalBestBanner */}
-          {data.personalBest && (
-            <View
-              style={{
-                backgroundColor: colors.accentSoft,
-                borderRadius: radius.md,
-                padding: space.lg,
-                marginBottom: space.xl,
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: space.md,
-              }}
-            >
-              <Trophy size={20} color={colors.accentText} />
-              <Text style={[type.heading, { color: colors.accentText, flex: 1 }]}>
-                New best: {data.personalBest.gradeRaw},{' '}
-                {data.personalBest.daysAgo === 0
-                  ? 'today'
-                  : data.personalBest.daysAgo === 1
-                  ? 'yesterday'
-                  : `${data.personalBest.daysAgo} days ago`}
-              </Text>
             </View>
           )}
 
           {/* 8. Recent sessions */}
           {data.recentSessions.length > 0 && (
             <View style={{ marginBottom: space.xxl }}>
-              <SectionHeader title="Recent Sessions" />
+              <SectionHeader title="Recent sessions" />
               <View style={{ gap: space.md }}>
                 {data.recentSessions.map((s: any) => (
                   <SessionCard
@@ -275,7 +319,7 @@ export default function HomeScreen() {
       )}
 
       {/* Bottom padding for FloatingTabBar */}
-      <View style={{ height: 80 }} />
+      <View style={{ height: 100 }} />
 
       {/* StartSessionSheet */}
       <StartSessionSheet
@@ -291,8 +335,6 @@ export default function HomeScreen() {
         position: 'absolute', top: 0, left: 0, right: 0, height: insets.top,
         backgroundColor: colors.bg,
         opacity: scrollY.interpolate({ inputRange: [0, 40], outputRange: [0, 1], extrapolate: 'clamp' }),
-        borderBottomWidth: 1,
-        borderBottomColor: colors.border
       }} pointerEvents="none" />
     </View>
   );
