@@ -201,7 +201,7 @@ export default function ProjectsScreen() {
           </View>
         </View>
 
-        <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 160 }} showsVerticalScrollIndicator={false}>
+        <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 160, gap: 16 }} showsVerticalScrollIndicator={false}>
           {displayedProjects.length === 0 ? (
             hasActiveFilters ? (
               <View>
