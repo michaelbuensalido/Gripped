@@ -56,3 +56,12 @@
 - `app/profile.tsx` (Logbook): Upgraded touch targets for search/view-mode/settings icons, 52px period segmented control, 76px Bento stat tiles, and bottom sheet filter modal.
 - `app/settings.tsx`: 56px rest timer presets, 48x48 header back button, dark matte card grouping.
 - `tsconfig.json`: Added `jest` to compilerOptions types to ensure 0 TypeScript errors across the entire application codebase.
+
+**Step 9: Home Dashboard & Projects Polish**
+- `components/ui/HeroCard.tsx`: Refactored to inherit OLED Bento Box card styling (`colors.card`, 1px `colors.border`), removed LinearGradient, added SVG hold silhouette at 8% opacity, and applied tabular-nums typography.
+- `components/ui/WeekStrip.tsx`: OLED styling with `accentSoft` streak capsule (`Flame` icon + `{streak} wk streak`), bordered day dots, and accent outer ring for today.
+- `app/index.tsx`: Replaced generic cards with `HeroCard` for active and today's session hero cards; confirmed Bento `StatTile` grid with `AnimatedCounter`.
+- `app/projects.tsx`: High-contrast segmented control (`colors.cardMuted` track with active tab in `colors.card`, 1px `colors.border`, bold white/flash green text).
+- `app/project/[id].tsx`: 200px Media Header (`VideoPlayerView` or grade-tinted hold placeholder); beta notes card and TextInput seamlessly blended with `colors.cardMuted` and `colors.border` without harsh white borders; 56px save/cancel buttons.
+- Verification: 17/17 Jest test suites passing (60/60 tests), 0 TypeScript compiler errors.
+
