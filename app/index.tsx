@@ -105,17 +105,14 @@ export default function HomeScreen() {
         marginBottom: space.xl,
       }}>
         <View style={{ flex: 1 }}>
-          <Text style={[type.caption, { color: colors.textMuted, marginBottom: space.xs }]}>
-            {greeting}
-          </Text>
-          <Text style={[type.display, { color: colors.text }]}>
-            CruxLog
+          <Text style={[type.title, { color: colors.text }]}>
+            Keep climbing, Climber
           </Text>
           {data.hardest30d && (
             <View style={{ marginTop: space.sm }}>
               <GradePill
                 gradeIndex={data.hardest30d.gradeIndex}
-                label={`Best ${data.hardest30d.gradeRaw}`}
+                label={`Best ${data.hardest30d.gradeRaw} this month`}
               />
             </View>
           )}
@@ -129,7 +126,8 @@ export default function HomeScreen() {
             alignItems: 'center',
             backgroundColor: colors.card,
             borderRadius: radius.md,
-            ...shadow.card,
+            borderWidth: 1,
+            borderColor: colors.border,
           }}
           accessibilityLabel="Settings"
           accessibilityRole="button"
@@ -138,21 +136,22 @@ export default function HomeScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* 2. HeroCard — the ONE primary action */}
+      {/* 2. Today's Session Card — the ONE primary action */}
       <View style={{ marginBottom: space.xl }}>
         {data.activeSession ? (
-          <HeroCard
-            title="Session in progress"
-            value={formatDuration(elapsed)}
-            subtitle={plural(data.activeSessionClimbCount, 'climb') + ' logged'}
-          >
+          <Card>
+            <View style={{ marginBottom: space.lg }}>
+              <Text style={[type.label, { color: colors.accentText, marginBottom: space.xs }]}>Session in progress</Text>
+              <Text style={[type.stat, { color: colors.text, marginBottom: space.xs }]}>{formatDuration(elapsed)}</Text>
+              <Text style={[type.caption, { color: colors.textMuted }]}>{plural(data.activeSessionClimbCount, 'climb')} logged</Text>
+            </View>
             <PrimaryButton
               testID="resume-session-btn"
               label="Resume session"
               icon={<PlayCircle color={colors.textOnAccent} size={20} />}
               onPress={handleStartSession}
             />
-          </HeroCard>
+          </Card>
         ) : (
           <>
             {!data.hasAnyData && (
@@ -167,21 +166,22 @@ export default function HomeScreen() {
                 resizeMode="cover"
               />
             )}
-            <HeroCard
-              title={data.hasAnyData ? 'Ready to climb?' : 'Log your first session'}
-              subtitle={
-                data.lastSession
-                  ? `${data.lastSession.gymName} · ${data.lastSessionRelative}`
-                  : 'Tap below to get started'
-              }
-            >
+            <Card>
+              <View style={{ marginBottom: space.lg }}>
+                <Text style={[type.label, { color: colors.textMuted, marginBottom: space.xs }]}>
+                  {data.hasAnyData ? "Today's session" : 'Log your first session'}
+                </Text>
+                <Text style={[type.heading, { color: colors.text }]}>
+                  {data.lastSession ? `${data.lastSession.gymName} · ${data.lastSessionRelative}` : 'Tap below to get started'}
+                </Text>
+              </View>
               <PrimaryButton
                 testID="start-session-btn"
                 label="Start session"
                 icon={<PlayCircle color={colors.textOnAccent} size={20} />}
                 onPress={handleStartSession}
               />
-            </HeroCard>
+            </Card>
           </>
         )}
       </View>
