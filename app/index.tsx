@@ -15,6 +15,9 @@ import { GradePill } from '../components/ui/GradePill';
 import { WeekStrip } from '../components/ui/WeekStrip';
 import { VolumeChart } from '../components/ui/VolumeChart';
 import { EmptyState } from '../components/ui/EmptyState';
+import { useCelebration } from '../components/celebration/CelebrationProvider';
+import { useCelebrationStore } from '../store/celebrationStore';
+import { getStreakMilestone } from '../utils/celebrationLogic';
 import { useTheme } from '../theme/useTheme';
 import { useHomeSummary } from '../db/hooks';
 import { useSessionActions } from '../hooks/useSessionActions';
@@ -40,6 +43,19 @@ export default function HomeScreen() {
   const [isStartSheetOpen, setIsStartSheetOpen] = useState(false);
   const [elapsed, setElapsed] = useState(0);
   const insets = useSafeAreaInsets();
+  const { triggerStreak } = useCelebration();
+  const { hasStreakCelebrated, markStreakCelebrated } = useCelebrationStore();
+
+  useEffect(() => {
+    if (data?.streak) {
+      const milestone = getStreakMilestone(data.streak);
+      if (milestone && !hasStreakCelebrated(milestone)) {
+        triggerStreak(milestone);
+        markStreakCelebrated(milestone);
+      }
+    }
+  }, [data?.streak, hasStreakCelebrated, markStreakCelebrated, triggerStreak]);
+
   const scrollY = React.useRef(new Animated.Value(0)).current;
 
   // Live timer for active session

@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text } from 'react-native';
 import { useTheme } from '../../theme/useTheme';
 import { Card } from './Card';
+import { AnimatedCounter } from './AnimatedCounter';
 
 interface StatTileProps {
   value: string | number;
@@ -25,7 +26,7 @@ export function StatTile({ value, label, trend, flex, icon, tintBg }: StatTilePr
       {icon && (
         <View style={{ marginBottom: space.xs }}>{icon}</View>
       )}
-      <Text style={[{ color: colors.text, marginBottom: 2, fontSize: 24 }, type.stat]}>{value}</Text>
+      {typeof value === 'number' ? <AnimatedCounter value={value} style={[{ color: colors.text, marginBottom: 2, fontSize: 24 }, type.stat]} /> : <Text style={[{ color: colors.text, marginBottom: 2, fontSize: 24 }, type.stat]}>{value}</Text>}
       <Text style={[{ color: colors.textMuted }, type.label]} numberOfLines={1}>{label}</Text>
       <View style={{ height: 16, marginTop: 2, justifyContent: 'center' }}>
         {trend ? <Text style={[{ color: colors.flashText }, type.caption]}>{trend}</Text> : null}

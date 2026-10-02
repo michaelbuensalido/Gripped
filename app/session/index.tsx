@@ -16,6 +16,10 @@ import { useActiveSession, useSessionClimbs, useRecentGrades, useRichProjects } 
 import { useSessionStore } from '../../store/sessionStore';
 import { deleteSession, softDeleteBoulderLog, undoDeleteBoulderLog } from '../../db/queries';
 import { triggerHaptic } from '../../utils/haptics';
+import { useCelebration } from '../../components/celebration/CelebrationProvider';
+import { useCelebrationStore } from '../../store/celebrationStore';
+import { shouldFireSmallCelebration, shouldFireMediumCelebration, shouldFireBigCelebration } from '../../utils/celebrationLogic';
+import { getDatabase } from '../../db/schema';
 import { isSend } from '../../utils/isSend';
 import { ResultType } from '../../components/ui/ResultChip';
 import { ResultToggle } from '../../components/session/ResultToggle';
@@ -80,8 +84,7 @@ export default function ActiveSessionScreen() {
   const [showMenu, setShowMenu] = useState(false);
   
   const [quickResult, setQuickResult] = useState<ResultType>('top');
-  const [hardestToast, setHardestToast] = useState<string | null>(null);
-  const pulseAnim = useRef(new Animated.Value(0)).current;
+    const pulseAnim = useRef(new Animated.Value(0)).current;
 
   // Filter out soft-deleted climbs from UI display
   const activeClimbs = useMemo(() => climbs.filter((c: any) => c.deleted_at === null), [climbs]);
@@ -101,24 +104,61 @@ export default function ActiveSessionScreen() {
   
   const hardestLabel = sends.length > 0 ? (sends.find((c: any) => (c.grade_index ?? 0) === hardestIndex)?.grade_raw || '–') : '–';
 
-  const previousHardestIndexRef = useRef(hardestIndex);
-  
+  const { triggerSmall, triggerMedium, triggerBig } = useCelebration();
+  const { hasCelebrated, markCelebrated } = useCelebrationStore();
+
+  const [globalHardest, setGlobalHardest] = useState<number | null>(null);
+  const [totalSessionsCount, setTotalSessionsCount] = useState<number>(0);
+
   useEffect(() => {
-    if (activeClimbs.length > 1 && hardestIndex > previousHardestIndexRef.current) {
-      // New hardest send!
-      const newGrade = sends.find((c: any) => (c.grade_index ?? 0) === hardestIndex)?.grade_raw;
-      triggerHaptic('success');
-      setHardestToast(`New hardest: ${newGrade}`);
+    try {
+      const db = getDatabase();
+      const logsRow = db.getFirstSync<any>('SELECT MAX(grade_index) as m FROM boulder_logs WHERE result IN ("flash", "top", "send") AND deleted_at IS NULL AND session_id != ?', [session?.id]);
+      setGlobalHardest(logsRow?.m ?? null);
       
-      Animated.sequence([
-        Animated.timing(pulseAnim, { toValue: 1, duration: 200, useNativeDriver: false }),
-        Animated.timing(pulseAnim, { toValue: 0, duration: 400, delay: 600, useNativeDriver: false })
-      ]).start();
-      
-      setTimeout(() => setHardestToast(null), 3000);
+      const sessionRow = db.getFirstSync<any>('SELECT count(*) as c FROM sessions WHERE end_time IS NOT NULL AND id != ?', [session?.id]);
+      setTotalSessionsCount(sessionRow?.c ?? 0);
+    } catch (e) {
+      console.log('Error fetching global stats', e);
     }
-    previousHardestIndexRef.current = hardestIndex;
-  }, [hardestIndex, activeClimbs.length, sends, pulseAnim]);
+  }, [session?.id]);
+
+  const prevActiveClimbsLength = useRef(activeClimbs.length);
+
+  useEffect(() => {
+    if (activeClimbs.length > prevActiveClimbsLength.current) {
+      for (const c of activeClimbs) {
+        if (hasCelebrated(c.id)) continue;
+
+        let celebrated = false;
+        if (shouldFireBigCelebration(c.result, c.project_id)) {
+          const proj = allProjects.find((p: any) => p.id === c.project_id);
+          triggerBig({
+            nickname: proj?.title || 'Project',
+            gradeRaw: proj?.grade || c.grade_raw,
+            burns: proj?.burns || 1,
+            sessions: proj?.sessions || 1
+          });
+          markCelebrated(c.id, 'big');
+          celebrated = true;
+        } else if (shouldFireMediumCelebration(c.grade_index, globalHardest, totalSessionsCount)) {
+          triggerMedium(`New hardest: ${c.grade_raw}`);
+          markCelebrated(c.id, 'medium');
+          setGlobalHardest(Math.max(globalHardest ?? 0, c.grade_index));
+          Animated.sequence([
+            Animated.timing(pulseAnim, { toValue: 1, duration: 200, useNativeDriver: false }),
+            Animated.timing(pulseAnim, { toValue: 0, duration: 400, delay: 600, useNativeDriver: false })
+          ]).start();
+          celebrated = true;
+        } else if (shouldFireSmallCelebration(c.result)) {
+          triggerSmall();
+          markCelebrated(c.id, 'small');
+          celebrated = true;
+        }
+      }
+    }
+    prevActiveClimbsLength.current = activeClimbs.length;
+  }, [activeClimbs, globalHardest, totalSessionsCount, allProjects, hasCelebrated, markCelebrated, triggerBig, triggerMedium, triggerSmall]);
 
   if (!session) {
     return (
@@ -362,7 +402,9 @@ export default function ActiveSessionScreen() {
               key={climb.id} 
               climb={climb} 
               onEdit={handleEditClimb} 
-              onDelete={handleDeleteClimb} 
+              onDelete={handleDeleteClimb}
+              animateEntry={Date.now() - climb.logged_at < 5000}
+              isNewFlash={climb.result === 'flash' && Date.now() - climb.logged_at < 5000}
             />
           ))}
           

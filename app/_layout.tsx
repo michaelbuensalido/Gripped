@@ -28,6 +28,7 @@ import { notificationEngine } from "../services/notificationEngine";
 import "../global.css";
 
 import { FloatingTabBar } from "../components/ui/FloatingTabBar";
+import { CelebrationProvider } from "../components/celebration/CelebrationProvider";
 
 // Prevent the splash screen from hiding until fonts + DB are ready
 SplashScreen.preventAutoHideAsync();
@@ -148,9 +149,9 @@ export default function RootLayout() {
       />
       <SafeAreaProvider>
         <StatusBar style="dark" />
-        {isReady ? <TabLayout /> : null}
-                {/* Global floating mini-bar */}
-        
+        <CelebrationProvider>
+          {isReady ? <TabLayout /> : null}
+        </CelebrationProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );

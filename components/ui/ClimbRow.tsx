@@ -1,7 +1,8 @@
-import React, { useRef } from 'react';
+import React, { useRef, useEffect } from 'react';
 import { View, Text, TouchableOpacity, Animated, StyleSheet } from 'react-native';
 import { Trash2 } from 'lucide-react-native';
 import { Swipeable } from 'react-native-gesture-handler';
+import Reanimated, { FadeInDown, useSharedValue, useAnimatedStyle, withRepeat, withTiming, Easing, withDelay } from 'react-native-reanimated';
 import { GradePill } from './GradePill';
 import { ResultChip, ResultType } from './ResultChip';
 import { useTheme } from '../../theme/useTheme';
@@ -10,6 +11,8 @@ export interface ClimbRowProps {
   climb: any;
   onEdit: (climb: any) => void;
   onDelete: (id: string) => void;
+  animateEntry?: boolean;
+  isNewFlash?: boolean;
 }
 
 function formatTime(timestamp: number) {
@@ -21,9 +24,32 @@ function formatTime(timestamp: number) {
   return `${hour}:${m} ${ampm}`;
 }
 
-export function ClimbRow({ climb, onEdit, onDelete }: ClimbRowProps) {
+export function ClimbRow({ climb, onEdit, onDelete, animateEntry, isNewFlash }: ClimbRowProps) {
   const { colors, space, type, radius, gradeBand } = useTheme();
   const swipeableRef = useRef<Swipeable>(null);
+
+  const shimmerProgress = useSharedValue(-1);
+
+  useEffect(() => {
+    if (isNewFlash) {
+      shimmerProgress.value = -0.5;
+      shimmerProgress.value = withDelay(
+        400,
+        withRepeat(
+          withTiming(1.5, { duration: 1200, easing: Easing.linear }),
+          2, // shimmer twice
+          false
+        )
+      );
+    }
+  }, [isNewFlash]);
+
+  const shimmerStyle = useAnimatedStyle(() => {
+    return {
+      left: `${shimmerProgress.value * 100}%`,
+      opacity: shimmerProgress.value > -0.5 && shimmerProgress.value < 1.5 ? 0.3 : 0,
+    };
+  });
 
   const renderRightActions = (progress: Animated.AnimatedInterpolation<number>, dragX: Animated.AnimatedInterpolation<number>) => {
     const opacity = dragX.interpolate({
@@ -58,7 +84,7 @@ export function ClimbRow({ climb, onEdit, onDelete }: ClimbRowProps) {
 
   const stripeColor = gradeBand(climb.grade_index ?? 0).solid;
 
-  return (
+  const content = (
     <Swipeable ref={swipeableRef} renderRightActions={renderRightActions} overshootRight={false}>
       <TouchableOpacity
         activeOpacity={0.7}
@@ -75,6 +101,7 @@ export function ClimbRow({ climb, onEdit, onDelete }: ClimbRowProps) {
           paddingVertical: space.sm,
           gap: space.md,
           overflow: 'hidden',
+          position: 'relative',
         }}
       >
         {/* Grade-band left stripe */}
@@ -88,6 +115,18 @@ export function ClimbRow({ climb, onEdit, onDelete }: ClimbRowProps) {
           borderBottomLeftRadius: radius.md,
           backgroundColor: stripeColor,
         }} />
+
+        {isNewFlash && (
+          <Reanimated.View style={[{
+            position: 'absolute',
+            top: 0,
+            bottom: 0,
+            width: 80,
+            backgroundColor: '#FFFFFF',
+            transform: [{ skewX: '-20deg' }],
+            zIndex: 10,
+          }, shimmerStyle]} pointerEvents="none" />
+        )}
 
         <GradePill gradeIndex={climb.grade_index ?? 0} label={climb.grade_raw} />
         
@@ -110,4 +149,14 @@ export function ClimbRow({ climb, onEdit, onDelete }: ClimbRowProps) {
       </TouchableOpacity>
     </Swipeable>
   );
+
+  if (animateEntry) {
+    return (
+      <Reanimated.View entering={FadeInDown.duration(400).springify()}>
+        {content}
+      </Reanimated.View>
+    );
+  }
+
+  return content;
 }

@@ -16,6 +16,7 @@ import { clearAllSessionData } from '../db/queries';
 import { FLOATING_CARD_STYLE, THEME_COLORS } from '../constants/theme';
 import { ScreenContainer } from '../components/ui/ScreenContainer';
 import { getHapticsEnabled, setHapticsEnabled, HAPTICS_STORAGE_KEY } from '../utils/haptics';
+import { useCelebrationStore } from '../store/celebrationStore';
 
 const REST_TIMER_KEY = '@cruxlog/rest_timer_seconds';
 const DEFAULT_REST = 90;
@@ -54,6 +55,7 @@ export default function SettingsScreen() {
   const [restSeconds, setRestSeconds] = useState(DEFAULT_REST);
   const [restInput, setRestInput] = useState(String(DEFAULT_REST));
   const [haptics, setHaptics] = useState(getHapticsEnabled());
+  const { celebrationsEnabled, setCelebrationsEnabled } = useCelebrationStore();
 
   useFocusEffect(
     useCallback(() => {
@@ -204,6 +206,18 @@ export default function SettingsScreen() {
             <Switch
               value={haptics}
               onValueChange={handleToggleHaptics}
+              trackColor={{ false: '#333339', true: '#8E7CFF' }}
+              thumbColor="#FFFFFF"
+            />
+          }
+        />
+        <SettingsRow
+          label="Celebrations and animations"
+          sublabel="Visual effects for flashes & sends"
+          right={
+            <Switch
+              value={celebrationsEnabled}
+              onValueChange={setCelebrationsEnabled}
               trackColor={{ false: '#333339', true: '#8E7CFF' }}
               thumbColor="#FFFFFF"
             />
