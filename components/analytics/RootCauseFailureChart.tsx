@@ -1,6 +1,7 @@
 import React, { useRef, useState } from 'react';
 import { Animated, Pressable, Text, View } from 'react-native';
 import { triggerHaptic } from '../../utils/haptics';
+import { useTheme } from '../../theme/useTheme';
 
 export interface FailureSegment {
   reason: string; // 'pump' | 'foot_slip' | 'power' | 'beta_error' | 'fear'
@@ -15,17 +16,6 @@ export interface RootCauseFailureChartProps {
   totalFailures?: number;
 }
 
-const FALLBACK: FailureSegment[] = [
-  { reason: 'pump',       count: 12, percentage: 40, color: '#FF453A', label: 'Pump' },
-  { reason: 'foot_slip',  count: 9,  percentage: 30, color: '#8E7CFF', label: 'Foot Slip' },
-  { reason: 'power',      count: 5,  percentage: 17, color: '#6EE756', label: 'Power' },
-  { reason: 'beta_error', count: 2,  percentage: 7,  color: '#9090A0', label: 'Beta Error' },
-  { reason: 'fear',       count: 2,  percentage: 6,  color: '#3E3E48', label: 'Fear' },
-];
-
-const FALLBACK_TOTAL = FALLBACK.reduce((sum, s) => sum + s.count, 0);
-
-// Each legend row manages its own scale animation independently.
 function LegendRow({
   segment,
   isHighlighted,
@@ -35,42 +25,73 @@ function LegendRow({
   isHighlighted: boolean;
   onPress: () => void;
 }) {
+  const { colors, type } = useTheme();
+
   return (
     <Pressable
       onPress={onPress}
-      className="flex-row items-center py-[6px]"
       accessibilityRole="button"
       accessibilityLabel={`${segment.label}: ${segment.count} falls, ${segment.percentage}%`}
+      style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 6,
+      }}
     >
       {/* Colored dot */}
       <View
-        className="rounded-sm mr-3"
-        style={{ width: 8, height: 8, backgroundColor: segment.color }}
+        style={{
+          width: 8,
+          height: 8,
+          borderRadius: 2,
+          backgroundColor: segment.color,
+          marginRight: 10,
+        }}
       />
 
       {/* Label */}
       <Text
-        className="flex-1 text-[13px]"
-        style={{
-          color: isHighlighted ? '#FFFFFF' : '#9090A0',
-          fontWeight: isHighlighted ? '600' : '400',
-        }}
+        style={[
+          type.body,
+          {
+            flex: 1,
+            fontSize: 13,
+            color: isHighlighted ? colors.text : colors.textMuted,
+            fontWeight: isHighlighted ? '700' : '400',
+          },
+        ]}
       >
         {segment.label}
       </Text>
 
       {/* Count */}
       <Text
-        className="text-[13px] mr-2"
-        style={{ color: isHighlighted ? '#FFFFFF' : '#9090A0' }}
+        style={[
+          type.body,
+          {
+            fontSize: 13,
+            marginRight: 8,
+            color: isHighlighted ? colors.text : colors.textMuted,
+            fontVariant: ['tabular-nums'],
+          },
+        ]}
       >
         {segment.count}
       </Text>
 
       {/* Percentage */}
       <Text
-        className="text-[13px] w-9 text-right"
-        style={{ color: isHighlighted ? segment.color : '#555562', fontVariant: ['tabular-nums'] }}
+        style={[
+          type.caption,
+          {
+            fontSize: 13,
+            width: 36,
+            textAlign: 'right',
+            color: isHighlighted ? segment.color : colors.textMuted,
+            fontWeight: isHighlighted ? '700' : '500',
+            fontVariant: ['tabular-nums'],
+          },
+        ]}
       >
         {segment.percentage}%
       </Text>
@@ -82,8 +103,18 @@ export default function RootCauseFailureChart({
   segments: propSegments,
   totalFailures: propTotal,
 }: RootCauseFailureChartProps) {
-  const segments = propSegments && propSegments.length > 0 ? propSegments : FALLBACK;
-  const totalFailures = propTotal ?? FALLBACK_TOTAL;
+  const { colors, type, space, radius } = useTheme();
+
+  const fallback: FailureSegment[] = [
+    { reason: 'pump', count: 12, percentage: 40, color: colors.danger, label: 'Pump' },
+    { reason: 'foot_slip', count: 9, percentage: 30, color: colors.top, label: 'Foot Slip' }, // Send Lavender
+    { reason: 'power', count: 5, percentage: 17, color: colors.flash, label: 'Power' },
+    { reason: 'beta_error', count: 2, percentage: 7, color: colors.attempt, label: 'Beta Error' },
+    { reason: 'fear', count: 2, percentage: 6, color: colors.fail, label: 'Fear' },
+  ];
+
+  const segments = propSegments && propSegments.length > 0 ? propSegments : fallback;
+  const totalFailures = propTotal ?? segments.reduce((sum, s) => sum + s.count, 0);
 
   const [highlightedReason, setHighlightedReason] = useState<string | null>(null);
 
@@ -110,23 +141,63 @@ export default function RootCauseFailureChart({
   };
 
   return (
-    <View className="bg-surface border border-border rounded-[20px] p-4">
+    <View
+      style={{
+        backgroundColor: colors.card,
+        borderRadius: radius.lg,
+        borderWidth: 1,
+        borderColor: colors.border,
+        padding: space.lg,
+      }}
+    >
       {/* Header row */}
-      <View className="flex-row items-center justify-between mb-[2px]">
-        <Text className="text-structural text-[10px] uppercase tracking-widest">
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 }}>
+        <Text
+          style={[
+            type.label,
+            {
+              color: colors.textMuted,
+              fontSize: 10,
+              textTransform: 'uppercase',
+              letterSpacing: 1.2,
+            },
+          ]}
+        >
           Root Cause
         </Text>
-        <Text className="text-structural text-[10px]">{totalFailures} FALLS</Text>
+        <Text
+          style={[
+            type.caption,
+            {
+              color: colors.textMuted,
+              fontSize: 10,
+              textTransform: 'uppercase',
+              letterSpacing: 1,
+            },
+          ]}
+        >
+          {totalFailures} FALLS
+        </Text>
       </View>
 
       {/* Subtitle */}
-      <Text className="text-primary text-base font-bold mb-4">
+      <Text style={[type.heading, { color: colors.text, fontSize: 16, marginBottom: space.md }]}>
         Failure Taxonomy
       </Text>
 
       {/* Segmented bar */}
-      <View className="w-full rounded-full overflow-hidden mb-4" style={{ height: 8 }}>
-        <View className="flex-row w-full h-full">
+      <View
+        style={{
+          width: '100%',
+          borderRadius: radius.pill,
+          overflow: 'hidden',
+          backgroundColor: colors.cardMuted,
+          height: 10,
+          marginBottom: space.md,
+          justifyContent: 'center',
+        }}
+      >
+        <View style={{ flexDirection: 'row', width: '100%', height: '100%' }}>
           {segments.map((segment) => (
             <Animated.View
               key={segment.reason}
@@ -142,7 +213,7 @@ export default function RootCauseFailureChart({
       </View>
 
       {/* Divider */}
-      <View className="border-t border-border mb-1" />
+      <View style={{ borderTopWidth: 1, borderTopColor: colors.border, marginBottom: 4 }} />
 
       {/* Legend rows */}
       {segments.map((segment) => (

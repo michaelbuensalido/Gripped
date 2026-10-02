@@ -6,6 +6,7 @@ import Svg, {
   Line,
   Text as SvgText,
 } from 'react-native-svg';
+import { useTheme } from '../../theme/useTheme';
 
 export interface WallAngleData {
   slab: number;     // 0-100 send rate
@@ -26,9 +27,9 @@ const DEFAULT_DATA: WallAngleData = {
 };
 
 // ── Geometry constants ────────────────────────────────────────────────────────
-const SVG_SIZE  = 200;
-const CENTER    = SVG_SIZE / 2;   // 100
-const RADIUS    = 80;
+const SVG_SIZE = 210;
+const CENTER = SVG_SIZE / 2; // 105
+const RADIUS = 75;
 
 /** Degrees → radians */
 const toRad = (deg: number) => (deg * Math.PI) / 180;
@@ -44,7 +45,7 @@ const AXES: { key: keyof WallAngleData; angle: number; label: string }[] = [
   { key: 'roof',     angle: 180, label: 'Roof' },
 ];
 
-const LABEL_PADDING = 14; // extra offset past RADIUS so labels clear the chart
+const LABEL_PADDING = 16; // extra offset past RADIUS so labels clear the chart
 
 /** Compute a point on a given axis at a given ratio (0–1) */
 function axisPoint(angle: number, ratio: number): { x: number; y: number } {
@@ -65,22 +66,19 @@ function ringPoints(ratio: number): string {
 /** Compute text anchor + dominant-baseline based on axis angle */
 function labelProps(angle: number): {
   textAnchor: 'start' | 'middle' | 'end';
-  dy: number; // rough vertical nudge
+  dy: number;
 } {
-  // right (0°)
   if (angle === 0)   return { textAnchor: 'start',  dy: 4 };
-  // bottom (90°)
   if (angle === 90)  return { textAnchor: 'middle', dy: 14 };
-  // left (180°)
   if (angle === 180) return { textAnchor: 'end',    dy: 4 };
-  // top (270°)
   return                    { textAnchor: 'middle', dy: -6 };
 }
 
 const RING_RATIOS = [0.25, 0.5, 0.75, 1.0];
 
-// ── Component ─────────────────────────────────────────────────────────────────
 export default function WallAngleRadar({ data = DEFAULT_DATA }: WallAngleRadarProps) {
+  const { colors, type, space, radius } = useTheme();
+
   // Build data polygon points
   const dataPoints = AXES.map(({ key, angle }) => {
     const ratio = Math.min(Math.max((data[key] ?? 0) / 100, 0), 1);
@@ -89,19 +87,38 @@ export default function WallAngleRadar({ data = DEFAULT_DATA }: WallAngleRadarPr
   const dataPolygon = dataPoints.map(({ x, y }) => `${x},${y}`).join(' ');
 
   return (
-    <View className="bg-surface border border-border rounded-[20px] p-4">
+    <View
+      style={{
+        backgroundColor: colors.card,
+        borderRadius: radius.lg,
+        borderWidth: 1,
+        borderColor: colors.border,
+        padding: space.lg,
+      }}
+    >
       {/* Header */}
-      <Text className="text-structural text-[10px] uppercase tracking-widest mb-[2px]">
+      <Text
+        style={[
+          type.label,
+          {
+            color: colors.textMuted,
+            fontSize: 10,
+            textTransform: 'uppercase',
+            letterSpacing: 1.2,
+            marginBottom: 2,
+          },
+        ]}
+      >
         Wall Mastery
       </Text>
-      <Text className="text-primary text-base font-bold mb-4">
+      <Text style={[type.heading, { color: colors.text, fontSize: 16, marginBottom: space.md }]}>
         Send Rate by Angle
       </Text>
 
       {/* SVG Chart */}
-      <View className="items-center">
+      <View style={{ alignItems: 'center', justifyContent: 'center' }}>
         <Svg width={SVG_SIZE} height={SVG_SIZE}>
-          {/* ── Background rings ── */}
+          {/* Background concentric rings using muted border token */}
           {RING_RATIOS.map((ratio) => (
             <Polygon
               key={`ring-${ratio}`}
@@ -112,7 +129,7 @@ export default function WallAngleRadar({ data = DEFAULT_DATA }: WallAngleRadarPr
             />
           ))}
 
-          {/* ── Axis spokes ── */}
+          {/* Axis spokes */}
           {AXES.map(({ angle, key }) => {
             const tip = axisPoint(angle, 1);
             return (
@@ -128,27 +145,27 @@ export default function WallAngleRadar({ data = DEFAULT_DATA }: WallAngleRadarPr
             );
           })}
 
-          {/* ── Data polygon ── */}
+          {/* Data polygon with Send Lavender pop */}
           <Polygon
             points={dataPolygon}
-            fill="rgba(142,124,255,0.2)"
-            stroke="#8E7CFF"
+            fill={colors.top + '33'}
+            stroke={colors.top}
             strokeWidth={2}
             strokeLinejoin="round"
           />
 
-          {/* ── Dots at data points ── */}
+          {/* Dots at data points */}
           {dataPoints.map(({ x, y }, i) => (
             <Circle
               key={`dot-${i}`}
               cx={x}
               cy={y}
               r={4}
-              fill="#8E7CFF"
+              fill={colors.top}
             />
           ))}
 
-          {/* ── Axis labels ── */}
+          {/* Axis labels */}
           {AXES.map(({ angle, label, key }) => {
             const labelRatio = 1 + LABEL_PADDING / RADIUS;
             const pos = axisPoint(angle, labelRatio);
@@ -159,18 +176,17 @@ export default function WallAngleRadar({ data = DEFAULT_DATA }: WallAngleRadarPr
                 x={pos.x}
                 y={pos.y + dy}
                 textAnchor={textAnchor}
-                fill="#9090A0"
+                fill={colors.text}
                 fontSize={11}
-                fontWeight="500"
+                fontWeight="600"
               >
                 {label}
               </SvgText>
             );
           })}
 
-          {/* ── Percentage labels on axes (25%, 50%, 75%) ── */}
+          {/* Percentage labels on top axis */}
           {[0.25, 0.5, 0.75].map((ratio) => {
-            // Place along the top axis (270°), slightly right of center
             const pos = axisPoint(270, ratio);
             return (
               <SvgText
@@ -178,8 +194,9 @@ export default function WallAngleRadar({ data = DEFAULT_DATA }: WallAngleRadarPr
                 x={pos.x + 4}
                 y={pos.y}
                 textAnchor="start"
-                fill="#555562"
+                fill={colors.textMuted}
                 fontSize={8}
+                opacity={0.8}
               >
                 {ratio * 100}%
               </SvgText>
@@ -188,12 +205,44 @@ export default function WallAngleRadar({ data = DEFAULT_DATA }: WallAngleRadarPr
         </Svg>
       </View>
 
-      {/* Send rate summary row */}
-      <View className="flex-row justify-around mt-2">
+      {/* Send rate telemetry summary row */}
+      <View
+        style={{
+          flexDirection: 'row',
+          justifyContent: 'space-around',
+          marginTop: space.md,
+          paddingTop: space.sm,
+          borderTopWidth: 1,
+          borderTopColor: colors.border,
+        }}
+      >
         {AXES.map(({ key, label }) => (
-          <View key={key} className="items-center">
-            <Text className="text-send text-sm font-bold">{data[key] ?? 0}%</Text>
-            <Text className="text-structural text-[10px] mt-[1px]">{label}</Text>
+          <View key={key} style={{ alignItems: 'center' }}>
+            <Text
+              style={[
+                type.stat,
+                {
+                  color: colors.topText,
+                  fontSize: 16,
+                  fontVariant: ['tabular-nums'],
+                },
+              ]}
+            >
+              {data[key] ?? 0}%
+            </Text>
+            <Text
+              style={[
+                type.caption,
+                {
+                  color: colors.textMuted,
+                  fontSize: 10,
+                  textTransform: 'uppercase',
+                  marginTop: 2,
+                },
+              ]}
+            >
+              {label}
+            </Text>
           </View>
         ))}
       </View>

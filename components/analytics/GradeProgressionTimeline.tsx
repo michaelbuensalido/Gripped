@@ -1,6 +1,7 @@
 import React from 'react';
 import { Text, View, useWindowDimensions } from 'react-native';
 import { LineChart } from 'react-native-gifted-charts';
+import { useTheme } from '../../theme/useTheme';
 
 export interface GradePoint {
   date: string;     // e.g. 'Sep 1'
@@ -12,51 +13,65 @@ export interface GradeProgressionTimelineProps {
   data?: GradePoint[];
 }
 
-// ── Fallback data ─────────────────────────────────────────────────────────────
+// Fallback data
 const FALLBACK: GradePoint[] = [
-  { date: 'Apr',  gradeNum: 5,  gradeRaw: 'V5'  },
-  { date: 'May',  gradeNum: 5,  gradeRaw: 'V5'  },
-  { date: 'Jun',  gradeNum: 6,  gradeRaw: 'V6'  },
-  { date: 'Jul',  gradeNum: 7,  gradeRaw: 'V7'  },
-  { date: 'Aug',  gradeNum: 7,  gradeRaw: 'V7'  },
-  { date: 'Sep',  gradeNum: 8,  gradeRaw: 'V8'  },
+  { date: 'Apr', gradeNum: 5, gradeRaw: 'V5' },
+  { date: 'May', gradeNum: 5, gradeRaw: 'V5' },
+  { date: 'Jun', gradeNum: 6, gradeRaw: 'V6' },
+  { date: 'Jul', gradeNum: 7, gradeRaw: 'V7' },
+  { date: 'Aug', gradeNum: 7, gradeRaw: 'V7' },
+  { date: 'Sep', gradeNum: 8, gradeRaw: 'V8' },
 ];
 
 // Y-axis labels — displayed bottom → top by gifted-charts
 const Y_AXIS_LABELS = ['V0', 'V2', 'V4', 'V6', 'V8', 'V10'];
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
-/** Convert GradePoint[] → gifted-charts LineChart data format */
-function toChartData(points: GradePoint[]) {
-  return points.map((p) => ({
-    value: p.gradeNum,
-    label: p.date,
-    dataPointText: p.gradeRaw,
-  }));
-}
-
-// ── Component ─────────────────────────────────────────────────────────────────
 export default function GradeProgressionTimeline({
   data: propData,
 }: GradeProgressionTimelineProps) {
   const { width: screenWidth } = useWindowDimensions();
-  const data = propData && propData.length > 0 ? propData : FALLBACK;
-  const chartData = toChartData(data);
+  const { colors, type, space, radius } = useTheme();
 
-  // Card horizontal padding (16 * 2) + border (1 * 2) + extra safe margin
-  const chartWidth = screenWidth - 32 - 2 - 48;
+  const data = propData && propData.length > 0 ? propData : FALLBACK;
+  const chartData = data.map((p) => ({
+    value: p.gradeNum,
+    label: p.date,
+    dataPointText: p.gradeRaw,
+  }));
+
+  // Card horizontal padding (16 * 2) + border (1 * 2) + safe margin
+  const chartWidth = screenWidth - (space.lg * 2) - 2 - 48;
 
   // Determine Y max: round up to nearest even number ≥ max grade
   const maxGrade = Math.max(...data.map((p) => p.gradeNum));
   const yMax = Math.max(10, Math.ceil(maxGrade / 2) * 2 + 2);
 
   return (
-    <View className="bg-surface border border-border rounded-[20px] p-4">
+    <View
+      style={{
+        backgroundColor: colors.card,
+        borderRadius: radius.lg,
+        borderWidth: 1,
+        borderColor: colors.border,
+        padding: space.lg,
+      }}
+    >
       {/* Header */}
-      <Text className="text-structural text-[10px] uppercase tracking-widest mb-[2px]">
+      <Text
+        style={[
+          type.label,
+          {
+            color: colors.textMuted,
+            fontSize: 10,
+            textTransform: 'uppercase',
+            letterSpacing: 1.2,
+            marginBottom: 2,
+          },
+        ]}
+      >
         Progression
       </Text>
-      <Text className="text-primary text-base font-bold mb-4">
+      <Text style={[type.heading, { color: colors.text, fontSize: 16, marginBottom: space.md }]}>
         Grade High-Watermark
       </Text>
 
@@ -66,31 +81,31 @@ export default function GradeProgressionTimeline({
           data={chartData}
           width={chartWidth}
           height={160}
-          // Area fill
+          // Area fill with Send Lavender accent
           areaChart
-          startFillColor="rgba(142,124,255,0.3)"
-          endFillColor="rgba(142,124,255,0)"
-          startOpacity={1}
-          endOpacity={0}
+          startFillColor={colors.top}
+          endFillColor={colors.top}
+          startOpacity={0.28}
+          endOpacity={0.0}
           // Line style
-          color="#8E7CFF"
-          thickness={2}
+          color={colors.top}
+          thickness={2.5}
           // Data point style
-          dataPointsColor="#8E7CFF"
+          dataPointsColor={colors.top}
           dataPointsRadius={4}
-          textColor="#9090A0"
+          textColor={colors.text}
           textFontSize={10}
           // Y-axis
           maxValue={yMax}
           noOfSections={5}
           yAxisLabelTexts={Y_AXIS_LABELS}
           yAxisColor="transparent"
-          yAxisTextStyle={{ color: '#555562', fontSize: 10 }}
+          yAxisTextStyle={{ color: colors.textMuted, fontSize: 10 }}
           yAxisThickness={0}
           // X-axis
           xAxisColor="#27272F"
           xAxisThickness={1}
-          xAxisLabelTextStyle={{ color: '#555562', fontSize: 10 }}
+          xAxisLabelTextStyle={{ color: colors.textMuted, fontSize: 10, fontWeight: '500' }}
           // Grid rules
           hideRules={false}
           rulesColor="#22222A"
@@ -101,7 +116,6 @@ export default function GradeProgressionTimeline({
           // Curve
           curved
           curvature={0.2}
-          // No extra decorators
           hideDataPoints={false}
           showValuesAsDataPointsText
           initialSpacing={16}
@@ -112,28 +126,43 @@ export default function GradeProgressionTimeline({
           // Pointer
           focusEnabled
           showStripOnFocus
-          stripColor="rgba(142,124,255,0.3)"
+          stripColor={colors.top + '40'}
           stripWidth={1}
           focusedDataPointRadius={6}
-          focusedDataPointColor="#8E7CFF"
+          focusedDataPointColor={colors.top}
         />
       </View>
 
       {/* Footer: delta indicator */}
       {data.length >= 2 && (() => {
         const first = data[0].gradeNum;
-        const last  = data[data.length - 1].gradeNum;
+        const last = data[data.length - 1].gradeNum;
         const delta = last - first;
         const positive = delta >= 0;
         return (
-          <View className="flex-row items-center mt-3 pt-3 border-t border-border">
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              marginTop: space.sm,
+              paddingTop: space.sm,
+              borderTopWidth: 1,
+              borderTopColor: colors.border,
+            }}
+          >
             <Text
-              className="text-[12px] font-semibold mr-1"
-              style={{ color: positive ? '#6EE756' : '#FF453A' }}
+              style={[
+                type.caption,
+                {
+                  color: positive ? colors.flashText : colors.dangerText,
+                  fontWeight: '700',
+                  marginRight: 6,
+                },
+              ]}
             >
               {positive ? '▲' : '▼'} {Math.abs(delta)} grade{Math.abs(delta) !== 1 ? 's' : ''}
             </Text>
-            <Text className="text-secondary text-[12px]">
+            <Text style={[type.caption, { color: colors.textMuted }]}>
               over the last {data.length} sessions
             </Text>
           </View>

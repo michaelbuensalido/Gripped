@@ -58,12 +58,12 @@ export function GradePyramid({ data, formatGrade = (g) => `V${g}` }: GradePyrami
       })}
       
       <View style={{ flexDirection: 'row', justifyContent: 'center', gap: space.lg, marginTop: space.sm }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-          <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: colors.flashSoft }} />
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+          <View style={{ width: 8, height: 8, borderRadius: 2, backgroundColor: colors.flash }} />
           <Text style={[type.caption, { color: colors.textMuted }]}>Flash</Text>
         </View>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-          <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: colors.topSoft }} />
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+          <View style={{ width: 8, height: 8, borderRadius: 2, backgroundColor: colors.top }} />
           <Text style={[type.caption, { color: colors.textMuted }]}>Send</Text>
         </View>
       </View>

@@ -1,6 +1,7 @@
 import React from 'react';
 import { Text, View, useWindowDimensions } from 'react-native';
 import { BarChart } from 'react-native-gifted-charts';
+import { useTheme } from '../../theme/useTheme';
 
 export interface PyramidRow {
   grade: string;
@@ -13,80 +14,90 @@ export interface AscentPyramidProps {
   data?: PyramidRow[];
 }
 
-// ── Palette tokens (matching design system) ───────────────────────────────────
-const COLOR_FLASH   = '#6EE756';
-const COLOR_SEND    = '#8E7CFF';
-const COLOR_ATTEMPT = '#3E3E48';
-
-// ── Fallback data ─────────────────────────────────────────────────────────────
+// Fallback data
 const FALLBACK: PyramidRow[] = [
-  { grade: 'V4', flashes: 5, sends: 8,  attempts: 15 },
-  { grade: 'V5', flashes: 3, sends: 6,  attempts: 12 },
-  { grade: 'V6', flashes: 2, sends: 4,  attempts: 10 },
-  { grade: 'V7', flashes: 1, sends: 2,  attempts: 8  },
-  { grade: 'V8', flashes: 0, sends: 1,  attempts: 6  },
-  { grade: 'V9', flashes: 0, sends: 0,  attempts: 3  },
+  { grade: 'V4', flashes: 5, sends: 8, attempts: 15 },
+  { grade: 'V5', flashes: 3, sends: 6, attempts: 12 },
+  { grade: 'V6', flashes: 2, sends: 4, attempts: 10 },
+  { grade: 'V7', flashes: 1, sends: 2, attempts: 8 },
+  { grade: 'V8', flashes: 0, sends: 1, attempts: 6 },
+  { grade: 'V9', flashes: 0, sends: 0, attempts: 3 },
 ];
 
-// ── Legend item ───────────────────────────────────────────────────────────────
 function LegendItem({ color, label }: { color: string; label: string }) {
+  const { colors, type, space } = useTheme();
   return (
-    <View className="flex-row items-center mr-4">
+    <View style={{ flexDirection: 'row', alignItems: 'center', marginRight: space.md }}>
       <View
-        className="rounded-[2px] mr-[6px]"
-        style={{ width: 10, height: 10, backgroundColor: color }}
+        style={{
+          width: 8,
+          height: 8,
+          borderRadius: 2,
+          backgroundColor: color,
+          marginRight: 6,
+        }}
       />
-      <Text className="text-secondary text-[11px]">{label}</Text>
+      <Text style={[type.caption, { color: colors.textMuted, fontSize: 11 }]}>{label}</Text>
     </View>
   );
 }
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
-/**
- * Convert PyramidRow[] → gifted-charts stackData format.
- * Each bar is [flash, send, attempt] stacked bottom-up.
- */
-function toStackData(rows: PyramidRow[]) {
-  return rows.map((row) => ({
-    label: row.grade,
-    stacks: [
-      { value: row.flashes,  color: COLOR_FLASH,   marginBottom: 0 },
-      { value: row.sends,    color: COLOR_SEND,    marginBottom: 2 },
-      { value: row.attempts, color: COLOR_ATTEMPT, marginBottom: 2 },
-    ],
-    // gifted-charts uses barBorderRadius per bar
-    barBorderRadius: 4,
-  }));
-}
-
-// ── Component ─────────────────────────────────────────────────────────────────
 export default function AscentPyramid({ data: propData }: AscentPyramidProps) {
   const { width: screenWidth } = useWindowDimensions();
+  const { colors, type, space, radius } = useTheme();
+  
   const data = propData && propData.length > 0 ? propData : FALLBACK;
-  const stackData = toStackData(data);
 
-  // Card horizontal padding (16*2) + border (1*2) + y-axis label area
-  const chartWidth = screenWidth - 32 - 2 - 40;
+  const stackData = data.map((row) => ({
+    label: row.grade,
+    stacks: [
+      { value: row.flashes, color: colors.flash, marginBottom: 0 },
+      { value: row.sends, color: colors.top, marginBottom: 2 }, // Send Lavender
+      { value: row.attempts, color: colors.fail, marginBottom: 2 },
+    ],
+    barBorderRadius: 4,
+  }));
 
-  // Max Y: highest total ascent count, rounded up
+  // Card horizontal padding (16*2) + border (1*2) + y-axis label space
+  const chartWidth = screenWidth - (space.lg * 2) - 2 - 44;
+
   const maxTotal = Math.max(
     ...data.map((r) => r.flashes + r.sends + r.attempts),
   );
   const yMax = Math.ceil(maxTotal / 5) * 5 || 20;
 
-  const barWidth  = 28;
-  const spacing   = Math.max(
+  const barWidth = 26;
+  const spacing = Math.max(
     8,
     Math.floor((chartWidth - barWidth * data.length) / data.length),
   );
 
   return (
-    <View className="bg-surface border border-border rounded-[20px] p-4">
+    <View
+      style={{
+        backgroundColor: colors.card,
+        borderRadius: radius.lg,
+        borderWidth: 1,
+        borderColor: colors.border,
+        padding: space.lg,
+      }}
+    >
       {/* Header */}
-      <Text className="text-structural text-[10px] uppercase tracking-widest mb-[2px]">
+      <Text
+        style={[
+          type.label,
+          {
+            color: colors.textMuted,
+            fontSize: 10,
+            textTransform: 'uppercase',
+            letterSpacing: 1.2,
+            marginBottom: 2,
+          },
+        ]}
+      >
         Ascent Pyramid
       </Text>
-      <Text className="text-primary text-base font-bold mb-4">
+      <Text style={[type.heading, { color: colors.text, fontSize: 16, marginBottom: space.md }]}>
         Volume by Grade
       </Text>
 
@@ -102,11 +113,11 @@ export default function AscentPyramid({ data: propData }: AscentPyramidProps) {
           maxValue={yMax}
           noOfSections={5}
           yAxisThickness={0}
-          yAxisTextStyle={{ color: '#555562', fontSize: 10 }}
+          yAxisTextStyle={{ color: colors.textMuted, fontSize: 10 }}
           // X-axis
           xAxisColor="#27272F"
           xAxisThickness={1}
-          xAxisLabelTextStyle={{ color: '#555562', fontSize: 10 }}
+          xAxisLabelTextStyle={{ color: colors.textMuted, fontSize: 10, fontWeight: '500' }}
           // Rules
           rulesColor="#22222A"
           rulesType="solid"
@@ -118,20 +129,27 @@ export default function AscentPyramid({ data: propData }: AscentPyramidProps) {
           // Rounded tops
           roundedTop
           roundedBottom={false}
-          // Hide bar values (too cluttered on stacked)
           hideYAxisText={false}
           showValuesAsTopLabel={false}
-          // Spacing
           initialSpacing={12}
           endSpacing={8}
         />
       </View>
 
       {/* Legend */}
-      <View className="flex-row items-center mt-3 pt-3 border-t border-border">
-        <LegendItem color={COLOR_FLASH}   label="Flash"     />
-        <LegendItem color={COLOR_SEND}    label="Redpoint"  />
-        <LegendItem color={COLOR_ATTEMPT} label="Attempt"   />
+      <View
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          marginTop: space.sm,
+          paddingTop: space.sm,
+          borderTopWidth: 1,
+          borderTopColor: colors.border,
+        }}
+      >
+        <LegendItem color={colors.flash} label="Flash" />
+        <LegendItem color={colors.top} label="Send" />
+        <LegendItem color={colors.fail} label="Attempt" />
       </View>
     </View>
   );
