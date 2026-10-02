@@ -140,15 +140,9 @@ export default function RootLayout() {
   const isReady = (fontsLoaded || fontError) && isDbReady;
 
   return (
-    <GestureHandlerRootView style={{ flex: 1, backgroundColor: "#F5F2EC" }}>
-      <ImageBackground
-        source={require("../assets/speckled_mat_bg.jpg")}
-        style={StyleSheet.absoluteFill}
-        imageStyle={{ opacity: 0.04 }}
-        resizeMode="cover"
-      />
+    <GestureHandlerRootView style={{ flex: 1, backgroundColor: "#101014" }}>
       <SafeAreaProvider>
-        <StatusBar style="dark" />
+        <StatusBar style="light" />
         <CelebrationProvider>
           {isReady ? <TabLayout /> : null}
         </CelebrationProvider>

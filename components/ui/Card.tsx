@@ -1,6 +1,5 @@
 import React from 'react';
-import { View, TouchableOpacity, ViewProps, Animated } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+import { View, TouchableOpacity, ViewProps } from 'react-native';
 import { useTheme } from '../../theme/useTheme';
 
 interface CardProps extends ViewProps {
@@ -10,25 +9,17 @@ interface CardProps extends ViewProps {
 }
 
 export function Card({ children, variant = 'default', onPress, style, ...props }: CardProps) {
-  const { colors, radius, space, shadow } = useTheme();
+  const { colors, radius, space } = useTheme();
 
   const baseStyle = {
     borderRadius: radius.lg,
     padding: space.lg,
     backgroundColor: variant === 'muted' ? colors.cardMuted : colors.card,
-    ...(variant === 'muted' ? {} : shadow.card),
+    borderWidth: 1,
+    borderColor: colors.border,
   };
 
-  const content = variant === 'hero' ? (
-    <LinearGradient
-      colors={[colors.accentSoft, colors.card]}
-      start={{ x: 0, y: 0 }}
-      end={{ x: 0, y: 1 }}
-      style={[{ borderRadius: radius.lg, padding: space.lg }, shadow.card, style]}
-    >
-      {children}
-    </LinearGradient>
-  ) : (
+  const content = (
     <View style={[baseStyle, style]} {...props}>
       {children}
     </View>

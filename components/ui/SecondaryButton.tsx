@@ -16,15 +16,17 @@ export function SecondaryButton({ testID, label, onPress }: SecondaryButtonProps
       onPress={onPress}
       activeOpacity={0.7}
       style={{
-        backgroundColor: colors.accentSoft,
+        backgroundColor: colors.cardMuted,
         height: 52,
         borderRadius: radius.md,
         alignItems: 'center',
         justifyContent: 'center',
         paddingHorizontal: 16,
+        borderWidth: 1,
+        borderColor: colors.border,
       }}
     >
-      <Text style={[{ color: colors.accentText, fontFamily: type.heading.fontFamily, fontSize: type.heading.fontSize }]}>
+      <Text style={[{ color: colors.text, fontFamily: type.heading.fontFamily, fontSize: type.heading.fontSize }]}>
         {label}
       </Text>
     </TouchableOpacity>
