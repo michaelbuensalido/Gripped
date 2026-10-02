@@ -517,7 +517,13 @@ export function gradeToNumeric(gradeRaw: string): number {
 
 export function getClimbsForSession(sessionId: string): any[] {
   const db = getDatabase();
-  return db.getAllSync(`SELECT * FROM climbs WHERE session_id = ? ORDER BY logged_at DESC`, [sessionId]);
+  return db.getAllSync(`
+    SELECT c.*, p.title as projectTitle 
+    FROM climbs c 
+    LEFT JOIN projects p ON c.project_id = p.id 
+    WHERE c.session_id = ? 
+    ORDER BY c.logged_at DESC
+  `, [sessionId]);
 }
 
 export function getAllSessionSummaries(): any[] {
@@ -1039,4 +1045,27 @@ export function getHomeSummary(): HomeSummary {
     projects,
     hasAnyData: hasAnySession > 0,
   };
+}
+
+export function getRecentGrades(): { gradeRaw: string, gradeIndex: number }[] {
+  const db = getDatabase();
+  const rows = db.getAllSync<any>(`
+    SELECT grade_raw, grade_index, MAX(logged_at) as last_logged
+    FROM climbs 
+    WHERE deleted_at IS NULL
+    GROUP BY grade_raw, grade_index
+    ORDER BY last_logged DESC
+    LIMIT 5
+  `);
+  
+  if (rows.length === 0) {
+    return [
+      { gradeRaw: 'V0', gradeIndex: 0 },
+      { gradeRaw: 'V1', gradeIndex: 1 },
+      { gradeRaw: 'V2', gradeIndex: 2 },
+      { gradeRaw: 'V3', gradeIndex: 3 },
+      { gradeRaw: 'V4', gradeIndex: 4 },
+    ];
+  }
+  return rows.map(r => ({ gradeRaw: r.grade_raw, gradeIndex: r.grade_index }));
 }

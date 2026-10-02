@@ -75,7 +75,7 @@ export default function SessionDetailScreen() {
       <SectionHeader title="Climbs" />
       <View style={{ gap: space.sm, marginBottom: space.xxl }}>
         {climbs.map((c: any) => (
-          <ClimbRow key={c.id} climb={c} onDelete={handleDeleteClimb} />
+          <ClimbRow key={c.id} climb={c} onDelete={handleDeleteClimb} onEdit={() => {}} />
         ))}
       </View>
 

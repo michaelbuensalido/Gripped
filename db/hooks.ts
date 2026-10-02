@@ -59,3 +59,7 @@ export function useProgressStats(period: '7d'|'30d'|'90d'|'1y'|'all') {
 export function useHomeSummary() {
   return useLiveQuery(() => Q.getHomeSummary());
 }
+
+export function useRecentGrades() {
+  return useLiveQuery(() => Q.getRecentGrades());
+}

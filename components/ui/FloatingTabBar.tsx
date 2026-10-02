@@ -140,7 +140,7 @@ export function FloatingTabBar({ state, descriptors, navigation }: any) {
     return () => { showSub.remove(); hideSub.remove(); };
   }, []);
 
-  if (keyboardVisible) return null;
+  if (keyboardVisible || state.routes[state.index].name === 'session/index') return null;
 
   const visibleTabs = ['index', 'projects', 'analytics', 'profile'];
   const routes = state.routes.filter((r: any) => visibleTabs.includes(r.name));

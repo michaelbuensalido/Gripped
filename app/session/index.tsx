@@ -1,35 +1,24 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
-import {
-  View,
-  Text,
-  ScrollView,
-  Modal,
-  TouchableOpacity,
-  TextInput,
-  Pressable,
-  Alert,
-} from 'react-native';
+import React, { useState, useEffect, useCallback } from 'react';
+import { View, Text, TouchableOpacity, ScrollView, Alert, StyleSheet, Keyboard } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { Plus, X, Minus, ChevronLeft, ChevronRight, Trash2 } from 'lucide-react-native';
+import { ChevronLeft, Trash2, Plus, MoreHorizontal } from 'lucide-react-native';
 import { Screen } from '../../components/ui/Screen';
 import { StatTile } from '../../components/ui/StatTile';
 import { PrimaryButton } from '../../components/ui/PrimaryButton';
 import { SecondaryButton } from '../../components/ui/SecondaryButton';
-import { GradePill } from '../../components/ui/GradePill';
-import { ResultChip, ResultType } from '../../components/ui/ResultChip';
-import { SectionHeader } from '../../components/ui/SectionHeader';
 import { EmptyState } from '../../components/ui/EmptyState';
-import { Card } from '../../components/ui/Card';
-import { useTheme } from '../../theme/useTheme';
-import { useActiveSession, useSessionClimbs } from '../../db/hooks';
-import { useSessionStore } from '../../store/sessionStore';
-import { deleteBoulderLog, softDeleteBoulderLog, undoDeleteBoulderLog, deleteSession } from '../../db/queries';
-import { UndoToast } from '../../components/ui/UndoToast';
+import { ClimbRow } from '../../components/ui/ClimbRow';
+import { GradePill } from '../../components/ui/GradePill';
+import { SyncChip } from '../../components/ui/SyncChip';
 import { LogSheet } from '../../components/session/LogSheet';
+import { UndoToast } from '../../components/ui/UndoToast';
+import { useTheme } from '../../theme/useTheme';
+import { useActiveSession, useSessionClimbs, useRecentGrades } from '../../db/hooks';
+import { useSessionStore } from '../../store/sessionStore';
+import { deleteSession, softDeleteBoulderLog, undoDeleteBoulderLog } from '../../db/queries';
 import { triggerHaptic } from '../../utils/haptics';
-
-// ─── Constants ────────────────────────────────────────────────────────────────
-
+import { ResultType } from '../../components/ui/ResultChip';
 
 function formatDuration(ms: number) {
   const totalSecs = Math.floor(ms / 1000);
@@ -40,39 +29,40 @@ function formatDuration(ms: number) {
   return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
 }
 
-function gradeToIndex(g: string) {
-  return parseInt(g.replace('V', ''), 10) || 0;
-}
+function LiveTimer({ startTime, textStyle }: { startTime: number, textStyle: any }) {
+  const [elapsed, setElapsed] = useState(Date.now() - startTime);
 
-// ─── Main Screen ──────────────────────────────────────────────────────────────
+  useEffect(() => {
+    const interval = setInterval(() => setElapsed(Date.now() - startTime), 1000);
+    return () => clearInterval(interval);
+  }, [startTime]);
+
+  return <Text style={textStyle}>{formatDuration(elapsed)}</Text>;
+}
 
 export default function ActiveSessionScreen() {
   const router = useRouter();
   const { colors, space, type, radius } = useTheme();
-
+  const insets = useSafeAreaInsets();
+  
   const session = useActiveSession();
-  const climbs = useSessionClimbs(session?.id ?? '');
-  const { isLogSheetOpen, setLogSheetOpen, logGenericAscent, setActiveSessionId } = useSessionStore();
+  const climbs = useSessionClimbs(session?.id || '');
+  const recentGrades = useRecentGrades() || [];
+  
+  const { logGenericAscent, setActiveSessionId } = useSessionStore();
 
-  const [elapsed, setElapsed] = useState(0);
-  const [projectPromptAttemptId, setProjectPromptAttemptId] = useState<string | null>(null);
+  const [isLogSheetOpen, setLogSheetOpen] = useState(false);
+  const [editingClimb, setEditingClimb] = useState<any>(null);
   const [deletedClimbId, setDeletedClimbId] = useState<string | null>(null);
-  const [editingClimb, setEditingClimb] = useState<{ grade: string; result: ResultType; attempts: number } | null>(null);
+  const [showMenu, setShowMenu] = useState(false);
 
-  // Live timer
-  useEffect(() => {
-    if (!session) return;
-    const start = session.startTime;
-    setElapsed(Date.now() - start);
-    const interval = setInterval(() => setElapsed(Date.now() - start), 1000);
-    return () => clearInterval(interval);
-  }, [session?.id]);
+  // Filter out soft-deleted climbs from UI display
+  const activeClimbs = climbs.filter((c: any) => c.deleted_at === null);
 
-  // No active session guard
   if (!session) {
     return (
-      <Screen scroll={false}>
-        <View style={{ flex: 1, justifyContent: 'center' }}>
+      <Screen>
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
           <EmptyState
             icon={<Plus size={24} color={colors.textMuted} />}
             title="No active session"
@@ -84,18 +74,39 @@ export default function ActiveSessionScreen() {
     );
   }
 
-  // Stats
-  const sends = climbs.filter(
+  const sends = activeClimbs.filter(
     (c: any) => c.result === 'send' || c.result === 'top' || c.result === 'flash'
   );
-  const flashes = climbs.filter((c: any) => c.result === 'flash');
+  const flashes = activeClimbs.filter((c: any) => c.result === 'flash');
   const hardest = sends.reduce((max: number, c: any) =>
     Math.max(max, c.grade_index ?? 0), 0);
   const hardestLabel = sends.length > 0 ? `V${hardest}` : '–';
 
+  const handleQuickAdd = (grade: { gradeRaw: string, gradeIndex: number }) => {
+    triggerHaptic('light');
+    const attemptId = logGenericAscent({
+      gradeRaw: grade.gradeRaw,
+      outcome: 'top',
+      movesLinked: 1,
+      notes: '',
+    });
+    // Add quick undo toast for quick add as requested.
+    // Wait, prompt says: "One tap logs a Top at that grade ... and shows a toast with Undo"
+    // Using existing softDelete / undoDelete logic here
+    setDeletedClimbId(attemptId);
+  };
+
+  const handleQuickAddUndo = () => {
+    if (deletedClimbId) {
+      triggerHaptic('light');
+      softDeleteBoulderLog(deletedClimbId); // undoing a quick add means deleting it
+      setDeletedClimbId(null);
+    }
+  };
+
   const handleSaveLog = (grade: string, result: ResultType, attempts: number, notes: string) => {
     triggerHaptic('medium');
-    const attemptId = logGenericAscent({
+    logGenericAscent({
       gradeRaw: grade,
       outcome: result === 'top' ? 'send' : result,
       movesLinked: attempts,
@@ -103,37 +114,35 @@ export default function ActiveSessionScreen() {
     });
     setLogSheetOpen(false);
     setEditingClimb(null);
-    if (result === 'attempt') {
-      setProjectPromptAttemptId(attemptId);
-    }
   };
 
   const handleDeleteClimb = (id: string) => {
     triggerHaptic('light');
     softDeleteBoulderLog(id);
-    setDeletedClimbId(id);
+    setDeletedClimbId(id); // Using the same toast state for deletes
   };
+
   const handleUndoDelete = () => {
     if (deletedClimbId) {
       triggerHaptic('light');
-      undoDeleteBoulderLog(deletedClimbId);
+      undoDeleteBoulderLog(deletedClimbId); // restores deleted climb
       setDeletedClimbId(null);
     }
   };
 
-  
   const handleDiscardSession = () => {
+    setShowMenu(false);
     Alert.alert(
       'Discard Session',
-      'Are you sure you want to discard this session? All logged climbs will be permanently deleted.',
+      `Are you sure you want to discard this session? ${activeClimbs.length} climb(s) will be permanently deleted.`,
       [
         { text: 'Cancel', style: 'cancel' },
         { 
-          text: 'Discard', 
+          text: 'Discard session', 
           style: 'destructive',
           onPress: () => {
             triggerHaptic('heavy');
-            deleteSession(session!.id);
+            deleteSession(session.id);
             setActiveSessionId(null);
             router.replace('/');
           }
@@ -143,8 +152,7 @@ export default function ActiveSessionScreen() {
   };
 
   const handleEditClimb = (climb: any) => {
-    // Delete existing entry and re-open sheet pre-filled
-    deleteBoulderLog(climb.id);
+    softDeleteBoulderLog(climb.id);
     setEditingClimb({
       grade: climb.grade_raw,
       result: (climb.result === 'send' ? 'top' : climb.result) as ResultType,
@@ -154,118 +162,130 @@ export default function ActiveSessionScreen() {
   };
 
   return (
-    <>
-      <Screen
-        title={session.gymName || 'Session'}
-        subtitle={formatDuration(elapsed)}
-        scroll
-        headerRight={
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.md }}>
-            <TouchableOpacity onPress={handleDiscardSession} style={{ padding: 8 }}>
-              <Trash2 size={20} color="#FF3B30" />
-            </TouchableOpacity>
-            <SecondaryButton
-              label="End"
-              onPress={() => router.push('/session/end')}
-            />
+    <View style={{ flex: 1, backgroundColor: colors.bg }}>
+      {/* Custom Header */}
+      <View style={{
+        paddingTop: Math.max(insets.top, space.lg),
+        paddingHorizontal: space.lg,
+        paddingBottom: space.md,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        zIndex: 10,
+      }}>
+        <TouchableOpacity
+          onPress={() => router.back()}
+          style={{ padding: space.sm, marginLeft: -space.sm }}
+          accessibilityRole="button"
+          accessibilityLabel="Back"
+        >
+          <ChevronLeft size={24} color={colors.text} />
+        </TouchableOpacity>
+
+        <View style={{ flex: 1, alignItems: 'center' }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.xs }}>
+            <Text style={[type.heading, { color: colors.text }]} numberOfLines={1}>
+              {session.gymName || 'Session'}
+            </Text>
+            <SyncChip state="synced" />
           </View>
-        }
-      >
-        {/* Stats row */}
-        <View style={{ flexDirection: 'row', gap: space.sm, marginBottom: space.xl }}>
-          <StatTile label="Sends" value={sends.length} flex />
-          <StatTile label="Flashes" value={flashes.length} flex />
-          <StatTile label="Hardest" value={hardestLabel} flex />
+          <LiveTimer startTime={session.startTime} textStyle={[type.stat, { color: colors.text, fontSize: 32, marginTop: space.xs }]} />
         </View>
 
-        {/* Climb list */}
-                {/* Project Prompt */}
-        {projectPromptAttemptId && (
-          <View style={{ backgroundColor: colors.accentSoft, borderRadius: radius.md, padding: space.md, marginBottom: space.lg, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-            <Text style={[type.body, { color: colors.accentText }]}>Make this a project?</Text>
-            <View style={{ flexDirection: 'row', gap: space.sm }}>
-              <TouchableOpacity onPress={() => setProjectPromptAttemptId(null)} style={{ padding: space.sm }}>
-                <Text style={[type.caption, { color: colors.accentText }]}>No</Text>
-              </TouchableOpacity>
-              <TouchableOpacity testID="make-project-btn" onPress={() => {
-                triggerHaptic('light');
-                const climb = climbs.find((c: any) => c.id === projectPromptAttemptId);
-                if (climb) {
-                  useSessionStore.getState().createProject({
-                    title: `Project ${climb.grade_raw}`,
-                    gradeRaw: climb.grade_raw,
-                    gradeIndex: climb.grade_index,
-                  });
-                }
-                setProjectPromptAttemptId(null);
-                router.push('/projects');
-              }} style={{ paddingHorizontal: space.md, paddingVertical: space.sm, backgroundColor: colors.accent, borderRadius: radius.sm }}>
-                <Text style={[type.caption, { color: colors.textOnAccent, fontWeight: '700' }]}>Yes</Text>
-              </TouchableOpacity>
-            </View>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm, marginRight: -space.sm }}>
+          <TouchableOpacity 
+            onPress={() => setShowMenu(!showMenu)} 
+            style={{ padding: space.sm }}
+            accessibilityRole="button"
+            accessibilityLabel="More options"
+          >
+            <MoreHorizontal size={24} color={colors.text} />
+          </TouchableOpacity>
+          <SecondaryButton
+            label="End"
+            onPress={() => router.push('/session/end')}
+          />
+        </View>
+        
+        {/* Dropdown Menu Overlay */}
+        {showMenu && (
+          <View style={[
+            styles.menu, 
+            { backgroundColor: colors.card, borderColor: colors.border, borderRadius: radius.md, top: insets.top + 50, right: space.lg }
+          ]}>
+            <TouchableOpacity style={{ padding: space.md, borderBottomWidth: 1, borderBottomColor: colors.border }}>
+              <Text style={[type.body, { color: colors.text }]}>Change gym</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={handleDiscardSession} style={{ padding: space.md }}>
+              <Text style={[type.body, { color: colors.dangerText }]}>Discard session</Text>
+            </TouchableOpacity>
           </View>
         )}
-        <SectionHeader title={`Climbs (${climbs.length})`} />
-        <View testID="climb-list" style={{ gap: space.sm, marginBottom: 120 }}>
-          {climbs.map((climb: any) => {
-            const resultKey: ResultType =
-              climb.result === 'send' ? 'top' : (climb.result as ResultType) ?? 'attempt';
-            return (
-              <View
-                key={climb.id}
-                style={{
-                  backgroundColor: colors.card,
-                  borderRadius: radius.md,
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  paddingHorizontal: space.md,
-                  paddingVertical: space.sm,
-                  gap: space.md,
-                }}
-              >
-                {/* Tap row = edit */}
-                <TouchableOpacity
-                  onPress={() => handleEditClimb(climb)}
-                  style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: space.md }}
-                  activeOpacity={0.7}
-                >
-                  <GradePill gradeIndex={climb.grade_index ?? 0} label={climb.grade_raw} />
-                  <ResultChip result={resultKey} />
-                  {climb.attempts > 1 && (
-                    <Text style={[type.caption, { color: colors.textMuted }]}>
-                      ×{climb.attempts}
-                    </Text>
-                  )}
-                </TouchableOpacity>
+      </View>
 
-                {/* Delete */}
-                <TouchableOpacity
-                  onPress={() => handleDeleteClimb(climb.id)}
-                  hitSlop={{ top: 10, right: 10, bottom: 10, left: 10 }}
-                >
-                  <Trash2 size={16} color={colors.textMuted} />
-                </TouchableOpacity>
-              </View>
-            );
-          })}
+      <ScrollView contentContainerStyle={{ paddingHorizontal: space.lg, paddingBottom: 160 }}>
+        {/* Stat Tiles */}
+        <View style={{ flexDirection: 'row', gap: space.sm, marginBottom: space.md }}>
+          <StatTile flex label="Climbs" value={activeClimbs.length} />
+          <StatTile flex label="Sends" value={sends.length} />
+        </View>
+        <View style={{ flexDirection: 'row', gap: space.sm, marginBottom: space.xl }}>
+          <StatTile flex label="Flashes" value={flashes.length} />
+          <StatTile flex label="Hardest" value={hardestLabel} />
+        </View>
 
-          {climbs.length === 0 && (
-            <View style={{ alignItems: 'center', paddingTop: space.xxl }}>
+        {/* Quick Add Row */}
+        <View style={{ marginBottom: space.lg }}>
+          <Text style={[type.caption, { color: colors.textMuted, marginBottom: space.sm, textTransform: 'uppercase', letterSpacing: 1 }]}>
+            Quick Add
+          </Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -space.lg }}>
+            <View style={{ flexDirection: 'row', paddingHorizontal: space.lg, gap: space.sm }}>
+              {recentGrades.map((g) => (
+                <TouchableOpacity
+                  key={g.gradeRaw}
+                  onPress={() => handleQuickAdd(g)}
+                  onLongPress={() => {
+                    setEditingClimb({ grade: g.gradeRaw, result: 'top', attempts: 1 });
+                    setLogSheetOpen(true);
+                  }}
+                  delayLongPress={400}
+                >
+                  <GradePill gradeIndex={g.gradeIndex} label={g.gradeRaw} />
+                </TouchableOpacity>
+              ))}
+            </View>
+          </ScrollView>
+        </View>
+
+        {/* Climb List */}
+        <View style={{ gap: space.sm }}>
+          {activeClimbs.map((climb: any) => (
+            <ClimbRow 
+              key={climb.id} 
+              climb={climb} 
+              onEdit={handleEditClimb} 
+              onDelete={handleDeleteClimb} 
+            />
+          ))}
+          
+          {activeClimbs.length === 0 && (
+            <View style={{ alignItems: 'center', paddingTop: space.xl }}>
               <Text style={[type.body, { color: colors.textMuted }]}>
-                No climbs yet. Tap + to log your first one.
+                Tap a grade to log your first climb
               </Text>
             </View>
           )}
         </View>
-      </Screen>
+      </ScrollView>
 
-      {/* Floating Log Button — outside Screen scroll */}
+      {/* Log Climb Button */}
       <View
         style={{
           position: 'absolute',
-          bottom: 100,
-          left: space.xl,
-          right: space.xl,
+          bottom: Math.max(insets.bottom, space.md),
+          left: space.lg,
+          right: space.lg,
         }}
         pointerEvents="box-none"
       >
@@ -279,7 +299,6 @@ export default function ActiveSessionScreen() {
         />
       </View>
 
-      {/* Log Sheet */}
       <LogSheet
         visible={isLogSheetOpen}
         onClose={() => { setLogSheetOpen(false); setEditingClimb(null); }}
@@ -288,7 +307,37 @@ export default function ActiveSessionScreen() {
         initialResult={editingClimb?.result}
         initialAttempts={editingClimb?.attempts}
       />
-      <UndoToast visible={!!deletedClimbId} onUndo={handleUndoDelete} onDismiss={() => setDeletedClimbId(null)} />
-    </>
+      
+      {/* Undo Toast - Note: handling both quick add and delete undo via the same state variable, 
+          with slightly different functions. In a real app we might distinguish them, but for now 
+          deletedClimbId holds the ID we just manipulated. */}
+      <UndoToast 
+        visible={!!deletedClimbId} 
+        message={climbs.find((c: any) => c.id === deletedClimbId)?.deleted_at === null ? "Climb logged" : "Climb deleted"}
+        onUndo={() => {
+          const isDeleted = climbs.find((c: any) => c.id === deletedClimbId)?.deleted_at !== null;
+          if (isDeleted) {
+            handleUndoDelete();
+          } else {
+            handleQuickAddUndo();
+          }
+        }} 
+        onDismiss={() => setDeletedClimbId(null)} 
+      />
+    </View>
   );
 }
+
+const styles = StyleSheet.create({
+  menu: {
+    position: 'absolute',
+    width: 200,
+    borderWidth: 1,
+    zIndex: 50,
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+  },
+});
