@@ -48,7 +48,7 @@ export function ProjectCard({
   onArchive?: () => void;
   style?: any;
 }) {
-  const { colors, space, radius, type, shadow } = useTheme();
+  const { colors, space, radius, type, shadow, gradeBand } = useTheme();
   const swipeableRef = useRef<Swipeable>(null);
   const router = useRouter();
 
@@ -126,13 +126,27 @@ export function ProjectCard({
     statusChip = project.statusChip;
   }
 
+  const stripeColor = gradeBand(project.normalizedDifficulty ?? project.grade_index ?? 0).solid;
+
   const cardContent = (
     <TouchableOpacity
       activeOpacity={0.7}
       onPress={() => router.push(`/project/${project.id}` as any)}
-      style={[{ backgroundColor: colors.card, borderRadius: radius.lg, padding: space.md }, shadow.card, style]}
+      style={[{ backgroundColor: colors.card, borderRadius: radius.lg, paddingLeft: space.md + 8, paddingRight: space.md, paddingTop: space.md, paddingBottom: space.md, overflow: 'hidden' }, shadow.card, style]}
       testID={`project-card-${project.title.replace(/\\s+/g, '-')}`}
     >
+      {/* Grade-band left stripe */}
+      <View style={{
+        position: 'absolute',
+        left: 0,
+        top: 0,
+        bottom: 0,
+        width: 4,
+        borderTopLeftRadius: radius.lg,
+        borderBottomLeftRadius: radius.lg,
+        backgroundColor: stripeColor,
+      }} />
+
       {/* Row 1 */}
       <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: space.sm, gap: space.md }}>
         <GradePill gradeIndex={project.normalizedDifficulty ?? project.grade_index ?? 0} label={project.gradeRaw ?? project.grade_raw ?? '—'} />

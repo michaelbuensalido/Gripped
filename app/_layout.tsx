@@ -7,7 +7,7 @@ import {
   Text,
   TouchableOpacity,
 } from "react-native";
-import { Tabs } from "expo-router";
+import { Tabs, SplashScreen } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
@@ -18,6 +18,8 @@ import {
   BookOpen,
   type LucideIcon,
 } from "lucide-react-native";
+import { useFonts as useSoraFonts, Sora_400Regular, Sora_600SemiBold, Sora_700Bold } from "@expo-google-fonts/sora";
+import { useFonts as useInterFonts, Inter_400Regular, Inter_500Medium, Inter_600SemiBold } from "@expo-google-fonts/inter";
 import { initializeDatabase } from "../db/schema";
 import { useSessionStore } from '../store/sessionStore';
 import { useActiveSession } from '../db/hooks';
@@ -26,6 +28,9 @@ import { notificationEngine } from "../services/notificationEngine";
 import "../global.css";
 
 import { FloatingTabBar } from "../components/ui/FloatingTabBar";
+
+// Prevent the splash screen from hiding until fonts + DB are ready
+SplashScreen.preventAutoHideAsync();
 
 function TabLayout() {
   const activeSession = useActiveSession();
@@ -95,6 +100,22 @@ const styles = StyleSheet.create({
 
 export default function RootLayout() {
   const [isDbReady, setIsDbReady] = React.useState(false);
+
+  const [soraLoaded, soraError] = useSoraFonts({
+    Sora_400Regular,
+    Sora_600SemiBold,
+    Sora_700Bold,
+  });
+
+  const [interLoaded, interError] = useInterFonts({
+    Inter_400Regular,
+    Inter_500Medium,
+    Inter_600SemiBold,
+  });
+
+  const fontsLoaded = soraLoaded && interLoaded;
+  const fontError = soraError ?? interError;
+
   useEffect(() => {
     (async () => {
       try {
@@ -108,17 +129,26 @@ export default function RootLayout() {
     })();
   }, []);
 
+  // Hide splash screen once both fonts and DB are ready
+  useEffect(() => {
+    if ((fontsLoaded || fontError) && isDbReady) {
+      SplashScreen.hideAsync();
+    }
+  }, [fontsLoaded, fontError, isDbReady]);
+
+  const isReady = (fontsLoaded || fontError) && isDbReady;
+
   return (
-    <GestureHandlerRootView style={{ flex: 1, backgroundColor: "#111113" }}>
+    <GestureHandlerRootView style={{ flex: 1, backgroundColor: "#F5F2EC" }}>
       <ImageBackground
         source={require("../assets/speckled_mat_bg.jpg")}
         style={StyleSheet.absoluteFill}
-        imageStyle={{ opacity: 0.22 }}
+        imageStyle={{ opacity: 0.04 }}
         resizeMode="cover"
       />
       <SafeAreaProvider>
         <StatusBar style="dark" />
-        {isDbReady ? <TabLayout /> : null}
+        {isReady ? <TabLayout /> : null}
                 {/* Global floating mini-bar */}
         
       </SafeAreaProvider>

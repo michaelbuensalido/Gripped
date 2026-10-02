@@ -137,6 +137,7 @@ export default function ProjectsScreen() {
   };
 
   return (
+    <>
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
       <View style={{ paddingHorizontal: 20, paddingTop: Math.max(insets.top, 16) + 8 }}>
         {/* Header */}

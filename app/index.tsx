@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Animated, Dimensions } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Animated, Dimensions, Image } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Settings as SettingsIcon, Plus, PlayCircle, Trophy } from 'lucide-react-native';
@@ -33,7 +33,7 @@ function formatDuration(ms: number) {
 
 export default function HomeScreen() {
   const router = useRouter();
-  const { colors, type, space, radius, shadow } = useTheme();
+  const { colors, type, space, radius, shadow, gradeBand } = useTheme();
 
   const data = useHomeSummary();
   const { startOrResume } = useSessionActions();
@@ -113,21 +113,30 @@ export default function HomeScreen() {
             />
           </HeroCard>
         ) : (
-          <HeroCard
-            title={data.hasAnyData ? 'READY TO CLIMB?' : 'LOG YOUR FIRST SESSION'}
-            subtitle={
-              data.lastSession
-                ? `${data.lastSession.gymName} · ${data.lastSessionRelative}`
-                : 'Tap below to get started'
-            }
-          >
-            <PrimaryButton
-              testID="start-session-btn"
-              label="Start session"
-              icon={<PlayCircle color={colors.textOnAccent} size={20} />}
-              onPress={handleStartSession}
-            />
-          </HeroCard>
+          <>
+            {!data.hasAnyData && (
+              <Image
+                source={require('../assets/images/welcome-hero.png')}
+                style={{ width: '100%', height: 180, borderRadius: radius.xl, marginBottom: space.lg }}
+                resizeMode="cover"
+              />
+            )}
+            <HeroCard
+              title={data.hasAnyData ? 'READY TO CLIMB?' : 'LOG YOUR FIRST SESSION'}
+              subtitle={
+                data.lastSession
+                  ? `${data.lastSession.gymName} · ${data.lastSessionRelative}`
+                  : 'Tap below to get started'
+              }
+            >
+              <PrimaryButton
+                testID="start-session-btn"
+                label="Start session"
+                icon={<PlayCircle color={colors.textOnAccent} size={20} />}
+                onPress={handleStartSession}
+              />
+            </HeroCard>
+          </>
         )}
       </View>
 
@@ -147,12 +156,13 @@ export default function HomeScreen() {
 
           {/* 4. Three StatTiles */}
           <View style={{ flexDirection: 'row', gap: space.sm, marginBottom: space.xl }}>
-            <StatTile flex label="SESSIONS" value={data.sessionsThisWeek} />
+            <StatTile flex label="SESSIONS" value={data.sessionsThisWeek} tintBg={colors.accentSoft} />
             <StatTile flex label="CLIMBS" value={data.climbsThisWeek} />
             <StatTile
               flex
               label="SENDS"
               value={data.sendsThisWeek}
+              tintBg={colors.flashSoft}
               trend={data.flashesThisWeek > 0 ? `${data.flashesThisWeek} flash${data.flashesThisWeek !== 1 ? 'es' : ''}` : undefined}
             />
           </View>

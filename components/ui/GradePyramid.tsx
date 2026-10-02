@@ -14,7 +14,7 @@ export interface GradePyramidProps {
 }
 
 export function GradePyramid({ data, formatGrade = (g) => `V${g}` }: GradePyramidProps) {
-  const { colors, type, space, radius } = useTheme();
+  const { colors, type, space, radius, gradeBand } = useTheme();
 
   if (!data || data.length === 0) {
     return (
@@ -33,7 +33,8 @@ export function GradePyramid({ data, formatGrade = (g) => `V${g}` }: GradePyrami
         const flashPercent = (row.flashes / maxVolume) * 100;
         const sendPercent = (row.sends / maxVolume) * 100;
         const total = row.flashes + row.sends;
-        
+        const band = gradeBand(row.grade);
+
         return (
           <View key={row.grade} style={{ flexDirection: 'row', alignItems: 'center', gap: space.md }}>
             <View style={{ width: 40, alignItems: 'flex-end' }}>
@@ -42,10 +43,10 @@ export function GradePyramid({ data, formatGrade = (g) => `V${g}` }: GradePyrami
             
             <View style={{ flex: 1, flexDirection: 'row', height: 24, backgroundColor: colors.cardMuted, borderRadius: radius.sm, overflow: 'hidden' }}>
               {row.flashes > 0 && (
-                <View style={{ width: `${flashPercent}%`, backgroundColor: colors.flashSoft, borderRightWidth: row.sends > 0 ? 1 : 0, borderColor: colors.cardMuted }} />
+                <View style={{ width: `${flashPercent}%`, backgroundColor: band.solid + 'B3', borderRightWidth: row.sends > 0 ? 1 : 0, borderColor: colors.cardMuted }} />
               )}
               {row.sends > 0 && (
-                <View style={{ width: `${sendPercent}%`, backgroundColor: colors.topSoft }} />
+                <View style={{ width: `${sendPercent}%`, backgroundColor: band.bg }} />
               )}
             </View>
 

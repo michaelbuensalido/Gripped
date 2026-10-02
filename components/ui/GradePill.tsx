@@ -2,12 +2,17 @@ import React from 'react';
 import { View, Text } from 'react-native';
 import { useTheme } from '../../theme/useTheme';
 
+// Keep getGradeBandColors for backward-compat (used in some files)
 export function getGradeBandColors(gradeIndex: number, colors: any) {
-  if (gradeIndex === undefined || gradeIndex === null) return { bg: colors.cardMuted, text: colors.textMuted, border: colors.border };
-  if (gradeIndex <= 2) return { bg: 'transparent', text: colors.textMuted, border: colors.border }; // Beginner V0-V2
-  if (gradeIndex <= 5) return { bg: colors.flashSoft, text: colors.flashText, border: 'transparent' }; // Intermediate V3-V5
-  if (gradeIndex <= 8) return { bg: colors.dangerSoft, text: colors.dangerText, border: 'transparent' }; // Advanced V6-V8
-  return { bg: colors.accentSoft, text: colors.accentText, border: 'transparent' }; // Expert V9+
+  const { bg, text } = gradeBandStatic(gradeIndex);
+  return { bg, text, border: 'transparent' };
+}
+
+function gradeBandStatic(gradeIndex: number) {
+  if (gradeIndex <= 2) return { bg: '#E8EAF0', text: '#3D4166', solid: '#7C85C4' };
+  if (gradeIndex <= 5) return { bg: '#DDF1D3', text: '#1F6B3A', solid: '#3BA462' };
+  if (gradeIndex <= 8) return { bg: '#FBE3E6', text: '#9B2C3A', solid: '#C0392B' };
+  return { bg: '#ECE8FB', text: '#5440B5', solid: '#6A52D1' };
 }
 
 interface GradePillProps {
@@ -16,21 +21,21 @@ interface GradePillProps {
 }
 
 export function GradePill({ gradeIndex, label }: GradePillProps) {
-  const { colors, radius, space, type } = useTheme();
-  const band = getGradeBandColors(gradeIndex, colors);
+  const { type, gradeBand } = useTheme();
+  const band = gradeBand(gradeIndex);
   const displayLabel = label || `V${gradeIndex}`;
 
   return (
     <View style={{
       backgroundColor: band.bg,
-      paddingHorizontal: space.sm,
-      paddingVertical: space.xs,
-      borderRadius: radius.sm,
-      borderWidth: 1,
-      borderColor: band.border,
+      paddingHorizontal: 8,
+      paddingVertical: 3,
+      borderRadius: 8,
       alignSelf: 'flex-start',
+      minWidth: 36,
+      alignItems: 'center',
     }}>
-      <Text style={[{ color: band.text, fontFamily: type.heading.fontFamily, fontSize: 13, fontWeight: '600' }]}>
+      <Text style={{ color: band.text, fontFamily: type.display.fontFamily, fontSize: 13, fontWeight: '600', lineHeight: 18 }}>
         {displayLabel}
       </Text>
     </View>

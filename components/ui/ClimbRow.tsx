@@ -22,7 +22,7 @@ function formatTime(timestamp: number) {
 }
 
 export function ClimbRow({ climb, onEdit, onDelete }: ClimbRowProps) {
-  const { colors, space, type, radius } = useTheme();
+  const { colors, space, type, radius, gradeBand } = useTheme();
   const swipeableRef = useRef<Swipeable>(null);
 
   const renderRightActions = (progress: Animated.AnimatedInterpolation<number>, dragX: Animated.AnimatedInterpolation<number>) => {
@@ -56,6 +56,8 @@ export function ClimbRow({ climb, onEdit, onDelete }: ClimbRowProps) {
     );
   };
 
+  const stripeColor = gradeBand(climb.grade_index ?? 0).solid;
+
   return (
     <Swipeable ref={swipeableRef} renderRightActions={renderRightActions} overshootRight={false}>
       <TouchableOpacity
@@ -68,11 +70,25 @@ export function ClimbRow({ climb, onEdit, onDelete }: ClimbRowProps) {
           borderRadius: radius.md,
           flexDirection: 'row',
           alignItems: 'center',
-          paddingHorizontal: space.md,
+          paddingLeft: space.md + 8,
+          paddingRight: space.md,
           paddingVertical: space.sm,
           gap: space.md,
+          overflow: 'hidden',
         }}
       >
+        {/* Grade-band left stripe */}
+        <View style={{
+          position: 'absolute',
+          left: 0,
+          top: 0,
+          bottom: 0,
+          width: 4,
+          borderTopLeftRadius: radius.md,
+          borderBottomLeftRadius: radius.md,
+          backgroundColor: stripeColor,
+        }} />
+
         <GradePill gradeIndex={climb.grade_index ?? 0} label={climb.grade_raw} />
         
         <View style={{ flex: 1 }}>

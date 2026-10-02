@@ -86,3 +86,23 @@ export const type = {
 };
 
 export const motion = { fast: 120, base: 200, slow: 320 }; // ms
+
+// Grade band colours — one source of truth used by pills, stripes, charts
+export const gradeBands = [
+  // Band 0: Beginner V0-V2 — blue-grey soft
+  { bg: '#E8EAF0', text: '#3D4166', solid: '#7C85C4', label: 'Beginner' },
+  // Band 1: Intermediate V3-V5 — green soft
+  { bg: '#DDF1D3', text: '#1F6B3A', solid: '#3BA462', label: 'Intermediate' },
+  // Band 2: Advanced V6-V8 — amber/rose soft
+  { bg: '#FBE3E6', text: '#9B2C3A', solid: '#C0392B', label: 'Advanced' },
+  // Band 3: Expert V9+ — purple soft
+  { bg: '#ECE8FB', text: '#5440B5', solid: '#6A52D1', label: 'Expert' },
+] as const;
+
+// Returns the band object for a given grade index
+export function gradeBand(gradeIndex: number): typeof gradeBands[number] {
+  if (gradeIndex <= 2) return gradeBands[0];
+  if (gradeIndex <= 5) return gradeBands[1];
+  if (gradeIndex <= 8) return gradeBands[2];
+  return gradeBands[3];
+}

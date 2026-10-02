@@ -1,5 +1,5 @@
-import { colors, radius, space, shadow, type, motion } from './tokens';
+import { colors, radius, space, shadow, type, motion, gradeBands, gradeBand } from './tokens';
 
 export function useTheme() {
-  return { colors, radius, space, shadow, type, motion };
+  return { colors, radius, space, shadow, type, motion, gradeBands, gradeBand };
 }
