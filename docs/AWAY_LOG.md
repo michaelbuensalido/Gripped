@@ -35,6 +35,24 @@
 - Kept `WeekStrip`, Stats row, and Projects row layout but they now correctly inherit the matte dark solid styling from `Card`.
 - Screenshots: `docs/screens/matte-5/home.jpg`
 
-**Next Steps / Outstanding:**
-- Stage 4 requires sweeping through the remaining screens: `Projects`, `Active Session`, `Progress`, `Logbook`, `Session Summary`.
-- Removing any remaining gradient or blur remnants in those specific screens.
+**Step 6: Phase 1 — The Foundation**
+- `app/_layout.tsx`: Root background set to OLED black `#101014`, light StatusBar, SafeAreaView.
+- `Card.tsx`: Converted to Bento Box aesthetic (`colors.card`, 1px `colors.border`, no shadows, 0.98 spring press-scale).
+- `PrimaryButton.tsx` & `SecondaryButton.tsx`: Enforced 56px minimum height for "chalky hands" UX, medium haptic feedback on press.
+- `GradePill.tsx` & `StatTile.tsx`: Sora tabular-nums typography, neon contrast highlights, uppercase tracked labels.
+- `FloatingTabBar.tsx`: 56px center Start/Resume circle button, flat capsule styling.
+
+**Step 7: Phase 2 — Active Session & Modals**
+- `app/session/index.tsx`: Refactored into the Event-Driven Telemetry Dashboard (Live 44px timer, Volume, Send Rate, Hardest send). Heavy sticky bottom action bar with 56px REST toggle and 56px "+ LOG CLIMB" button.
+- `components/session/LogSheet.tsx`: Sliding bottom sheet with 56px grade stepper, 56px outcome toggle (Flash, Top, Attempt), 56px attempts stepper, dynamic `FailureTagSelector`, and pinned 56px PrimaryButton.
+- Removed legacy drop shadows from menu overlays.
+
+**Step 8: Phase 3 & 4 — Projects, Progress, Logbook & Settings**
+- `app/projects.tsx`: 56px "New" action button, Bento Telemetry Metric Strip (Active, Sent, Burns), 56px segmented in-progress/sent toggle, 56x56 sort and filter buttons, and dark matte bottom sheet modals.
+- `components/ui/ProjectCard.tsx`: Photo-forward layout with 4px left accent stripe inset 14px, hold placeholder with theme token backgrounds.
+- `app/project/[id].tsx`: 48x48 pill header buttons, Bento metric cards, zero drop shadows.
+- `app/analytics.tsx`: ResultDonut hero card, Bento trend sparkline tiles, Sends by Grade, and Deep Dive section (`GradeProgressionTimeline`, `AscentPyramid`, `WallAngleRadar`, `RootCauseFailureChart`, `ACWRWidget`). 52px period selector buttons.
+- `components/analytics/ACWRWidget.tsx`: Harmonized with `useTheme()` tokens and 1px Bento borders.
+- `app/profile.tsx` (Logbook): Upgraded touch targets for search/view-mode/settings icons, 52px period segmented control, 76px Bento stat tiles, and bottom sheet filter modal.
+- `app/settings.tsx`: 56px rest timer presets, 48x48 header back button, dark matte card grouping.
+- `tsconfig.json`: Added `jest` to compilerOptions types to ensure 0 TypeScript errors across the entire application codebase.
