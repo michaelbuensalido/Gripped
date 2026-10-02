@@ -1,0 +1,60 @@
+appId: com.cruxlog
+---
+- clearState
+- launchApp
+
+# 1. Start and finish a session first so history has a past session
+- tapOn: "Start session"
+- tapOn: "V3"
+- tapOn: "V4"
+- tapOn: "End"
+- tapOn: "SAVE & FINISH"
+- assertVisible: "Done"
+- tapOn: "Done"
+
+# 2. Go to Profile (Session History)
+- tapOn: "Profile"
+- assertVisible: "Session"
+
+# Open past session from history
+- tapOn: "Session"
+
+# In Session Detail
+- assertVisible: "Climbs"
+- assertVisible: "Sends"
+- assertVisible: "Hardest"
+
+# Edit a climb: tap opens sheet
+- tapOn: "V4"
+- assertVisible: "Log Climb"
+- tapOn: "V5"
+- tapOn: "SAVE CLIMB"
+- assertVisible: "V5"
+
+# Delete a climb with Undo (swipe left)
+- swipe:
+    direction: LEFT
+    element:
+      text: "V3"
+- tapOn: "Delete climb"
+- assertVisible: "Climb deleted"
+- tapOn: "UNDO"
+
+# Add a climb via "+ Add climb"
+- tapOn: "Add climb"
+- assertVisible: "Log Climb"
+- tapOn: "V2"
+- tapOn: "SAVE CLIMB"
+- assertVisible: "V2"
+
+# Delete the session via the ⋯ menu (confirmation shown)
+- tapOn: "More options"
+- assertVisible: "Delete session"
+- tapOn: "Delete session"
+- assertVisible: "Delete Session"
+- tapOn: "Delete"
+- assertVisible: "Session deleted"
+
+# Confirm Home and Progress update
+- tapOn: "Home"
+- tapOn: "Progress"

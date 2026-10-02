@@ -86,6 +86,7 @@ export function LogSheet({
   initialGrade,
   initialResult,
   initialAttempts,
+  initialNotes,
 }: {
   visible: boolean;
   onClose: () => void;
@@ -93,21 +94,22 @@ export function LogSheet({
   initialGrade?: string;
   initialResult?: ResultType;
   initialAttempts?: number;
+  initialNotes?: string;
 }) {
   const { colors, space, type, radius, shadow } = useTheme();
   const [grade, setGrade] = useState(initialGrade ?? 'V4');
   const [result, setResult] = useState<ResultType>(initialResult ?? 'top');
   const [attempts, setAttempts] = useState(initialAttempts ?? 1);
-  const [notes, setNotes] = useState('');
+  const [notes, setNotes] = useState(initialNotes ?? '');
 
   useEffect(() => {
     if (visible) {
       setGrade(initialGrade ?? 'V4');
       setResult(initialResult ?? 'top');
       setAttempts(initialAttempts ?? 1);
-      setNotes('');
+      setNotes(initialNotes ?? '');
     }
-  }, [visible, initialGrade, initialResult, initialAttempts]);
+  }, [visible, initialGrade, initialResult, initialAttempts, initialNotes]);
 
   useEffect(() => {
     if (result === 'flash') setAttempts(1);

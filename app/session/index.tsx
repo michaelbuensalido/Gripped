@@ -17,6 +17,7 @@ import { useActiveSession, useSessionClimbs, useRecentGrades } from '../../db/ho
 import { useSessionStore } from '../../store/sessionStore';
 import { deleteSession, softDeleteBoulderLog, undoDeleteBoulderLog } from '../../db/queries';
 import { triggerHaptic } from '../../utils/haptics';
+import { isSend } from '../../utils/isSend';
 import { ResultType } from '../../components/ui/ResultChip';
 
 function formatDuration(ms: number) {
@@ -84,9 +85,7 @@ export default function ActiveSessionScreen() {
     );
   }
 
-  const sends = activeClimbs.filter(
-    (c: any) => c.result === 'send' || c.result === 'top' || c.result === 'flash'
-  );
+  const sends = activeClimbs.filter((c: any) => isSend(c.result));
   const flashes = activeClimbs.filter((c: any) => c.result === 'flash');
   const hardest = sends.reduce((max: number, c: any) =>
     Math.max(max, c.grade_index ?? 0), 0);

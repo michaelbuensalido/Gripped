@@ -1,4 +1,5 @@
 import { getDerivedProjectStatus } from '../utils/projectStatus';
+import { isSend } from '../utils/isSend';
 import { getDatabase } from './schema';
 
 import type { Session, BoulderGroup, BoulderLog, FailureReason, Project, ProjectStatus, Outcome, Sector, Route, Attempt, HoldType, WallAngle, RouteStatus } from '../types';
@@ -522,8 +523,8 @@ export function getClimbsForSession(sessionId: string): any[] {
     SELECT c.*, p.title as projectTitle 
     FROM climbs c 
     LEFT JOIN projects p ON c.project_id = p.id 
-    WHERE c.session_id = ? 
-    ORDER BY c.logged_at DESC
+    WHERE c.session_id = ? AND c.deleted_at IS NULL
+    ORDER BY c.logged_at ASC
   `, [sessionId]);
 }
 
@@ -547,10 +548,10 @@ export function clearAllSessionData(): void {
 
 export function getSessionSummary(sessionId: string) {
   const db = getDatabase();
-  const session = db.getFirstSync<any>(`SELECT * FROM sessions WHERE id = ?`, [sessionId]);
-  const climbs = db.getAllSync<any>(`SELECT * FROM climbs WHERE session_id = ?`, [sessionId]);
+  const session = db.getFirstSync<any>(`SELECT * FROM sessions WHERE id = ? AND deleted_at IS NULL`, [sessionId]);
+  const climbs = db.getAllSync<any>(`SELECT * FROM climbs WHERE session_id = ? AND deleted_at IS NULL`, [sessionId]);
 
-  const sends = climbs.filter((c: any) => c.result === 'send' || c.result === 'flash' || c.result === 'top');
+  const sends = climbs.filter((c: any) => isSend(c.result));
   const flashes = climbs.filter((c: any) => c.result === 'flash');
   const hardest = sends.reduce((max: any, c: any) => {
     if (!max || c.grade_index > max.grade_index) return c;
@@ -562,6 +563,7 @@ export function getSessionSummary(sessionId: string) {
     : 0;
 
   return {
+    id: sessionId,
     duration,
     climbs: climbs.length,
     sends: sends.length,
@@ -571,6 +573,8 @@ export function getSessionSummary(sessionId: string) {
     gymName: session?.gym_name ?? '',
     startedAt: session?.started_at ?? 0,
     endedAt: session?.ended_at ?? 0,
+    notes: session?.notes ?? '',
+    effort: session?.effort ?? session?.rpe ?? null,
   };
 }
 
@@ -877,7 +881,7 @@ export function getHomeSummary(): HomeSummary {
   
   climbsThisWeek = thisWeekClimbs.length;
   for (const c of thisWeekClimbs) {
-    if (c.result === 'send' || c.result === 'top' || c.result === 'flash') sendsThisWeek++;
+    if (isSend(c.result)) sendsThisWeek++;
     if (c.result === 'flash') flashesThisWeek++;
   }
   
@@ -1021,7 +1025,7 @@ export function getHomeSummary(): HomeSummary {
   
   const recentSessions = completedSessions.slice(0, 3).map(s => {
     const cRows = db.getAllSync<any>(`SELECT grade_raw, grade_index, result FROM climbs WHERE session_id = ? AND deleted_at IS NULL`, [s.id]);
-    const sendsRows = cRows.filter(c => c.result === 'send' || c.result === 'top' || c.result === 'flash');
+    const sendsRows = cRows.filter(c => isSend(c.result));
     let hg = '–';
     if (sendsRows.length > 0) {
       sendsRows.sort((a,b) => b.grade_index - a.grade_index);
@@ -1202,9 +1206,121 @@ export function getProjectHistory(projectId: string): any[] {
     }
     const sess = sessions.get(c.session_id);
     sess.burns += (c.attempts || 1);
-    if (c.result === 'send' || c.result === 'top' || c.result === 'flash') {
+    if (isSend(c.result)) {
       sess.bestResult = 'send';
     }
   }
   return Array.from(sessions.values()).sort((a, b) => b.date - a.date);
 }
+
+export function softDeleteSession(id: string): void {
+  const now = Date.now();
+  runMutation('sessions', id, 'UPDATE',
+    `UPDATE sessions SET deleted_at = ?, updated_at = ? WHERE id = ?`,
+    [now, now, id]
+  );
+}
+
+export function undoDeleteSession(id: string): void {
+  const now = Date.now();
+  runMutation('sessions', id, 'UPDATE',
+    `UPDATE sessions SET deleted_at = NULL, updated_at = ? WHERE id = ?`,
+    [now, id]
+  );
+}
+
+export function logClimbForSession(sessionId: string, payload: {
+  gradeRaw: string;
+  result: string;
+  attempts?: number;
+  notes?: string;
+  projectId?: string | null;
+}): string {
+  const id = `climb_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+  const gradeIndex = gradeToNumeric(payload.gradeRaw);
+  const outcome = payload.result === 'top' ? 'send' : payload.result;
+  const now = Date.now();
+  runMutation('climbs', id, 'INSERT',
+    `INSERT INTO climbs (
+      id, session_id, project_id, grade_raw, grade_index, result, attempts, notes, logged_at, created_at, updated_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      id, sessionId, payload.projectId || null, payload.gradeRaw, gradeIndex, outcome, payload.attempts ?? 1, payload.notes || null, now, now, now
+    ]
+  );
+  if (payload.projectId && (outcome === 'send' || outcome === 'flash')) {
+    updateProjectStatus(payload.projectId, 'sent');
+  }
+  return id;
+}
+
+export function updateClimb(id: string, updates: {
+  gradeRaw?: string;
+  result?: string;
+  attempts?: number;
+  notes?: string;
+}): void {
+  const gradeIndex = updates.gradeRaw ? gradeToNumeric(updates.gradeRaw) : null;
+  const outcome = updates.result ? (updates.result === 'top' ? 'send' : updates.result) : null;
+  const now = Date.now();
+  runMutation('climbs', id, 'UPDATE',
+    `UPDATE climbs SET
+      grade_raw = COALESCE(?, grade_raw),
+      grade_index = COALESCE(?, grade_index),
+      result = COALESCE(?, result),
+      attempts = COALESCE(?, attempts),
+      notes = COALESCE(?, notes),
+      updated_at = ?
+     WHERE id = ?`,
+    [
+      updates.gradeRaw ?? null,
+      gradeIndex,
+      outcome,
+      updates.attempts ?? null,
+      updates.notes ?? null,
+      now,
+      id
+    ]
+  );
+}
+
+export function updateSessionNotesAndEffort(id: string, notes: string, effort?: number | null): void {
+  const now = Date.now();
+  runMutation('sessions', id, 'UPDATE',
+    `UPDATE sessions SET notes = ?, effort = ?, updated_at = ? WHERE id = ?`,
+    [notes, effort ?? null, now, id]
+  );
+}
+
+export function getProjectsForSession(sessionId: string): any[] {
+  const db = getDatabase();
+  const rows = db.getAllSync<any>(`
+    SELECT DISTINCT p.*,
+      EXISTS(
+        SELECT 1 FROM climbs c2 
+        WHERE c2.session_id = ? AND c2.project_id = p.id AND c2.deleted_at IS NULL AND (c2.result = 'send' OR c2.result = 'top' OR c2.result = 'flash')
+      ) as topped_in_session
+    FROM projects p
+    JOIN climbs c ON c.project_id = p.id
+    WHERE c.session_id = ? AND c.deleted_at IS NULL AND p.deleted_at IS NULL
+  `, [sessionId, sessionId]);
+
+  return rows.map(r => ({
+    id: r.id,
+    title: r.title,
+    gradeRaw: r.grade_raw,
+    normalizedDifficulty: r.grade_index,
+    wallAngle: r.wall_angle,
+    holdType: r.hold_type,
+    status: r.status,
+    highWaterMarkMoves: r.high_water_mark_moves,
+    totalMoves: r.total_moves,
+    microBeta: r.micro_beta,
+    mediaUri: r.photo_url,
+    createdAt: r.created_at,
+    updatedAt: r.updated_at,
+    isToppedInSession: Boolean(r.topped_in_session),
+    statusChip: r.topped_in_session ? 'Sent' : (r.status === 'sent' ? 'Sent' : 'In Progress'),
+  }));
+}
+

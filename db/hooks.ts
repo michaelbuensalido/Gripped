@@ -25,6 +25,18 @@ export function useSessionClimbs(sessionId: string) {
   return useLiveQuery(() => (sessionId ? Q.getClimbsForSession(sessionId) : []), [sessionId]);
 }
 
+export function useSessionDetail(sessionId: string) {
+  return useLiveQuery(() => (sessionId ? Q.getSessionSummary(sessionId) : null), [sessionId]);
+}
+
+export function useSession(sessionId: string) {
+  return useLiveQuery(() => (sessionId ? Q.getSessionById(sessionId) : null), [sessionId]);
+}
+
+export function useSessionProjects(sessionId: string) {
+  return useLiveQuery(() => (sessionId ? Q.getProjectsForSession(sessionId) : []), [sessionId]);
+}
+
 export function useRecentSessions() {
   return useLiveQuery(() => Q.getAllSessions());
 }

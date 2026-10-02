@@ -142,6 +142,8 @@ export default function ProgressScreen() {
                   gymName={s.gymName}
                   startedAt={s.startTime}
                   durationMs={summary.duration}
+                  climbs={summary.climbs}
+                  sends={summary.sends}
                   hardestGrade={summary.hardestGradeRaw !== '–' ? summary.hardestGradeRaw : undefined}
                   isLast={i === recentSessions.length - 1}
                 />

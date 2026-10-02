@@ -24,7 +24,7 @@ export function SessionRow({ id, gymName, startedAt, durationMs, climbs, sends, 
   const dateStr = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   const m = Math.floor(durationMs / 60000);
   const h = Math.floor(m / 60);
-  const durationStr = h > 0 ? `${h}h ${m % 60}m` : `${m}m`;
+  const durationStr = durationMs < 60000 ? '<1 min' : (h > 0 ? `${h}h ${m % 60}m` : `${m}m`);
 
   return (
     <TouchableOpacity
