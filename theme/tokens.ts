@@ -1,35 +1,35 @@
 export const colors = {
-  // Surfaces: separated by tone and a hairline border, not by shadow
-  bg: "#000000",
-  bgTexture: "#000000",
-  card: "#121214",
-  cardMuted: "#18181A", // inset tiles, inputs, unselected chips
-  border: "transparent",
+  // Surfaces: translucent on dark speckled mat background
+  bg: "transparent",
+  bgTexture: "#0C0C10",
+  card: "rgba(22, 22, 30, 0.88)",
+  cardMuted: "rgba(28, 28, 38, 0.70)", // inset tiles, inputs, unselected chips
+  border: "rgba(255, 255, 255, 0.06)",
 
   // Text
   text: "#FFFFFF",
-  textMuted: "rgba(255, 255, 255, 0.40)",
+  textMuted: "rgba(255, 255, 255, 0.45)",
   textOnAccent: "#FFFFFF",
 
-  // Accent: Primary Neon Violet
-  accent: "#A872FF",
-  accentPressed: "#894CE0",
-  accentSoft: "rgba(168, 114, 255, 0.15)", // selected chip, active tab capsule
-  accentText: "#E0CCFF",
+  // Accent: Primary Neon Violet / Lavender
+  accent: "#9A85FF",
+  accentPressed: "#846DE6",
+  accentSoft: "rgba(154, 133, 255, 0.20)", // selected chip, active tab capsule
+  accentText: "#D4CCFF",
 
-  // Results: Secondary Neon Green
+  // Results: Secondary Neon Green & Reference Palette
   flash: "#72FF9B",
-  flashSoft: "rgba(114, 255, 155, 0.15)",
-  flashText: "#B5FFCB",
-  top: "#A872FF",
-  topSoft: "rgba(168, 114, 255, 0.15)",
-  topText: "#E0CCFF",
-  attempt: "#E6D485",
-  attemptSoft: "rgba(230, 212, 133, 0.15)",
-  attemptText: "#F0E3B3",
-  fail: "#7A7987",
-  failSoft: "#292930",
-  failText: "#B4B3C0",
+  flashSoft: "rgba(114, 255, 155, 0.18)",
+  flashText: "#72FF9B",
+  top: "#9A85FF",
+  topSoft: "rgba(154, 133, 255, 0.18)",
+  topText: "#D4CCFF",
+  attempt: "#E2DCBA",
+  attemptSoft: "rgba(226, 220, 186, 0.18)",
+  attemptText: "#E2DCBA",
+  fail: "#5E6068",
+  failSoft: "rgba(94, 96, 104, 0.20)",
+  failText: "#8E909A",
 
   // Grade bands (see Section 5)
   bandBeginnerSoft: "#2D303B",
@@ -53,22 +53,22 @@ export const colors = {
 
   // Overlay
   scrim: "rgba(0, 0, 0, 0.75)",
-  glass: "rgba(0, 0, 0, 0.85)",
+  glass: "rgba(18, 18, 24, 0.85)",
 
   // Depth (v3.0)
-  bevelHighlight: "transparent",
-  bevelShadow: "transparent",
-  glassBorder: "transparent",
-  glow: "rgba(168, 114, 255, 0.25)",
+  bevelHighlight: "rgba(255, 255, 255, 0.08)",
+  bevelShadow: "rgba(0, 0, 0, 0.6)",
+  glassBorder: "rgba(255, 255, 255, 0.08)",
+  glow: "rgba(154, 133, 255, 0.25)",
 
   // Translucent Materials (v4.0 Spatial Editorial)
-  materialBase: "rgba(255, 255, 255, 0.04)",
-  materialBorder: "transparent",
-  materialHighlight: "transparent",
+  materialBase: "rgba(22, 22, 30, 0.85)",
+  materialBorder: "rgba(255, 255, 255, 0.06)",
+  materialHighlight: "rgba(255, 255, 255, 0.10)",
 
   // Translucent Typography
   textWhitePrimary: "#FFFFFF",
-  textWhiteSecondary: "rgba(255, 255, 255, 0.50)",
+  textWhiteSecondary: "rgba(255, 255, 255, 0.60)",
   textWhiteMuted: "rgba(255, 255, 255, 0.40)",
 };
 

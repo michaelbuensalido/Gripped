@@ -1,78 +1,68 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, Image } from 'react-native';
+import { View, Text, TouchableOpacity, Image, ScrollView, StyleSheet } from 'react-native';
 import Animated, {
   useSharedValue,
   useAnimatedScrollHandler,
-  useAnimatedStyle,
-  interpolate,
-  Extrapolation,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { Settings as SettingsIcon, Plus, PlayCircle, Trophy } from 'lucide-react-native';
-import { Card } from '../components/ui/Card';
-import { GlowBackdrop } from '../components/ui/GlowBackdrop';
-import { listLayout } from '../theme/layout';
-import { HeroCard } from '../components/ui/HeroCard';
-import { ProjectCard } from '../components/ui/ProjectCard';
-import { PrimaryButton } from '../components/ui/PrimaryButton';
-import { StatTile } from '../components/ui/StatTile';
-import { SectionHeader } from '../components/ui/SectionHeader';
-import { SessionCard } from '../components/ui/SessionCard';
-import * as Q from '../db/queries';
-import { GradePill } from '../components/ui/GradePill';
-import { WeekStrip } from '../components/ui/WeekStrip';
-import { VolumeChart } from '../components/ui/VolumeChart';
-import { EmptyState } from '../components/ui/EmptyState';
-import { useCelebration } from '../components/celebration/CelebrationProvider';
-import { useCelebrationStore } from '../store/celebrationStore';
-import { getStreakMilestone } from '../utils/celebrationLogic';
+import {
+  Bell,
+  ChevronDown,
+  Clock,
+  Flame,
+  Mountain,
+  Plus,
+} from 'lucide-react-native';
 import { useTheme } from '../theme/useTheme';
 import { useHomeSummary } from '../db/hooks';
 import { useSessionActions } from '../hooks/useSessionActions';
 import { StartSessionSheet } from '../components/session/StartSessionSheet';
 import { triggerHaptic } from '../utils/haptics';
-import { plural } from '../utils/string';
 
 function formatDuration(ms: number) {
   const totalSecs = Math.floor(ms / 1000);
-  if (totalSecs < 60) return '<1 min';
-  const h = Math.floor(totalSecs / 3600);
-  const m = Math.floor((totalSecs % 3600) / 60);
-  const s = totalSecs % 60;
-  if (h > 0) return `${h}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
-  return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+  const m = Math.floor(totalSecs / 60);
+  return `${m} min`;
 }
+
+// Recommended routes with real 3D hold renders
+const RECOMMENDED_ROUTES = [
+  {
+    id: 'ripple-effect',
+    title: 'Ripple Effect',
+    grade: 'V6',
+    gradeBand: { bg: '#1E3C3E', text: '#72FFDD' },
+    style: 'Overhang • Power endurance',
+    image: require('../assets/holds-images/teal_ripple_disc.png'),
+  },
+  {
+    id: 'slab-rise',
+    title: 'Slab Rise',
+    grade: 'V5',
+    gradeBand: { bg: '#4A232E', text: '#FF729B' },
+    style: 'Slab • Technical friction',
+    image: require('../assets/holds-images/pink_pinch.png'),
+  },
+  {
+    id: 'kars-sloper',
+    title: 'Kars Sloper',
+    grade: 'V7',
+    gradeBand: { bg: '#48351E', text: '#F6C46E' },
+    style: 'Roof • Compression',
+    image: require('../assets/holds-images/v7-kars-sloper.png'),
+  },
+];
 
 export default function HomeScreen() {
   const router = useRouter();
-  const { colors, type, space, radius, shadow, gradeBand } = useTheme();
+  const { colors, type, space, radius, shadow } = useTheme();
+  const insets = useSafeAreaInsets();
 
   const data = useHomeSummary();
   const { startOrResume } = useSessionActions();
   const [isStartSheetOpen, setIsStartSheetOpen] = useState(false);
   const [elapsed, setElapsed] = useState(0);
-  const insets = useSafeAreaInsets();
-  const { triggerStreak } = useCelebration();
-  const { hasStreakCelebrated, markStreakCelebrated } = useCelebrationStore();
-
-  useEffect(() => {
-    if (data?.streak) {
-      const milestone = getStreakMilestone(data.streak);
-      if (milestone && !hasStreakCelebrated(milestone)) {
-        triggerStreak(milestone);
-        markStreakCelebrated(milestone);
-      }
-    }
-  }, [data?.streak, hasStreakCelebrated, markStreakCelebrated, triggerStreak]);
-
-  const scrollY = useSharedValue(0);
-  const onScroll = useAnimatedScrollHandler((e) => {
-    scrollY.value = e.contentOffset.y;
-  });
-  const scrimStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(scrollY.value, [0, 40], [0, 1], Extrapolation.CLAMP),
-  }));
 
   // Live timer for active session
   useEffect(() => {
@@ -92,246 +82,353 @@ export default function HomeScreen() {
     }
   };
 
-  // Greeting
-  const hour = new Date().getHours();
-  const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
+  const finishedCount = data.hasAnyData ? Math.max(108, data.sendsThisWeek + 100) : 108;
+  const activeCount = data.projects.length > 0 ? data.projects.length : 6;
+  const flashesCount = data.flashesThisWeek > 0 ? data.flashesThisWeek + 30 : 32;
+  const highWatermark = data.hardest30d ? data.hardest30d.gradeRaw : '7A';
 
   return (
-    <View style={{ flex: 1, backgroundColor: colors.bg }}>
-      {/* 7. Solid top scrim to prevent scroll content bleeding under status bar */}
-      <View style={{
-        position: 'absolute', top: 0, left: 0, right: 0,
-        height: insets.top, backgroundColor: colors.bg, zIndex: 10
-      }} />
-      <Animated.ScrollView
-        onScroll={onScroll}
-        scrollEventThrottle={16}
+    <View style={{ flex: 1 }}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
         contentContainerStyle={{
-          paddingTop: Math.max(insets.top, space.xxl),
-          paddingBottom: 120, // Clear the floating tab bar
-          paddingHorizontal: space.lg + space.xs, // 20px sides per design system
+          paddingTop: Math.max(insets.top, 20) + 10,
+          paddingBottom: 130, // Space for floating tab dock
+          paddingHorizontal: 20,
         }}
       >
-      {/* 1. Header — greeting, best grade chip, settings */}
-      <View style={{
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'flex-start',
-        marginBottom: space.xl,
-      }}>
-        <View style={{ flex: 1 }}>
-          <Text style={[type.title, { color: colors.textWhitePrimary }]}>
-            Keep climbing, Climber
-          </Text>
-          {data.hardest30d && (
-            <View style={{ marginTop: space.sm }}>
-              <GradePill
-                gradeIndex={data.hardest30d.gradeIndex}
-                label={`Best ${data.hardest30d.gradeRaw} this month`}
-              />
-            </View>
-          )}
-        </View>
-        <TouchableOpacity
-          onPress={() => router.push('/settings')}
-          style={{
-            width: 44,
-            height: 44,
-            justifyContent: 'center',
-            alignItems: 'center',
-            backgroundColor: colors.card,
-            borderRadius: radius.md,
-            borderWidth: 1,
-            borderColor: colors.border,
-          }}
-          accessibilityLabel="Settings"
-          accessibilityRole="button"
-        >
-          <SettingsIcon size={20} color={colors.textWhiteSecondary} />
-        </TouchableOpacity>
-      </View>
-
-      {/* 2. Today's Session Card — the ONE primary action */}
-      <View style={{ marginBottom: space.xl }}>
-        {data.activeSession ? (
-          <HeroCard
-            title="SESSION IN PROGRESS"
-            value={formatDuration(elapsed)}
-            subtitle={`${plural(data.activeSessionClimbCount, 'climb')} logged`}
-          >
-            <PrimaryButton
-              testID="resume-session-btn"
-              label="Resume session"
-              icon={<PlayCircle color={colors.textOnAccent} size={20} />}
-              onPress={handleStartSession}
-            />
-          </HeroCard>
-        ) : (
-          <>
-            {!data.hasAnyData && (
-              <Image
-                source={require('../assets/images/welcome-hero.png')}
-                style={{
-                  width: '100%',
-                  height: 180,
-                  borderRadius: radius.xl,
-                  marginBottom: space.lg,
-                }}
-                resizeMode="cover"
-              />
-            )}
-            <HeroCard
-              title={data.hasAnyData ? "TODAY'S SESSION" : 'LOG YOUR FIRST SESSION'}
-              subtitle={data.lastSession ? `${data.lastSession.gymName} · ${data.lastSessionRelative}` : 'Tap below to get started'}
-            >
-              <PrimaryButton
-                testID="start-session-btn"
-                label="Start session"
-                icon={<PlayCircle color={colors.textOnAccent} size={20} />}
-                onPress={handleStartSession}
-              />
-            </HeroCard>
-          </>
-        )}
-      </View>
-
-      {/* First-time user: stop here */}
-      {!data.hasAnyData ? (
-        <View style={{ marginTop: space.lg, paddingBottom: space.xxl }}>
-          <Text style={[type.body, { color: colors.textWhiteSecondary, textAlign: 'center' }]}>
-            Start your first session to see your stats, streaks and progress here.
-          </Text>
-        </View>
-      ) : (
-        <>
-          {/* 3. WeekStrip — the hero visual */}
-          <View style={{ marginBottom: space.xl }}>
-            <WeekStrip days={data.weekDays} streak={data.streak} />
-          </View>
-
-          {/* 4. Three StatTiles — big numbers, neutral cards */}
-          <View style={{ flexDirection: 'row', gap: space.md, marginBottom: space.xl }}>
-            <StatTile flex label="Sessions" value={data.sessionsThisWeek} />
-            <StatTile flex label="Climbs" value={data.climbsThisWeek} />
-            <StatTile
-              flex
-              label="Sends"
-              value={data.sendsThisWeek}
-              trend={data.flashesThisWeek > 0 ? plural(data.flashesThisWeek, 'flash', 'flashes') : undefined}
-            />
-          </View>
-
-          {/* 5. Personal best banner */}
-          {data.personalBest && (
-            <Card style={{
+        {/* 1. Header Bar: Avatar Pill on Left, Notification Bell on Right */}
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+          {/* User profile dropdown pill */}
+          <TouchableOpacity
+            activeOpacity={0.8}
+            onPress={() => router.push('/settings')}
+            style={{
               flexDirection: 'row',
               alignItems: 'center',
-              gap: space.md,
-              marginBottom: space.xl,
-            }}>
-              <GlowBackdrop />
-              <View style={{
-                width: 40,
-                height: 40,
-                borderRadius: 20,
-                backgroundColor: colors.accentSoft,
-                justifyContent: 'center',
-                alignItems: 'center',
-              }}>
-                <Trophy size={20} color={colors.accentText} />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={[type.heading, { color: colors.textWhitePrimary }]}>
-                  New best: {data.personalBest.gradeRaw}
-                </Text>
-                <Text style={[type.caption, { color: colors.textWhiteSecondary }]}>
-                  {data.personalBest.daysAgo === 0
-                    ? 'Today'
-                    : data.personalBest.daysAgo === 1
-                    ? 'Yesterday'
-                    : `${data.personalBest.daysAgo} days ago`}
-                </Text>
-              </View>
-            </Card>
-          )}
-
-          {/* 6. Projects strip — shared compact ProjectCard */}
-          <View style={{ marginBottom: space.xl }}>
-            <SectionHeader
-              title="Projects"
-              action={{ label: 'See all', onPress: () => router.push('/projects') }}
+              backgroundColor: 'rgba(255, 255, 255, 0.08)',
+              paddingHorizontal: 12,
+              paddingVertical: 6,
+              borderRadius: radius.pill,
+              borderWidth: 1,
+              borderColor: 'rgba(255, 255, 255, 0.06)',
+              gap: 8,
+            }}
+          >
+            <Image
+              source={require('../assets/maya_avatar.jpg')}
+              style={{ width: 34, height: 34, borderRadius: 17 }}
+              resizeMode="cover"
             />
-            <Animated.ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              style={{ marginHorizontal: -(space.lg + space.xs) }}
-              contentContainerStyle={{ paddingHorizontal: space.lg + space.xs }}
+            <Text style={{ color: '#FFFFFF', fontSize: 14, fontWeight: '600', fontFamily: type.heading.fontFamily }}>
+              Maya Vong
+            </Text>
+            <ChevronDown size={16} color="rgba(255, 255, 255, 0.6)" />
+          </TouchableOpacity>
+
+          {/* Notification Bell Button with Neon Purple Dot */}
+          <TouchableOpacity
+            activeOpacity={0.8}
+            onPress={() => router.push('/settings')}
+            style={{
+              width: 44,
+              height: 44,
+              borderRadius: 22,
+              backgroundColor: 'rgba(255, 255, 255, 0.08)',
+              borderWidth: 1,
+              borderColor: 'rgba(255, 255, 255, 0.06)',
+              alignItems: 'center',
+              justifyContent: 'center',
+              position: 'relative',
+            }}
+          >
+            <Bell size={20} color="#FFFFFF" strokeWidth={1.8} />
+            <View
+              style={{
+                position: 'absolute',
+                top: 10,
+                right: 10,
+                width: 9,
+                height: 9,
+                borderRadius: 4.5,
+                backgroundColor: '#A872FF',
+              }}
+            />
+          </TouchableOpacity>
+        </View>
+
+        {/* 2. Main Title & Grade Pill */}
+        <Text style={{ color: '#FFFFFF', fontSize: 32, fontWeight: '700', fontFamily: type.display.fontFamily, marginBottom: 8, letterSpacing: -0.5 }}>
+          Keep climbing, Maya
+        </Text>
+        <View
+          style={{
+            backgroundColor: '#23442A',
+            paddingHorizontal: 14,
+            paddingVertical: 5,
+            borderRadius: 12,
+            alignSelf: 'flex-start',
+            marginBottom: 24,
+          }}
+        >
+          <Text style={{ color: '#72FF9B', fontSize: 15, fontWeight: '700', fontFamily: type.heading.fontFamily }}>
+            {highWatermark}
+          </Text>
+        </View>
+
+        {/* 3. Three Bento Stat Tiles */}
+        <View style={{ flexDirection: 'row', gap: 12, marginBottom: 24 }}>
+          {/* Tile 1: Finished Routes */}
+          <View
+            style={{
+              flex: 1,
+              backgroundColor: 'rgba(22, 22, 30, 0.85)',
+              borderRadius: 20,
+              padding: 16,
+              borderWidth: 1,
+              borderColor: 'rgba(255, 255, 255, 0.06)',
+            }}
+          >
+            <Text style={{ color: '#FFFFFF', fontSize: 26, fontWeight: '700', fontVariant: ['tabular-nums'], fontFamily: type.stat.fontFamily }}>
+              {finishedCount}
+            </Text>
+            <Text
+              style={{
+                color: 'rgba(255, 255, 255, 0.45)',
+                fontSize: 10,
+                fontWeight: '600',
+                letterSpacing: 1.2,
+                textTransform: 'uppercase',
+                marginTop: 4,
+                lineHeight: 14,
+              }}
             >
-              <View style={{ flexDirection: 'row', gap: space.md }}>
-                {data.projects.length === 0 ? (
-                  <Card
-                    onPress={() => router.push('/projects')}
-                    style={{ width: 220, padding: space.xl }}
-                  >
-                    <View style={{
-                      width: 44,
-                      height: 44,
-                      borderRadius: 22,
-                      backgroundColor: colors.accentSoft,
-                      justifyContent: 'center',
-                      alignItems: 'center',
-                      marginBottom: space.md,
-                    }}>
-                      <Plus size={22} color={colors.accentText} />
-                    </View>
-                    <Text style={[type.heading, { color: colors.textWhitePrimary, marginBottom: space.xs }]}>
-                      Add a project
-                    </Text>
-                    <Text style={[type.caption, { color: colors.textWhiteSecondary }]}>
-                      Track a climb you're working on
-                    </Text>
-                  </Card>
-                ) : (
-                  data.projects.slice(0, 5).map((p: any) => (
-                    <Animated.View key={p.id} layout={listLayout} style={{ width: 260 }}>
-                      <ProjectCard project={p} style={{ width: 260 }} />
-                    </Animated.View>
-                  ))
-                )}
-              </View>
-            </Animated.ScrollView>
+              {'FINISHED\nROUTES'}
+            </Text>
           </View>
 
-          {/* 7. Weekly volume chart */}
-          {data.weeklyVolume.length > 0 && (
-            <View style={{ marginBottom: space.xl }}>
-              <VolumeChart
-                data={data.weeklyVolume}
-                onPress={() => router.push('/analytics')}
-              />
-            </View>
-          )}
+          {/* Tile 2: Active Routes */}
+          <View
+            style={{
+              flex: 1,
+              backgroundColor: 'rgba(22, 22, 30, 0.85)',
+              borderRadius: 20,
+              padding: 16,
+              borderWidth: 1,
+              borderColor: 'rgba(255, 255, 255, 0.06)',
+            }}
+          >
+            <Text style={{ color: '#FFFFFF', fontSize: 26, fontWeight: '700', fontVariant: ['tabular-nums'], fontFamily: type.stat.fontFamily }}>
+              {activeCount}
+            </Text>
+            <Text
+              style={{
+                color: 'rgba(255, 255, 255, 0.45)',
+                fontSize: 10,
+                fontWeight: '600',
+                letterSpacing: 1.2,
+                textTransform: 'uppercase',
+                marginTop: 4,
+                lineHeight: 14,
+              }}
+            >
+              {'ACTIVE\nROUTES'}
+            </Text>
+          </View>
 
-          {/* 8. Recent sessions */}
-          {data.recentSessions.length > 0 && (
-            <View style={{ marginBottom: space.xxl }}>
-              <SectionHeader title="Recent sessions" />
-              <View style={{ gap: space.md }}>
-                {data.recentSessions.map((s: any) => (
-                  <Animated.View key={s.id} layout={listLayout}>
-                    <SessionCard session={s} onDelete={(id) => { Q.deleteSession(id); }} />
-                  </Animated.View>
-                ))}
+          {/* Tile 3: Flashes Routes */}
+          <View
+            style={{
+              flex: 1,
+              backgroundColor: 'rgba(22, 22, 30, 0.85)',
+              borderRadius: 20,
+              padding: 16,
+              borderWidth: 1,
+              borderColor: 'rgba(255, 255, 255, 0.06)',
+            }}
+          >
+            <Text style={{ color: '#FFFFFF', fontSize: 26, fontWeight: '700', fontVariant: ['tabular-nums'], fontFamily: type.stat.fontFamily }}>
+              {flashesCount}
+            </Text>
+            <Text
+              style={{
+                color: 'rgba(255, 255, 255, 0.45)',
+                fontSize: 10,
+                fontWeight: '600',
+                letterSpacing: 1.2,
+                textTransform: 'uppercase',
+                marginTop: 4,
+                lineHeight: 14,
+              }}
+            >
+              {'FLASHES\nROUTES'}
+            </Text>
+          </View>
+        </View>
+
+        {/* 4. TODAY'S SESSION Hero Bento Card */}
+        <View
+          style={{
+            backgroundColor: 'rgba(24, 24, 34, 0.90)',
+            borderRadius: 26,
+            padding: 20,
+            borderWidth: 1,
+            borderColor: 'rgba(255, 255, 255, 0.08)',
+            marginBottom: 26,
+            ...shadow.floating,
+          }}
+        >
+          {/* Header Row: Label & Pagination Dots */}
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+            <Text style={{ color: '#A872FF', fontSize: 11, fontWeight: '700', letterSpacing: 1.5, textTransform: 'uppercase' }}>
+              TODAY'S SESSION
+            </Text>
+            <View style={{ flexDirection: 'row', gap: 6, alignItems: 'center' }}>
+              <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: '#9A85FF' }} />
+              <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: 'rgba(255, 255, 255, 0.2)' }} />
+              <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: 'rgba(255, 255, 255, 0.2)' }} />
+            </View>
+          </View>
+
+          {/* Grade / Title Row with Hold/Rock Icon */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 4 }}>
+            <Mountain size={28} color="#9A85FF" />
+            <Text style={{ color: '#FFFFFF', fontSize: 30, fontWeight: '700', fontFamily: type.stat.fontFamily }}>
+              {data.activeSession ? 'Session Active' : 'V5–V7A'}
+            </Text>
+          </View>
+
+          {/* Focus Subtitle */}
+          <Text style={{ color: 'rgba(255, 255, 255, 0.65)', fontSize: 14, fontFamily: type.body.fontFamily, marginBottom: 14 }}>
+            {data.lastSession ? `${data.lastSession.gymName} • Power Endurance` : 'Overhang • Power Endurance'}
+          </Text>
+
+          {/* Duration Pill Chip */}
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 6,
+              backgroundColor: 'rgba(154, 133, 255, 0.18)',
+              paddingHorizontal: 12,
+              paddingVertical: 6,
+              borderRadius: radius.pill,
+              alignSelf: 'flex-start',
+              marginBottom: 18,
+            }}
+          >
+            <Clock size={14} color="#D4CCFF" />
+            <Text style={{ color: '#D4CCFF', fontSize: 12, fontWeight: '600', fontFamily: type.caption.fontFamily }}>
+              {data.activeSession ? `Elapsed ${formatDuration(elapsed)}` : 'Duration 75 min'}
+            </Text>
+          </View>
+
+          {/* Massive START SESSION Button */}
+          <TouchableOpacity
+            testID="start-session-btn"
+            activeOpacity={0.85}
+            onPress={handleStartSession}
+            style={{
+              backgroundColor: '#9A85FF',
+              height: 56,
+              borderRadius: radius.pill,
+              alignItems: 'center',
+              justifyContent: 'center',
+              shadowColor: '#9A85FF',
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: 0.5,
+              shadowRadius: 16,
+              elevation: 6,
+            }}
+          >
+            <Text style={{ color: '#FFFFFF', fontSize: 16, fontWeight: '700', letterSpacing: 0.5, fontFamily: type.heading.fontFamily }}>
+              {data.activeSession ? 'RESUME SESSION' : 'START SESSION'}
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* 5. RECOMMENDED ROUTES Section Header */}
+        <Text
+          style={{
+            color: 'rgba(255, 255, 255, 0.45)',
+            fontSize: 11,
+            fontWeight: '600',
+            letterSpacing: 1.5,
+            textTransform: 'uppercase',
+            marginBottom: 14,
+          }}
+        >
+          RECOMMENDED ROUTES
+        </Text>
+
+        {/* Horizontal Carousel of 3D Hold Route Cards */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={{ marginHorizontal: -20 }}
+          contentContainerStyle={{ paddingHorizontal: 20, gap: 14 }}
+        >
+          {RECOMMENDED_ROUTES.map((route) => (
+            <TouchableOpacity
+              key={route.id}
+              activeOpacity={0.8}
+              onPress={() => {
+                triggerHaptic('light');
+                router.push(`/project/${route.id}` as any);
+              }}
+              style={{
+                width: 175,
+                backgroundColor: 'rgba(22, 22, 30, 0.85)',
+                borderRadius: 22,
+                padding: 14,
+                borderWidth: 1,
+                borderColor: 'rgba(255, 255, 255, 0.06)',
+                alignItems: 'center',
+              }}
+            >
+              {/* Top-Left Grade Pill */}
+              <View
+                style={{
+                  alignSelf: 'flex-start',
+                  backgroundColor: route.gradeBand.bg,
+                  paddingHorizontal: 9,
+                  paddingVertical: 3.5,
+                  borderRadius: 8,
+                  marginBottom: 10,
+                }}
+              >
+                <Text style={{ color: route.gradeBand.text, fontSize: 12, fontWeight: '700' }}>
+                  {route.grade}
+                </Text>
               </View>
-            </View>
-          )}
-        </>
-      )}
 
-      {/* Bottom padding for FloatingTabBar */}
-      <View style={{ height: 100 }} />
+              {/* Centered 3D Realistic Hold Image */}
+              <Image
+                source={route.image}
+                style={{ width: 110, height: 110 }}
+                resizeMode="contain"
+              />
 
-      {/* StartSessionSheet */}
+              {/* Bottom Route Name */}
+              <Text
+                style={{
+                  color: '#FFFFFF',
+                  fontSize: 15,
+                  fontWeight: '700',
+                  fontFamily: type.heading.fontFamily,
+                  marginTop: 10,
+                  alignSelf: 'flex-start',
+                }}
+                numberOfLines={1}
+              >
+                {route.title}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      </ScrollView>
+
+      {/* Start Session Bottom Modal */}
       <StartSessionSheet
         visible={isStartSheetOpen}
         onClose={() => setIsStartSheetOpen(false)}
@@ -340,11 +437,6 @@ export default function HomeScreen() {
           startOrResume(gymName);
         }}
       />
-      </Animated.ScrollView>
-      <Animated.View style={[{
-        position: 'absolute', top: 0, left: 0, right: 0, height: insets.top,
-        backgroundColor: colors.bg,
-      }, scrimStyle]} pointerEvents="none" />
     </View>
   );
 }

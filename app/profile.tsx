@@ -76,12 +76,11 @@ export default function LogbookScreen() {
     <View
       style={{
         flex: 1,
-        backgroundColor: colors.card,
-        borderWidth: 1,
-        borderColor: colors.border,
+        backgroundColor: colors.materialBase,
+        borderWidth: 0,
         minHeight: 76,
         padding: space.sm,
-        borderRadius: radius.md,
+        borderRadius: 20,
         alignItems: 'center',
         justifyContent: 'center',
       }}
@@ -89,7 +88,7 @@ export default function LogbookScreen() {
       <Text
         style={[
           type.stat,
-          { fontSize: 22, color: colors.text, fontVariant: ['tabular-nums'] },
+          { fontSize: 24, fontWeight: '700', color: colors.textWhitePrimary, fontVariant: ['tabular-nums'] },
         ]}
         adjustsFontSizeToFit
         numberOfLines={1}
@@ -97,10 +96,14 @@ export default function LogbookScreen() {
         {value}
       </Text>
       <Text
-        style={[
-          type.label,
-          { color: colors.textMuted, fontSize: 10, marginTop: 4 },
-        ]}
+        style={{
+          color: 'rgba(255, 255, 255, 0.45)',
+          fontSize: 10,
+          fontWeight: '600',
+          letterSpacing: 1.2,
+          textTransform: 'uppercase',
+          marginTop: 4,
+        }}
         numberOfLines={1}
       >
         {label}

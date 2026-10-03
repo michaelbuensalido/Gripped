@@ -43,23 +43,24 @@ function TabLayout() {
       tabBar={(props) => <FloatingTabBar {...props} />}
       screenOptions={{
         headerShown: false,
-        sceneStyle: { backgroundColor: colors.bg },
+        sceneStyle: { backgroundColor: "transparent" },
       }}
     >
       <Tabs.Screen name="index"     options={{ title: "Home" }} />
-      <Tabs.Screen name="projects"  options={{ title: "Projects" }} />
+      <Tabs.Screen name="projects"  options={{ title: "Routes" }} />
       <Tabs.Screen name="analytics" options={{ title: "Progress" }} />
-      <Tabs.Screen name="profile"   options={{ title: "Logbook" }} />
+      <Tabs.Screen name="settings"  options={{ title: "Settings" }} />
+      <Tabs.Screen name="profile"   options={{ title: "Logbook", href: null }} />
       <Tabs.Screen name="gallery"   options={{ title: "Gallery", href: null }} />
 
       {/* Hidden screens — no tab bar entry */}
-      <Tabs.Screen name="settings"             options={{ href: null }} />
       <Tabs.Screen name="session/new"          options={{ href: null }} />
       <Tabs.Screen name="session/active"       options={{ href: null }} />
       <Tabs.Screen name="session/index"        options={{ href: null }} />
       <Tabs.Screen name="session/end"          options={{ href: null }} />
       <Tabs.Screen name="session/summary"      options={{ href: null }} />
       <Tabs.Screen name="session/detail/[id]"  options={{ href: null }} />
+      <Tabs.Screen name="project/[id]"         options={{ href: null }} />
     </Tabs>
   );
 }
@@ -144,7 +145,13 @@ export default function RootLayout() {
   const isReady = (fontsLoaded || fontError) && isDbReady;
 
   return (
-    <GestureHandlerRootView style={{ flex: 1, backgroundColor: colors.bg }}>
+    <GestureHandlerRootView style={{ flex: 1, backgroundColor: "#0C0C10" }}>
+      <ImageBackground
+        source={require("../assets/speckled_mat_bg.jpg")}
+        style={StyleSheet.absoluteFill}
+        imageStyle={{ opacity: 0.90 }}
+        resizeMode="cover"
+      />
       <SafeAreaProvider>
         <StatusBar style="light" />
         <CelebrationProvider>

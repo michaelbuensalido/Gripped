@@ -1,17 +1,12 @@
-# CruxLog — Design System (v4.0, Spatial Editorial Redesign)
+# CruxLog — Design System (v2.1, dark matte)
 
-A sleek, spatial editorial aesthetic with **deep spatial black**, **neon violet/green accents**, and **borderless ghost cards**. This pivot moves away from the blocky telemetry UI to a premium, OLED-optimized look with edge-to-edge imagery, extremely faint translucent panels, and massive, lightweight typography.
+A calm, dark, photo-forward look: charcoal surfaces over a faint speckled-stone texture, one soft purple accent, big friendly numbers, soft pastel result colours, grade colours as the signature, and small reward moments when you climb well. Cards are flat and solid. The only gradients are the purple glow on the Home hero card and the scrims on photos.
 
 Companion docs: `MVP_SPEC.md` (what exists), `USER_FLOW.md` (how it is used), `COMPONENTS.md` (what is built). This file says **how it looks and behaves**.
 
-> **v4.0 changes (supersedes all previous border and flat-card rules):**
-> 1. **Global Background:** Pure OLED Black (`bg: #000000`).
-> 2. **Ghost Cards:** Cards are now extremely faint and borderless (`card: #121214`, `materialBase: rgba(255,255,255,0.04)`). All heavy borders are removed. Cards feel like they float in shadow.
-> 3. **Neon Accents:** Primary neon violet (`#A872FF`) for active states and fully-rounded pill buttons (`rounded-full`). Secondary neon mint/green (`#72FF9B`) for success states and flashes.
-> 4. **Typography:** Clean, thin-to-regular sans-serifs for massive numbers. Micro-labels use extreme tracking (`letterSpacing: 2.5`), `fontSize: 10`, and muted translucency (`rgba(255,255,255,0.40)`).
-> 5. **3D Asset Integration:** `HeroCard` and `ProjectCard` support edge-to-edge background images, positioned to the right so text floats cleanly over the dark space on the left.
-> 6. **FloatingTabBar:** Deeply blurred, translucent pill (`expo-blur` with dark tint). Icons are thin outlines (`strokeWidth: 1.5`). Active states get a subtle neon glow.
-> 7. **Data Vis:** Donut charts use thick, rounded strokes with glowing gradient tracks. Week/Volume charts use thin lines and subtle gradients.
+> **v2.1 changes (from the new reference screens):** the speckle texture is now part of the look (on by default); result colours are softer pastels; the Home hero card gets one purple glow; a thicker, flat-ended donut; two standard screen headers; a photo-first Project detail with translucent overlay controls; new components (`ScreenHeader`, `IconButton`, `OverlayChip`, `TipChip`, `TrendTile`, `RecentRow`, `HoldPin`); a UX patterns section (14); and open decisions (15).
+> **v2.0:** active theme is dark matte (v1.1 light is kept as `theme/tokens.light.ts`, inactive); synced to the real component inventory; per-screen recipes with one named hero; duplicate-component register; Progress has one hero chart with the rest under "Deep dive".
+> Items marked **(verify)** were written from screenshots or the component index and should be checked against the code. If the code and this file differ, decide which wins and update both in the same commit.
 
 ---
 
@@ -51,19 +46,22 @@ export const colors = {
   accentSoft: "#2D2B3E", // selected chip, active tab capsule, tinted card
   accentText: "#A596F5", // links, active icons, text on accentSoft
 
-  // Results (fills for chart segments and dots; text uses *Text; always with a text label)
-  flash: "#5ED16B",
-  flashSoft: "#25372C",
-  flashText: "#8BE59A",
-  top: "#8B7CF6",
-  topSoft: "#2C2A42",
+  heroGlow: "rgba(112, 89, 219, 0.18)", // the one gradient: bottom edge of the Home hero card
+  speckle: "rgba(255, 255, 255, 0.06)", // flecks in the background texture
+
+  // Results: soft pastels (fills for chart segments and dots; text uses *Text; always with a text label)
+  flash: "#A9DC8A",
+  flashSoft: "#313931",
+  flashText: "#C4EBA9",
+  top: "#8E7BDB",
+  topSoft: "#2D2A3E",
   topText: "#A596F5",
-  attempt: "#B8A66A",
-  attemptSoft: "#33302C",
-  attemptText: "#D9C99A",
-  fail: "#7A7987",
-  failSoft: "#292930",
-  failText: "#B4B3C0",
+  attempt: "#D6D1BA",
+  attemptSoft: "#383739",
+  attemptText: "#E6E2CF",
+  fail: "#8E8E88",
+  failSoft: "#2D2D31",
+  failText: "#B8B8B2",
 
   // Grade bands (see Section 5)
   bandBeginnerSoft: "#2D303B",
@@ -83,31 +81,17 @@ export const colors = {
   danger: "#E5483B",
   dangerSoft: "#3A2124",
   dangerText: "#FF8A80",
-  success: "#5ED16B",
+  success: "#A9DC8A",
 
   // Overlay
   scrim: "rgba(0, 0, 0, 0.55)",
-  glass: "rgba(26, 26, 32, 0.85)", // Android fallback for the frosted tab bar
-
-  // Depth (v3.0)
-  bevelHighlight: "rgba(255, 255, 255, 0.10)", // lit top edge of a card
-  bevelShadow: "rgba(0, 0, 0, 0.50)", // shaded bottom edge of a card
-  glassBorder: "rgba(255, 255, 255, 0.10)", // ultra-thin edge on frosted surfaces
-  glow: "rgba(139, 124, 246, 0.15)", // radial glow behind achievements (top lavender at 15%)
 };
 
 export const radius = { sm: 10, md: 16, lg: 22, xl: 28, pill: 999 };
 export const space = { xs: 4, sm: 8, md: 12, lg: 16, xl: 24, xxl: 32 }; // 4pt grid
 
-// v3.0: cards sit on a soft black shadow; the bevel supplies the edge light.
+// Cards have NO shadow on dark. Only the floating centre button gets one.
 export const shadow = {
-  card: {
-    shadowColor: "#000000",
-    shadowOpacity: 0.5,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 6,
-  },
   floating: {
     shadowColor: "#000000",
     shadowOpacity: 0.5,
@@ -123,9 +107,8 @@ export const type = {
     fontSize: 32,
     lineHeight: 38,
     letterSpacing: -0.5,
-    fontVariant: ["tabular-nums"],
   },
-  title: { fontFamily: "Sora_600SemiBold", fontSize: 22, lineHeight: 28, fontVariant: ["tabular-nums"] },
+  title: { fontFamily: "Sora_600SemiBold", fontSize: 22, lineHeight: 28 },
   stat: {
     fontFamily: "Sora_600SemiBold",
     fontSize: 34,
@@ -138,19 +121,17 @@ export const type = {
     lineHeight: 28,
     fontVariant: ["tabular-nums"],
   },
-  heading: { fontFamily: "Inter_600SemiBold", fontSize: 17, lineHeight: 22, fontVariant: ["tabular-nums"] },
-  body: { fontFamily: "Inter_400Regular", fontSize: 15, lineHeight: 22, fontVariant: ["tabular-nums"] },
-  control: { fontFamily: "Inter_500Medium", fontSize: 14, lineHeight: 20, fontVariant: ["tabular-nums"] }, // chips, buttons, toggles: sentence case
-  // Micro-label (v3.0): "SESSIONS", "TODAY". Medium weight, 0.2em tracking (11 * 0.2 = 2.2).
+  heading: { fontFamily: "Inter_600SemiBold", fontSize: 17, lineHeight: 22 },
+  body: { fontFamily: "Inter_400Regular", fontSize: 15, lineHeight: 22 },
+  control: { fontFamily: "Inter_500Medium", fontSize: 14, lineHeight: 20 }, // chips, buttons, toggles: sentence case
   label: {
     fontFamily: "Inter_500Medium",
-    fontSize: 11,
+    fontSize: 12,
     lineHeight: 16,
-    letterSpacing: 2.2,
-    fontVariant: ["tabular-nums"],
+    letterSpacing: 0.8,
     textTransform: "uppercase",
   }, // section and stat labels only
-  caption: { fontFamily: "Inter_400Regular", fontSize: 12, lineHeight: 16, fontVariant: ["tabular-nums"] },
+  caption: { fontFamily: "Inter_400Regular", fontSize: 12, lineHeight: 16 },
 };
 
 export const motion = {
@@ -161,9 +142,6 @@ export const motion = {
     exit: [0.4, 0, 1, 1],
   }, // cubic-bezier
   spring: { damping: 18, stiffness: 220 },
-  // v3.0 fluid physics
-  layoutSpring: { damping: 14, stiffness: 100 }, // list/grid items sliding into place (see theme/layout.ts)
-  pressSpring: { damping: 15, stiffness: 300, scale: 0.96 }, // PrimaryButton press-in
 };
 ```
 
@@ -171,24 +149,25 @@ The `*Soft` colours are solid values blended for use **on `card`**. On `bg` they
 
 ### Contrast (WCAG, computed)
 
-| Pair                                                                     | Ratio                       | Result                                            |
-| ------------------------------------------------------------------------ | --------------------------- | ------------------------------------------------- |
-| `text` on `bg` / `card` / `cardMuted`                                    | 17.1 / 15.6 / 14.2          | Pass                                              |
-| `textMuted` on `bg` / `card` / `cardMuted`                               | 6.8 / 6.2 / 5.7             | Pass AA                                           |
-| `textOnAccent` on `accent` / `accentPressed`                             | 5.1 / 6.5                   | Pass                                              |
-| `accentText` on `card` / `accentSoft` / `bg`                             | 6.8 / 5.4 / 7.5             | Pass                                              |
-| `flashText` on `flashSoft`                                               | 8.3                         | Pass                                              |
-| `topText` on `topSoft`                                                   | 5.5                         | Pass                                              |
-| `attemptText` on `attemptSoft`                                           | 8.0                         | Pass                                              |
-| `failText` on `failSoft`                                                 | 7.0                         | Pass                                              |
-| `dangerText` on `dangerSoft` / `card`                                    | 6.5 / 7.6                   | Pass                                              |
-| Band text on band soft (beginner / intermediate / advanced / expert)     | 7.3 / 7.9 / 7.9 / 6.5       | Pass                                              |
-| Band text on `card`                                                      | 9.6 / 10.7 / 10.8 / 8.3     | Pass                                              |
-| Band solid on `card` (stripe, chart bars): 3:1 needed for graphics       | 6.8 / 8.3 / 8.6 / 5.8       | Pass                                              |
-| Result fills on `card` (flash / top / attempt / fail / danger), graphics | 8.9 / 5.2 / 7.2 / 4.1 / 4.4 | Pass                                              |
-| `card` vs `bg`, `border` vs `card`                                       | 1.1 / 1.2                   | Decorative separation only, never carries meaning |
+| Pair                                                                                         | Ratio                         | Result                                            |
+| -------------------------------------------------------------------------------------------- | ----------------------------- | ------------------------------------------------- |
+| `text` on `bg` / `card` / `cardMuted`                                                        | 17.1 / 15.6 / 14.2            | Pass                                              |
+| `textMuted` on `bg` / `card` / `cardMuted`                                                   | 6.8 / 6.2 / 5.7               | Pass AA                                           |
+| `textOnAccent` on `accent` / `accentPressed`                                                 | 5.1 / 6.5                     | Pass                                              |
+| `accentText` on `card` / `accentSoft` / `bg`                                                 | 6.8 / 5.4 / 7.5               | Pass                                              |
+| `flashText` on `flashSoft`                                                                   | 9.0                           | Pass                                              |
+| `topText` on `topSoft`                                                                       | 5.5                           | Pass                                              |
+| `attemptText` on `attemptSoft`                                                               | 9.1                           | Pass                                              |
+| `failText` on `failSoft`                                                                     | 6.9                           | Pass                                              |
+| `text` / `textMuted` / `accentText` on the Home hero glow (`card` + `heroGlow`, bottom edge) | 13.2 / 5.3 / 5.8              | Pass                                              |
+| `dangerText` on `dangerSoft` / `card`                                                        | 6.5 / 7.6                     | Pass                                              |
+| Band text on band soft (beginner / intermediate / advanced / expert)                         | 7.3 / 7.9 / 7.9 / 6.5         | Pass                                              |
+| Band text on `card`                                                                          | 9.6 / 10.7 / 10.8 / 8.3       | Pass                                              |
+| Band solid on `card` (stripe, chart bars): 3:1 needed for graphics                           | 6.8 / 8.3 / 8.6 / 5.8         | Pass                                              |
+| Result fills on `card` (flash / top / attempt / fail / danger), graphics                     | 11.0 / 5.0 / 11.3 / 5.3 / 4.4 | Pass                                              |
+| `card` vs `bg`, `border` vs `card`                                                           | 1.1 / 1.2                     | Decorative separation only, never carries meaning |
 
-Rules: text uses the `*Text` tokens, never fills. Fills are for chart segments, dots and stripes, and always sit beside a text label, so meaning never depends on colour alone. Because surfaces separate only slightly, **every `Card` keeps its 1px border**: in v3.0 the top edge is `bevelHighlight`, the bottom edge `bevelShadow` and the sides `border`.
+Rules: text uses the `*Text` tokens, never fills. Fills are for chart segments, dots and stripes, and always sit beside a text label, so meaning never depends on colour alone. Because surfaces separate only slightly, **every `Card` needs its 1px `border`**.
 
 ---
 
@@ -196,11 +175,13 @@ Rules: text uses the `*Text` tokens, never fills. Fills are for chart segments, 
 
 - **Padding:** 20px sides; 24px between sections; 12px between items in a section.
 - **Safe areas:** respect top and bottom insets. When content scrolls under the status bar, a **solid `bg` scrim** sits behind it, so text never shows through the clock.
-- **Cards:** one style only. `card` background, `radius.lg`, 16px padding, **3D bevel** (1px `bevelHighlight` top, `bevelShadow` bottom, `border` sides) on `shadow.card`, spring press-scale when tappable. The `muted` variant is inset: bevel, no shadow.
+- **Cards:** one style only. `card` background, 1px `border`, `radius.lg`, 16px padding, **no shadow**, spring press-scale when tappable. The `HeroCard` is the same card plus the `heroGlow` and a 1px `accent` border at 30% opacity.
 - **Section labels:** `label` style, `textMuted`, 12px above content.
 - **Touch targets:** at least 44×44. Primary buttons 52px high.
 - **One primary action per screen:** one filled-`accent` control. Everything else is secondary (`accentSoft`) or text.
-- **No full-bleed gradients and no decorative glass.** Depth effects are limited to: the card bevel, the frosted tab bar (Section 4), and `GlowBackdrop` behind achievements (Section 3.3). Texture is optional: a faint speckle at about 3% opacity behind scroll content only, off by default.
+- **Background texture (signature):** a faint speckled-stone pattern behind scroll content only. One tileable 512px PNG of irregular white flecks at about 6% opacity (`speckle`) on `bg`, drawn as a static image, never animated, never on cards or sheets. Flecks vary in size (1–6px) and stay sparse, so text over them keeps its contrast (checked against `bg`). If it costs frame rate on a low-end device, fall back to plain `bg`.
+- **Gradients:** exactly two kinds. (1) The `heroGlow` on the bottom edge of the Home "Today's session" card. (2) Dark scrims at the top and bottom of photos so overlay text and buttons stay readable. No other gradients.
+- **Glass:** translucent blurred chips (`OverlayChip`, `IconButton` on photos) appear **only on top of photos**. Nothing else is translucent or blurred; the tab bar is solid.
 
 ### 3.1 Density rules (keeps screens calm)
 
@@ -221,12 +202,6 @@ Rules: text uses the `*Text` tokens, never fills. Fills are for chart segments, 
 4. **Active Session hides the tab bar**; leaving it shows the bar again with the centre button reading "Resume".
 5. The centre button must never be clipped: the bar container uses `overflow: visible`.
 
-### 3.3 Achievement glow (v3.0)
-
-- Use `GlowBackdrop` as the **first child** of an achievement element. Allowed on: the Home "New best" banner and the streak pill. Not on ordinary cards, and never more than one glow visible per screen region.
-- It is an SVG radial gradient in the `glow` token (lavender at 15%), absolutely positioned behind the content, `pointerEvents="none"`, hidden from screen readers. React Native has no CSS blur, so do not try `blur-*` utilities.
-- It must never reduce text contrast below 4.5:1 (the glow is at most 15% alpha over `card`).
-
 ---
 
 ## 4. Navigation
@@ -236,7 +211,7 @@ Tab bar:  Home · Projects · [ Start / Resume ] · Progress · Logbook
 Settings: gear icon in the Home and Logbook headers
 ```
 
-- **`FloatingTabBar`:** a **frosted-glass pill**: `expo-blur` `BlurView` (`tint="dark"`, `intensity={80}`) on its own absolutely positioned layer, `glassBorder` hairline, fully rounded. No solid background colour. Android uses the translucent `glass` token (no real blur). The blur layer is `overflow: hidden` but the bar container is `overflow: visible`, so the centre button is never clipped. The active tab gets an `accentSoft` capsule with `accentText` icon and label. Icon + label always. Five items must fit the smallest phone without truncation.
+- **`FloatingTabBar`:** a flat dark pill (`card`, 1px `border`), **no blur**. The active tab gets an `accentSoft` capsule with `accentText` icon and label. Icon + label always. Five items must fit the smallest phone without truncation.
 - **Centre button:** an action, not a tab. 56px circle, `accent`, raised 14px above the bar with a ring in `bg` colour and `shadow.floating`. Label baseline matches the other tabs.
   - No session: "＋", label "Start" → Start Session sheet (gym pre-filled to the last gym).
   - Session running: live elapsed time, label "Resume" → Active Session. Soft pulse off under reduce-motion.
@@ -256,7 +231,7 @@ Grades are stored as an index. `gradeBand(gradeIndex)` is the only mapping; it w
 | Advanced     | V6–V8   | amber      | `bandAdvanced*`     |
 | Expert       | V9+     | plum       | `bandExpert*`       |
 
-> **Decision flagged:** the original app used green for V3–V5, but green also means **Flash**. On dark, Flash is a clear green (hue about 127°) and Intermediate is a cyan-teal (about 178°) so they stay apart. Red is never a grade colour.
+> **Decision flagged:** the original app used green for V3–V5, but green also means **Flash**. On dark, Flash is a soft yellow-green (hue about 97°) and Intermediate is a cyan-teal (about 178°) so they stay apart. Red is never a grade colour.
 
 Where band colours appear, always with the grade as text:
 
@@ -277,10 +252,10 @@ Where band colours appear, always with the grade as text:
 | Row titles, card titles                               | `heading`                                 |
 | Paragraphs, notes                                     | `body`                                    |
 | Chips, segmented toggles, buttons, links              | `control` (sentence case)                 |
-| Section titles ("Projects"), stat labels ("SESSIONS") | `label` (uppercase, 0.2em tracking, medium) |
+| Section titles ("Projects"), stat labels ("SESSIONS") | `label` (uppercase, tracked)              |
 | Secondary info, timestamps, captions                  | `caption` in `textMuted`                  |
 
-- **Every text style carries `fontVariant: ['tabular-nums']`**, so timers, counts, grades and metrics never shift horizontally. Don't override `letterSpacing` or `fontSize` on `label`; change the token.
+- Timers and counts use **tabular figures** so digits don't jump.
 - Support large system text: layouts reflow, not clip. Stat values shrink to fit on one line.
 - Fonts load before the splash screen hides.
 
@@ -292,32 +267,46 @@ Built in `components/ui/`, `components/session/`, `components/analytics/`, `comp
 
 ### 7.1 Core (`components/ui/`) and their matte treatment
 
-| Component                          | Matte treatment                                                                                                                                                                        |
-| ---------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `Card`                             | Solid `card`, `radius.lg`, 3D bevel (`bevelHighlight` top, `bevelShadow` bottom, `border` sides) on `shadow.card`; `muted` variant is inset (no shadow); press-scale when tappable. The only card style. |
-| `GlowBackdrop`                     | Radial glow (`glow` token) behind achievement UI only (New best banner, streak pill). First child, non-interactive.                                                                    |
-| `PrimaryButton`                    | Full-width, `accent` fill, white text, 52px, press scale, light haptic                                                                                                                 |
-| `SecondaryButton`                  | `accentSoft` fill, `accentText`                                                                                                                                                        |
-| `Chip` / `Pill`                    | Sentence case; selected = `accentSoft` + `accentText`; unselected = `cardMuted`                                                                                                        |
-| `ResultChip`                       | Flash / Top / Attempt: soft fill + text label + dot                                                                                                                                    |
-| `GradePill`                        | Band soft + band text; "—" when no grade, never "undefined"                                                                                                                            |
-| `StatTile`                         | `statSm`/`stat` value on one line, `label` below, optional icon and meaning-based soft tint                                                                                            |
-| `HeroCard`                         | Flat `Card` variant, **no gradient**; optional faint hold silhouette at about 6% opacity, partly off the edge                                                                          |
-| `ProjectCard`                      | Photo or hold placeholder on top, grade chip top-left, nickname (one line), "Gym · tags", then "No attempts yet" or "N burns · last tried", left band stripe, sparkline, swipe actions |
-| `SentProjectCard`                  | Compact card with a Flash/Top badge                                                                                                                                                    |
-| `SessionCard`                      | Date badge, gym, time range, duration, climbs / sends / flashes, **segmented result bar in result colours**, "Hardest" + `GradePill`                                                   |
-| `ClimbRow`                         | Grade pill, result chip, time, attempts if above 1, project nickname if linked, band stripe, swipe-to-delete                                                                           |
-| `WeekStrip`                        | Mon–Sun dots (filled = climbed, ringed = today), streak pill with a vector flame, no emoji                                                                                             |
-| `SectionHeader`                    | `label` with optional "See all" in `accentText`                                                                                                                                        |
-| `EmptyState` / `EmptyStateCard`    | Hold illustration, title, one line, one action                                                                                                                                         |
-| `FloatingTabBar`                   | See Section 4                                                                                                                                                                          |
-| `AnimatedCounter`                  | Always lands on the true value, even with reduce-motion                                                                                                                                |
-| `UndoToast`                        | 5 seconds, never blocks input                                                                                                                                                          |
-| `SyncChip`                         | Synced / Syncing / N waiting / Offline                                                                                                                                                 |
-| `ResultDonut`                      | Rounded caps, small gaps, centre value, text legend; the Progress hero                                                                                                                 |
-| `GradePyramid`, `VolumeChart`      | Band / result colours, labelled values                                                                                                                                                 |
-| `LogbookCalendar`                  | Month grid, dot per climbing day, today ringed, tap to filter                                                                                                                          |
-| `ConfettiBurst`, `VideoPlayerView` | Celebration and beta playback (Section 10)                                                                                                                                             |
+| Component                          | Matte treatment                                                                                                                                                                                                                                                                                                                                                             |
+| ---------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Card`                             | Solid `card`, 1px `border`, `radius.lg`, no shadow, press-scale when tappable. The only card style.                                                                                                                                                                                                                                                                         |
+| `PrimaryButton`                    | Full-width, `accent` fill, white text, 52px, press scale, light haptic                                                                                                                                                                                                                                                                                                      |
+| `SecondaryButton`                  | `accentSoft` fill, `accentText`                                                                                                                                                                                                                                                                                                                                             |
+| `Chip` / `Pill`                    | Sentence case; selected = `accentSoft` + `accentText`; unselected = `cardMuted`                                                                                                                                                                                                                                                                                             |
+| `ResultChip`                       | Flash / Top / Attempt: soft fill + text label + dot                                                                                                                                                                                                                                                                                                                         |
+| `GradePill`                        | Band soft + band text; "—" when no grade, never "undefined"                                                                                                                                                                                                                                                                                                                 |
+| `StatTile`                         | `statSm`/`stat` value on one line, `label` below, optional icon and meaning-based soft tint                                                                                                                                                                                                                                                                                 |
+| `HeroCard`                         | The "Today's session" card: `Card` + `heroGlow` rising from the bottom edge + 30% `accent` border. Small `accentText` `label` ("Today's session"), `title` heading, `caption` meta, a duration `Pill`, week-goal dots top-right, and one full-width `PrimaryButton` with a soft purple glow (shadow in `accent` at 35%). Optional faint hold silhouette at about 6% opacity |
+| `ProjectCard`                      | Photo or hold placeholder on top, grade chip top-left, nickname (one line), "Gym · tags", then "No attempts yet" or "N burns · last tried", left band stripe, sparkline, swipe actions                                                                                                                                                                                      |
+| `SentProjectCard`                  | Compact card with a Flash/Top badge                                                                                                                                                                                                                                                                                                                                         |
+| `SessionCard`                      | Date badge, gym, time range, duration, climbs / sends / flashes, **segmented result bar in result colours**, "Hardest" + `GradePill`                                                                                                                                                                                                                                        |
+| `ClimbRow`                         | Grade pill, result chip, time, attempts if above 1, project nickname if linked, band stripe, swipe-to-delete                                                                                                                                                                                                                                                                |
+| `WeekStrip`                        | Mon–Sun dots (filled = climbed, ringed = today), streak pill with a vector flame, no emoji                                                                                                                                                                                                                                                                                  |
+| `SectionHeader`                    | `label` with optional "See all" in `accentText`                                                                                                                                                                                                                                                                                                                             |
+| `EmptyState` / `EmptyStateCard`    | Hold illustration, title, one line, one action                                                                                                                                                                                                                                                                                                                              |
+| `FloatingTabBar`                   | See Section 4                                                                                                                                                                                                                                                                                                                                                               |
+| `AnimatedCounter`                  | Always lands on the true value, even with reduce-motion                                                                                                                                                                                                                                                                                                                     |
+| `UndoToast`                        | 5 seconds, never blocks input                                                                                                                                                                                                                                                                                                                                               |
+| `SyncChip`                         | Synced / Syncing / N waiting / Offline                                                                                                                                                                                                                                                                                                                                      |
+| `ResultDonut`                      | Thick ring (stroke about 11% of the diameter, diameter about 75% of the screen width), flat ends, 1.5° gaps. Segments in order: Flash, Top, Attempt, Fail. Centre: average grade in `display` size with a two-line `caption`. Legend to the right: dot + text (`control`), vertically centred. The Progress hero                                                            |
+| `GradePyramid`, `VolumeChart`      | Band / result colours, labelled values                                                                                                                                                                                                                                                                                                                                      |
+| `LogbookCalendar`                  | Month grid, dot per climbing day, today ringed, tap to filter                                                                                                                                                                                                                                                                                                               |
+| `ConfettiBurst`, `VideoPlayerView` | Celebration and beta playback (Section 10)                                                                                                                                                                                                                                                                                                                                  |
+
+### 7.1b Added in v2.1 (new or extended)
+
+| Component      | Spec                                                                                                                                                                                                                                                                                                                                     |
+| -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ScreenHeader` | Two variants. **A (Home):** small greeting `caption`, then the wordmark or "Keep climbing, <name>" in `display`, optional grade badge under it, trailing `IconButton` (settings). **B (Progress, Logbook, Projects):** `display` title, one-line `caption` subtitle, trailing `IconButton` (filter or add). Top padding = safe area + 16 |
+| `IconButton`   | 44px circle, `card` fill, 1px `border`, 22px icon, `textMuted` (or `text`); over photos it becomes a glass circle (`OverlayChip` rules)                                                                                                                                                                                                  |
+| `OverlayChip`  | Glass chip for use over photos only: fill `rgba(16,16,20,0.55)`, blur 20, 1px `rgba(255,255,255,0.12)` border, `text` colour, `radius.pill` or `radius.lg`                                                                                                                                                                               |
+| `TipChip`      | `OverlayChip` with a 36px icon circle on the left and up to three lines of `caption`-size text (for example beta hints). Static text only; no recommendation engine                                                                                                                                                                      |
+| `TrendTile`    | `Card` (compact): two-line `label`, a coloured one-word `caption` (`accentText` or the result colour it measures), the value in `statSm`, optional `Sparkline` bottom-right. Three per row                                                                                                                                               |
+| `StatTile`     | Label may wrap to two lines (`label` style); value stays on one line. No icon needed                                                                                                                                                                                                                                                     |
+| `RecentRow`    | 56px thumbnail (`radius.md`, `cardMuted` fill), title in `heading`, grade under it as `GradePill`, result word centred in its result text colour, date right-aligned in `caption`; columns align across rows; 72px row height                                                                                                            |
+| `GradeBadge`   | Small solid chip under the greeting: band soft fill, band text, `statSm`-sized grade; shows the hardest send this month                                                                                                                                                                                                                  |
+| `HoldPin`      | **Planned.** Photo marker: 56px ring in `accent` at 60% with a white 10px dot; optional `TipChip` anchored to it                                                                                                                                                                                                                         |
+| `Sparkline`    | 2px line in the metric's colour, no axes, last point as a 4px dot; draws in over `motion.duration.slow`                                                                                                                                                                                                                                  |
 
 ### 7.2 Session (`components/session/`)
 
@@ -356,17 +345,17 @@ Built in `components/ui/`, `components/session/`, `components/analytics/`, `comp
 
 Each screen has **one named hero**. Status: **Built** = exists in the app. **Restyle** = exists, needs the matte treatment. **Planned** = not built yet.
 
-| Screen                                                   | Hero                         | Layout                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    | Status  |
-| -------------------------------------------------------- | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- |
-| **Home** (`app/index.tsx`)                               | "Today's session" `HeroCard` | Greeting "Keep climbing, <name>" with a badge for the hardest send this month → three `StatTile`s (Sessions, Climbs, Sends this week) → "Today's session" card: last gym, last session summary, `WeekStrip` dots as the weekly goal, one full-width "Start session" button ("Resume session" + live timer when active) → best-send banner (strictly harder than any previous send) → Projects strip (`ProjectCard`) → Recent sessions (`SessionCard`, three). First-run: welcome illustration + "Log your first session". | Restyle |
-| **Progress** (`app/analytics.tsx`)                       | `ResultDonut`                | Period filter → hero donut (Flash / Top / Attempt) with "<grade> average of last 20 climbs" in the centre and the legend on the right → three trend tiles (Weekly volume, Flash rate, Hardest grade) with sparklines → **Deep dive** section: `GradeProgressionTimeline`, `AscentPyramid`, `WallAngleRadar`, `RootCauseFailureChart`, `ACWRWidget`, each in a `Card`                                                                                                                                                      | Restyle |
-| **Projects** (`app/projects.tsx`)                        | The project photo cards      | Header "＋ New" → one control row (In progress / Sent / Abandoned) → `ProjectCard` list with photo or hold placeholder; `SentProjectCard` in the Sent tab; illustrated empty states per tab                                                                                                                                                                                                                                                                                                                               | Restyle |
-| **Project detail** (`app/project/[id].tsx`)              | Media header                 | Photo or video header with back button and ⋯ → grade, wall angle and hold-type chips → burns counter and high-watermark moves → beta notes → attempt history and tick log → "Log attempt"                                                                                                                                                                                                                                                                                                                                 | Restyle |
-| **Active Session** (`app/session/index.tsx`, no tab bar) | Live timer                   | Header: back, gym + `SyncChip`, "Finish session" → large timer + climbs count → `RestTimerPill` when active → `LoggerControls` + `ResultToggle` + quick "+1 attempt" → `ClimbRow` stream with swipe-to-delete and Undo → pinned "Log climb" button. Fall prompt after an Attempt.                                                                                                                                                                                                                                         | Restyle |
-| **End** (`app/session/end.tsx`)                          | Effort rating                | Effort 1–5, notes, gym → one "Finish" button                                                                                                                                                                                                                                                                                                                                                                                                                                                                              | Restyle |
-| **Session summary** (`app/session/detail/[id].tsx`)      | Sends count + hardest send   | Celebration trigger → stat row → `ResultDonut` + `SessionPyramidChart` → `SessionInsights` → `ShareWorkoutCard` → one "Done" button                                                                                                                                                                                                                                                                                                                                                                                       | Restyle |
-| **Logbook** (`app/profile.tsx`)                          | Lifetime stats banner        | Lifetime stats → `LogbookCalendar` → month-grouped `SessionCard`s                                                                                                                                                                                                                                                                                                                                                                                                                                                         | Restyle |
-| **Settings** (`app/settings.tsx`)                        | — (list)                     | Grade scale, home gym, celebrations and haptics, rest timer length, sync, data tools; destructive actions in `dangerText` on `dangerSoft`                                                                                                                                                                                                                                                                                                                                                                                 | Restyle |
+| Screen                                                   | Hero                         | Layout                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    | Status  |
+| -------------------------------------------------------- | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- |
+| **Home** (`app/index.tsx`)                               | "Today's session" `HeroCard` | `ScreenHeader` A: greeting "Keep climbing, <name>" with a `GradeBadge` for the hardest send this month, settings `IconButton` → three `StatTile`s (Sessions, Climbs, Sends this week) → "Today's session" card: last gym, last session summary, `WeekStrip` dots as the weekly goal, one full-width "Start session" button ("Resume session" + live timer when active) → best-send banner (strictly harder than any previous send) → Projects strip (`ProjectCard`) → Recent sessions (`SessionCard`, three). First-run: welcome illustration + "Log your first session". | Restyle |
+| **Progress** (`app/analytics.tsx`)                       | `ResultDonut`                | `ScreenHeader` B: "Your progress", subtitle "This month's climbing overview" (follows the period), filter `IconButton` opening a period sheet → hero donut (Flash / Top / Attempt) with "<grade> average of last 20 climbs" in the centre and the legend on the right → three `TrendTile`s (Weekly volume, Flash rate, Hardest grade) with sparklines → "Recent climbs" list of `RecentRow`s (four, with "See all") → **Deep dive** section: `GradeProgressionTimeline`, `AscentPyramid`, `WallAngleRadar`, `RootCauseFailureChart`, `ACWRWidget`, each in a `Card`       | Restyle |
+| **Projects** (`app/projects.tsx`)                        | The project photo cards      | Header "＋ New" → one control row (In progress / Sent / Abandoned) → `ProjectCard` list with photo or hold placeholder; `SentProjectCard` in the Sent tab; illustrated empty states per tab                                                                                                                                                                                                                                                                                                                                                                               | Restyle |
+| **Project detail** (`app/project/[id].tsx`)              | The photo                    | Full-bleed photo or video filling the top 55% of the screen, with a top scrim. Over it: back and ⋯ as glass `IconButton`s, and the project name with "Wall angle · Hold type" centred in the header (white text). Optional `TipChip`s over the photo (planned: `HoldPin`s). A content sheet (`card`, `radius.xl` top corners) overlaps the bottom of the photo by 24px and scrolls over it: grade chip and tags → burns counter and high-watermark moves → beta notes → attempt history and tick log → pinned "Log attempt"                                               | Restyle |
+| **Active Session** (`app/session/index.tsx`, no tab bar) | Live timer                   | Header: back, gym + `SyncChip`, "Finish session" → large timer + climbs count → `RestTimerPill` when active → `LoggerControls` + `ResultToggle` + quick "+1 attempt" → `ClimbRow` stream with swipe-to-delete and Undo → pinned "Log climb" button. Fall prompt after an Attempt.                                                                                                                                                                                                                                                                                         | Restyle |
+| **End** (`app/session/end.tsx`)                          | Effort rating                | Effort 1–5, notes, gym → one "Finish" button                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              | Restyle |
+| **Session summary** (`app/session/detail/[id].tsx`)      | Sends count + hardest send   | Celebration trigger → stat row → `ResultDonut` + `SessionPyramidChart` → `SessionInsights` → `ShareWorkoutCard` → one "Done" button                                                                                                                                                                                                                                                                                                                                                                                                                                       | Restyle |
+| **Logbook** (`app/profile.tsx`)                          | Lifetime stats banner        | Lifetime stats → `LogbookCalendar` → month-grouped `SessionCard`s                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         | Restyle |
+| **Settings** (`app/settings.tsx`)                        | — (list)                     | Grade scale, home gym, celebrations and haptics, rest timer length, sync, data tools; destructive actions in `dangerText` on `dangerSoft`                                                                                                                                                                                                                                                                                                                                                                                                                                 | Restyle |
 
 ### States on every screen
 
@@ -381,6 +370,8 @@ Each screen has **one named hero**. Status: **Built** = exists in the app. **Res
 
 - **Icons:** one icon set, 24px in navigation and 20px inline, 1.75 stroke, `textMuted` by default and `accentText` when active. **No emoji in the UI.**
 - **Hold photography (preferred):** moody close-ups of one climbing hold on a dark speckled wall, matte plastic, soft studio light, lots of dark space, no text, no logos, no people. Six colours (teal, magenta-pink, warm yellow, orange, purple, off-white), 1:1 for cards and 16:9 for the project header. Stored in `assets/holds/`, under 200KB each, WebP or PNG, bundled for offline use.
+- **Speckle texture:** `assets/textures/speckle.png`, 512×512, tileable (edges wrap), transparent background, irregular off-white flecks and a few larger chips, under 60KB. Generate it as an image or draw it with a script, and check the tile edges show no seams. Used as a repeating background behind scroll content (Section 3).
+- **Photo overlay rules:** a photo that carries text or buttons gets a top scrim (`bg` 60% → 0%, 120px) and a bottom scrim (0% → `bg` 70%, 160px). Overlay chips use `OverlayChip` (Section 7.1b).
 - **Placeholder art** (when a project has no photo and no hold image is available): a flat `cardMuted` surface with a large rounded hold shape drawn in `react-native-svg`, tinted with the grade-band soft colour and a 1px band-colour outline at 40% opacity. Never an empty grey box.
 - **Project photos from the user** are cropped to 4:3 with a `bg` gradient at the bottom edge only if text sits on them.
 - **Illustration style (empty states, welcome):** flat, soft vector or photo-style hold on a dark surface; palette limited to charcoal, accent purple, and one band colour; no text in images. Assets: `welcome-hero.png`, `empty-sessions.png`, `empty-projects.png`, `empty-synced.png`. They were made for the light theme, so regenerate them on a dark background or place them in a `card` with rounded corners until then.
@@ -391,7 +382,7 @@ Each screen has **one named hero**. Status: **Built** = exists in the app. **Res
 
 ## 10. Motion, Haptics and Celebrations
 
-- **Motion:** use `motion.duration` and `motion.easing` tokens. Press feedback `fast`; sheets and toasts `base`; count-ups and chart entries `slow`. Animate with Reanimated worklets so a timer or animation never re-renders a list. **Fluid physics (v3.0):** all scroll containers are `Animated.ScrollView`; list items use `layout={listLayout}` (from `theme/layout.ts`, built from `motion.layoutSpring`) so they slide into place on add, remove or expand; `Animated.FlatList` takes the same value as `itemLayoutAnimation` (only with `numColumns` 1; Reanimated does not support it for grids). `PrimaryButton` springs to `motion.pressSpring.scale` on press-in (skipped under reduce-motion). `SectionList` has no Reanimated equivalent and stays React Native's.
+- **Motion:** use `motion.duration` and `motion.easing` tokens. Press feedback `fast`; sheets and toasts `base`; count-ups and chart entries `slow`. Animate with Reanimated worklets so a timer or animation never re-renders a list.
 - **Celebration levels** (`CelebrationProvider`: `triggerSmall`, `triggerMedium`, `triggerBig`, `triggerStreak`; computed from local data, fired once, remembered in a local-only store, cancelled by Undo, never for deleted climbs):
   - **Small:** a Flash gets a row shimmer, a light haptic and a toast.
   - **Medium:** a new hardest send (strictly harder than every previous send, only when a previous best exists) pulses the Hardest tile, with a success haptic and a toast "New hardest: V5".
@@ -421,7 +412,7 @@ Each screen has **one named hero**. Status: **Built** = exists in the app. **Res
 1. Read this file, `USER_FLOW.md` and `COMPONENTS.md`.
 2. Name the screen's hero before changing it.
 3. Use tokens and existing components only. No hard-coded colours, sizes, radii, spacing or fonts. Do not create a component that already exists.
-4. One card style: solid, bevelled, on `shadow.card`. Blur only on the tab bar, glow only via `GlowBackdrop` on achievements. No full-bleed gradients.
+4. One card style: solid, 1px border, no shadow. Gradients only as the `heroGlow` and photo scrims; glass only over photos.
 5. Respect the density rules (3.1) and floating-element rules (3.2).
 6. Grade colours through `gradeBand()`; red only for destructive actions and errors; purple only for primary actions, active states and Top results.
 7. Cover all states (loading, empty, error, offline) and all component states.
@@ -436,4 +427,31 @@ Each screen has **one named hero**. Status: **Built** = exists in the app. **Res
 - **Light theme:** re-enable `theme/tokens.light.ts` behind a Settings switch ("System / Light / Dark") using `useColorScheme()`. The light grade bands need a re-check against this file.
 - **Suggested focus** line on the Home hero (weakest wall angle from `WallAngleRadar` data).
 - **Mark holds on a project photo** (tap to pin a hold on the image).
-- **Speckle texture** and a refreshed illustration set once the core screens are stable.
+- A refreshed illustration set once the core screens are stable.
+
+---
+
+## 14. UX Patterns
+
+How the screens behave together. These keep the app feeling like one product.
+
+1. **Hero, then action.** Each screen opens with its hero, and the next thing the eye reaches is the one primary action (Home: "Start session"; Active Session: "Log climb"; Project detail: "Log attempt").
+2. **Photo cards open photo screens.** Tapping a `ProjectCard` or a `RecentRow` with a thumbnail opens a detail screen that leads with the photo. Back is always the glass circle at top-left.
+3. **Filters live in a sheet.** The header's trailing `IconButton` (filter) opens a bottom sheet (period, gym, sort). Nothing filter-like sits in the content.
+4. **Every list has the same row anatomy.** Thumbnail or band stripe on the left, title and grade in the middle, result and date on the right. A person should read any list the same way.
+5. **Colour tells you what kind of thing it is.** Band colours mean grades, result pastels mean outcomes, purple means "act", "active" or "Top". Never reuse one for another meaning.
+6. **Small numbers get context.** A bare number always has a label or a target ("2 / 3 sessions"), and a trend shows direction (the sparkline or "+8%").
+7. **Rewards stay small.** A send changes a tile or row; only a topped project gets a sheet (Section 10).
+8. **One way back.** Detail screens use the back circle; tab screens never show one. No dead ends.
+9. **Tips are static.** `TipChip`s are written text (or later, notes the user wrote), not generated advice.
+
+---
+
+## 15. Open Decisions
+
+| Decision                                         | Options                                                                                                                                                   | Default for now                                                                                                                                                                              |
+| ------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Centre Start button vs. 4 tabs                   | The reference has 4 tabs (no centre button) and puts "Start session" in the Home hero card. Keeping the centre button gives one-tap start from every tab. | **Keep the centre button** (it was a deliberate user-flow choice). Revisit after the redesign; if dropped, add a slim "Session · 42:10 · Resume" bar above the tab bar while a session runs. |
+| Profile avatar and notification bell             | The reference header has both                                                                                                                             | **Skip** (no accounts or notifications in the MVP)                                                                                                                                           |
+| Recommended routes and "Today's session" targets | Need a route database and a recommendation engine                                                                                                         | **Skip.** Use the "Suggested focus" line later (Section 13)                                                                                                                                  |
+| Texture on or off                                | On gives the signature look; off saves a little performance                                                                                               | **On**, with a plain-`bg` fallback on slow devices                                                                                                                                           |
