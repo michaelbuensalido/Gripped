@@ -10,9 +10,19 @@ import {
   StyleSheet,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { ChevronLeft, MoreHorizontal, Sparkles, Hand, Edit2, CheckCircle2 } from 'lucide-react-native';
+import {
+  ChevronLeft,
+  MoreHorizontal,
+  Sparkles,
+  Hand,
+  Edit2,
+  CheckCircle2,
+} from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../theme/useTheme';
+import { Chip } from '../../components/ui/Chip';
+import { PrimaryButton } from '../../components/ui/PrimaryButton';
+import { SecondaryButton } from '../../components/ui/SecondaryButton';
 import { useProject, useProjectHistory } from '../../db/hooks';
 import { updateProjectStatus, deleteProject, updateProjectBeta } from '../../db/queries';
 import { triggerHaptic } from '../../utils/haptics';
@@ -20,7 +30,7 @@ import { triggerHaptic } from '../../utils/haptics';
 export default function ProjectDetailScreen() {
   const { id } = useLocalSearchParams();
   const router = useRouter();
-  const { colors, type, radius } = useTheme();
+  const { colors, space, type, radius } = useTheme();
   const insets = useSafeAreaInsets();
 
   const project = useProject(id as string);
@@ -33,7 +43,7 @@ export default function ProjectDetailScreen() {
   const displayTitle = project?.title || 'Ripple Effect';
   const displayGrade = project?.gradeRaw || 'V6';
   const displayStyle = project?.wallAngle && project?.holdType
-    ? `${project.wallAngle} • ${project.holdType}`
+    ? `${project.wallAngle.charAt(0).toUpperCase() + project.wallAngle.slice(1)} • ${project.holdType.charAt(0).toUpperCase() + project.holdType.slice(1)}`
     : 'Overhang • Power endurance';
 
   const handleMarkSent = () => {
@@ -78,12 +88,16 @@ export default function ProjectDetailScreen() {
     <View style={{ flex: 1, backgroundColor: '#0C0C10' }}>
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 120 }}
+        contentContainerStyle={{ paddingBottom: 130 }}
       >
-        {/* 1. Full Hero Wall View with Real Climbing Wall Photo */}
-        <View style={{ height: 600, width: '100%', position: 'relative' }}>
+        {/* 1. Full Hero Wall View with Real Climbing Wall Photo & Interactive Overlays */}
+        <View style={{ height: 560, width: '100%', position: 'relative' }}>
           <ImageBackground
-            source={require('../../assets/holds-images/v6-ripple-effect.jpg')}
+            source={
+              project?.mediaUri
+                ? { uri: project.mediaUri }
+                : require('../../assets/holds-images/v6-ripple-effect.jpg')
+            }
             style={StyleSheet.absoluteFill}
             resizeMode="cover"
           >
@@ -163,9 +177,11 @@ export default function ProjectDetailScreen() {
                   width: 170,
                 }}
               >
-                <TouchableOpacity onPress={handleMarkSent} style={{ padding: 14, borderBottomWidth: 1, borderBottomColor: 'rgba(255, 255, 255, 0.08)' }}>
-                  <Text style={{ color: '#FFFFFF', fontSize: 14, fontWeight: '600' }}>Mark as sent</Text>
-                </TouchableOpacity>
+                {project?.status !== 'sent' && (
+                  <TouchableOpacity onPress={handleMarkSent} style={{ padding: 14, borderBottomWidth: 1, borderBottomColor: 'rgba(255, 255, 255, 0.08)' }}>
+                    <Text style={{ color: '#FFFFFF', fontSize: 14, fontWeight: '600' }}>Mark as sent</Text>
+                  </TouchableOpacity>
+                )}
                 <TouchableOpacity onPress={handleArchive} style={{ padding: 14, borderBottomWidth: 1, borderBottomColor: 'rgba(255, 255, 255, 0.08)' }}>
                   <Text style={{ color: '#FFFFFF', fontSize: 14 }}>Archive</Text>
                 </TouchableOpacity>
@@ -175,7 +191,7 @@ export default function ProjectDetailScreen() {
               </View>
             )}
 
-            {/* Hold Marker 1 (Upper Hold with Purple Circle & White Center Dot) */}
+            {/* Interactive Hold Marker 1 (Upper Hold with Purple Circle & White Dot) */}
             <View
               style={{
                 position: 'absolute',
@@ -218,7 +234,7 @@ export default function ProjectDetailScreen() {
               </Text>
             </View>
 
-            {/* Hold Marker 2 (Middle Hold with Purple Circle & White Center Dot) */}
+            {/* Interactive Hold Marker 2 (Middle Hold with Purple Circle & White Dot) */}
             <View
               style={{
                 position: 'absolute',
@@ -274,9 +290,18 @@ export default function ProjectDetailScreen() {
           </ImageBackground>
         </View>
 
-        {/* 2. Telemetry Bento Strip & Actions below wall */}
-        <View style={{ paddingHorizontal: 20, paddingTop: 24 }}>
-          {/* Bento Stats Row */}
+        {/* 2. Telemetry Bento Strip & All Original Sections below wall */}
+        <View style={{ paddingHorizontal: 20, paddingTop: 20 }}>
+          {/* Wall Angle & Hold Type Tags */}
+          {(project?.wallAngle || project?.holdType || project?.gymName) && (
+            <View style={{ flexDirection: 'row', gap: 8, marginBottom: 18, flexWrap: 'wrap' }}>
+              {project?.gymName && <Chip label={project.gymName} />}
+              {project?.wallAngle && <Chip label={project.wallAngle} />}
+              {project?.holdType && <Chip label={project.holdType} />}
+            </View>
+          )}
+
+          {/* Bento Stats Row: TOTAL BURNS & HIGH-WATER MARK */}
           <View style={{ flexDirection: 'row', gap: 12, marginBottom: 20 }}>
             <View
               style={{
@@ -292,7 +317,7 @@ export default function ProjectDetailScreen() {
                 TOTAL BURNS
               </Text>
               <Text style={{ color: '#FFFFFF', fontSize: 26, fontWeight: '700', fontVariant: ['tabular-nums'], marginTop: 4 }}>
-                {project?.attempts || 8}
+                {project?.attempts || 0}
               </Text>
             </View>
 
@@ -310,7 +335,7 @@ export default function ProjectDetailScreen() {
                 HIGH-WATER MARK
               </Text>
               <Text style={{ color: '#FFFFFF', fontSize: 26, fontWeight: '700', fontVariant: ['tabular-nums'], marginTop: 4 }}>
-                Move 5/8
+                {project?.highWaterMarkMoves ? `${project.highWaterMarkMoves}` : '0'}
               </Text>
             </View>
           </View>
@@ -330,14 +355,16 @@ export default function ProjectDetailScreen() {
               <Text style={{ color: 'rgba(255, 255, 255, 0.45)', fontSize: 11, fontWeight: '600', letterSpacing: 1.5, textTransform: 'uppercase' }}>
                 MICRO BETA & NOTES
               </Text>
-              <TouchableOpacity
-                onPress={() => {
-                  setNotesDraft(project?.microBeta || 'Drop knee on third move, bump right hand with open crimp grip.');
-                  setIsEditingNotes(!isEditingNotes);
-                }}
-              >
-                <Edit2 size={16} color="#9A85FF" />
-              </TouchableOpacity>
+              {!isEditingNotes && (
+                <TouchableOpacity
+                  onPress={() => {
+                    setNotesDraft(project?.microBeta || '');
+                    setIsEditingNotes(true);
+                  }}
+                >
+                  <Edit2 size={16} color="#9A85FF" />
+                </TouchableOpacity>
+              )}
             </View>
 
             {isEditingNotes ? (
@@ -346,59 +373,129 @@ export default function ProjectDetailScreen() {
                   value={notesDraft}
                   onChangeText={setNotesDraft}
                   multiline
+                  placeholder="Add micro-beta or sequence notes..."
+                  placeholderTextColor="rgba(255, 255, 255, 0.4)"
                   style={{
                     color: '#FFFFFF',
                     backgroundColor: 'rgba(255, 255, 255, 0.06)',
                     borderRadius: 12,
                     padding: 12,
                     fontSize: 14,
-                    minHeight: 70,
-                    marginBottom: 10,
+                    minHeight: 80,
+                    marginBottom: 12,
                   }}
                 />
-                <TouchableOpacity
-                  onPress={handleSaveNotes}
-                  style={{
-                    backgroundColor: '#9A85FF',
-                    paddingVertical: 10,
-                    borderRadius: radius.pill,
-                    alignItems: 'center',
-                  }}
-                >
-                  <Text style={{ color: '#FFFFFF', fontWeight: '700' }}>Save Note</Text>
-                </TouchableOpacity>
+                <View style={{ flexDirection: 'row', gap: 10 }}>
+                  <SecondaryButton label="Cancel" onPress={() => setIsEditingNotes(false)} style={{ flex: 1 }} />
+                  <PrimaryButton label="Save Note" onPress={handleSaveNotes} style={{ flex: 1 }} />
+                </View>
               </View>
             ) : (
-              <Text style={{ color: 'rgba(255, 255, 255, 0.85)', fontSize: 14, lineHeight: 20 }}>
-                {project?.microBeta || 'Drop knee on third move, bump right hand with open crimp grip.'}
+              <TouchableOpacity
+                activeOpacity={0.7}
+                onPress={() => {
+                  setNotesDraft(project?.microBeta || '');
+                  setIsEditingNotes(true);
+                }}
+              >
+                {project?.microBeta ? (
+                  <Text style={{ color: 'rgba(255, 255, 255, 0.85)', fontSize: 14, lineHeight: 20 }}>
+                    {project.microBeta}
+                  </Text>
+                ) : (
+                  <Text style={{ color: 'rgba(255, 255, 255, 0.4)', fontStyle: 'italic', fontSize: 14 }}>
+                    Tap to add micro-beta or sequence notes...
+                  </Text>
+                )}
+              </TouchableOpacity>
+            )}
+          </View>
+
+          {/* History Section */}
+          <Text
+            style={{
+              color: 'rgba(255, 255, 255, 0.45)',
+              fontSize: 11,
+              fontWeight: '600',
+              letterSpacing: 1.5,
+              textTransform: 'uppercase',
+              marginBottom: 12,
+            }}
+          >
+            HISTORY
+          </Text>
+
+          <View
+            style={{
+              backgroundColor: 'rgba(22, 22, 30, 0.85)',
+              borderRadius: 20,
+              padding: 16,
+              borderWidth: 1,
+              borderColor: 'rgba(255, 255, 255, 0.06)',
+              marginBottom: 28,
+            }}
+          >
+            {history.length > 0 ? (
+              history.map((h: any, idx: number) => (
+                <View
+                  key={h.sessionId}
+                  style={{
+                    flexDirection: 'row',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    paddingVertical: 12,
+                    borderBottomWidth: idx === history.length - 1 ? 0 : 1,
+                    borderBottomColor: 'rgba(255, 255, 255, 0.06)',
+                  }}
+                >
+                  <View>
+                    <Text style={{ color: '#FFFFFF', fontSize: 14, fontWeight: '600' }}>
+                      {new Date(h.date).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}
+                    </Text>
+                    {h.bestResult === 'send' && (
+                      <Text style={{ color: '#72FF9B', fontSize: 12, fontWeight: '700', marginTop: 2 }}>
+                        Sent!
+                      </Text>
+                    )}
+                  </View>
+                  <Text style={{ color: 'rgba(255, 255, 255, 0.5)', fontSize: 13 }}>
+                    {h.burns} burn{h.burns > 1 ? 's' : ''}
+                  </Text>
+                </View>
+              ))
+            ) : (
+              <Text style={{ color: 'rgba(255, 255, 255, 0.45)', fontSize: 13, textAlign: 'center', paddingVertical: 10 }}>
+                No attempts logged yet.
               </Text>
             )}
           </View>
 
           {/* Action Buttons */}
           <View style={{ gap: 12 }}>
-            <TouchableOpacity
-              activeOpacity={0.85}
-              onPress={handleMarkSent}
-              style={{
-                backgroundColor: '#9A85FF',
-                height: 56,
-                borderRadius: radius.pill,
-                alignItems: 'center',
-                justifyContent: 'center',
-                flexDirection: 'row',
-                gap: 8,
-                shadowColor: '#9A85FF',
-                shadowOpacity: 0.5,
-                shadowRadius: 16,
-                elevation: 6,
-              }}
-            >
-              <CheckCircle2 size={20} color="#FFFFFF" />
-              <Text style={{ color: '#FFFFFF', fontSize: 16, fontWeight: '700', letterSpacing: 0.5 }}>
-                MARK AS SENT
-              </Text>
-            </TouchableOpacity>
+            {project?.status !== 'sent' && (
+              <TouchableOpacity
+                activeOpacity={0.85}
+                onPress={handleMarkSent}
+                style={{
+                  backgroundColor: '#9A85FF',
+                  height: 56,
+                  borderRadius: radius.pill,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexDirection: 'row',
+                  gap: 8,
+                  shadowColor: '#9A85FF',
+                  shadowOpacity: 0.5,
+                  shadowRadius: 16,
+                  elevation: 6,
+                }}
+              >
+                <CheckCircle2 size={20} color="#FFFFFF" />
+                <Text style={{ color: '#FFFFFF', fontSize: 16, fontWeight: '700', letterSpacing: 0.5 }}>
+                  MARK AS SENT
+                </Text>
+              </TouchableOpacity>
+            )}
           </View>
         </View>
       </ScrollView>

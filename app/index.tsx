@@ -1,8 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, Image, ScrollView, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, Image } from 'react-native';
 import Animated, {
   useSharedValue,
   useAnimatedScrollHandler,
+  useAnimatedStyle,
+  interpolate,
+  Extrapolation,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -10,59 +13,69 @@ import {
   Bell,
   ChevronDown,
   Clock,
-  Flame,
   Mountain,
   Plus,
+  PlayCircle,
+  Trophy,
 } from 'lucide-react-native';
+import { Card } from '../components/ui/Card';
+import { GlowBackdrop } from '../components/ui/GlowBackdrop';
+import { listLayout } from '../theme/layout';
+import { ProjectCard } from '../components/ui/ProjectCard';
+import { SectionHeader } from '../components/ui/SectionHeader';
+import { SessionCard } from '../components/ui/SessionCard';
+import * as Q from '../db/queries';
+import { WeekStrip } from '../components/ui/WeekStrip';
+import { VolumeChart } from '../components/ui/VolumeChart';
+import { useCelebration } from '../components/celebration/CelebrationProvider';
+import { useCelebrationStore } from '../store/celebrationStore';
+import { getStreakMilestone } from '../utils/celebrationLogic';
 import { useTheme } from '../theme/useTheme';
 import { useHomeSummary } from '../db/hooks';
 import { useSessionActions } from '../hooks/useSessionActions';
 import { StartSessionSheet } from '../components/session/StartSessionSheet';
 import { triggerHaptic } from '../utils/haptics';
+import { plural } from '../utils/string';
 
 function formatDuration(ms: number) {
   const totalSecs = Math.floor(ms / 1000);
-  const m = Math.floor(totalSecs / 60);
-  return `${m} min`;
+  if (totalSecs < 60) return '<1 min';
+  const h = Math.floor(totalSecs / 3600);
+  const m = Math.floor((totalSecs % 3600) / 60);
+  const s = totalSecs % 60;
+  if (h > 0) return `${h}:${m.toString().padStart(2, '0')}`;
+  return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
 }
-
-// Recommended routes with real 3D hold renders
-const RECOMMENDED_ROUTES = [
-  {
-    id: 'ripple-effect',
-    title: 'Ripple Effect',
-    grade: 'V6',
-    gradeBand: { bg: '#1E3C3E', text: '#72FFDD' },
-    style: 'Overhang • Power endurance',
-    image: require('../assets/holds-images/teal_ripple_disc.png'),
-  },
-  {
-    id: 'slab-rise',
-    title: 'Slab Rise',
-    grade: 'V5',
-    gradeBand: { bg: '#4A232E', text: '#FF729B' },
-    style: 'Slab • Technical friction',
-    image: require('../assets/holds-images/pink_pinch.png'),
-  },
-  {
-    id: 'kars-sloper',
-    title: 'Kars Sloper',
-    grade: 'V7',
-    gradeBand: { bg: '#48351E', text: '#F6C46E' },
-    style: 'Roof • Compression',
-    image: require('../assets/holds-images/v7-kars-sloper.png'),
-  },
-];
 
 export default function HomeScreen() {
   const router = useRouter();
   const { colors, type, space, radius, shadow } = useTheme();
-  const insets = useSafeAreaInsets();
 
   const data = useHomeSummary();
   const { startOrResume } = useSessionActions();
   const [isStartSheetOpen, setIsStartSheetOpen] = useState(false);
   const [elapsed, setElapsed] = useState(0);
+  const insets = useSafeAreaInsets();
+  const { triggerStreak } = useCelebration();
+  const { hasStreakCelebrated, markStreakCelebrated } = useCelebrationStore();
+
+  useEffect(() => {
+    if (data?.streak) {
+      const milestone = getStreakMilestone(data.streak);
+      if (milestone && !hasStreakCelebrated(milestone)) {
+        triggerStreak(milestone);
+        markStreakCelebrated(milestone);
+      }
+    }
+  }, [data?.streak, hasStreakCelebrated, markStreakCelebrated, triggerStreak]);
+
+  const scrollY = useSharedValue(0);
+  const onScroll = useAnimatedScrollHandler((e) => {
+    scrollY.value = e.contentOffset.y;
+  });
+  const scrimStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(scrollY.value, [0, 40], [0, 1], Extrapolation.CLAMP),
+  }));
 
   // Live timer for active session
   useEffect(() => {
@@ -82,23 +95,22 @@ export default function HomeScreen() {
     }
   };
 
-  const finishedCount = data.hasAnyData ? Math.max(108, data.sendsThisWeek + 100) : 108;
-  const activeCount = data.projects.length > 0 ? data.projects.length : 6;
-  const flashesCount = data.flashesThisWeek > 0 ? data.flashesThisWeek + 30 : 32;
   const highWatermark = data.hardest30d ? data.hardest30d.gradeRaw : '7A';
 
   return (
     <View style={{ flex: 1 }}>
-      <ScrollView
+      <Animated.ScrollView
+        onScroll={onScroll}
+        scrollEventThrottle={16}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{
-          paddingTop: Math.max(insets.top, 20) + 10,
-          paddingBottom: 130, // Space for floating tab dock
+          paddingTop: Math.max(insets.top, 20) + 8,
+          paddingBottom: 130, // Clear the floating tab bar
           paddingHorizontal: 20,
         }}
       >
         {/* 1. Header Bar: Avatar Pill on Left, Notification Bell on Right */}
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
           {/* User profile dropdown pill */}
           <TouchableOpacity
             activeOpacity={0.8}
@@ -168,7 +180,7 @@ export default function HomeScreen() {
             paddingVertical: 5,
             borderRadius: 12,
             alignSelf: 'flex-start',
-            marginBottom: 24,
+            marginBottom: 20,
           }}
         >
           <Text style={{ color: '#72FF9B', fontSize: 15, fontWeight: '700', fontFamily: type.heading.fontFamily }}>
@@ -177,8 +189,8 @@ export default function HomeScreen() {
         </View>
 
         {/* 3. Three Bento Stat Tiles */}
-        <View style={{ flexDirection: 'row', gap: 12, marginBottom: 24 }}>
-          {/* Tile 1: Finished Routes */}
+        <View style={{ flexDirection: 'row', gap: 12, marginBottom: 22 }}>
+          {/* Tile 1: Sessions */}
           <View
             style={{
               flex: 1,
@@ -190,7 +202,7 @@ export default function HomeScreen() {
             }}
           >
             <Text style={{ color: '#FFFFFF', fontSize: 26, fontWeight: '700', fontVariant: ['tabular-nums'], fontFamily: type.stat.fontFamily }}>
-              {finishedCount}
+              {data.sessionsThisWeek || 0}
             </Text>
             <Text
               style={{
@@ -203,11 +215,11 @@ export default function HomeScreen() {
                 lineHeight: 14,
               }}
             >
-              {'FINISHED\nROUTES'}
+              {'SESSIONS\nTHIS WEEK'}
             </Text>
           </View>
 
-          {/* Tile 2: Active Routes */}
+          {/* Tile 2: Climbs */}
           <View
             style={{
               flex: 1,
@@ -219,7 +231,7 @@ export default function HomeScreen() {
             }}
           >
             <Text style={{ color: '#FFFFFF', fontSize: 26, fontWeight: '700', fontVariant: ['tabular-nums'], fontFamily: type.stat.fontFamily }}>
-              {activeCount}
+              {data.climbsThisWeek || 0}
             </Text>
             <Text
               style={{
@@ -232,11 +244,11 @@ export default function HomeScreen() {
                 lineHeight: 14,
               }}
             >
-              {'ACTIVE\nROUTES'}
+              {'CLIMBS\nLOGGED'}
             </Text>
           </View>
 
-          {/* Tile 3: Flashes Routes */}
+          {/* Tile 3: Sends */}
           <View
             style={{
               flex: 1,
@@ -248,7 +260,7 @@ export default function HomeScreen() {
             }}
           >
             <Text style={{ color: '#FFFFFF', fontSize: 26, fontWeight: '700', fontVariant: ['tabular-nums'], fontFamily: type.stat.fontFamily }}>
-              {flashesCount}
+              {data.sendsThisWeek || 0}
             </Text>
             <Text
               style={{
@@ -261,7 +273,7 @@ export default function HomeScreen() {
                 lineHeight: 14,
               }}
             >
-              {'FLASHES\nROUTES'}
+              {'SENDS\nTHIS WEEK'}
             </Text>
           </View>
         </View>
@@ -274,7 +286,7 @@ export default function HomeScreen() {
             padding: 20,
             borderWidth: 1,
             borderColor: 'rgba(255, 255, 255, 0.08)',
-            marginBottom: 26,
+            marginBottom: 24,
             ...shadow.floating,
           }}
         >
@@ -294,13 +306,17 @@ export default function HomeScreen() {
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 4 }}>
             <Mountain size={28} color="#9A85FF" />
             <Text style={{ color: '#FFFFFF', fontSize: 30, fontWeight: '700', fontFamily: type.stat.fontFamily }}>
-              {data.activeSession ? 'Session Active' : 'V5–V7A'}
+              {data.activeSession ? formatDuration(elapsed) : 'V5–V7A'}
             </Text>
           </View>
 
           {/* Focus Subtitle */}
           <Text style={{ color: 'rgba(255, 255, 255, 0.65)', fontSize: 14, fontFamily: type.body.fontFamily, marginBottom: 14 }}>
-            {data.lastSession ? `${data.lastSession.gymName} • Power Endurance` : 'Overhang • Power Endurance'}
+            {data.activeSession
+              ? `${plural(data.activeSessionClimbCount, 'climb')} logged`
+              : data.lastSession
+              ? `${data.lastSession.gymName} • Power Endurance`
+              : 'Overhang • Power Endurance'}
           </Text>
 
           {/* Duration Pill Chip */}
@@ -325,7 +341,7 @@ export default function HomeScreen() {
 
           {/* Massive START SESSION Button */}
           <TouchableOpacity
-            testID="start-session-btn"
+            testID={data.activeSession ? 'resume-session-btn' : 'start-session-btn'}
             activeOpacity={0.85}
             onPress={handleStartSession}
             style={{
@@ -347,88 +363,136 @@ export default function HomeScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* 5. RECOMMENDED ROUTES Section Header */}
-        <Text
-          style={{
-            color: 'rgba(255, 255, 255, 0.45)',
-            fontSize: 11,
-            fontWeight: '600',
-            letterSpacing: 1.5,
-            textTransform: 'uppercase',
-            marginBottom: 14,
-          }}
-        >
-          RECOMMENDED ROUTES
-        </Text>
+        {/* 5. WeekStrip — Current week streak */}
+        <View style={{ marginBottom: 24 }}>
+          <WeekStrip days={data.weekDays} streak={data.streak} />
+        </View>
 
-        {/* Horizontal Carousel of 3D Hold Route Cards */}
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={{ marginHorizontal: -20 }}
-          contentContainerStyle={{ paddingHorizontal: 20, gap: 14 }}
-        >
-          {RECOMMENDED_ROUTES.map((route) => (
-            <TouchableOpacity
-              key={route.id}
-              activeOpacity={0.8}
-              onPress={() => {
-                triggerHaptic('light');
-                router.push(`/project/${route.id}` as any);
-              }}
+        {/* 6. Personal best banner */}
+        {data.personalBest && (
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 14,
+              backgroundColor: 'rgba(22, 22, 30, 0.85)',
+              borderRadius: 20,
+              padding: 16,
+              borderWidth: 1,
+              borderColor: 'rgba(255, 255, 255, 0.06)',
+              marginBottom: 24,
+            }}
+          >
+            <GlowBackdrop />
+            <View
               style={{
-                width: 175,
-                backgroundColor: 'rgba(22, 22, 30, 0.85)',
-                borderRadius: 22,
-                padding: 14,
-                borderWidth: 1,
-                borderColor: 'rgba(255, 255, 255, 0.06)',
+                width: 42,
+                height: 42,
+                borderRadius: 21,
+                backgroundColor: 'rgba(154, 133, 255, 0.18)',
+                justifyContent: 'center',
                 alignItems: 'center',
               }}
             >
-              {/* Top-Left Grade Pill */}
-              <View
-                style={{
-                  alignSelf: 'flex-start',
-                  backgroundColor: route.gradeBand.bg,
-                  paddingHorizontal: 9,
-                  paddingVertical: 3.5,
-                  borderRadius: 8,
-                  marginBottom: 10,
-                }}
-              >
-                <Text style={{ color: route.gradeBand.text, fontSize: 12, fontWeight: '700' }}>
-                  {route.grade}
-                </Text>
-              </View>
-
-              {/* Centered 3D Realistic Hold Image */}
-              <Image
-                source={route.image}
-                style={{ width: 110, height: 110 }}
-                resizeMode="contain"
-              />
-
-              {/* Bottom Route Name */}
-              <Text
-                style={{
-                  color: '#FFFFFF',
-                  fontSize: 15,
-                  fontWeight: '700',
-                  fontFamily: type.heading.fontFamily,
-                  marginTop: 10,
-                  alignSelf: 'flex-start',
-                }}
-                numberOfLines={1}
-              >
-                {route.title}
+              <Trophy size={20} color="#D4CCFF" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={[type.heading, { color: '#FFFFFF', fontWeight: '700' }]}>
+                New best: {data.personalBest.gradeRaw}
               </Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-      </ScrollView>
+              <Text style={{ color: 'rgba(255, 255, 255, 0.5)', fontSize: 13, marginTop: 2 }}>
+                {data.personalBest.daysAgo === 0
+                  ? 'Today'
+                  : data.personalBest.daysAgo === 1
+                  ? 'Yesterday'
+                  : `${data.personalBest.daysAgo} days ago`}
+              </Text>
+            </View>
+          </View>
+        )}
 
-      {/* Start Session Bottom Modal */}
+        {/* 7. Projects Strip — Project cards carousel */}
+        <View style={{ marginBottom: 26 }}>
+          <SectionHeader
+            title="Projects"
+            action={{ label: 'See all', onPress: () => router.push('/projects') }}
+          />
+          <Animated.ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={{ marginHorizontal: -20 }}
+            contentContainerStyle={{ paddingHorizontal: 20 }}
+          >
+            <View style={{ flexDirection: 'row', gap: 14 }}>
+              {data.projects.length === 0 ? (
+                <TouchableOpacity
+                  onPress={() => router.push('/projects')}
+                  style={{
+                    width: 220,
+                    padding: 20,
+                    backgroundColor: 'rgba(22, 22, 30, 0.85)',
+                    borderRadius: 22,
+                    borderWidth: 1,
+                    borderColor: 'rgba(255, 255, 255, 0.06)',
+                  }}
+                >
+                  <View
+                    style={{
+                      width: 44,
+                      height: 44,
+                      borderRadius: 22,
+                      backgroundColor: 'rgba(154, 133, 255, 0.18)',
+                      justifyContent: 'center',
+                      alignItems: 'center',
+                      marginBottom: 12,
+                    }}
+                  >
+                    <Plus size={22} color="#D4CCFF" />
+                  </View>
+                  <Text style={[type.heading, { color: '#FFFFFF', marginBottom: 4, fontWeight: '700' }]}>
+                    Add a project
+                  </Text>
+                  <Text style={{ color: 'rgba(255, 255, 255, 0.5)', fontSize: 13 }}>
+                    Track a climb you're working on
+                  </Text>
+                </TouchableOpacity>
+              ) : (
+                data.projects.slice(0, 5).map((p: any) => (
+                  <Animated.View key={p.id} layout={listLayout} style={{ width: 260 }}>
+                    <ProjectCard project={p} style={{ width: 260 }} />
+                  </Animated.View>
+                ))
+              )}
+            </View>
+          </Animated.ScrollView>
+        </View>
+
+        {/* 8. Weekly Volume Chart */}
+        {data.weeklyVolume.length > 0 && (
+          <View style={{ marginBottom: 26 }}>
+            <VolumeChart
+              data={data.weeklyVolume}
+              onPress={() => router.push('/analytics')}
+            />
+          </View>
+        )}
+
+        {/* 9. Recent Sessions List */}
+        {data.recentSessions.length > 0 && (
+          <View style={{ marginBottom: 28 }}>
+            <SectionHeader title="Recent sessions" />
+            <View style={{ gap: 12 }}>
+              {data.recentSessions.map((s: any) => (
+                <Animated.View key={s.id} layout={listLayout}>
+                  <SessionCard session={s} onDelete={(id) => { Q.deleteSession(id); }} />
+                </Animated.View>
+              ))}
+            </View>
+          </View>
+        )}
+      </Animated.ScrollView>
+
+      {/* StartSessionSheet */}
       <StartSessionSheet
         visible={isStartSheetOpen}
         onClose={() => setIsStartSheetOpen(false)}

@@ -1,13 +1,127 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Keyboard, Platform } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, Keyboard, Platform, Animated } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { useTheme } from '../../theme/useTheme';
-import { Home, TrendingUp, Target, Settings } from 'lucide-react-native';
+import { Home, Plus, TrendingUp, Target, BookOpen } from 'lucide-react-native';
 import { useSessionActions } from '../../hooks/useSessionActions';
 import { useSessionStore } from '../../store/sessionStore';
 import { StartSessionSheet } from '../session/StartSessionSheet';
+import { AccessibilityInfo } from 'react-native';
+import { triggerHaptic } from '../../utils/haptics';
 
-const visibleTabs = ['index', 'projects', 'analytics', 'settings'];
+function formatDuration(ms: number) {
+  const totalSecs = Math.floor(ms / 1000);
+  if (totalSecs < 60) return '<1 min';
+  const h = Math.floor(totalSecs / 3600);
+  const m = Math.floor((totalSecs % 3600) / 60);
+  const s = totalSecs % 60;
+  if (h > 0) return `${h}:${m.toString().padStart(2, '0')}`;
+  return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+}
+
+function CenterSessionButton({ activeSession, startOrResume, onOpenStartSheet }: any) {
+  const { colors, radius, shadow, type } = useTheme();
+  const [reduceMotion, setReduceMotion] = useState(false);
+  const pulseAnim = useRef(new Animated.Value(1)).current;
+  const [elapsed, setElapsed] = useState(0);
+
+  useEffect(() => {
+    AccessibilityInfo.isReduceMotionEnabled().then(setReduceMotion);
+  }, []);
+
+  useEffect(() => {
+    if (!activeSession) return;
+    const start = activeSession.startTime;
+    setElapsed(Date.now() - start);
+    const interval = setInterval(() => setElapsed(Date.now() - start), 1000);
+    return () => clearInterval(interval);
+  }, [activeSession]);
+
+  useEffect(() => {
+    if (activeSession && !reduceMotion) {
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(pulseAnim, { toValue: 1.15, duration: 1000, useNativeDriver: true }),
+          Animated.timing(pulseAnim, { toValue: 1, duration: 1000, useNativeDriver: true })
+        ])
+      ).start();
+    } else {
+      pulseAnim.setValue(1);
+    }
+  }, [activeSession, reduceMotion]);
+
+  const label = activeSession ? "Resume" : "Start";
+  const displayTime = activeSession ? formatDuration(elapsed) : null;
+
+  const handlePress = () => {
+    if (activeSession) {
+      startOrResume();
+    } else {
+      triggerHaptic('light');
+      onOpenStartSheet();
+    }
+  };
+
+  return (
+    <View style={{ alignItems: 'center', justifyContent: 'flex-start', flex: 1, marginTop: -18 }}>
+      <TouchableOpacity
+        activeOpacity={0.8}
+        onPress={handlePress}
+        accessibilityRole="button"
+        accessibilityLabel={activeSession ? `Resume session, ${displayTime} elapsed` : "Start session"}
+        style={[
+          {
+            width: 54,
+            height: 54,
+            borderRadius: 27,
+            backgroundColor: '#9A85FF',
+            alignItems: 'center',
+            justifyContent: 'center',
+            borderWidth: 3.5,
+            borderColor: '#0C0C10',
+            zIndex: 10,
+            shadowColor: '#9A85FF',
+            shadowOpacity: 0.55,
+            shadowRadius: 12,
+            shadowOffset: { width: 0, height: 4 },
+            elevation: 8,
+          },
+        ]}
+      >
+        {activeSession && !reduceMotion && (
+          <Animated.View style={{
+            position: 'absolute', width: 54, height: 54, borderRadius: 27,
+            borderWidth: 2, borderColor: '#9A85FF',
+            transform: [{ scale: pulseAnim }], opacity: 0.3
+          }} pointerEvents="none" />
+        )}
+        
+        {activeSession ? (
+          <View style={{ alignItems: 'center' }}>
+            <Text style={{ color: '#FFFFFF', fontSize: 12, fontWeight: '700', fontFamily: type.heading.fontFamily }}>{displayTime}</Text>
+          </View>
+        ) : (
+          <Plus size={24} color="#FFFFFF" strokeWidth={2.2} />
+        )}
+      </TouchableOpacity>
+      <Text 
+        numberOfLines={1}
+        adjustsFontSizeToFit
+        style={{ 
+          color: colors.textMuted, 
+          fontFamily: type.heading.fontFamily, 
+          fontSize: 10, 
+          fontWeight: '600', 
+          marginTop: 3,
+        }}
+      >
+        {label}
+      </Text>
+    </View>
+  );
+}
+
+const visibleTabs = ['index', 'projects', 'analytics', 'profile'];
 
 export function FloatingTabBar({ state, descriptors, navigation }: any) {
   const { colors, radius, shadow, type } = useTheme();
@@ -39,22 +153,27 @@ export function FloatingTabBar({ state, descriptors, navigation }: any) {
 
   return (
     <>
-      <View style={[styles.container, shadow.floating, { bottom: 24, left: 20, right: 20, borderRadius: radius.pill, overflow: 'hidden' }]}>
-        {/* Frosted glass layer */}
-        {Platform.OS === 'ios' ? (
-          <BlurView tint="dark" intensity={80} style={StyleSheet.absoluteFill} />
-        ) : null}
+      <View style={[styles.container, shadow.floating, { bottom: 24, left: 16, right: 16, borderRadius: radius.pill, overflow: 'visible' }]}>
+        {/* Frosted glass background layer */}
         <View
+          pointerEvents="none"
           style={[StyleSheet.absoluteFill, {
-            backgroundColor: 'rgba(20, 20, 28, 0.82)',
             borderRadius: radius.pill,
             borderWidth: 1,
             borderColor: 'rgba(255, 255, 255, 0.08)',
+            overflow: 'hidden',
           }]}
-        />
+        >
+          {Platform.OS === 'ios' ? (
+            <BlurView tint="dark" intensity={80} style={StyleSheet.absoluteFill} />
+          ) : (
+            <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(20, 20, 28, 0.85)' }]} />
+          )}
+          <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(20, 20, 28, 0.82)' }]} />
+        </View>
 
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-around', height: 68, paddingHorizontal: 8 }}>
-          {routes.map((route: any) => {
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', height: 66, paddingHorizontal: 6, overflow: 'visible' }}>
+          {routes.map((route: any, index: number) => {
             const { options } = descriptors[route.key];
             const isFocused = state.index === state.routes.findIndex((r: any) => r.key === route.key);
 
@@ -69,11 +188,11 @@ export function FloatingTabBar({ state, descriptors, navigation }: any) {
             let label = options.title !== undefined ? options.title : route.name;
             let IconComponent: any = Home;
             if (route.name === 'index') { IconComponent = Home; label = "Home"; }
-            else if (route.name === 'projects') { IconComponent = Target; label = "Routes"; }
+            else if (route.name === 'projects') { IconComponent = Target; label = "Projects"; }
             else if (route.name === 'analytics') { IconComponent = TrendingUp; label = "Progress"; }
-            else if (route.name === 'settings') { IconComponent = Settings; label = "Settings"; }
+            else if (route.name === 'profile') { IconComponent = BookOpen; label = "Logbook"; }
 
-            return (
+            const tabElement = (
               <TouchableOpacity
                 testID={`${route.name}-tab`}
                 key={route.key}
@@ -86,24 +205,25 @@ export function FloatingTabBar({ state, descriptors, navigation }: any) {
                   alignItems: 'center',
                   justifyContent: 'center',
                   backgroundColor: isFocused ? 'rgba(154, 133, 255, 0.22)' : 'transparent',
-                  paddingHorizontal: isFocused ? 14 : 10,
-                  paddingVertical: 6,
+                  paddingHorizontal: isFocused ? 12 : 8,
+                  paddingVertical: 5,
                   borderRadius: radius.pill,
-                  minWidth: 58,
+                  minWidth: 52,
                 }}>
                   <IconComponent
-                    size={22}
+                    size={20}
                     color={isFocused ? '#B89EFF' : '#727280'}
                     strokeWidth={isFocused ? 2 : 1.75}
                   />
                   <Text
                     numberOfLines={1}
+                    adjustsFontSizeToFit
                     style={{
                       color: isFocused ? '#B89EFF' : '#727280',
                       fontFamily: type.heading.fontFamily,
                       fontSize: 10,
                       fontWeight: isFocused ? '600' : '500',
-                      marginTop: 3,
+                      marginTop: 2,
                     }}
                   >
                     {label}
@@ -111,6 +231,21 @@ export function FloatingTabBar({ state, descriptors, navigation }: any) {
                 </View>
               </TouchableOpacity>
             );
+
+            // Insert center button after Projects (index 1)
+            if (index === 1) {
+              return (
+                <React.Fragment key={route.key}>
+                  {tabElement}
+                  <CenterSessionButton
+                    activeSession={activeSession}
+                    startOrResume={startOrResume}
+                    onOpenStartSheet={() => setIsStartSheetOpen(true)}
+                  />
+                </React.Fragment>
+              );
+            }
+            return tabElement;
           })}
         </View>
       </View>

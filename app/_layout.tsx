@@ -47,13 +47,13 @@ function TabLayout() {
       }}
     >
       <Tabs.Screen name="index"     options={{ title: "Home" }} />
-      <Tabs.Screen name="projects"  options={{ title: "Routes" }} />
+      <Tabs.Screen name="projects"  options={{ title: "Projects" }} />
       <Tabs.Screen name="analytics" options={{ title: "Progress" }} />
-      <Tabs.Screen name="settings"  options={{ title: "Settings" }} />
-      <Tabs.Screen name="profile"   options={{ title: "Logbook", href: null }} />
+      <Tabs.Screen name="profile"   options={{ title: "Logbook" }} />
       <Tabs.Screen name="gallery"   options={{ title: "Gallery", href: null }} />
 
       {/* Hidden screens — no tab bar entry */}
+      <Tabs.Screen name="settings"             options={{ href: null }} />
       <Tabs.Screen name="session/new"          options={{ href: null }} />
       <Tabs.Screen name="session/active"       options={{ href: null }} />
       <Tabs.Screen name="session/index"        options={{ href: null }} />
