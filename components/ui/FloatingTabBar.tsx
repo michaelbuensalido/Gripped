@@ -150,7 +150,22 @@ export function FloatingTabBar({ state, descriptors, navigation }: any) {
   return (
     <>
       <View style={[styles.container, shadow.floating, { bottom: 24, left: 16, right: 16, borderRadius: radius.pill, overflow: 'visible' }]}>
-        <View style={[StyleSheet.absoluteFill, { borderRadius: radius.pill, backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border, overflow: 'hidden' }]} />
+        {/* Frosted glass layer (separate from the content so the centre button is never clipped) */}
+        <View
+          pointerEvents="none"
+          style={[StyleSheet.absoluteFill, {
+            borderRadius: radius.pill,
+            borderWidth: 1,
+            borderColor: colors.glassBorder,
+            overflow: 'hidden',
+          }]}
+        >
+          {Platform.OS === 'ios' ? (
+            <BlurView tint="dark" intensity={80} style={StyleSheet.absoluteFill} />
+          ) : (
+            <View style={[StyleSheet.absoluteFill, { backgroundColor: colors.glass }]} />
+          )}
+        </View>
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', height: 64, paddingHorizontal: 4, overflow: 'visible' }}>
           {routes.map((route: any, index: number) => {
             const { options } = descriptors[route.key];

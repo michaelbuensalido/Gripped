@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, Alert, TextInput, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, Alert, TextInput, StyleSheet } from 'react-native';
+import Reanimated from 'react-native-reanimated';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ChevronLeft, MoreVertical, Edit2 } from 'lucide-react-native';
 import { Screen } from '../../components/ui/Screen';
@@ -134,7 +135,7 @@ export default function ProjectDetailScreen() {
         )}
       </View>
 
-      <ScrollView contentContainerStyle={{ paddingHorizontal: space.lg, paddingBottom: 120 }}>
+      <Reanimated.ScrollView contentContainerStyle={{ paddingHorizontal: space.lg, paddingBottom: 120 }}>
         {/* Media Header (Video/Photo/Hold Placeholder) */}
         <View
           style={{
@@ -227,7 +228,7 @@ export default function ProjectDetailScreen() {
         {/* Notes */}
         <View style={{ marginBottom: space.xl }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: space.sm }}>
-            <Text style={[type.label, { color: colors.textMuted, textTransform: 'uppercase', letterSpacing: 1 }]}>Notes</Text>
+            <Text style={[type.label, { color: colors.textMuted }]}>Notes</Text>
             {!isEditingNotes && (
               <TouchableOpacity
                 onPress={() => { setNotesDraft(project.microBeta || ''); setIsEditingNotes(true); }}
@@ -299,7 +300,7 @@ export default function ProjectDetailScreen() {
         </View>
 
         {/* History */}
-        <Text style={[type.label, { color: colors.textMuted, marginBottom: space.md, textTransform: 'uppercase', letterSpacing: 1 }]}>History</Text>
+        <Text style={[type.label, { color: colors.textMuted, marginBottom: space.md }]}>History</Text>
         {history.length > 0 ? (
           history.map((h: any) => (
             <View key={h.sessionId} style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: space.md, borderBottomWidth: 1, borderBottomColor: colors.border }}>
@@ -317,7 +318,7 @@ export default function ProjectDetailScreen() {
         ) : (
           <Text style={[type.body, { color: colors.textMuted }]}>No attempts logged yet.</Text>
         )}
-      </ScrollView>
+      </Reanimated.ScrollView>
 
       {/* Primary Action */}
       {project.status !== 'sent' && (

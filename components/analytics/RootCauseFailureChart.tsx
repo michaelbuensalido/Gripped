@@ -157,25 +157,12 @@ export default function RootCauseFailureChart({
             type.label,
             {
               color: colors.textMuted,
-              fontSize: 10,
-              textTransform: 'uppercase',
-              letterSpacing: 1.2,
             },
           ]}
         >
           Root Cause
         </Text>
-        <Text
-          style={[
-            type.caption,
-            {
-              color: colors.textMuted,
-              fontSize: 10,
-              textTransform: 'uppercase',
-              letterSpacing: 1,
-            },
-          ]}
-        >
+        <Text style={[type.label, { color: colors.textMuted }]}>
           {totalFailures} FALLS
         </Text>
       </View>

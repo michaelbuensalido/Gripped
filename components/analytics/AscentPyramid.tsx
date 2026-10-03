@@ -88,9 +88,6 @@ export default function AscentPyramid({ data: propData }: AscentPyramidProps) {
           type.label,
           {
             color: colors.textMuted,
-            fontSize: 10,
-            textTransform: 'uppercase',
-            letterSpacing: 1.2,
             marginBottom: 2,
           },
         ]}

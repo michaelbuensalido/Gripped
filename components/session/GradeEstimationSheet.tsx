@@ -3,11 +3,11 @@ import {
   View,
   Text,
   TouchableOpacity,
-  ScrollView,
   StyleSheet,
   Modal,
   Pressable,
 } from 'react-native';
+import Reanimated from 'react-native-reanimated';
 import {
   Sparkles,
   Check,
@@ -205,7 +205,7 @@ export function GradeEstimationSheet({
             </TouchableOpacity>
 
             {pickerOpen && (
-              <ScrollView
+              <Reanimated.ScrollView
                 horizontal
                 showsHorizontalScrollIndicator={false}
                 contentContainerStyle={styles.gradeScrollList}
@@ -234,7 +234,7 @@ export function GradeEstimationSheet({
                     </TouchableOpacity>
                   );
                 })}
-              </ScrollView>
+              </Reanimated.ScrollView>
             )}
           </View>
 

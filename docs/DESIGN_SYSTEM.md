@@ -1,10 +1,17 @@
-# CruxLog — Design System (v2.0, dark matte)
+# CruxLog — Design System (v3.0, dark matte + premium depth)
 
-A calm, dark, photo-forward look: flat charcoal surfaces, one soft purple accent, big friendly numbers, grade colours as the signature, and small reward moments when you climb well. No glow gradients, no glass, no shadows on cards.
+A calm, dark, photo-forward look with **physical depth**: bevelled cards on a soft shadow, a frosted-glass tab bar, a restrained glow behind high-value metrics, and spring physics. One soft purple accent, big friendly numbers, grade colours as the signature, and small reward moments when you climb well. Still no full-bleed gradients and no decorative glass: depth is applied only in the places named below.
 
 Companion docs: `MVP_SPEC.md` (what exists), `USER_FLOW.md` (how it is used), `COMPONENTS.md` (what is built). This file says **how it looks and behaves**.
 
-> **v2.0 changes:** active theme is now **dark matte** (v1.1 light is kept as `theme/tokens.light.ts`, inactive). Synced to the real component inventory (Sora + Inter, `HeroCard`, `GradePill`, `ResultDonut`, `WeekStrip`, `FloatingTabBar`, analytics, session and celebration components). New: per-screen recipes with one named hero, a placeholder-art and hold-photo spec, a duplicate-component register, and a rule that the Progress screen has one hero chart with the rest under "Deep dive".
+> **v3.0 changes (supersedes the v2.0 "no shadow / no blur / no glow" rules):**
+> 1. **Cards are bevelled.** Lit top edge (`bevelHighlight`), shaded bottom edge (`bevelShadow`), hairline sides (`border`), soft outer `shadow.card`. Inset (`muted`) cards take the bevel but no shadow so they read as recessed.
+> 2. **`FloatingTabBar` is frosted glass**: `expo-blur` `BlurView` (`tint="dark"`, `intensity={80}`) on a separate background layer, `glassBorder` hairline, pill shape. Android falls back to the translucent `glass` token. The blur layer is separate from the content so the centre Start button is never clipped.
+> 3. **Radial glow** (`GlowBackdrop`, token `glow`) behind achievement UI only: the "New best" banner and the streak pill.
+> 4. **Fluid physics:** every `ScrollView` is `Animated.ScrollView` (Reanimated), list/grid items carry the shared `listLayout` spring (`damping 14`, `stiffness 100`), and `PrimaryButton` springs to `motion.pressSpring.scale` on press.
+> 5. **Type:** `tabular-nums` on every text style; micro-labels use 0.2em tracking.
+>
+> v2.0 changes (still true): active theme is **dark matte** (v1.1 light is kept as `theme/tokens.light.ts`, inactive, with the same keys). Synced to the real component inventory (Sora + Inter, `HeroCard`, `GradePill`, `ResultDonut`, `WeekStrip`, `FloatingTabBar`, analytics, session and celebration components). Per-screen recipes with one named hero, a placeholder-art and hold-photo spec, a duplicate-component register, and a rule that the Progress screen has one hero chart with the rest under "Deep dive".
 > Items marked **(verify)** were written from screenshots or the component index and should be checked against the code. If the code and this file differ, decide which wins and update both in the same commit.
 
 ---
@@ -81,13 +88,27 @@ export const colors = {
 
   // Overlay
   scrim: "rgba(0, 0, 0, 0.55)",
+  glass: "rgba(26, 26, 32, 0.85)", // Android fallback for the frosted tab bar
+
+  // Depth (v3.0)
+  bevelHighlight: "rgba(255, 255, 255, 0.10)", // lit top edge of a card
+  bevelShadow: "rgba(0, 0, 0, 0.50)", // shaded bottom edge of a card
+  glassBorder: "rgba(255, 255, 255, 0.10)", // ultra-thin edge on frosted surfaces
+  glow: "rgba(139, 124, 246, 0.15)", // radial glow behind achievements (top lavender at 15%)
 };
 
 export const radius = { sm: 10, md: 16, lg: 22, xl: 28, pill: 999 };
 export const space = { xs: 4, sm: 8, md: 12, lg: 16, xl: 24, xxl: 32 }; // 4pt grid
 
-// Cards have NO shadow on dark. Only the floating centre button gets one.
+// v3.0: cards sit on a soft black shadow; the bevel supplies the edge light.
 export const shadow = {
+  card: {
+    shadowColor: "#000000",
+    shadowOpacity: 0.5,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 6,
+  },
   floating: {
     shadowColor: "#000000",
     shadowOpacity: 0.5,
@@ -103,8 +124,9 @@ export const type = {
     fontSize: 32,
     lineHeight: 38,
     letterSpacing: -0.5,
+    fontVariant: ["tabular-nums"],
   },
-  title: { fontFamily: "Sora_600SemiBold", fontSize: 22, lineHeight: 28 },
+  title: { fontFamily: "Sora_600SemiBold", fontSize: 22, lineHeight: 28, fontVariant: ["tabular-nums"] },
   stat: {
     fontFamily: "Sora_600SemiBold",
     fontSize: 34,
@@ -117,17 +139,19 @@ export const type = {
     lineHeight: 28,
     fontVariant: ["tabular-nums"],
   },
-  heading: { fontFamily: "Inter_600SemiBold", fontSize: 17, lineHeight: 22 },
-  body: { fontFamily: "Inter_400Regular", fontSize: 15, lineHeight: 22 },
-  control: { fontFamily: "Inter_500Medium", fontSize: 14, lineHeight: 20 }, // chips, buttons, toggles: sentence case
+  heading: { fontFamily: "Inter_600SemiBold", fontSize: 17, lineHeight: 22, fontVariant: ["tabular-nums"] },
+  body: { fontFamily: "Inter_400Regular", fontSize: 15, lineHeight: 22, fontVariant: ["tabular-nums"] },
+  control: { fontFamily: "Inter_500Medium", fontSize: 14, lineHeight: 20, fontVariant: ["tabular-nums"] }, // chips, buttons, toggles: sentence case
+  // Micro-label (v3.0): "SESSIONS", "TODAY". Medium weight, 0.2em tracking (11 * 0.2 = 2.2).
   label: {
     fontFamily: "Inter_500Medium",
-    fontSize: 12,
+    fontSize: 11,
     lineHeight: 16,
-    letterSpacing: 0.8,
+    letterSpacing: 2.2,
+    fontVariant: ["tabular-nums"],
     textTransform: "uppercase",
   }, // section and stat labels only
-  caption: { fontFamily: "Inter_400Regular", fontSize: 12, lineHeight: 16 },
+  caption: { fontFamily: "Inter_400Regular", fontSize: 12, lineHeight: 16, fontVariant: ["tabular-nums"] },
 };
 
 export const motion = {
@@ -138,6 +162,9 @@ export const motion = {
     exit: [0.4, 0, 1, 1],
   }, // cubic-bezier
   spring: { damping: 18, stiffness: 220 },
+  // v3.0 fluid physics
+  layoutSpring: { damping: 14, stiffness: 100 }, // list/grid items sliding into place (see theme/layout.ts)
+  pressSpring: { damping: 15, stiffness: 300, scale: 0.96 }, // PrimaryButton press-in
 };
 ```
 
@@ -162,7 +189,7 @@ The `*Soft` colours are solid values blended for use **on `card`**. On `bg` they
 | Result fills on `card` (flash / top / attempt / fail / danger), graphics | 8.9 / 5.2 / 7.2 / 4.1 / 4.4 | Pass                                              |
 | `card` vs `bg`, `border` vs `card`                                       | 1.1 / 1.2                   | Decorative separation only, never carries meaning |
 
-Rules: text uses the `*Text` tokens, never fills. Fills are for chart segments, dots and stripes, and always sit beside a text label, so meaning never depends on colour alone. Because surfaces separate only slightly, **every `Card` needs its 1px `border`**.
+Rules: text uses the `*Text` tokens, never fills. Fills are for chart segments, dots and stripes, and always sit beside a text label, so meaning never depends on colour alone. Because surfaces separate only slightly, **every `Card` keeps its 1px border**: in v3.0 the top edge is `bevelHighlight`, the bottom edge `bevelShadow` and the sides `border`.
 
 ---
 
@@ -170,11 +197,11 @@ Rules: text uses the `*Text` tokens, never fills. Fills are for chart segments, 
 
 - **Padding:** 20px sides; 24px between sections; 12px between items in a section.
 - **Safe areas:** respect top and bottom insets. When content scrolls under the status bar, a **solid `bg` scrim** sits behind it, so text never shows through the clock.
-- **Cards:** one style only. `card` background, 1px `border`, `radius.lg`, 16px padding, **no shadow**, spring press-scale when tappable.
+- **Cards:** one style only. `card` background, `radius.lg`, 16px padding, **3D bevel** (1px `bevelHighlight` top, `bevelShadow` bottom, `border` sides) on `shadow.card`, spring press-scale when tappable. The `muted` variant is inset: bevel, no shadow.
 - **Section labels:** `label` style, `textMuted`, 12px above content.
 - **Touch targets:** at least 44×44. Primary buttons 52px high.
 - **One primary action per screen:** one filled-`accent` control. Everything else is secondary (`accentSoft`) or text.
-- **No gradients, no glass, no blur** except where Section 4 allows. Texture is optional: a faint speckle at about 3% opacity behind scroll content only, off by default.
+- **No full-bleed gradients and no decorative glass.** Depth effects are limited to: the card bevel, the frosted tab bar (Section 4), and `GlowBackdrop` behind achievements (Section 3.3). Texture is optional: a faint speckle at about 3% opacity behind scroll content only, off by default.
 
 ### 3.1 Density rules (keeps screens calm)
 
@@ -195,6 +222,12 @@ Rules: text uses the `*Text` tokens, never fills. Fills are for chart segments, 
 4. **Active Session hides the tab bar**; leaving it shows the bar again with the centre button reading "Resume".
 5. The centre button must never be clipped: the bar container uses `overflow: visible`.
 
+### 3.3 Achievement glow (v3.0)
+
+- Use `GlowBackdrop` as the **first child** of an achievement element. Allowed on: the Home "New best" banner and the streak pill. Not on ordinary cards, and never more than one glow visible per screen region.
+- It is an SVG radial gradient in the `glow` token (lavender at 15%), absolutely positioned behind the content, `pointerEvents="none"`, hidden from screen readers. React Native has no CSS blur, so do not try `blur-*` utilities.
+- It must never reduce text contrast below 4.5:1 (the glow is at most 15% alpha over `card`).
+
 ---
 
 ## 4. Navigation
@@ -204,7 +237,7 @@ Tab bar:  Home · Projects · [ Start / Resume ] · Progress · Logbook
 Settings: gear icon in the Home and Logbook headers
 ```
 
-- **`FloatingTabBar`:** a flat dark pill (`card`, 1px `border`), **no blur**. The active tab gets an `accentSoft` capsule with `accentText` icon and label. Icon + label always. Five items must fit the smallest phone without truncation.
+- **`FloatingTabBar`:** a **frosted-glass pill**: `expo-blur` `BlurView` (`tint="dark"`, `intensity={80}`) on its own absolutely positioned layer, `glassBorder` hairline, fully rounded. No solid background colour. Android uses the translucent `glass` token (no real blur). The blur layer is `overflow: hidden` but the bar container is `overflow: visible`, so the centre button is never clipped. The active tab gets an `accentSoft` capsule with `accentText` icon and label. Icon + label always. Five items must fit the smallest phone without truncation.
 - **Centre button:** an action, not a tab. 56px circle, `accent`, raised 14px above the bar with a ring in `bg` colour and `shadow.floating`. Label baseline matches the other tabs.
   - No session: "＋", label "Start" → Start Session sheet (gym pre-filled to the last gym).
   - Session running: live elapsed time, label "Resume" → Active Session. Soft pulse off under reduce-motion.
@@ -245,10 +278,10 @@ Where band colours appear, always with the grade as text:
 | Row titles, card titles                               | `heading`                                 |
 | Paragraphs, notes                                     | `body`                                    |
 | Chips, segmented toggles, buttons, links              | `control` (sentence case)                 |
-| Section titles ("Projects"), stat labels ("SESSIONS") | `label` (uppercase, tracked)              |
+| Section titles ("Projects"), stat labels ("SESSIONS") | `label` (uppercase, 0.2em tracking, medium) |
 | Secondary info, timestamps, captions                  | `caption` in `textMuted`                  |
 
-- Timers and counts use **tabular figures** so digits don't jump.
+- **Every text style carries `fontVariant: ['tabular-nums']`**, so timers, counts, grades and metrics never shift horizontally. Don't override `letterSpacing` or `fontSize` on `label`; change the token.
 - Support large system text: layouts reflow, not clip. Stat values shrink to fit on one line.
 - Fonts load before the splash screen hides.
 
@@ -262,7 +295,8 @@ Built in `components/ui/`, `components/session/`, `components/analytics/`, `comp
 
 | Component                          | Matte treatment                                                                                                                                                                        |
 | ---------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `Card`                             | Solid `card`, 1px `border`, `radius.lg`, no shadow, press-scale when tappable. The only card style.                                                                                    |
+| `Card`                             | Solid `card`, `radius.lg`, 3D bevel (`bevelHighlight` top, `bevelShadow` bottom, `border` sides) on `shadow.card`; `muted` variant is inset (no shadow); press-scale when tappable. The only card style. |
+| `GlowBackdrop`                     | Radial glow (`glow` token) behind achievement UI only (New best banner, streak pill). First child, non-interactive.                                                                    |
 | `PrimaryButton`                    | Full-width, `accent` fill, white text, 52px, press scale, light haptic                                                                                                                 |
 | `SecondaryButton`                  | `accentSoft` fill, `accentText`                                                                                                                                                        |
 | `Chip` / `Pill`                    | Sentence case; selected = `accentSoft` + `accentText`; unselected = `cardMuted`                                                                                                        |
@@ -358,7 +392,7 @@ Each screen has **one named hero**. Status: **Built** = exists in the app. **Res
 
 ## 10. Motion, Haptics and Celebrations
 
-- **Motion:** use `motion.duration` and `motion.easing` tokens. Press feedback `fast`; sheets and toasts `base`; count-ups and chart entries `slow`. Animate with Reanimated worklets so a timer or animation never re-renders a list.
+- **Motion:** use `motion.duration` and `motion.easing` tokens. Press feedback `fast`; sheets and toasts `base`; count-ups and chart entries `slow`. Animate with Reanimated worklets so a timer or animation never re-renders a list. **Fluid physics (v3.0):** all scroll containers are `Animated.ScrollView`; list items use `layout={listLayout}` (from `theme/layout.ts`, built from `motion.layoutSpring`) so they slide into place on add, remove or expand; `Animated.FlatList` takes the same value as `itemLayoutAnimation` (only with `numColumns` 1; Reanimated does not support it for grids). `PrimaryButton` springs to `motion.pressSpring.scale` on press-in (skipped under reduce-motion). `SectionList` has no Reanimated equivalent and stays React Native's.
 - **Celebration levels** (`CelebrationProvider`: `triggerSmall`, `triggerMedium`, `triggerBig`, `triggerStreak`; computed from local data, fired once, remembered in a local-only store, cancelled by Undo, never for deleted climbs):
   - **Small:** a Flash gets a row shimmer, a light haptic and a toast.
   - **Medium:** a new hardest send (strictly harder than every previous send, only when a previous best exists) pulses the Hardest tile, with a success haptic and a toast "New hardest: V5".
@@ -388,7 +422,7 @@ Each screen has **one named hero**. Status: **Built** = exists in the app. **Res
 1. Read this file, `USER_FLOW.md` and `COMPONENTS.md`.
 2. Name the screen's hero before changing it.
 3. Use tokens and existing components only. No hard-coded colours, sizes, radii, spacing or fonts. Do not create a component that already exists.
-4. One card style: solid, 1px border, no shadow. No gradients, glass or blur.
+4. One card style: solid, bevelled, on `shadow.card`. Blur only on the tab bar, glow only via `GlowBackdrop` on achievements. No full-bleed gradients.
 5. Respect the density rules (3.1) and floating-element rules (3.2).
 6. Grade colours through `gradeBand()`; red only for destructive actions and errors; purple only for primary actions, active states and Top results.
 7. Cover all states (loading, empty, error, offline) and all component states.

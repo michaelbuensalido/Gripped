@@ -7,8 +7,8 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
-  ScrollView,
-} from 'react-native';
+  } from 'react-native';
+import Reanimated from 'react-native-reanimated';
 import { useRouter, Redirect } from 'expo-router';
 import { Screen } from '../../components/ui/Screen';
 import { PrimaryButton } from '../../components/ui/PrimaryButton';
@@ -85,7 +85,7 @@ export default function EndSessionScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={{ flex: 1, marginTop: space.lg }}
       >
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ gap: space.xl, paddingBottom: 140 }}>
+        <Reanimated.ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ gap: space.xl, paddingBottom: 140 }}>
 
           {/* Effort selector */}
           <View>
@@ -146,7 +146,7 @@ export default function EndSessionScreen() {
               ]}
             />
           </View>
-        </ScrollView>
+        </Reanimated.ScrollView>
 
         <View style={{ gap: space.md, paddingBottom: space.xl }}>
           <PrimaryButton testID="finish-session-btn" label="SAVE & FINISH" onPress={handleFinish} />

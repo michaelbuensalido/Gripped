@@ -1,5 +1,7 @@
 import React, { useState, useMemo } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, Modal, TextInput, KeyboardAvoidingView, Platform, Alert, ActionSheetIOS } from 'react-native';
+import { View, Text, TouchableOpacity, Modal, TextInput, KeyboardAvoidingView, Platform, Alert, ActionSheetIOS } from 'react-native';
+import Reanimated from 'react-native-reanimated';
+import { listLayout } from '../theme/layout';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { X, Filter, ChevronDown, Plus, Flag, ArrowUpDown } from 'lucide-react-native';
@@ -300,7 +302,7 @@ export default function ProjectsScreen() {
 
       </View>
 
-      <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 120, gap: 16 }} showsVerticalScrollIndicator={false}>
+      <Reanimated.ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 120, gap: 16 }} showsVerticalScrollIndicator={false}>
         {displayedProjects.length === 0 ? (
           hasActiveFilters ? (
             <View>
@@ -328,15 +330,16 @@ export default function ProjectsScreen() {
           )
         ) : (
           displayedProjects.map((p: any) => (
-            <ProjectCard 
-              key={p.id}
-              project={p} 
-              onLogAttempt={activeTab === 'in_progress' ? () => Alert.alert('Log Attempt', 'Use active session.') : undefined} 
-              onArchive={activeTab === 'in_progress' ? () => handleArchive(p.id) : undefined}
-            />
+            <Reanimated.View key={p.id} layout={listLayout}>
+              <ProjectCard
+                project={p}
+                onLogAttempt={activeTab === 'in_progress' ? () => Alert.alert('Log Attempt', 'Use active session.') : undefined}
+                onArchive={activeTab === 'in_progress' ? () => handleArchive(p.id) : undefined}
+              />
+            </Reanimated.View>
           ))
         )}
-      </ScrollView>
+      </Reanimated.ScrollView>
     </View>
 
       {/* New Project Modal */}
@@ -364,7 +367,7 @@ export default function ProjectsScreen() {
               </TouchableOpacity>
             </View>
 
-            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: space.lg, paddingBottom: 120 }}>
+            <Reanimated.ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: space.lg, paddingBottom: 120 }}>
               <Text style={[type.label, { color: colors.textMuted, marginBottom: space.xs }]}>PROJECT NAME</Text>
               <TextInput
                 testID="project-nickname-input"
@@ -389,13 +392,13 @@ export default function ProjectsScreen() {
               />
 
               <Text style={[type.label, { color: colors.textMuted, marginBottom: space.xs }]}>TARGET GRADE</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: space.lg }}>
+              <Reanimated.ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: space.lg }}>
                 <View style={{ flexDirection: 'row', gap: space.sm }}>
                   {GRADES.map(g => (
                     <Chip key={g} label={g} active={newGrade === g} onPress={() => { triggerHaptic('light'); setNewGrade(g); }} />
                   ))}
                 </View>
-              </ScrollView>
+              </Reanimated.ScrollView>
 
               <Text style={[type.label, { color: colors.textMuted, marginBottom: space.xs }]}>WALL ANGLE</Text>
               <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.sm, marginBottom: space.lg }}>
@@ -458,7 +461,7 @@ export default function ProjectsScreen() {
               />
 
               <PrimaryButton testID="save-project-btn" label="SAVE PROJECT" onPress={handleSaveProject} disabled={!newTitle.trim() || !newGrade} />
-            </ScrollView>
+            </Reanimated.ScrollView>
           </View>
         </KeyboardAvoidingView>
       </Modal>

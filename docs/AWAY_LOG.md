@@ -73,4 +73,11 @@
 - `components/ui/GradePyramid.tsx`: Modernized legend indicators with vibrant `colors.flash` and `colors.top` tokens.
 - Verification: 17/17 Jest test suites passing (60/60 tests), 0 TypeScript compiler errors.
 
+**Step 11: Premium depth pass (design system v3.0)**
+- Decision: the request conflicted with v2.0 ("no shadow, no blur, no glow"). User chose to update the docs to v3.0 and apply all five items with tokens only.
+- Tokens: `bevelHighlight`, `bevelShadow`, `glassBorder`, `glow`, real `shadow.card`, `motion.layoutSpring`, `motion.pressSpring`; `type.label` is 11px / 2.2 tracking (0.2em); all `type.*` styles carry `tabular-nums`. Mirrored in `tokens.light.ts`.
+- `Card`: bevel borders + shadow (muted variant: no shadow). `FloatingTabBar`: `BlurView` (dark, 80) on a separate layer with `glassBorder`, translucent `glass` on Android. New `GlowBackdrop` (SVG radial gradient; CSS `blur-3xl` does not exist in RN) on the "New best" banner and streak pill.
+- Physics: all `ScrollView`s are `Animated.ScrollView` (codemod); Home scroll scrim moved to a Reanimated shared value; `listLayout` spring on Home lists, Projects list and `ClimbRow`; `PrimaryButton` spring press scale.
+- Not done / limits: `SectionList` (Logbook) has no Reanimated version; `itemLayoutAnimation` unsupported for `numColumns > 1` (unused `GradeSheet`); `HeroCard` `overflow: hidden` clips the iOS shadow. `docs/COMPONENTS.md` did not exist, so it was created as a v3.0 change log.
+- Not visually verified on a device or simulator: blur, glow and bevel need an eyeball check.
 

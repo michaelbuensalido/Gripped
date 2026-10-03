@@ -2,12 +2,12 @@ import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
-  ScrollView,
   TouchableOpacity,
   Switch,
   TextInput,
   Alert,
 } from 'react-native';
+import Reanimated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ChevronLeft, Trash2 } from 'lucide-react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -165,7 +165,7 @@ export default function SettingsScreen() {
         </View>
       </View>
 
-      <ScrollView
+      <Reanimated.ScrollView
         contentContainerStyle={{
           paddingHorizontal: space.lg,
           paddingBottom: 140,
@@ -364,7 +364,7 @@ export default function SettingsScreen() {
             )}
           </Card>
         </View>
-      </ScrollView>
+      </Reanimated.ScrollView>
     </View>
   );
 }

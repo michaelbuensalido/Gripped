@@ -71,8 +71,6 @@ export function StatTile({ value, label, trend, flex, icon, tintBg, style }: Sta
           type.label,
           {
             color: colors.textMuted,
-            fontSize: 11,
-            letterSpacing: 1.1,
           },
         ]}
         numberOfLines={1}

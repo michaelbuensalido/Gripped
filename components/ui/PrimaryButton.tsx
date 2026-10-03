@@ -1,7 +1,15 @@
 import React from 'react';
-import { TouchableOpacity, Text, View, ActivityIndicator, StyleProp, ViewStyle } from 'react-native';
+import { Pressable, Text, View, ActivityIndicator, StyleProp, ViewStyle } from 'react-native';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+  useReducedMotion,
+} from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
 import { useTheme } from '../../theme/useTheme';
+
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 interface PrimaryButtonProps {
   testID?: string;
@@ -22,8 +30,30 @@ export function PrimaryButton({
   disabled,
   onPress,
 }: PrimaryButtonProps) {
-  const { colors, radius, type } = useTheme();
+  const { colors, radius, type, motion } = useTheme();
   const isDisabled = disabled || loading;
+  const reduceMotion = useReducedMotion();
+
+  // Spring scale-down on press (v3.0 fluid physics). Skipped under reduce-motion.
+  const scale = useSharedValue(1);
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
+
+  const handlePressIn = () => {
+    if (isDisabled || reduceMotion) return;
+    scale.value = withSpring(motion.pressSpring.scale, {
+      damping: motion.pressSpring.damping,
+      stiffness: motion.pressSpring.stiffness,
+    });
+  };
+
+  const handlePressOut = () => {
+    scale.value = withSpring(1, {
+      damping: motion.pressSpring.damping,
+      stiffness: motion.pressSpring.stiffness,
+    });
+  };
 
   const handlePress = () => {
     if (isDisabled) return;
@@ -34,10 +64,12 @@ export function PrimaryButton({
   };
 
   return (
-    <TouchableOpacity
+    <AnimatedPressable
       testID={testID}
       onPress={handlePress}
-      activeOpacity={0.75}
+      onPressIn={handlePressIn}
+      onPressOut={handlePressOut}
+      disabled={isDisabled}
       accessibilityRole="button"
       accessibilityState={{ disabled: isDisabled, busy: loading }}
       style={[
@@ -55,6 +87,7 @@ export function PrimaryButton({
           opacity: isDisabled ? 0.45 : 1,
         },
         style,
+        animatedStyle,
       ]}
     >
       {loading ? (
@@ -76,6 +109,6 @@ export function PrimaryButton({
           </Text>
         </>
       )}
-    </TouchableOpacity>
+    </AnimatedPressable>
   );
 }

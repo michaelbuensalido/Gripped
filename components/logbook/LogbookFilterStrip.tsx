@@ -1,5 +1,6 @@
 import React from 'react';
-import { ScrollView, TouchableOpacity, Text, View } from 'react-native';
+import { TouchableOpacity, Text, View } from 'react-native';
+import Reanimated from 'react-native-reanimated';
 import { triggerHaptic } from '../../utils/haptics';
 
 export type LogbookFilter = 'all' | 'sent' | 'video' | 'v5plus';
@@ -24,7 +25,7 @@ interface LogbookFilterStripProps {
 export function LogbookFilterStrip({ active, onChange }: LogbookFilterStripProps) {
   return (
     <View className="mb-6">
-      <ScrollView
+      <Reanimated.ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={{ gap: 8 }}
@@ -50,7 +51,7 @@ export function LogbookFilterStrip({ active, onChange }: LogbookFilterStripProps
             </TouchableOpacity>
           );
         })}
-      </ScrollView>
+      </Reanimated.ScrollView>
     </View>
   );
 }

@@ -1,9 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Animated, Image } from 'react-native';
+import { View, Text, TouchableOpacity, Image } from 'react-native';
+import Animated, {
+  useSharedValue,
+  useAnimatedScrollHandler,
+  useAnimatedStyle,
+  interpolate,
+  Extrapolation,
+} from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Settings as SettingsIcon, Plus, PlayCircle, Trophy } from 'lucide-react-native';
 import { Card } from '../components/ui/Card';
+import { GlowBackdrop } from '../components/ui/GlowBackdrop';
+import { listLayout } from '../theme/layout';
 import { HeroCard } from '../components/ui/HeroCard';
 import { ProjectCard } from '../components/ui/ProjectCard';
 import { PrimaryButton } from '../components/ui/PrimaryButton';
@@ -57,7 +66,13 @@ export default function HomeScreen() {
     }
   }, [data?.streak, hasStreakCelebrated, markStreakCelebrated, triggerStreak]);
 
-  const scrollY = React.useRef(new Animated.Value(0)).current;
+  const scrollY = useSharedValue(0);
+  const onScroll = useAnimatedScrollHandler((e) => {
+    scrollY.value = e.contentOffset.y;
+  });
+  const scrimStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(scrollY.value, [0, 40], [0, 1], Extrapolation.CLAMP),
+  }));
 
   // Live timer for active session
   useEffect(() => {
@@ -89,7 +104,7 @@ export default function HomeScreen() {
         height: insets.top, backgroundColor: colors.bg, zIndex: 10
       }} />
       <Animated.ScrollView
-        onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], { useNativeDriver: true })}
+        onScroll={onScroll}
         scrollEventThrottle={16}
         contentContainerStyle={{
           paddingTop: Math.max(insets.top, space.xxl),
@@ -214,6 +229,7 @@ export default function HomeScreen() {
               gap: space.md,
               marginBottom: space.xl,
             }}>
+              <GlowBackdrop />
               <View style={{
                 width: 40,
                 height: 40,
@@ -245,7 +261,7 @@ export default function HomeScreen() {
               title="Projects"
               action={{ label: 'See all', onPress: () => router.push('/projects') }}
             />
-            <ScrollView
+            <Animated.ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
               style={{ marginHorizontal: -(space.lg + space.xs) }}
@@ -277,15 +293,13 @@ export default function HomeScreen() {
                   </Card>
                 ) : (
                   data.projects.slice(0, 5).map((p: any) => (
-                    <ProjectCard
-                      key={p.id}
-                      project={p}
-                      style={{ width: 260 }}
-                    />
+                    <Animated.View key={p.id} layout={listLayout} style={{ width: 260 }}>
+                      <ProjectCard project={p} style={{ width: 260 }} />
+                    </Animated.View>
                   ))
                 )}
               </View>
-            </ScrollView>
+            </Animated.ScrollView>
           </View>
 
           {/* 7. Weekly volume chart */}
@@ -304,13 +318,9 @@ export default function HomeScreen() {
               <SectionHeader title="Recent sessions" />
               <View style={{ gap: space.md }}>
                 {data.recentSessions.map((s: any) => (
-                  <SessionCard
-                    key={s.id}
-                    session={s}
-                    onDelete={(id) => {
-                      Q.deleteSession(id);
-                    }}
-                  />
+                  <Animated.View key={s.id} layout={listLayout}>
+                    <SessionCard session={s} onDelete={(id) => { Q.deleteSession(id); }} />
+                  </Animated.View>
                 ))}
               </View>
             </View>
@@ -331,11 +341,10 @@ export default function HomeScreen() {
         }}
       />
       </Animated.ScrollView>
-      <Animated.View style={{
+      <Animated.View style={[{
         position: 'absolute', top: 0, left: 0, right: 0, height: insets.top,
         backgroundColor: colors.bg,
-        opacity: scrollY.interpolate({ inputRange: [0, 40], outputRange: [0, 1], extrapolate: 'clamp' }),
-      }} pointerEvents="none" />
+      }, scrimStyle]} pointerEvents="none" />
     </View>
   );
 }

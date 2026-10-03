@@ -40,6 +40,12 @@ export const colors = {
   // Overlay / glass
   glass: "rgba(255, 255, 255, 0.78)", // tab bar, sheets (with blur)
   scrim: "rgba(28, 27, 34, 0.40)",
+
+  // Depth (v3.0): same keys as the dark set
+  bevelHighlight: "rgba(255, 255, 255, 0.90)",
+  bevelShadow: "rgba(28, 27, 34, 0.10)",
+  glassBorder: "rgba(28, 27, 34, 0.08)",
+  glow: "rgba(106, 82, 209, 0.12)",
 };
 
 export const radius = { sm: 10, md: 16, lg: 22, xl: 28, pill: 999 };
@@ -70,8 +76,9 @@ export const type = {
     fontSize: 32,
     lineHeight: 38,
     letterSpacing: -0.5,
+    fontVariant: ["tabular-nums" as const],
   },
-  title: { fontFamily: "Sora_600SemiBold", fontSize: 22, lineHeight: 28 },
+  title: { fontFamily: "Sora_600SemiBold", fontSize: 22, lineHeight: 28, fontVariant: ["tabular-nums" as const] },
   stat: {
     fontFamily: "Sora_600SemiBold",
     fontSize: 34,
@@ -84,17 +91,18 @@ export const type = {
     lineHeight: 28,
     fontVariant: ["tabular-nums" as const],
   },
-  heading: { fontFamily: "Inter_600SemiBold", fontSize: 17, lineHeight: 22 },
-  body: { fontFamily: "Inter_400Regular", fontSize: 15, lineHeight: 22 },
-  control: { fontFamily: "Inter_500Medium", fontSize: 14, lineHeight: 20 }, // chips, buttons, toggles: sentence case
+  heading: { fontFamily: "Inter_600SemiBold", fontSize: 17, lineHeight: 22, fontVariant: ["tabular-nums" as const] },
+  body: { fontFamily: "Inter_400Regular", fontSize: 15, lineHeight: 22, fontVariant: ["tabular-nums" as const] },
+  control: { fontFamily: "Inter_500Medium", fontSize: 14, lineHeight: 20, fontVariant: ["tabular-nums" as const] }, // chips, buttons, toggles: sentence case
   label: {
     fontFamily: "Inter_500Medium",
-    fontSize: 12,
+    fontSize: 11,
     lineHeight: 16,
-    letterSpacing: 0.8,
+    letterSpacing: 2.2,
+    fontVariant: ["tabular-nums" as const],
     textTransform: "uppercase" as const,
   },
-  caption: { fontFamily: "Inter_400Regular", fontSize: 12, lineHeight: 16 },
+  caption: { fontFamily: "Inter_400Regular", fontSize: 12, lineHeight: 16, fontVariant: ["tabular-nums" as const] },
 };
 
 export const motion = {
@@ -105,6 +113,8 @@ export const motion = {
     exit: [0.4, 0, 1, 1],
   },
   spring: { damping: 18, stiffness: 220 },
+  layoutSpring: { damping: 14, stiffness: 100 },
+  pressSpring: { damping: 15, stiffness: 300, scale: 0.96 },
 };
 
 // Grade band colours — one source of truth used by pills, stripes, charts

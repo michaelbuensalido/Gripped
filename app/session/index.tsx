@@ -3,11 +3,11 @@ import {
   View,
   Text,
   TouchableOpacity,
-  ScrollView,
   Alert,
   StyleSheet,
   Animated,
 } from 'react-native';
+import Reanimated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import {
@@ -673,7 +673,7 @@ export default function ActiveSessionScreen() {
       </View>
 
       {/* Main Telemetry ScrollView */}
-      <ScrollView
+      <Reanimated.ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{
           paddingHorizontal: space.lg,
@@ -693,7 +693,7 @@ export default function ActiveSessionScreen() {
                 backgroundColor: colors.flash,
               }}
             />
-            <Text style={[type.label, { color: colors.textMuted, letterSpacing: 1.5 }]}>
+            <Text style={[type.label, { color: colors.textMuted }]}>
               LIVE TELEMETRY
             </Text>
           </View>
@@ -783,7 +783,7 @@ export default function ActiveSessionScreen() {
         {activeProjects.length > 0 && (
           <View>
             <SectionHeader title="Active Gym Projects" />
-            <ScrollView
+            <Reanimated.ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
               style={{ marginHorizontal: -space.lg }}
@@ -814,7 +814,7 @@ export default function ActiveSessionScreen() {
                   </TouchableOpacity>
                 ))}
               </View>
-            </ScrollView>
+            </Reanimated.ScrollView>
           </View>
         )}
 
@@ -849,7 +849,7 @@ export default function ActiveSessionScreen() {
             </Card>
           )}
         </View>
-      </ScrollView>
+      </Reanimated.ScrollView>
 
       {/* Heavy, Sticky Bottom Action Bar with REST Toggle and + LOG CLIMB */}
       <StickyActionBar

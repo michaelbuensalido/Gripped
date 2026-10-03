@@ -51,7 +51,7 @@ function AttemptBlock({ onAttempt }: { onAttempt: () => void }) {
     >
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 2 }}>
         <Flame size={14} color={colors.attemptText} strokeWidth={2.5} />
-        <Text style={[type.label, { color: colors.attemptText, fontSize: 10, letterSpacing: 1.2 }]}>
+        <Text style={[type.label, { color: colors.attemptText }]}>
           +1 ATTEMPT
         </Text>
       </View>
@@ -104,7 +104,7 @@ function SendBlock({ onSend }: { onSend: () => void }) {
     >
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 2 }}>
         <Zap size={14} color={colors.accentText} strokeWidth={2.5} />
-        <Text style={[type.label, { color: colors.accentText, fontSize: 10, letterSpacing: 1.2 }]}>
+        <Text style={[type.label, { color: colors.accentText }]}>
           TOP-OUT
         </Text>
       </View>

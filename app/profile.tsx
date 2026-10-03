@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useRef } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, TextInput, SectionList, ActionSheetIOS, Platform } from 'react-native';
+import { View, Text, TouchableOpacity, TextInput, SectionList, ActionSheetIOS, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
 import { plural } from '../utils/string';
 import { Filter, Calendar, List, Settings } from 'lucide-react-native';

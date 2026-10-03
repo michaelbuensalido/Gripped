@@ -3,13 +3,13 @@ import {
   View,
   Text,
   TouchableOpacity,
-  ScrollView,
   Alert,
   Modal,
   TextInput,
   StyleSheet,
   Pressable,
 } from 'react-native';
+import Reanimated from 'react-native-reanimated';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
@@ -435,7 +435,7 @@ export default function SessionDetailScreen({
         )}
       </View>
 
-      <ScrollView
+      <Reanimated.ScrollView
         contentContainerStyle={{
           paddingHorizontal: space.lg,
           paddingTop: space.sm,
@@ -638,7 +638,7 @@ export default function SessionDetailScreen({
             </TouchableOpacity>
           </View>
         </View>
-      </ScrollView>
+      </Reanimated.ScrollView>
 
       {/* Done Button (Summary Variant only) */}
       {isSummary && (

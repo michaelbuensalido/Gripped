@@ -3,7 +3,6 @@ import {
   View,
   Text,
   Modal,
-  ScrollView,
   TouchableOpacity,
   TextInput,
   Image,
@@ -15,6 +14,7 @@ import {
   Keyboard,
   TouchableWithoutFeedback,
 } from 'react-native';
+import Reanimated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   MapPin,
@@ -266,7 +266,7 @@ export function SessionCompletionModal({
             </View>
 
             {/* ── Main Scrollable Content ─────────────────────────────────── */}
-            <ScrollView
+            <Reanimated.ScrollView
               showsVerticalScrollIndicator={false}
               keyboardShouldPersistTaps="handled"
               keyboardDismissMode="on-drag"
@@ -507,7 +507,7 @@ export function SessionCompletionModal({
 
             {/* Attached media previews: 80x80pt rounded thumbnails with floating ✕ delete pill */}
             {mediaUris.length > 0 && (
-              <ScrollView
+              <Reanimated.ScrollView
                 horizontal
                 showsHorizontalScrollIndicator={false}
                 contentContainerStyle={{ gap: 10, paddingTop: 12 }}
@@ -546,7 +546,7 @@ export function SessionCompletionModal({
                     </TouchableOpacity>
                   </View>
                 ))}
-              </ScrollView>
+              </Reanimated.ScrollView>
             )}
           </View>
 
@@ -756,7 +756,7 @@ export function SessionCompletionModal({
               />
             </View>
           </View>
-        </ScrollView>
+        </Reanimated.ScrollView>
 
         {/* ── 7. Pinned Bottom CTA ──────────────────────────────────── */}
         <View

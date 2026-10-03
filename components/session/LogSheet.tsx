@@ -6,10 +6,10 @@ import {
   TouchableOpacity,
   TextInput,
   Pressable,
-  ScrollView,
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
+import Reanimated from 'react-native-reanimated';
 import { Plus, X, Minus, ChevronLeft, ChevronRight } from 'lucide-react-native';
 import { SectionHeader } from '../ui/SectionHeader';
 import { PrimaryButton } from '../ui/PrimaryButton';
@@ -112,7 +112,7 @@ function GradePicker({ value, onChange }: { value: string; onChange: (g: string)
       </View>
 
       {/* Quick Tap Grade Bar */}
-      <ScrollView
+      <Reanimated.ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={{ gap: space.xs, paddingVertical: 2 }}
@@ -154,7 +154,7 @@ function GradePicker({ value, onChange }: { value: string; onChange: (g: string)
             </TouchableOpacity>
           );
         })}
-      </ScrollView>
+      </Reanimated.ScrollView>
     </View>
   );
 }
@@ -373,7 +373,7 @@ export function LogSheet({
                 </TouchableOpacity>
               </View>
 
-              <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ gap: space.lg }}>
+              <Reanimated.ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ gap: space.lg }}>
                 {/* Result Section */}
                 <View>
                   <SectionHeader title="Outcome" />
@@ -437,7 +437,7 @@ export function LogSheet({
                   label="SAVE CLIMB"
                   onPress={handleSave}
                 />
-              </ScrollView>
+              </Reanimated.ScrollView>
             </View>
           </Pressable>
         </KeyboardAvoidingView>

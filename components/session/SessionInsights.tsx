@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
-import { View, Text, ScrollView, Dimensions } from 'react-native';
+import { View, Text, Dimensions } from 'react-native';
+import Reanimated from 'react-native-reanimated';
 import { BarChart, LineChart } from 'react-native-gifted-charts';
 import { ResultDonut } from '../ui/ResultDonut';
 import { useTheme } from '../../theme/useTheme';
@@ -85,7 +86,7 @@ export function SessionInsights({ climbs }: SessionInsightsProps) {
 
   return (
     <View style={{ marginBottom: space.xl }}>
-      <ScrollView
+      <Reanimated.ScrollView
         horizontal
         pagingEnabled
         showsHorizontalScrollIndicator={false}
@@ -152,7 +153,7 @@ export function SessionInsights({ climbs }: SessionInsightsProps) {
           </View>
         </Card>
 
-      </ScrollView>
+      </Reanimated.ScrollView>
     </View>
   );
 }

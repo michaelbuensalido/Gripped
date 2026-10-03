@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, TouchableOpacity } from 'react-native';
+import Reanimated from 'react-native-reanimated';
 import { triggerHaptic } from '../../utils/haptics';
 
 interface ConditionChip {
@@ -30,7 +31,7 @@ export function SessionConditionStrip({ selected, onChange }: SessionConditionSt
   };
 
   return (
-    <ScrollView
+    <Reanimated.ScrollView
       horizontal
       showsHorizontalScrollIndicator={false}
       contentContainerStyle={{ paddingHorizontal: 20, paddingVertical: 12, gap: 8, flexDirection: 'row' }}
@@ -60,6 +61,6 @@ export function SessionConditionStrip({ selected, onChange }: SessionConditionSt
           </TouchableOpacity>
         );
       })}
-    </ScrollView>
+    </Reanimated.ScrollView>
   );
 }

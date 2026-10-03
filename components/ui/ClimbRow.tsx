@@ -6,6 +6,7 @@ import Reanimated, { FadeInDown, useSharedValue, useAnimatedStyle, withRepeat, w
 import { GradePill } from './GradePill';
 import { ResultChip, ResultType } from './ResultChip';
 import { useTheme } from '../../theme/useTheme';
+import { listLayout } from '../../theme/layout';
 
 export interface ClimbRowProps {
   climb: any;
@@ -152,13 +153,12 @@ export function ClimbRow({ climb, onEdit, onDelete, animateEntry, isNewFlash }: 
     </Swipeable>
   );
 
-  if (animateEntry) {
-    return (
-      <Reanimated.View entering={FadeInDown.duration(400).springify()}>
-        {content}
-      </Reanimated.View>
-    );
-  }
-
-  return content;
+  return (
+    <Reanimated.View
+      layout={listLayout}
+      entering={animateEntry ? FadeInDown.duration(400).springify() : undefined}
+    >
+      {content}
+    </Reanimated.View>
+  );
 }

@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text } from 'react-native';
 import { useTheme } from '../../theme/useTheme';
 import { Card } from './Card';
+import { GlowBackdrop } from './GlowBackdrop';
 import { Flame } from 'lucide-react-native';
 import { plural } from '../../utils/string';
 
@@ -34,6 +35,7 @@ export function WeekStrip({ days, streak }: WeekStripProps) {
             paddingVertical: 6,
             borderRadius: radius.pill,
           }}>
+            <GlowBackdrop spread={space.lg} />
             <Flame size={14} color={colors.accentText} />
             <Text style={[type.control, { color: colors.accentText, fontWeight: '700', fontSize: 13 }]}>
               {streak} wk streak

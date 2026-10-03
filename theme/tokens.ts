@@ -53,21 +53,27 @@ export const colors = {
 
   // Overlay
   scrim: "rgba(0, 0, 0, 0.55)",
-  glass: "rgba(26, 26, 32, 0.85)",
+  glass: "rgba(26, 26, 32, 0.85)", // Android fallback for the frosted tab bar (no real blur)
+
+  // Depth (v3.0): 3D bevel on cards, hairline glass edge, achievement glow
+  bevelHighlight: "rgba(255, 255, 255, 0.10)", // lit top edge
+  bevelShadow: "rgba(0, 0, 0, 0.50)", // shaded bottom edge
+  glassBorder: "rgba(255, 255, 255, 0.10)", // ultra-thin edge on frosted surfaces
+  glow: "rgba(139, 124, 246, 0.15)", // radial glow behind high-value metrics (top lavender at 15%)
 };
 
 export const radius = { sm: 10, md: 16, lg: 22, xl: 28, pill: 999 };
 
 export const space = { xs: 4, sm: 8, md: 12, lg: 16, xl: 24, xxl: 32 }; // 4pt grid
 
-// Cards have NO shadow on dark. Only the floating centre button gets one.
+// v3.0: cards sit on a soft black shadow (the bevel supplies the edge light).
 export const shadow = {
   card: {
     shadowColor: "#000000",
-    shadowOpacity: 0,
-    shadowRadius: 0,
-    shadowOffset: { width: 0, height: 0 },
-    elevation: 0,
+    shadowOpacity: 0.5,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 6,
   },
   floating: {
     shadowColor: "#000000",
@@ -84,8 +90,9 @@ export const type = {
     fontSize: 32,
     lineHeight: 38,
     letterSpacing: -0.5,
+    fontVariant: ["tabular-nums" as const],
   },
-  title: { fontFamily: "Sora_600SemiBold", fontSize: 22, lineHeight: 28 },
+  title: { fontFamily: "Sora_600SemiBold", fontSize: 22, lineHeight: 28, fontVariant: ["tabular-nums" as const] },
   stat: {
     fontFamily: "Sora_600SemiBold",
     fontSize: 34,
@@ -98,17 +105,19 @@ export const type = {
     lineHeight: 28,
     fontVariant: ["tabular-nums" as const],
   },
-  heading: { fontFamily: "Inter_600SemiBold", fontSize: 17, lineHeight: 22 },
-  body: { fontFamily: "Inter_400Regular", fontSize: 15, lineHeight: 22 },
-  control: { fontFamily: "Inter_500Medium", fontSize: 14, lineHeight: 20 }, // chips, buttons, toggles: sentence case
+  heading: { fontFamily: "Inter_600SemiBold", fontSize: 17, lineHeight: 22, fontVariant: ["tabular-nums" as const] },
+  body: { fontFamily: "Inter_400Regular", fontSize: 15, lineHeight: 22, fontVariant: ["tabular-nums" as const] },
+  control: { fontFamily: "Inter_500Medium", fontSize: 14, lineHeight: 20, fontVariant: ["tabular-nums" as const] }, // chips, buttons, toggles: sentence case
+  // Micro-label (v3.0): "SESSIONS", "TODAY". Medium weight, 0.2em tracking (11 * 0.2 = 2.2).
   label: {
     fontFamily: "Inter_500Medium",
-    fontSize: 12,
+    fontSize: 11,
     lineHeight: 16,
-    letterSpacing: 0.8,
+    letterSpacing: 2.2,
+    fontVariant: ["tabular-nums" as const],
     textTransform: "uppercase" as const,
   }, // section and stat labels only
-  caption: { fontFamily: "Inter_400Regular", fontSize: 12, lineHeight: 16 },
+  caption: { fontFamily: "Inter_400Regular", fontSize: 12, lineHeight: 16, fontVariant: ["tabular-nums" as const] },
 };
 
 export const motion = {
@@ -119,6 +128,9 @@ export const motion = {
     exit: [0.4, 0, 1, 1],
   }, // cubic-bezier
   spring: { damping: 18, stiffness: 220 },
+  // v3.0 fluid physics
+  layoutSpring: { damping: 14, stiffness: 100 }, // list/grid items sliding into place
+  pressSpring: { damping: 15, stiffness: 300, scale: 0.96 }, // PrimaryButton press-in
 };
 
 export const gradeBands = [
