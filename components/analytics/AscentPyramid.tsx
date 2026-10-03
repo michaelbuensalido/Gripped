@@ -37,7 +37,7 @@ function LegendItem({ color, label }: { color: string; label: string }) {
           marginRight: 6,
         }}
       />
-      <Text style={[type.caption, { color: colors.textMuted, fontSize: 11 }]}>{label}</Text>
+      <Text style={[type.caption, { color: 'rgba(255,255,255,0.4)', letterSpacing: 1.5, textTransform: 'uppercase', fontSize: 10 }]}>{label}</Text>
     </View>
   );
 }
@@ -75,9 +75,9 @@ export default function AscentPyramid({ data: propData }: AscentPyramidProps) {
   return (
     <View
       style={{
-        backgroundColor: colors.card,
+        backgroundColor: colors.materialBase,
         borderRadius: radius.lg,
-        borderWidth: 1,
+        borderWidth: 0,
         borderColor: colors.border,
         padding: space.lg,
       }}
@@ -87,14 +87,14 @@ export default function AscentPyramid({ data: propData }: AscentPyramidProps) {
         style={[
           type.label,
           {
-            color: colors.textMuted,
+            color: 'rgba(255,255,255,0.4)', letterSpacing: 1.5, textTransform: 'uppercase', fontSize: 10,
             marginBottom: 2,
           },
         ]}
       >
         Ascent Pyramid
       </Text>
-      <Text style={[type.heading, { color: colors.text, fontSize: 16, marginBottom: space.md }]}>
+      <Text style={[type.heading, { color: colors.textWhitePrimary || colors.text, fontSize: 16, fontWeight: '400', marginBottom: space.md }]}>
         Volume by Grade
       </Text>
 
@@ -110,11 +110,11 @@ export default function AscentPyramid({ data: propData }: AscentPyramidProps) {
           maxValue={yMax}
           noOfSections={5}
           yAxisThickness={0}
-          yAxisTextStyle={{ color: colors.textMuted, fontSize: 10 }}
+          yAxisTextStyle={{ color: 'rgba(255,255,255,0.4)', letterSpacing: 1.5, textTransform: 'uppercase', fontSize: 10 }}
           // X-axis
-          xAxisColor="#27272F"
+          xAxisColor="rgba(255,255,255,0.1)"
           xAxisThickness={1}
-          xAxisLabelTextStyle={{ color: colors.textMuted, fontSize: 10, fontWeight: '500' }}
+          xAxisLabelTextStyle={{ color: 'rgba(255,255,255,0.4)', letterSpacing: 1.5, textTransform: 'uppercase', fontSize: 10, fontWeight: '500' }}
           // Rules
           rulesColor="#22222A"
           rulesType="solid"

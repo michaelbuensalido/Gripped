@@ -89,9 +89,9 @@ export default function WallAngleRadar({ data = DEFAULT_DATA }: WallAngleRadarPr
   return (
     <View
       style={{
-        backgroundColor: colors.card,
+        backgroundColor: colors.materialBase,
         borderRadius: radius.lg,
-        borderWidth: 1,
+        borderWidth: 0,
         borderColor: colors.border,
         padding: space.lg,
       }}
@@ -115,16 +115,13 @@ export default function WallAngleRadar({ data = DEFAULT_DATA }: WallAngleRadarPr
       {/* SVG Chart */}
       <View style={{ alignItems: 'center', justifyContent: 'center' }}>
         <Svg width={SVG_SIZE} height={SVG_SIZE}>
-          {/* Background concentric rings using muted border token */}
-          {RING_RATIOS.map((ratio) => (
-            <Polygon
-              key={`ring-${ratio}`}
-              points={ringPoints(ratio)}
-              fill="none"
-              stroke="#27272F"
-              strokeWidth={1}
-            />
-          ))}
+          {/* Background outer ring using ultra-thin white/10 */}
+          <Polygon
+            points={ringPoints(1.0)}
+            fill="none"
+            stroke="rgba(255, 255, 255, 0.1)"
+            strokeWidth={1}
+          />
 
           {/* Axis spokes */}
           {AXES.map(({ angle, key }) => {
@@ -136,17 +133,17 @@ export default function WallAngleRadar({ data = DEFAULT_DATA }: WallAngleRadarPr
                 y1={CENTER}
                 x2={tip.x}
                 y2={tip.y}
-                stroke="#27272F"
+                stroke="rgba(255, 255, 255, 0.1)"
                 strokeWidth={1}
               />
             );
           })}
 
-          {/* Data polygon with Send Lavender pop */}
+          {/* Data polygon with glowing Neon Violet */}
           <Polygon
             points={dataPolygon}
-            fill={colors.top + '33'}
-            stroke={colors.top}
+            fill="rgba(142, 124, 255, 0.1)"
+            stroke={colors.accent}
             strokeWidth={2}
             strokeLinejoin="round"
           />
@@ -158,7 +155,7 @@ export default function WallAngleRadar({ data = DEFAULT_DATA }: WallAngleRadarPr
               cx={x}
               cy={y}
               r={4}
-              fill={colors.top}
+              fill={colors.accent}
             />
           ))}
 
@@ -173,29 +170,11 @@ export default function WallAngleRadar({ data = DEFAULT_DATA }: WallAngleRadarPr
                 x={pos.x}
                 y={pos.y + dy}
                 textAnchor={textAnchor}
-                fill={colors.text}
+                fill="rgba(255, 255, 255, 0.8)"
                 fontSize={11}
-                fontWeight="600"
+                fontWeight="400"
               >
                 {label}
-              </SvgText>
-            );
-          })}
-
-          {/* Percentage labels on top axis */}
-          {[0.25, 0.5, 0.75].map((ratio) => {
-            const pos = axisPoint(270, ratio);
-            return (
-              <SvgText
-                key={`pct-${ratio}`}
-                x={pos.x + 4}
-                y={pos.y}
-                textAnchor="start"
-                fill={colors.textMuted}
-                fontSize={8}
-                opacity={0.8}
-              >
-                {ratio * 100}%
               </SvgText>
             );
           })}
@@ -209,8 +188,6 @@ export default function WallAngleRadar({ data = DEFAULT_DATA }: WallAngleRadarPr
           justifyContent: 'space-around',
           marginTop: space.md,
           paddingTop: space.sm,
-          borderTopWidth: 1,
-          borderTopColor: colors.border,
         }}
       >
         {AXES.map(({ key, label }) => (
@@ -219,8 +196,9 @@ export default function WallAngleRadar({ data = DEFAULT_DATA }: WallAngleRadarPr
               style={[
                 type.stat,
                 {
-                  color: colors.topText,
+                  color: colors.textWhitePrimary || colors.text,
                   fontSize: 16,
+                  fontWeight: '200',
                   fontVariant: ['tabular-nums'],
                 },
               ]}
@@ -231,10 +209,11 @@ export default function WallAngleRadar({ data = DEFAULT_DATA }: WallAngleRadarPr
               style={[
                 type.caption,
                 {
-                  color: colors.textMuted,
+                  color: 'rgba(255,255,255,0.4)',
                   fontSize: 10,
+                  letterSpacing: 1.5,
                   textTransform: 'uppercase',
-                  marginTop: 2,
+                  marginTop: 4,
                 },
               ]}
             >

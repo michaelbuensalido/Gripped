@@ -32,14 +32,13 @@ export function ResultDonut({ flashCount, topCount, attemptCount, centerGrade, c
       <PieChart
         data={pieData}
         donut
-        radius={80}
-        innerRadius={55}
-        strokeWidth={3}
-        strokeColor={colors.bg}
+        radius={90}
+        innerRadius={70}
+        strokeWidth={0}
         centerLabelComponent={() => (
           <View style={{ alignItems: 'center', justifyContent: 'center' }}>
-            <Text style={[type.display, { color: colors.textWhitePrimary, fontSize: 32 }]}>{centerGrade || '–'}</Text>
-            <Text style={[type.caption, { color: colors.textWhiteSecondary, marginTop: -4 }]}>{centerLabel || 'AVG'}</Text>
+            <Text style={[type.display, { color: '#FFFFFF', fontSize: 44, fontWeight: '200' }]}>{centerGrade || '–'}</Text>
+            <Text style={[type.caption, { color: 'rgba(255,255,255,0.4)', marginTop: 2, letterSpacing: 1.5, textTransform: 'uppercase' }]}>{centerLabel || 'AVG'}</Text>
           </View>
         )}
       />
@@ -59,8 +58,8 @@ function LegendItem({ color, label, count }: { color: string, label: string, cou
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.xs }}>
       <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: color }} />
-      <Text style={[type.caption, { color: colors.text }]}>{label}</Text>
-      <Text style={[type.caption, { color: colors.textMuted }]}>{count}</Text>
+      <Text style={[type.caption, { color: colors.textWhitePrimary || colors.text }]}>{label}</Text>
+      <Text style={[type.caption, { color: colors.textWhiteMuted || colors.textMuted }]}>{count}</Text>
     </View>
   );
 }

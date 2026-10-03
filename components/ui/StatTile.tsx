@@ -43,6 +43,7 @@ export function StatTile({ value, label, trend, flex, icon, tintBg, style }: Sta
               fontSize: 28,
               lineHeight: 34,
               fontVariant: ['tabular-nums'],
+              fontWeight: '200',
               marginBottom: 2,
             },
           ]}
@@ -56,6 +57,7 @@ export function StatTile({ value, label, trend, flex, icon, tintBg, style }: Sta
               fontSize: 28,
               lineHeight: 34,
               fontVariant: ['tabular-nums'],
+              fontWeight: '200',
               marginBottom: 2,
             },
           ]}
@@ -70,7 +72,10 @@ export function StatTile({ value, label, trend, flex, icon, tintBg, style }: Sta
         style={[
           type.label,
           {
-            color: colors.textWhiteSecondary,
+            color: 'rgba(255, 255, 255, 0.4)',
+            fontSize: 10,
+            letterSpacing: 1.5,
+            textTransform: 'uppercase',
           },
         ]}
         numberOfLines={1}

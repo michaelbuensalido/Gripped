@@ -49,10 +49,9 @@ export default function GradeProgressionTimeline({
   return (
     <View
       style={{
-        backgroundColor: colors.card,
+        backgroundColor: colors.materialBase,
         borderRadius: radius.lg,
-        borderWidth: 1,
-        borderColor: colors.border,
+        borderWidth: 0,
         padding: space.lg,
       }}
     >
@@ -61,14 +60,17 @@ export default function GradeProgressionTimeline({
         style={[
           type.label,
           {
-            color: colors.textMuted,
+            color: 'rgba(255,255,255,0.4)',
+            letterSpacing: 1.5,
+            textTransform: 'uppercase',
             marginBottom: 2,
+            fontSize: 10,
           },
         ]}
       >
         Progression
       </Text>
-      <Text style={[type.heading, { color: colors.text, fontSize: 16, marginBottom: space.md }]}>
+      <Text style={[type.heading, { color: colors.textWhitePrimary || colors.text, fontSize: 16, marginBottom: space.md, fontWeight: '400' }]}>
         Grade High-Watermark
       </Text>
 
@@ -80,33 +82,31 @@ export default function GradeProgressionTimeline({
           height={160}
           // Area fill with Send Lavender accent
           areaChart
-          startFillColor={colors.top}
-          endFillColor={colors.top}
-          startOpacity={0.28}
-          endOpacity={0.0}
+          startFillColor="rgba(142, 124, 255, 0.15)"
+          endFillColor="rgba(142, 124, 255, 0)"
+          startOpacity={1}
+          endOpacity={1}
           // Line style
-          color={colors.top}
-          thickness={2.5}
+          color={colors.accent}
+          thickness={2}
           // Data point style
-          dataPointsColor={colors.top}
+          dataPointsColor={colors.accent}
           dataPointsRadius={4}
-          textColor={colors.text}
+          textColor={colors.textWhitePrimary || colors.text}
           textFontSize={10}
           // Y-axis
           maxValue={yMax}
           noOfSections={5}
           yAxisLabelTexts={Y_AXIS_LABELS}
           yAxisColor="transparent"
-          yAxisTextStyle={{ color: colors.textMuted, fontSize: 10 }}
+          yAxisTextStyle={{ color: 'rgba(255,255,255,0.4)', fontSize: 10 }}
           yAxisThickness={0}
           // X-axis
-          xAxisColor="#27272F"
+          xAxisColor="rgba(255,255,255,0.1)"
           xAxisThickness={1}
-          xAxisLabelTextStyle={{ color: colors.textMuted, fontSize: 10, fontWeight: '500' }}
+          xAxisLabelTextStyle={{ color: 'rgba(255,255,255,0.4)', fontSize: 10, fontWeight: '500' }}
           // Grid rules
-          hideRules={false}
-          rulesColor="#22222A"
-          rulesType="solid"
+          hideRules={true}
           // Animation
           isAnimated
           animationDuration={600}
@@ -123,10 +123,10 @@ export default function GradeProgressionTimeline({
           // Pointer
           focusEnabled
           showStripOnFocus
-          stripColor={colors.top + '40'}
+          stripColor={colors.accent + '40'}
           stripWidth={1}
           focusedDataPointRadius={6}
-          focusedDataPointColor={colors.top}
+          focusedDataPointColor={colors.accent}
         />
       </View>
 
@@ -143,8 +143,6 @@ export default function GradeProgressionTimeline({
               alignItems: 'center',
               marginTop: space.sm,
               paddingTop: space.sm,
-              borderTopWidth: 1,
-              borderTopColor: colors.border,
             }}
           >
             <Text
@@ -159,7 +157,7 @@ export default function GradeProgressionTimeline({
             >
               {positive ? '▲' : '▼'} {Math.abs(delta)} grade{Math.abs(delta) !== 1 ? 's' : ''}
             </Text>
-            <Text style={[type.caption, { color: colors.textMuted }]}>
+            <Text style={[type.caption, { color: 'rgba(255,255,255,0.4)' }]}>
               over the last {data.length} sessions
             </Text>
           </View>
