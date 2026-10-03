@@ -101,14 +101,13 @@ export default function EndSessionScreen() {
                       flex: 1,
                       height: 56,
                       borderRadius: radius.md,
-                      backgroundColor: selected ? colors.accentSoft : colors.cardMuted,
+                      backgroundColor: selected ? 'rgba(168,114,255,0.15)' : colors.materialBase,
                       alignItems: 'center',
                       justifyContent: 'center',
-                      borderWidth: selected ? 1.5 : 1,
-                      borderColor: selected ? colors.accent : colors.border,
+                      borderWidth: 0,
                     }}
                   >
-                    <Text style={[type.heading, { color: selected ? colors.accentText : colors.text }]}>
+                    <Text style={[type.heading, { color: selected ? colors.accent : colors.textWhiteMuted }]}>
                       {n}
                     </Text>
                   </TouchableOpacity>
@@ -116,7 +115,7 @@ export default function EndSessionScreen() {
               })}
             </View>
             {effort !== null && (
-              <Text style={[type.caption, { color: colors.textMuted, marginTop: space.sm }]}>
+              <Text style={[type.caption, { color: colors.textWhiteMuted, marginTop: space.sm }]}>
                 {EFFORT_LABELS[effort]}
               </Text>
             )}
@@ -130,15 +129,14 @@ export default function EndSessionScreen() {
               onChangeText={setNotes}
               multiline
               placeholder="How did you feel? What clicked today?"
-              placeholderTextColor={colors.textMuted}
+              placeholderTextColor={colors.textWhiteMuted}
               style={[
                 type.body,
                 {
-                  color: colors.text,
-                  backgroundColor: colors.cardMuted,
+                  color: colors.textWhitePrimary,
+                  backgroundColor: colors.materialBase,
                   borderRadius: radius.md,
-                  borderWidth: 1,
-                  borderColor: colors.border,
+                  borderWidth: 0,
                   padding: space.md,
                   minHeight: 100,
                   textAlignVertical: 'top',

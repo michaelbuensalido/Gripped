@@ -195,9 +195,7 @@ function StickyActionBar({
         bottom: 0,
         left: 0,
         right: 0,
-        backgroundColor: colors.card,
-        borderTopWidth: 1,
-        borderTopColor: colors.border,
+        backgroundColor: '#000000',
         paddingHorizontal: space.lg,
         paddingTop: space.md,
         paddingBottom: Math.max(insets.bottom, space.md),
@@ -218,18 +216,12 @@ function StickyActionBar({
           flex: 0.85,
           height: 56,
           minHeight: 56,
-          borderRadius: radius.md,
+          borderRadius: radius.pill,
           backgroundColor: isRestComplete
-            ? colors.flashSoft
+            ? 'rgba(110, 231, 86, 0.1)' // flashSoft equivalent ghost
             : isRestRunning
-            ? colors.accentSoft
-            : colors.cardMuted,
-          borderWidth: 1,
-          borderColor: isRestComplete
-            ? colors.flash
-            : isRestRunning
-            ? colors.accent
-            : colors.border,
+            ? 'rgba(168, 114, 255, 0.1)' // accentSoft equivalent ghost
+            : colors.materialBase,
           flexDirection: 'row',
           alignItems: 'center',
           justifyContent: 'center',
@@ -702,10 +694,12 @@ export default function ActiveSessionScreen() {
             textStyle={[
               type.stat,
               {
-                color: colors.text,
+                color: colors.textWhitePrimary,
                 fontSize: 44,
                 lineHeight: 50,
                 letterSpacing: -0.5,
+                fontWeight: '200',
+                fontVariant: ['tabular-nums'],
               },
             ]}
           />

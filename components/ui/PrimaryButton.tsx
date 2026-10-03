@@ -85,6 +85,13 @@ export function PrimaryButton({
           borderWidth: isDisabled ? 1 : 0,
           borderColor: isDisabled ? colors.border : 'transparent',
           opacity: isDisabled ? 0.45 : 1,
+          ...(isDisabled ? {} : {
+            shadowColor: colors.accent,
+            shadowOffset: { width: 0, height: 0 },
+            shadowOpacity: 0.6,
+            shadowRadius: 12,
+            elevation: 4,
+          }),
         },
         style,
         animatedStyle,

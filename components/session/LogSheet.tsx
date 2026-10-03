@@ -52,10 +52,9 @@ function GradePicker({ value, onChange }: { value: string; onChange: (g: string)
           style={{
             width: 56,
             height: 56,
-            borderRadius: radius.md,
-            backgroundColor: colors.cardMuted,
-            borderWidth: 1,
-            borderColor: colors.border,
+            borderRadius: radius.pill,
+            backgroundColor: 'rgba(255,255,255,0.05)',
+            borderWidth: 0,
             alignItems: 'center',
             justifyContent: 'center',
             opacity: idx === 0 ? 0.3 : 1,
@@ -71,8 +70,8 @@ function GradePicker({ value, onChange }: { value: string; onChange: (g: string)
             alignItems: 'center',
             justifyContent: 'center',
             backgroundColor: band.bg,
-            borderRadius: radius.md,
-            borderWidth: 1,
+            borderRadius: radius.pill,
+            borderWidth: 0,
             borderColor: band.solid + '55',
           }}
         >
@@ -98,10 +97,9 @@ function GradePicker({ value, onChange }: { value: string; onChange: (g: string)
           style={{
             width: 56,
             height: 56,
-            borderRadius: radius.md,
-            backgroundColor: colors.cardMuted,
-            borderWidth: 1,
-            borderColor: colors.border,
+            borderRadius: radius.pill,
+            backgroundColor: 'rgba(255,255,255,0.05)',
+            borderWidth: 0,
             alignItems: 'center',
             justifyContent: 'center',
             opacity: idx === GRADES.length - 1 ? 0.3 : 1,
@@ -133,7 +131,7 @@ function GradePicker({ value, onChange }: { value: string; onChange: (g: string)
                 paddingHorizontal: space.sm,
                 borderRadius: radius.sm,
                 backgroundColor: isSelected ? gBand.bg : colors.cardMuted,
-                borderWidth: 1,
+                borderWidth: 0,
                 borderColor: isSelected ? gBand.solid : colors.border,
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -185,11 +183,11 @@ function ResultSelector({ value, onChange }: { value: ResultType; onChange: (r: 
               flex: 1,
               height: 56,
               minHeight: 56,
-              borderRadius: radius.md,
+              borderRadius: radius.pill,
               backgroundColor: selected ? o.bg : colors.cardMuted,
               alignItems: 'center',
               justifyContent: 'center',
-              borderWidth: 1,
+              borderWidth: 0,
               borderColor: selected ? o.border : colors.border,
             }}
           >
@@ -229,16 +227,15 @@ function AttemptsStepper({ value, onChange }: { value: number; onChange: (n: num
         style={{
           width: 56,
           height: 56,
-          borderRadius: radius.md,
-          backgroundColor: colors.cardMuted,
-          borderWidth: 1,
-          borderColor: colors.border,
+          borderRadius: radius.pill,
+          backgroundColor: 'rgba(255,255,255,0.05)',
+          borderWidth: 0,
           alignItems: 'center',
           justifyContent: 'center',
           opacity: value <= 1 ? 0.3 : 1,
         }}
       >
-        <Minus size={22} color={colors.text} />
+        <Minus size={22} color={colors.textWhitePrimary || colors.text} />
       </TouchableOpacity>
 
       <View
@@ -247,13 +244,11 @@ function AttemptsStepper({ value, onChange }: { value: number; onChange: (n: num
           height: 56,
           alignItems: 'center',
           justifyContent: 'center',
-          backgroundColor: colors.cardMuted,
-          borderRadius: radius.md,
-          borderWidth: 1,
-          borderColor: colors.border,
+          backgroundColor: 'transparent',
+          borderWidth: 0,
         }}
       >
-        <Text style={[type.stat, { color: colors.text, fontSize: 26 }]}>{value}</Text>
+        <Text style={[type.stat, { color: colors.textWhitePrimary || colors.text, fontSize: 32, fontWeight: '200' }]}>{value}</Text>
       </View>
 
       <TouchableOpacity
@@ -266,15 +261,14 @@ function AttemptsStepper({ value, onChange }: { value: number; onChange: (n: num
         style={{
           width: 56,
           height: 56,
-          borderRadius: radius.md,
-          backgroundColor: colors.cardMuted,
-          borderWidth: 1,
-          borderColor: colors.border,
+          borderRadius: radius.pill,
+          backgroundColor: 'rgba(255,255,255,0.05)',
+          borderWidth: 0,
           alignItems: 'center',
           justifyContent: 'center',
         }}
       >
-        <Plus size={22} color={colors.text} />
+        <Plus size={22} color={colors.textWhitePrimary || colors.text} />
       </TouchableOpacity>
     </View>
   );
@@ -334,11 +328,10 @@ export function LogSheet({
           <Pressable onPress={(e) => e.stopPropagation()}>
             <View
               style={{
-                backgroundColor: colors.card,
+                backgroundColor: '#121214',
                 borderTopLeftRadius: radius.xl,
                 borderTopRightRadius: radius.xl,
-                borderWidth: 1,
-                borderColor: colors.border,
+                borderWidth: 0,
                 paddingHorizontal: space.lg,
                 paddingTop: space.md,
                 paddingBottom: space.xxl + 24,
@@ -419,10 +412,9 @@ export function LogSheet({
                       type.body,
                       {
                         color: colors.text,
-                        backgroundColor: colors.cardMuted,
-                        borderRadius: radius.md,
-                        borderWidth: 1,
-                        borderColor: colors.border,
+                        backgroundColor: 'rgba(255,255,255,0.05)',
+                        borderRadius: radius.pill,
+                        borderWidth: 0,
                         padding: space.md,
                         minHeight: 70,
                         textAlignVertical: 'top',
