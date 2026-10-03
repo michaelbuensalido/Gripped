@@ -1,18 +1,17 @@
-# CruxLog — Design System (v3.0, dark matte + premium depth)
+# CruxLog — Design System (v4.0, Spatial Editorial Redesign)
 
-A calm, dark, photo-forward look with **physical depth**: bevelled cards on a soft shadow, a frosted-glass tab bar, a restrained glow behind high-value metrics, and spring physics. One soft purple accent, big friendly numbers, grade colours as the signature, and small reward moments when you climb well. Still no full-bleed gradients and no decorative glass: depth is applied only in the places named below.
+A sleek, spatial editorial aesthetic with **deep spatial black**, **neon violet/green accents**, and **borderless ghost cards**. This pivot moves away from the blocky telemetry UI to a premium, OLED-optimized look with edge-to-edge imagery, extremely faint translucent panels, and massive, lightweight typography.
 
 Companion docs: `MVP_SPEC.md` (what exists), `USER_FLOW.md` (how it is used), `COMPONENTS.md` (what is built). This file says **how it looks and behaves**.
 
-> **v3.0 changes (supersedes the v2.0 "no shadow / no blur / no glow" rules):**
-> 1. **Cards are bevelled.** Lit top edge (`bevelHighlight`), shaded bottom edge (`bevelShadow`), hairline sides (`border`), soft outer `shadow.card`. Inset (`muted`) cards take the bevel but no shadow so they read as recessed.
-> 2. **`FloatingTabBar` is frosted glass**: `expo-blur` `BlurView` (`tint="dark"`, `intensity={80}`) on a separate background layer, `glassBorder` hairline, pill shape. Android falls back to the translucent `glass` token. The blur layer is separate from the content so the centre Start button is never clipped.
-> 3. **Radial glow** (`GlowBackdrop`, token `glow`) behind achievement UI only: the "New best" banner and the streak pill.
-> 4. **Fluid physics:** every `ScrollView` is `Animated.ScrollView` (Reanimated), list/grid items carry the shared `listLayout` spring (`damping 14`, `stiffness 100`), and `PrimaryButton` springs to `motion.pressSpring.scale` on press.
-> 5. **Type:** `tabular-nums` on every text style; micro-labels use 0.2em tracking.
->
-> v2.0 changes (still true): active theme is **dark matte** (v1.1 light is kept as `theme/tokens.light.ts`, inactive, with the same keys). Synced to the real component inventory (Sora + Inter, `HeroCard`, `GradePill`, `ResultDonut`, `WeekStrip`, `FloatingTabBar`, analytics, session and celebration components). Per-screen recipes with one named hero, a placeholder-art and hold-photo spec, a duplicate-component register, and a rule that the Progress screen has one hero chart with the rest under "Deep dive".
-> Items marked **(verify)** were written from screenshots or the component index and should be checked against the code. If the code and this file differ, decide which wins and update both in the same commit.
+> **v4.0 changes (supersedes all previous border and flat-card rules):**
+> 1. **Global Background:** Pure OLED Black (`bg: #000000`).
+> 2. **Ghost Cards:** Cards are now extremely faint and borderless (`card: #121214`, `materialBase: rgba(255,255,255,0.04)`). All heavy borders are removed. Cards feel like they float in shadow.
+> 3. **Neon Accents:** Primary neon violet (`#A872FF`) for active states and fully-rounded pill buttons (`rounded-full`). Secondary neon mint/green (`#72FF9B`) for success states and flashes.
+> 4. **Typography:** Clean, thin-to-regular sans-serifs for massive numbers. Micro-labels use extreme tracking (`letterSpacing: 2.5`), `fontSize: 10`, and muted translucency (`rgba(255,255,255,0.40)`).
+> 5. **3D Asset Integration:** `HeroCard` and `ProjectCard` support edge-to-edge background images, positioned to the right so text floats cleanly over the dark space on the left.
+> 6. **FloatingTabBar:** Deeply blurred, translucent pill (`expo-blur` with dark tint). Icons are thin outlines (`strokeWidth: 1.5`). Active states get a subtle neon glow.
+> 7. **Data Vis:** Donut charts use thick, rounded strokes with glowing gradient tracks. Week/Volume charts use thin lines and subtle gradients.
 
 ---
 

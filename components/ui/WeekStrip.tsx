@@ -67,24 +67,24 @@ export function WeekStrip({ days, streak }: WeekStripProps) {
                   <View
                     style={{
                       position: 'absolute',
-                      width: 36,
+                      width: 12,
                       height: 36,
-                      borderRadius: 18,
+                      borderRadius: radius.sm,
                       borderWidth: 1.5,
                       borderColor: colors.accent,
                     }}
                   />
                 )}
-                <View
-                  style={{
-                    width: 26,
-                    height: 26,
-                    borderRadius: 13,
-                    backgroundColor: filled ? colors.accent : colors.cardMuted,
-                    borderWidth: 1,
-                    borderColor: filled ? colors.accent : colors.border,
-                  }}
-                />
+                {filled ? (
+                  <View style={{ width: 4, height: 26, borderRadius: radius.sm, overflow: 'hidden' }}>
+                    <View style={{ position: 'absolute', top: 0, bottom: 0, left: -4, right: -4, opacity: 0.8, pointerEvents: 'none' }}>
+                      <GlowBackdrop spread={4} />
+                    </View>
+                    <View style={{ width: '100%', height: '100%', backgroundColor: colors.accent }} />
+                  </View>
+                ) : (
+                  <View style={{ width: 4, height: 26, borderRadius: radius.sm, backgroundColor: colors.textWhiteMuted }} />
+                )}
               </View>
             </View>
           );

@@ -55,7 +55,7 @@ describe('StatTile', () => {
     const colorStyle = Array.isArray(styleArray)
       ? styleArray.find((s: any) => s && s.color)
       : styleArray;
-    expect(colorStyle.color).toBe(colors.text);
+    expect(colorStyle.color).toBe(colors.textWhitePrimary);
   });
 
   it('renders 0 properly', () => {

@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text } from 'react-native';
 import { PieChart } from 'react-native-gifted-charts';
+import { GlowBackdrop } from './GlowBackdrop';
 import { useTheme } from '../../theme/useTheme';
 
 export interface ResultDonutProps {
@@ -25,15 +26,20 @@ export function ResultDonut({ flashCount, topCount, attemptCount, centerGrade, c
 
   return (
     <View style={{ alignItems: 'center', justifyContent: 'center' }}>
+      <View style={{ position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, opacity: 0.5, pointerEvents: 'none' }}>
+        <GlowBackdrop spread={8} />
+      </View>
       <PieChart
         data={pieData}
         donut
-        radius={70}
-        innerRadius={50}
+        radius={80}
+        innerRadius={55}
+        strokeWidth={3}
+        strokeColor={colors.bg}
         centerLabelComponent={() => (
           <View style={{ alignItems: 'center', justifyContent: 'center' }}>
-            <Text style={[type.display, { color: colors.text, fontSize: 32 }]}>{centerGrade || '–'}</Text>
-            <Text style={[type.caption, { color: colors.textMuted, marginTop: -4 }]}>{centerLabel || 'AVG'}</Text>
+            <Text style={[type.display, { color: colors.textWhitePrimary, fontSize: 32 }]}>{centerGrade || '–'}</Text>
+            <Text style={[type.caption, { color: colors.textWhiteSecondary, marginTop: -4 }]}>{centerLabel || 'AVG'}</Text>
           </View>
         )}
       />

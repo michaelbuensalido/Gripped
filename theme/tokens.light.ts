@@ -1,9 +1,9 @@
 export const colors = {
   // Surfaces
-  bg: "#F5F2EC", // warm off-white, like chalk/limestone
-  bgTexture: "#E9E4DA", // fleck colour for the background texture
+  bg: "#F5F2EC",
+  bgTexture: "#E9E4DA",
   card: "#FFFFFF",
-  cardMuted: "#F0ECE4", // inset tiles, input backgrounds
+  cardMuted: "#F0ECE4",
   border: "rgba(28, 27, 34, 0.08)",
 
   // Text
@@ -14,10 +14,10 @@ export const colors = {
   // Brand accent (purple)
   accent: "#6A52D1",
   accentPressed: "#5440B5",
-  accentSoft: "#ECE8FB", // chips, active tab pill, selected states
-  accentText: "#5440B5", // accent-coloured text on soft backgrounds
+  accentSoft: "#ECE8FB",
+  accentText: "#5440B5",
 
-  // Result colours (fills are for charts/badges; always paired with a text label)
+  // Result colours
   flash: "#3BA462",
   flashSoft: "#DDF1D3",
   flashText: "#1F6B3A",
@@ -38,22 +38,31 @@ export const colors = {
   success: "#2E8B4F",
 
   // Overlay / glass
-  glass: "rgba(255, 255, 255, 0.78)", // tab bar, sheets (with blur)
+  glass: "rgba(255, 255, 255, 0.78)",
   scrim: "rgba(28, 27, 34, 0.40)",
 
-  // Depth (v3.0): same keys as the dark set
+  // Depth (v3.0)
   bevelHighlight: "rgba(255, 255, 255, 0.90)",
   bevelShadow: "rgba(28, 27, 34, 0.10)",
   glassBorder: "rgba(28, 27, 34, 0.08)",
   glow: "rgba(106, 82, 209, 0.12)",
+
+  // Translucent Materials (v4.0 Spatial Editorial)
+  materialBase: "rgba(0, 0, 0, 0.03)",
+  materialBorder: "transparent",
+  materialHighlight: "transparent",
+
+  // Translucent Typography
+  textWhitePrimary: "#000000",
+  textWhiteSecondary: "rgba(0, 0, 0, 0.50)",
+  textWhiteMuted: "rgba(0, 0, 0, 0.40)",
 };
 
 export const radius = { sm: 10, md: 16, lg: 22, xl: 28, pill: 999 };
 
-export const space = { xs: 4, sm: 8, md: 12, lg: 16, xl: 24, xxl: 32 }; // 4pt grid
+export const space = { xs: 4, sm: 8, md: 12, lg: 16, xl: 24, xxl: 32 };
 
 export const shadow = {
-  // Light mode uses soft shadows instead of the dark theme's glow/borders.
   card: {
     shadowColor: "#1C1B22",
     shadowOpacity: 0.06,
@@ -72,33 +81,33 @@ export const shadow = {
 
 export const type = {
   display: {
-    fontFamily: "Sora_600SemiBold",
-    fontSize: 32,
-    lineHeight: 38,
+    fontFamily: "Sora_400Regular",
+    fontSize: 36,
+    lineHeight: 42,
     letterSpacing: -0.5,
     fontVariant: ["tabular-nums" as const],
   },
-  title: { fontFamily: "Sora_600SemiBold", fontSize: 22, lineHeight: 28, fontVariant: ["tabular-nums" as const] },
+  title: { fontFamily: "Sora_400Regular", fontSize: 22, lineHeight: 28, fontVariant: ["tabular-nums" as const] },
   stat: {
-    fontFamily: "Sora_600SemiBold",
-    fontSize: 34,
-    lineHeight: 38,
+    fontFamily: "Sora_400Regular",
+    fontSize: 36,
+    lineHeight: 40,
     fontVariant: ["tabular-nums" as const],
   },
   statSm: {
-    fontFamily: "Sora_600SemiBold",
+    fontFamily: "Sora_400Regular",
     fontSize: 24,
     lineHeight: 28,
     fontVariant: ["tabular-nums" as const],
   },
-  heading: { fontFamily: "Inter_600SemiBold", fontSize: 17, lineHeight: 22, fontVariant: ["tabular-nums" as const] },
+  heading: { fontFamily: "Inter_400Regular", fontSize: 17, lineHeight: 22, fontVariant: ["tabular-nums" as const] },
   body: { fontFamily: "Inter_400Regular", fontSize: 15, lineHeight: 22, fontVariant: ["tabular-nums" as const] },
-  control: { fontFamily: "Inter_500Medium", fontSize: 14, lineHeight: 20, fontVariant: ["tabular-nums" as const] }, // chips, buttons, toggles: sentence case
+  control: { fontFamily: "Inter_500Medium", fontSize: 14, lineHeight: 20, fontVariant: ["tabular-nums" as const] },
   label: {
     fontFamily: "Inter_500Medium",
-    fontSize: 11,
-    lineHeight: 16,
-    letterSpacing: 2.2,
+    fontSize: 10,
+    lineHeight: 14,
+    letterSpacing: 2.5,
     fontVariant: ["tabular-nums" as const],
     textTransform: "uppercase" as const,
   },
@@ -106,7 +115,7 @@ export const type = {
 };
 
 export const motion = {
-  duration: { fast: 120, base: 200, slow: 320, celebrate: 900 }, // ms
+  duration: { fast: 120, base: 200, slow: 320, celebrate: 900 },
   easing: {
     standard: [0.2, 0, 0, 1],
     enter: [0, 0, 0, 1],
@@ -117,19 +126,13 @@ export const motion = {
   pressSpring: { damping: 15, stiffness: 300, scale: 0.96 },
 };
 
-// Grade band colours — one source of truth used by pills, stripes, charts
 export const gradeBands = [
-  // Band 0: Beginner V0-V2 — blue-grey soft
   { bg: '#E8EAF0', text: '#3D4166', solid: '#7C85C4', label: 'Beginner' },
-  // Band 1: Intermediate V3-V5 — green soft
   { bg: '#DDF1D3', text: '#1F6B3A', solid: '#3BA462', label: 'Intermediate' },
-  // Band 2: Advanced V6-V8 — amber/rose soft
   { bg: '#FEF0D8', text: '#9B5B00', solid: '#E07A00', label: 'Advanced' },
-  // Band 3: Expert V9+ — purple soft
   { bg: '#ECE8FB', text: '#5440B5', solid: '#6A52D1', label: 'Expert' },
 ] as const;
 
-// Returns the band object for a given grade index
 export function gradeBand(gradeIndex: number): typeof gradeBands[number] {
   if (gradeIndex <= 2) return gradeBands[0];
   if (gradeIndex <= 5) return gradeBands[1];

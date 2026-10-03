@@ -1,7 +1,9 @@
 import React from 'react';
 import { View, Text } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../../theme/useTheme';
 import { Card } from './Card';
+import { GlowBackdrop } from './GlowBackdrop';
 
 export interface VolumeChartProps {
   data: { weekLabel: string; climbs: number; isCurrent: boolean }[];
@@ -36,25 +38,37 @@ export function VolumeChart({ data, onPress }: VolumeChartProps) {
         Weekly volume
       </Text>
 
-      <View style={{ flexDirection: 'row', alignItems: 'flex-end', height: MAX_BAR_HEIGHT + 24 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'flex-end', height: MAX_BAR_HEIGHT + 24, borderBottomWidth: 1, borderBottomColor: colors.materialBorder }}>
         {data.map((item, i) => {
           const h = item.climbs === 0 ? 2 : (item.climbs / maxClimbs) * MAX_BAR_HEIGHT;
           return (
             <View key={i} style={{ flex: 1, alignItems: 'center', marginLeft: i === 0 ? 0 : space.xs }}>
               <View style={{ height: MAX_BAR_HEIGHT, width: '100%', justifyContent: 'flex-end', alignItems: 'center' }}>
                 {item.isCurrent && item.climbs > 0 && (
-                  <Text style={[type.caption, { color: colors.text, marginBottom: space.xs }]}>
+                  <Text style={[type.caption, { color: colors.textWhitePrimary, marginBottom: space.xs }]}>
                     {item.climbs}
                   </Text>
                 )}
-                <View style={{
-                  height: h,
-                  width: '80%',
-                  backgroundColor: item.isCurrent ? colors.accent : colors.cardMuted,
-                  borderRadius: radius.sm,
-                }} />
+                {item.isCurrent ? (
+                  <View style={{ height: h, width: 4, borderRadius: radius.sm }}>
+                    <GlowBackdrop spread={8} />
+                    <LinearGradient
+                      colors={[colors.accent, colors.accentPressed, 'transparent']}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 0, y: 1 }}
+                      style={{ flex: 1, borderRadius: radius.sm }}
+                    />
+                  </View>
+                ) : (
+                  <View style={{
+                    height: h,
+                    width: 4,
+                    backgroundColor: colors.textWhiteMuted,
+                    borderRadius: radius.sm,
+                  }} />
+                )}
               </View>
-              <Text numberOfLines={1} style={[type.caption, { color: colors.textMuted, marginTop: space.sm, fontSize: 10 }]}>
+              <Text numberOfLines={1} style={[type.caption, { color: colors.textWhiteSecondary, marginTop: space.sm, fontSize: 10 }]}>
                 {i % 2 === 1 || item.isCurrent ? item.weekLabel : ''}
               </Text>
             </View>

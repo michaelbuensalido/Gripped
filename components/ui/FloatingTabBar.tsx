@@ -97,7 +97,7 @@ function CenterSessionButton({ activeSession, startOrResume, onOpenStartSheet }:
             <Text style={{ color: colors.textOnAccent, fontSize: 13, fontWeight: '700', fontFamily: type.heading.fontFamily }}>{displayTime}</Text>
           </View>
         ) : (
-          <Plus size={24} color={colors.textOnAccent} strokeWidth={2.5} />
+          <Plus size={24} color={colors.textOnAccent} strokeWidth={1.5} />
         )}
       </TouchableOpacity>
       <Text 
@@ -198,8 +198,12 @@ export function FloatingTabBar({ state, descriptors, navigation }: any) {
                   flexDirection: 'column', alignItems: 'center',
                   backgroundColor: isFocused ? colors.accentSoft : 'transparent',
                   paddingHorizontal: 8, paddingVertical: 6, borderRadius: radius.pill, minWidth: 54,
+                  shadowColor: isFocused ? colors.accent : 'transparent',
+                  shadowOffset: { width: 0, height: 0 },
+                  shadowOpacity: isFocused ? 0.3 : 0,
+                  shadowRadius: 8,
                 }}>
-                  <IconComponent size={20} color={isFocused ? colors.accentText : colors.textMuted} strokeWidth={isFocused ? 2.5 : 2} />
+                  <IconComponent size={20} color={isFocused ? colors.accentText : colors.textMuted} strokeWidth={1.5} />
                   <Text numberOfLines={1} adjustsFontSizeToFit style={{ color: isFocused ? colors.accentText : colors.textMuted, fontFamily: type.heading.fontFamily, fontSize: 11, fontWeight: isFocused ? '600' : '500', marginTop: 2 }}>
                     {label}
                   </Text>

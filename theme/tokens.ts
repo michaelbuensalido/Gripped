@@ -1,32 +1,32 @@
 export const colors = {
   // Surfaces: separated by tone and a hairline border, not by shadow
-  bg: "#101014",
-  bgTexture: "#101014",
-  card: "#1A1A20",
-  cardMuted: "#22222A", // inset tiles, inputs, unselected chips
-  border: "rgba(255, 255, 255, 0.07)",
+  bg: "#000000",
+  bgTexture: "#000000",
+  card: "#121214",
+  cardMuted: "#18181A", // inset tiles, inputs, unselected chips
+  border: "transparent",
 
   // Text
-  text: "#F2F3F7",
-  textMuted: "#9A9AA8",
+  text: "#FFFFFF",
+  textMuted: "rgba(255, 255, 255, 0.40)",
   textOnAccent: "#FFFFFF",
 
-  // Accent: purple means "do this" (primary action), "you are here" (active), or "Top" (a result)
-  accent: "#7059DB", // filled buttons and the centre Start button (white text)
-  accentPressed: "#5F49C4",
-  accentSoft: "#2D2B3E", // selected chip, active tab capsule, tinted card
-  accentText: "#A596F5", // links, active icons, text on accentSoft
+  // Accent: Primary Neon Violet
+  accent: "#A872FF",
+  accentPressed: "#894CE0",
+  accentSoft: "rgba(168, 114, 255, 0.15)", // selected chip, active tab capsule
+  accentText: "#E0CCFF",
 
-  // Results (fills for chart segments and dots; text uses *Text; always with a text label)
-  flash: "#5ED16B",
-  flashSoft: "#25372C",
-  flashText: "#8BE59A",
-  top: "#8B7CF6",
-  topSoft: "#2C2A42",
-  topText: "#A596F5",
-  attempt: "#B8A66A",
-  attemptSoft: "#33302C",
-  attemptText: "#D9C99A",
+  // Results: Secondary Neon Green
+  flash: "#72FF9B",
+  flashSoft: "rgba(114, 255, 155, 0.15)",
+  flashText: "#B5FFCB",
+  top: "#A872FF",
+  topSoft: "rgba(168, 114, 255, 0.15)",
+  topText: "#E0CCFF",
+  attempt: "#E6D485",
+  attemptSoft: "rgba(230, 212, 133, 0.15)",
+  attemptText: "#F0E3B3",
   fail: "#7A7987",
   failSoft: "#292930",
   failText: "#B4B3C0",
@@ -45,21 +45,31 @@ export const colors = {
   bandExpertText: "#E59BDB",
   bandExpert: "#D473C8",
 
-  // Feedback (red is reserved for destructive actions and errors)
-  danger: "#E5483B",
-  dangerSoft: "#3A2124",
-  dangerText: "#FF8A80",
-  success: "#5ED16B",
+  // Feedback
+  danger: "#FF4D4D",
+  dangerSoft: "rgba(255, 77, 77, 0.15)",
+  dangerText: "#FF9999",
+  success: "#72FF9B",
 
   // Overlay
-  scrim: "rgba(0, 0, 0, 0.55)",
-  glass: "rgba(26, 26, 32, 0.85)", // Android fallback for the frosted tab bar (no real blur)
+  scrim: "rgba(0, 0, 0, 0.75)",
+  glass: "rgba(0, 0, 0, 0.85)",
 
-  // Depth (v3.0): 3D bevel on cards, hairline glass edge, achievement glow
-  bevelHighlight: "rgba(255, 255, 255, 0.10)", // lit top edge
-  bevelShadow: "rgba(0, 0, 0, 0.50)", // shaded bottom edge
-  glassBorder: "rgba(255, 255, 255, 0.10)", // ultra-thin edge on frosted surfaces
-  glow: "rgba(139, 124, 246, 0.15)", // radial glow behind high-value metrics (top lavender at 15%)
+  // Depth (v3.0)
+  bevelHighlight: "transparent",
+  bevelShadow: "transparent",
+  glassBorder: "transparent",
+  glow: "rgba(168, 114, 255, 0.25)",
+
+  // Translucent Materials (v4.0 Spatial Editorial)
+  materialBase: "rgba(255, 255, 255, 0.04)",
+  materialBorder: "transparent",
+  materialHighlight: "transparent",
+
+  // Translucent Typography
+  textWhitePrimary: "#FFFFFF",
+  textWhiteSecondary: "rgba(255, 255, 255, 0.50)",
+  textWhiteMuted: "rgba(255, 255, 255, 0.40)",
 };
 
 export const radius = { sm: 10, md: 16, lg: 22, xl: 28, pill: 999 };
@@ -86,37 +96,36 @@ export const shadow = {
 
 export const type = {
   display: {
-    fontFamily: "Sora_600SemiBold",
-    fontSize: 32,
-    lineHeight: 38,
+    fontFamily: "Sora_400Regular",
+    fontSize: 36,
+    lineHeight: 42,
     letterSpacing: -0.5,
     fontVariant: ["tabular-nums" as const],
   },
-  title: { fontFamily: "Sora_600SemiBold", fontSize: 22, lineHeight: 28, fontVariant: ["tabular-nums" as const] },
+  title: { fontFamily: "Sora_400Regular", fontSize: 22, lineHeight: 28, fontVariant: ["tabular-nums" as const] },
   stat: {
-    fontFamily: "Sora_600SemiBold",
-    fontSize: 34,
-    lineHeight: 38,
+    fontFamily: "Sora_400Regular",
+    fontSize: 36,
+    lineHeight: 40,
     fontVariant: ["tabular-nums" as const],
   },
   statSm: {
-    fontFamily: "Sora_600SemiBold",
+    fontFamily: "Sora_400Regular",
     fontSize: 24,
     lineHeight: 28,
     fontVariant: ["tabular-nums" as const],
   },
-  heading: { fontFamily: "Inter_600SemiBold", fontSize: 17, lineHeight: 22, fontVariant: ["tabular-nums" as const] },
+  heading: { fontFamily: "Inter_400Regular", fontSize: 17, lineHeight: 22, fontVariant: ["tabular-nums" as const] },
   body: { fontFamily: "Inter_400Regular", fontSize: 15, lineHeight: 22, fontVariant: ["tabular-nums" as const] },
-  control: { fontFamily: "Inter_500Medium", fontSize: 14, lineHeight: 20, fontVariant: ["tabular-nums" as const] }, // chips, buttons, toggles: sentence case
-  // Micro-label (v3.0): "SESSIONS", "TODAY". Medium weight, 0.2em tracking (11 * 0.2 = 2.2).
+  control: { fontFamily: "Inter_500Medium", fontSize: 14, lineHeight: 20, fontVariant: ["tabular-nums" as const] },
   label: {
     fontFamily: "Inter_500Medium",
-    fontSize: 11,
-    lineHeight: 16,
-    letterSpacing: 2.2,
+    fontSize: 10,
+    lineHeight: 14,
+    letterSpacing: 2.5,
     fontVariant: ["tabular-nums" as const],
     textTransform: "uppercase" as const,
-  }, // section and stat labels only
+  },
   caption: { fontFamily: "Inter_400Regular", fontSize: 12, lineHeight: 16, fontVariant: ["tabular-nums" as const] },
 };
 

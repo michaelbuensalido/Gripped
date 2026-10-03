@@ -39,7 +39,7 @@ export function StatTile({ value, label, trend, flex, icon, tintBg, style }: Sta
           style={[
             type.stat,
             {
-              color: colors.text,
+              color: colors.textWhitePrimary,
               fontSize: 28,
               lineHeight: 34,
               fontVariant: ['tabular-nums'],
@@ -52,7 +52,7 @@ export function StatTile({ value, label, trend, flex, icon, tintBg, style }: Sta
           style={[
             type.stat,
             {
-              color: colors.text,
+              color: colors.textWhitePrimary,
               fontSize: 28,
               lineHeight: 34,
               fontVariant: ['tabular-nums'],
@@ -70,7 +70,7 @@ export function StatTile({ value, label, trend, flex, icon, tintBg, style }: Sta
         style={[
           type.label,
           {
-            color: colors.textMuted,
+            color: colors.textWhiteSecondary,
           },
         ]}
         numberOfLines={1}

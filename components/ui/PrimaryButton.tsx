@@ -77,7 +77,7 @@ export function PrimaryButton({
           backgroundColor: isDisabled ? colors.cardMuted : colors.accent,
           height: 56,
           minHeight: 56,
-          borderRadius: radius.md,
+          borderRadius: radius.pill,
           flexDirection: 'row',
           alignItems: 'center',
           justifyContent: 'center',

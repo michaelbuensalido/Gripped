@@ -13,16 +13,12 @@ export function Card({ children, variant = 'default', onPress, style, ...props }
   const { colors, radius, space, shadow } = useTheme();
   const scaleAnim = useRef(new Animated.Value(1)).current;
 
-  // 3D bevel (v3.0): the card looks extruded. Lit top edge, shaded bottom edge,
-  // hairline sides, then a soft outer shadow. Inset (muted) tiles skip the shadow.
+  // Borderless ghost cards (v4.0): translucent backgrounds floating on soft shadows.
   const baseStyle: ViewStyle = {
     borderRadius: radius.lg,
     padding: space.lg,
-    backgroundColor: variant === 'muted' ? colors.cardMuted : colors.card,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderTopColor: colors.bevelHighlight,
-    borderBottomColor: colors.bevelShadow,
+    backgroundColor: variant === 'muted' ? colors.cardMuted : colors.materialBase,
+    borderWidth: 0,
     ...(variant === 'muted' ? {} : shadow.card),
   };
 

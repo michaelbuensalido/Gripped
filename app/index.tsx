@@ -120,7 +120,7 @@ export default function HomeScreen() {
         marginBottom: space.xl,
       }}>
         <View style={{ flex: 1 }}>
-          <Text style={[type.title, { color: colors.text }]}>
+          <Text style={[type.title, { color: colors.textWhitePrimary }]}>
             Keep climbing, Climber
           </Text>
           {data.hardest30d && (
@@ -147,7 +147,7 @@ export default function HomeScreen() {
           accessibilityLabel="Settings"
           accessibilityRole="button"
         >
-          <SettingsIcon size={20} color={colors.textMuted} />
+          <SettingsIcon size={20} color={colors.textWhiteSecondary} />
         </TouchableOpacity>
       </View>
 
@@ -198,7 +198,7 @@ export default function HomeScreen() {
       {/* First-time user: stop here */}
       {!data.hasAnyData ? (
         <View style={{ marginTop: space.lg, paddingBottom: space.xxl }}>
-          <Text style={[type.body, { color: colors.textMuted, textAlign: 'center' }]}>
+          <Text style={[type.body, { color: colors.textWhiteSecondary, textAlign: 'center' }]}>
             Start your first session to see your stats, streaks and progress here.
           </Text>
         </View>
@@ -241,10 +241,10 @@ export default function HomeScreen() {
                 <Trophy size={20} color={colors.accentText} />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={[type.heading, { color: colors.text }]}>
+                <Text style={[type.heading, { color: colors.textWhitePrimary }]}>
                   New best: {data.personalBest.gradeRaw}
                 </Text>
-                <Text style={[type.caption, { color: colors.textMuted }]}>
+                <Text style={[type.caption, { color: colors.textWhiteSecondary }]}>
                   {data.personalBest.daysAgo === 0
                     ? 'Today'
                     : data.personalBest.daysAgo === 1
@@ -284,10 +284,10 @@ export default function HomeScreen() {
                     }}>
                       <Plus size={22} color={colors.accentText} />
                     </View>
-                    <Text style={[type.heading, { color: colors.text, marginBottom: space.xs }]}>
+                    <Text style={[type.heading, { color: colors.textWhitePrimary, marginBottom: space.xs }]}>
                       Add a project
                     </Text>
-                    <Text style={[type.caption, { color: colors.textMuted }]}>
+                    <Text style={[type.caption, { color: colors.textWhiteSecondary }]}>
                       Track a climb you're working on
                     </Text>
                   </Card>
