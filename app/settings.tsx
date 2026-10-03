@@ -2,48 +2,57 @@ import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
-  ScrollView,
   TouchableOpacity,
   Switch,
   TextInput,
   Alert,
 } from 'react-native';
+import Reanimated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Settings, Clock, Trash2, Info, ArrowLeft } from 'lucide-react-native';
+import { ChevronLeft, Trash2 } from 'lucide-react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { seedDemoData } from '../db/seed';
 import { clearAllSessionData } from '../db/queries';
-import { FLOATING_CARD_STYLE, THEME_COLORS } from '../constants/theme';
-import { ScreenContainer } from '../components/ui/ScreenContainer';
+import { useTheme } from '../theme/useTheme';
+import { Card } from '../components/ui/Card';
+import { SectionHeader } from '../components/ui/SectionHeader';
+import { PrimaryButton } from '../components/ui/PrimaryButton';
 import { getHapticsEnabled, setHapticsEnabled, HAPTICS_STORAGE_KEY } from '../utils/haptics';
 import { useCelebrationStore } from '../store/celebrationStore';
+import { triggerHaptic } from '../utils/haptics';
 
 const REST_TIMER_KEY = '@cruxlog/rest_timer_seconds';
 const DEFAULT_REST = 90;
-
-function SectionHeader({ label }: { label: string }) {
-  return (
-    <Text className="text-[#9090A0] text-[11px] font-bold uppercase tracking-[1.2px] px-4 mt-6 mb-2.5">
-      {label}
-    </Text>
-  );
-}
 
 function SettingsRow({
   label,
   sublabel,
   right,
+  isLast,
 }: {
   label: string;
   sublabel?: string;
   right?: React.ReactNode;
+  isLast?: boolean;
 }) {
+  const { colors, type, space } = useTheme();
   return (
-    <View className="flex-row items-center justify-between px-4 py-4 border-b border-[#27272F]/60">
-      <View className="flex-1 mr-4">
-        <Text className="text-white font-semibold">{label}</Text>
-        {sublabel ? <Text className="text-[#9A9AA6] text-xs mt-0.5">{sublabel}</Text> : null}
+    <View
+      style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingVertical: space.md,
+        borderBottomWidth: isLast ? 0 : 1,
+        borderBottomColor: colors.border,
+      }}
+    >
+      <View style={{ flex: 1, marginRight: space.md }}>
+        <Text style={[type.heading, { color: colors.text }]}>{label}</Text>
+        {sublabel ? (
+          <Text style={[type.caption, { color: colors.textMuted, marginTop: 2 }]}>{sublabel}</Text>
+        ) : null}
       </View>
       {right}
     </View>
@@ -53,6 +62,8 @@ function SettingsRow({
 export default function SettingsScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { colors, type, space, radius } = useTheme();
+
   const [restSeconds, setRestSeconds] = useState(DEFAULT_REST);
   const [restInput, setRestInput] = useState(String(DEFAULT_REST));
   const [haptics, setHaptics] = useState(getHapticsEnabled());
@@ -81,6 +92,7 @@ export default function SettingsScreen() {
   const handleToggleHaptics = useCallback((val: boolean) => {
     setHaptics(val);
     setHapticsEnabled(val);
+    if (val) triggerHaptic('light');
   }, []);
 
   const saveRestTimer = useCallback((value: string) => {
@@ -96,7 +108,7 @@ export default function SettingsScreen() {
   const handleClearData = useCallback(() => {
     Alert.alert(
       'Clear All Data?',
-      'This will permanently delete all sessions, sets, and logs. This cannot be undone.',
+      'This will permanently delete all sessions, climbs, and projects. This cannot be undone.',
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -104,6 +116,7 @@ export default function SettingsScreen() {
           style: 'destructive',
           onPress: () => {
             try {
+              triggerHaptic('heavy');
               clearAllSessionData();
               Alert.alert('Done', 'All data has been cleared.');
             } catch (e) {
@@ -118,179 +131,240 @@ export default function SettingsScreen() {
   const REST_PRESETS = [60, 90, 120, 180];
 
   return (
-    <ScreenContainer>
-      <ScrollView
-        className="flex-1"
-        contentContainerStyle={{ paddingBottom: 120 }}
+    <View style={{ flex: 1, backgroundColor: colors.bg }}>
+      {/* Header */}
+      <View
+        style={{
+          paddingTop: Math.max(insets.top, space.lg),
+          paddingHorizontal: space.lg,
+          paddingBottom: space.md,
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: space.md,
+        }}
+      >
+        <TouchableOpacity
+          onPress={() => router.back()}
+          accessibilityRole="button"
+          accessibilityLabel="Back"
+          style={{
+            width: 48,
+            height: 48,
+            borderRadius: radius.md,
+            backgroundColor: colors.card,
+            borderWidth: 1,
+            borderColor: colors.border,
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <ChevronLeft size={24} color={colors.text} />
+        </TouchableOpacity>
+        <View style={{ flex: 1 }}>
+          <Text style={[type.title, { color: colors.text }]}>Settings</Text>
+        </View>
+      </View>
+
+      <Reanimated.ScrollView
+        contentContainerStyle={{
+          paddingHorizontal: space.lg,
+          paddingBottom: 140,
+          gap: space.xl,
+        }}
         showsVerticalScrollIndicator={false}
       >
-        {/* Header */}
-        <View className="px-4 pt-3 pb-2">
-          <View className="flex-row items-center gap-3 mb-1">
+        {/* Rest Timer */}
+        <View>
+          <SectionHeader title="Rest Timer" />
+          <Card>
+            <SettingsRow
+              label="Default Rest Duration"
+              sublabel="Seconds between climbs (10–600)"
+              right={
+                <TextInput
+                  value={restInput}
+                  onChangeText={setRestInput}
+                  onBlur={() => saveRestTimer(restInput)}
+                  onSubmitEditing={() => saveRestTimer(restInput)}
+                  keyboardType="numeric"
+                  returnKeyType="done"
+                  style={[
+                    type.statSm,
+                    {
+                      color: colors.accentText,
+                      backgroundColor: colors.cardMuted,
+                      borderRadius: radius.sm,
+                      borderWidth: 1,
+                      borderColor: colors.border,
+                      paddingHorizontal: space.sm,
+                      paddingVertical: 6,
+                      minHeight: 44,
+                      minWidth: 64,
+                      textAlign: 'center',
+                    },
+                  ]}
+                />
+              }
+            />
+
+            {/* Presets */}
+            <View style={{ flexDirection: 'row', gap: space.sm, paddingTop: space.md }}>
+              {REST_PRESETS.map((s) => {
+                const isSelected = restSeconds === s;
+                return (
+                  <TouchableOpacity
+                    key={s}
+                    onPress={() => {
+                      triggerHaptic('light');
+                      setRestSeconds(s);
+                      setRestInput(String(s));
+                      AsyncStorage.setItem(REST_TIMER_KEY, String(s));
+                    }}
+                    style={{
+                      flex: 1,
+                      height: 56,
+                      minHeight: 56,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      backgroundColor: isSelected ? colors.accentSoft : colors.cardMuted,
+                      borderRadius: radius.md,
+                      borderWidth: 1,
+                      borderColor: isSelected ? colors.accent : colors.border,
+                    }}
+                  >
+                    <Text
+                      style={[
+                        type.heading,
+                        {
+                          color: isSelected ? colors.accentText : colors.textMuted,
+                          fontSize: 15,
+                        },
+                      ]}
+                    >
+                      {s}s
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </Card>
+        </View>
+
+        {/* Feedback & Celebrations */}
+        <View>
+          <SectionHeader title="Feedback & Celebrations" />
+          <Card>
+            <SettingsRow
+              label="Haptic Feedback"
+              sublabel="Vibration cues during logging"
+              right={
+                <Switch
+                  value={haptics}
+                  onValueChange={handleToggleHaptics}
+                  trackColor={{ false: colors.cardMuted, true: colors.accent }}
+                  thumbColor={colors.textOnAccent}
+                />
+              }
+            />
+            <SettingsRow
+              label="Celebrations & Animations"
+              sublabel="Visual effects for flashes & topped projects"
+              isLast
+              right={
+                <Switch
+                  value={celebrationsEnabled}
+                  onValueChange={setCelebrationsEnabled}
+                  trackColor={{ false: colors.cardMuted, true: colors.accent }}
+                  thumbColor={colors.textOnAccent}
+                />
+              }
+            />
+          </Card>
+        </View>
+
+        {/* About */}
+        <View>
+          <SectionHeader title="About" />
+          <Card>
+            <SettingsRow
+              label="Grade System"
+              sublabel="V-Scale (Hueco) with Font mapping"
+              right={<Text style={[type.body, { color: colors.textMuted }]}>V0 – V16</Text>}
+            />
+            <SettingsRow
+              label="Storage"
+              sublabel="Offline-first SQLite local store"
+              isLast
+              right={<Text style={[type.body, { color: colors.flashText }]}>Local</Text>}
+            />
+          </Card>
+        </View>
+
+        {/* Data Tools */}
+        <View>
+          <SectionHeader title="Data Management" />
+          <Card>
             <TouchableOpacity
-              onPress={() => router.back()}
+              onPress={handleClearData}
               activeOpacity={0.7}
               style={{
-                width: 40,
-                height: 40,
-                borderRadius: 20,
-                backgroundColor: THEME_COLORS.cardSurface,
-                borderColor: THEME_COLORS.cardBorder,
-                borderTopColor: 'rgba(255, 255, 255, 0.14)',
-                borderWidth: 1,
+                flexDirection: 'row',
                 alignItems: 'center',
-                justifyContent: 'center',
+                gap: space.md,
+                paddingVertical: space.sm,
               }}
             >
-              <ArrowLeft size={20} color="#FFFFFF" />
-            </TouchableOpacity>
-            <View className="flex-1">
-              <Text className="text-white text-3xl font-black tracking-tight">Settings</Text>
-            </View>
-          </View>
-          <Text className="text-[#9A9AA6] text-sm ml-13">Configure preferences and manage data</Text>
-        </View>
-
-      {/* Timer section */}
-      <SectionHeader label="Rest Timer" />
-      <View style={FLOATING_CARD_STYLE} className="rounded-2xl mx-4 overflow-hidden">
-        <SettingsRow
-          label="Default Rest Duration"
-          sublabel="Seconds between sets (10–600)"
-          right={
-            <TextInput
-              value={restInput}
-              onChangeText={setRestInput}
-              onBlur={() => saveRestTimer(restInput)}
-              onSubmitEditing={() => saveRestTimer(restInput)}
-              keyboardType="numeric"
-              returnKeyType="done"
-              className="font-bold text-right text-base w-14"
-              style={{ color: '#8E7CFF' }}
-            />
-          }
-        />
-        {/* Preset pills */}
-        <View className="px-4 py-3 flex-row gap-2">
-          {REST_PRESETS.map((s) => (
-            <TouchableOpacity
-              key={s}
-              onPress={() => {
-                setRestSeconds(s);
-                setRestInput(String(s));
-                AsyncStorage.setItem(REST_TIMER_KEY, String(s));
-              }}
-              activeOpacity={0.75}
-              style={{
-                backgroundColor: restSeconds === s ? '#8E7CFF' : THEME_COLORS.cardSurface,
-                borderColor: restSeconds === s ? '#8E7CFF' : THEME_COLORS.cardBorder,
-                borderTopColor: restSeconds === s ? '#8E7CFF' : 'rgba(255, 255, 255, 0.14)',
-                borderWidth: 1,
-              }}
-              className="px-3 py-1.5 rounded-full"
-            >
-              <Text className={`text-sm font-bold ${restSeconds === s ? 'text-white' : 'text-[#9A9AA6]'}`}>
-                {s}s
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-      </View>
-
-      {/* Feedback section */}
-      <SectionHeader label="Feedback" />
-      <View style={FLOATING_CARD_STYLE} className="rounded-2xl mx-4 overflow-hidden">
-        <SettingsRow
-          label="Haptic Feedback"
-          sublabel="Vibrate on grade/outcome changes"
-          right={
-            <Switch
-              value={haptics}
-              onValueChange={handleToggleHaptics}
-              trackColor={{ false: '#333339', true: '#8E7CFF' }}
-              thumbColor="#FFFFFF"
-            />
-          }
-        />
-        <SettingsRow
-          label="Celebrations and animations"
-          sublabel="Visual effects for flashes & sends"
-          right={
-            <Switch
-              value={celebrationsEnabled}
-              onValueChange={setCelebrationsEnabled}
-              trackColor={{ false: '#333339', true: '#8E7CFF' }}
-              thumbColor="#FFFFFF"
-            />
-          }
-        />
-      </View>
-
-      {/* About section */}
-      <SectionHeader label="About" />
-      <View style={FLOATING_CARD_STYLE} className="rounded-2xl mx-4 overflow-hidden">
-        <SettingsRow label="CruxLog" sublabel="Indoor bouldering tracker" right={
-          <Text className="text-muted text-sm">v1.0</Text>
-        } />
-        <SettingsRow label="Grade System" sublabel="V-Scale (Hueco)" right={
-          <Text className="text-secondary text-sm">V0 – V13</Text>
-        } />
-      </View>
-
-      {/* Danger zone */}
-      <SectionHeader label="Data" />
-      <View style={FLOATING_CARD_STYLE} className="rounded-2xl mx-4 overflow-hidden">
-        <TouchableOpacity
-          onPress={handleClearData}
-          activeOpacity={0.8}
-          className="flex-row items-center gap-3 px-4 py-4"
-        >
-          <Trash2 size={18} color="#EF4444" />
-          <View>
-            <Text className="text-red-400 font-semibold">Clear All Session Data</Text>
-            <Text className="text-muted text-xs mt-0.5">Permanently deletes all logs</Text>
-          </View>
-        </TouchableOpacity>
-      </View>
-{__DEV__ && (
-        <>
-          <SectionHeader label="Developer" />
-          <View style={FLOATING_CARD_STYLE} className="rounded-2xl mx-4 overflow-hidden">
-            <TouchableOpacity
-              onPress={() => {
-                Alert.alert(
-                  'Seed Demo Data',
-                  'This will permanently delete ALL local data first. Are you sure?',
-                  [
-                    { text: 'Cancel', style: 'cancel' },
-                    {
-                      text: 'Wipe & Seed',
-                      style: 'destructive',
-                      onPress: () => {
-                        try {
-                          seedDemoData();
-                          Alert.alert('Done', 'Demo data has been seeded.');
-                        } catch (e) {
-                          Alert.alert('Error', 'Could not seed demo data.');
-                          console.error(e);
-                        }
-                      }
-                    }
-                  ]
-                );
-              }}
-              activeOpacity={0.8}
-              className="flex-row items-center gap-3 px-4 py-4"
-            >
-              <View>
-                <Text className="text-white font-semibold">Reset and seed demo data</Text>
-                <Text className="text-muted text-xs mt-0.5">Wipes local DB and writes 10 weeks of history</Text>
+              <View
+                style={{
+                  width: 44,
+                  height: 44,
+                  borderRadius: radius.md,
+                  backgroundColor: colors.dangerSoft,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <Trash2 size={20} color={colors.dangerText} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[type.heading, { color: colors.dangerText }]}>Clear All Session Data</Text>
+                <Text style={[type.caption, { color: colors.textMuted, marginTop: 2 }]}>
+                  Permanently deletes all logs and sessions
+                </Text>
               </View>
             </TouchableOpacity>
-          </View>
-        </>
-      )}
-    </ScrollView>
-  </ScreenContainer>
+
+            {__DEV__ && (
+              <View style={{ marginTop: space.lg, borderTopWidth: 1, borderTopColor: colors.border, paddingTop: space.md }}>
+                <PrimaryButton
+                  label="RESET & SEED DEMO DATA"
+                  onPress={() => {
+                    Alert.alert(
+                      'Seed Demo Data',
+                      'This will delete existing data and populate 10 weeks of realistic climbing history. Proceed?',
+                      [
+                        { text: 'Cancel', style: 'cancel' },
+                        {
+                          text: 'Seed Data',
+                          style: 'destructive',
+                          onPress: () => {
+                            try {
+                              seedDemoData();
+                              Alert.alert('Success', 'Demo climbing data seeded.');
+                            } catch (e) {
+                              Alert.alert('Error', 'Could not seed demo data.');
+                            }
+                          },
+                        },
+                      ]
+                    );
+                  }}
+                />
+              </View>
+            )}
+          </Card>
+        </View>
+      </Reanimated.ScrollView>
+    </View>
   );
 }

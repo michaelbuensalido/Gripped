@@ -1,7 +1,8 @@
 import React, { useRef } from 'react';
-import { StyleSheet, Text, View, TouchableOpacity, Platform } from 'react-native';
+import { StyleSheet, Text, View, TouchableOpacity } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { Zap, Flame } from 'lucide-react-native';
+import { useTheme } from '../../theme/useTheme';
 
 interface LoggerControlsProps {
   onAttempt: () => void;
@@ -9,9 +10,8 @@ interface LoggerControlsProps {
 }
 
 // ─── Attempt Block ─────────────────────────────────────────────────────────────
-// Triggers on: Tap or Long Press
-// Haptic: Heavy Impact
 function AttemptBlock({ onAttempt }: { onAttempt: () => void }) {
+  const { colors, type, radius } = useTheme();
   const fired = useRef(false);
 
   const fire = () => {
@@ -32,25 +32,39 @@ function AttemptBlock({ onAttempt }: { onAttempt: () => void }) {
       onPress={fire}
       onLongPress={fire}
       delayLongPress={300}
-      style={styles.attemptBlock}
+      style={{
+        flex: 1,
+        minHeight: 72,
+        backgroundColor: colors.attemptSoft,
+        borderRadius: radius.md,
+        borderWidth: 1,
+        borderColor: colors.border,
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 12,
+        paddingHorizontal: 12,
+        gap: 2,
+      }}
       accessible
       accessibilityRole="button"
       accessibilityLabel="Log Attempt (Burn)"
     >
-      <View style={styles.hintRow}>
-        <Flame size={12} color="#FF5C5C" strokeWidth={2.5} />
-        <Text style={styles.swipeHint}>TAP TO LOG</Text>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 2 }}>
+        <Flame size={14} color={colors.attemptText} strokeWidth={2.5} />
+        <Text style={[type.label, { color: colors.attemptText }]}>
+          +1 ATTEMPT
+        </Text>
       </View>
-      <Text style={styles.attemptLabel}>BURN</Text>
-      <Text style={styles.attemptSub}>+1 attempt</Text>
+      <Text style={[type.statSm, { color: colors.attemptText, letterSpacing: 2 }]}>
+        BURN
+      </Text>
     </TouchableOpacity>
   );
 }
 
 // ─── Send Block ────────────────────────────────────────────────────────────────
-// Triggers on: Tap or Long Press
-// Haptic: Success Notification
 function SendBlock({ onSend }: { onSend: () => void }) {
+  const { colors, type, radius } = useTheme();
   const fired = useRef(false);
 
   const fire = () => {
@@ -71,117 +85,43 @@ function SendBlock({ onSend }: { onSend: () => void }) {
       onPress={fire}
       onLongPress={fire}
       delayLongPress={300}
-      style={styles.sendBlock}
+      style={{
+        flex: 1,
+        minHeight: 72,
+        backgroundColor: colors.accentSoft,
+        borderRadius: radius.md,
+        borderWidth: 1,
+        borderColor: colors.border,
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 12,
+        paddingHorizontal: 12,
+        gap: 2,
+      }}
       accessible
       accessibilityRole="button"
       accessibilityLabel="Log Send (Top-Out)"
     >
-      <View style={styles.hintRow}>
-        <Zap size={12} color="#8E7CFF" strokeWidth={2.5} />
-        <Text style={styles.swipeHintSend}>TAP TO TOP</Text>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 2 }}>
+        <Zap size={14} color={colors.accentText} strokeWidth={2.5} />
+        <Text style={[type.label, { color: colors.accentText }]}>
+          TOP-OUT
+        </Text>
       </View>
-      <Text style={styles.sendLabel}>SEND</Text>
-      <Text style={styles.sendSub}>top-out</Text>
+      <Text style={[type.statSm, { color: colors.accentText, letterSpacing: 2 }]}>
+        SEND
+      </Text>
     </TouchableOpacity>
   );
 }
 
 // ─── Compound Export ───────────────────────────────────────────────────────────
 export function LoggerControls({ onAttempt, onSend }: LoggerControlsProps) {
+  const { space } = useTheme();
   return (
-    <View style={styles.root}>
+    <View style={{ flexDirection: 'row', gap: space.sm }}>
       <AttemptBlock onAttempt={onAttempt} />
-      <View style={styles.divider} />
       <SendBlock onSend={onSend} />
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  root: {
-    flexDirection: 'row',
-    borderTopWidth: 1,
-    borderTopColor: '#27272F',
-    backgroundColor: '#111113',
-  },
-
-  hintRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    marginBottom: 4,
-  },
-
-  // ─── Attempt ───────────────────────────────────────────────────────────────
-  attemptBlock: {
-    flex: 1,
-    minHeight: 96,
-    backgroundColor: '#141417',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 18,
-    paddingHorizontal: 12,
-    gap: 2,
-  },
-  attemptLabel: {
-    fontSize: 22,
-    fontWeight: '900',
-    color: '#D4D4DC',
-    letterSpacing: 3,
-    textTransform: 'uppercase',
-  },
-  attemptSub: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#70707E',
-    letterSpacing: 1.5,
-    textTransform: 'uppercase',
-  },
-  swipeHint: {
-    fontSize: 10,
-    fontWeight: '800',
-    color: '#FF5C5C',
-    letterSpacing: 1.5,
-    textTransform: 'uppercase',
-  },
-
-  // ─── Divider ───────────────────────────────────────────────────────────────
-  divider: {
-    width: 1,
-    backgroundColor: '#27272F',
-  },
-
-  // ─── Send ──────────────────────────────────────────────────────────────────
-  sendBlock: {
-    flex: 1,
-    minHeight: 96,
-    backgroundColor: '#16141F',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 18,
-    paddingHorizontal: 12,
-    gap: 2,
-  },
-  sendLabel: {
-    fontSize: 22,
-    fontWeight: '900',
-    color: '#8E7CFF',
-    letterSpacing: 3,
-    textTransform: 'uppercase',
-  },
-  sendSub: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#8E7CFF',
-    opacity: 0.7,
-    letterSpacing: 1.5,
-    textTransform: 'uppercase',
-  },
-  swipeHintSend: {
-    fontSize: 10,
-    fontWeight: '800',
-    color: '#8E7CFF',
-    letterSpacing: 1.5,
-    textTransform: 'uppercase',
-  },
-});

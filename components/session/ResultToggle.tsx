@@ -1,7 +1,8 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity } from 'react-native';
 import { useTheme } from '../../theme/useTheme';
 import { ResultType } from '../ui/ResultChip';
+import { triggerHaptic } from '../../utils/haptics';
 
 interface ResultToggleProps {
   value: ResultType;
@@ -9,42 +10,59 @@ interface ResultToggleProps {
 }
 
 export function ResultToggle({ value, onChange }: ResultToggleProps) {
-  const { colors, space, radius, type } = useTheme();
+  const { colors, radius, type } = useTheme();
 
-  const options: { label: string; value: ResultType; activeBg: string; activeText: string }[] = [
-    { label: 'Flash', value: 'flash', activeBg: colors.flashSoft, activeText: colors.flashText },
-    { label: 'Top', value: 'top', activeBg: colors.topSoft, activeText: colors.topText },
-    { label: 'Attempt', value: 'attempt', activeBg: colors.attemptSoft, activeText: colors.attemptText },
+  const options: { label: string; value: ResultType; activeBg: string; activeText: string; activeBorder: string }[] = [
+    { label: 'Flash', value: 'flash', activeBg: colors.flashSoft, activeText: colors.flashText, activeBorder: colors.flash },
+    { label: 'Top', value: 'top', activeBg: colors.topSoft, activeText: colors.topText, activeBorder: colors.top },
+    { label: 'Attempt', value: 'attempt', activeBg: colors.attemptSoft, activeText: colors.attemptText, activeBorder: colors.attempt },
   ];
 
   return (
-    <View style={{
-      flexDirection: 'row',
-      backgroundColor: colors.card,
-      borderRadius: radius.pill,
-      padding: 4,
-      borderWidth: 1,
-      borderColor: colors.border,
-    }}>
+    <View
+      style={{
+        flexDirection: 'row',
+        backgroundColor: colors.card,
+        borderRadius: radius.md,
+        padding: 4,
+        borderWidth: 1,
+        borderColor: colors.border,
+        gap: 4,
+      }}
+    >
       {options.map((opt) => {
         const isActive = value === opt.value;
         return (
           <TouchableOpacity
             key={opt.value}
-            onPress={() => onChange(opt.value)}
+            onPress={() => {
+              triggerHaptic('light');
+              onChange(opt.value);
+            }}
+            accessibilityRole="button"
+            accessibilityState={{ selected: isActive }}
             style={{
               flex: 1,
-              paddingVertical: 8,
+              height: 56,
+              minHeight: 56,
               alignItems: 'center',
               justifyContent: 'center',
-              backgroundColor: isActive ? opt.activeBg : 'transparent',
-              borderRadius: radius.pill,
+              backgroundColor: isActive ? opt.activeBg : colors.cardMuted,
+              borderRadius: radius.sm,
+              borderWidth: 1,
+              borderColor: isActive ? opt.activeBorder : 'transparent',
             }}
           >
-            <Text style={[
-              type.body,
-              { color: isActive ? opt.activeText : colors.textMuted, fontWeight: isActive ? '600' : '400' }
-            ]}>
+            <Text
+              style={[
+                type.heading,
+                {
+                  color: isActive ? opt.activeText : colors.textMuted,
+                  fontSize: 15,
+                  letterSpacing: 0.5,
+                },
+              ]}
+            >
               {opt.label}
             </Text>
           </TouchableOpacity>

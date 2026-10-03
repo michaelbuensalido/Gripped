@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, ScrollView, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
+import Animated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../theme/useTheme';
 
@@ -15,7 +16,7 @@ export function Screen({ children, title, subtitle, scroll = true, headerRight }
   const { colors, type, space } = useTheme();
   const insets = useSafeAreaInsets();
 
-  const Container = scroll ? ScrollView : View;
+  const Container = scroll ? Animated.ScrollView : View;
   const contentContainerStyle = scroll ? { paddingBottom: 100 } : undefined;
 
   return (

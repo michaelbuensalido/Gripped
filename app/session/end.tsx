@@ -7,8 +7,8 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
-  ScrollView,
-} from 'react-native';
+  } from 'react-native';
+import Reanimated from 'react-native-reanimated';
 import { useRouter, Redirect } from 'expo-router';
 import { Screen } from '../../components/ui/Screen';
 import { PrimaryButton } from '../../components/ui/PrimaryButton';
@@ -85,7 +85,7 @@ export default function EndSessionScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={{ flex: 1, marginTop: space.lg }}
       >
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ gap: space.xl, paddingBottom: 140 }}>
+        <Reanimated.ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ gap: space.xl, paddingBottom: 140 }}>
 
           {/* Effort selector */}
           <View>
@@ -101,14 +101,13 @@ export default function EndSessionScreen() {
                       flex: 1,
                       height: 56,
                       borderRadius: radius.md,
-                      backgroundColor: selected ? colors.accentSoft : colors.cardMuted,
+                      backgroundColor: selected ? 'rgba(168,114,255,0.15)' : colors.materialBase,
                       alignItems: 'center',
                       justifyContent: 'center',
-                      borderWidth: selected ? 1.5 : 0,
-                      borderColor: selected ? colors.accent : 'transparent',
+                      borderWidth: 0,
                     }}
                   >
-                    <Text style={[type.heading, { color: selected ? colors.accentText : colors.text }]}>
+                    <Text style={[type.heading, { color: selected ? colors.accent : colors.textWhiteMuted }]}>
                       {n}
                     </Text>
                   </TouchableOpacity>
@@ -116,7 +115,7 @@ export default function EndSessionScreen() {
               })}
             </View>
             {effort !== null && (
-              <Text style={[type.caption, { color: colors.textMuted, marginTop: space.sm }]}>
+              <Text style={[type.caption, { color: colors.textWhiteMuted, marginTop: space.sm }]}>
                 {EFFORT_LABELS[effort]}
               </Text>
             )}
@@ -130,13 +129,14 @@ export default function EndSessionScreen() {
               onChangeText={setNotes}
               multiline
               placeholder="How did you feel? What clicked today?"
-              placeholderTextColor={colors.textMuted}
+              placeholderTextColor={colors.textWhiteMuted}
               style={[
                 type.body,
                 {
-                  color: colors.text,
-                  backgroundColor: colors.cardMuted,
+                  color: colors.textWhitePrimary,
+                  backgroundColor: colors.materialBase,
                   borderRadius: radius.md,
+                  borderWidth: 0,
                   padding: space.md,
                   minHeight: 100,
                   textAlignVertical: 'top',
@@ -144,16 +144,18 @@ export default function EndSessionScreen() {
               ]}
             />
           </View>
-        </ScrollView>
+        </Reanimated.ScrollView>
 
         <View style={{ gap: space.md, paddingBottom: space.xl }}>
           <PrimaryButton testID="finish-session-btn" label="SAVE & FINISH" onPress={handleFinish} />
                     <SecondaryButton label="Back to Session" onPress={handleCancel} />
           <TouchableOpacity 
             onPress={handleDiscard}
-            style={{ paddingVertical: space.md, alignItems: 'center', marginTop: space.sm }}
+            style={{ minHeight: 48, justifyContent: 'center', alignItems: 'center', marginTop: space.xs }}
+            accessibilityRole="button"
+            accessibilityLabel="Discard Session"
           >
-            <Text style={[type.heading, { color: '#FF3B30' }]}>Discard Session</Text>
+            <Text style={[type.heading, { color: colors.danger }]}>Discard Session</Text>
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>

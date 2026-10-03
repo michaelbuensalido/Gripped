@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Keyboard, Platform, Animated } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { useTheme } from '../../theme/useTheme';
-import { Home, Plus, TrendingUp, User, Target, Play, BookOpen } from 'lucide-react-native';
+import { Home, Plus, TrendingUp, Target, BookOpen } from 'lucide-react-native';
 import { useSessionActions } from '../../hooks/useSessionActions';
 import { useSessionStore } from '../../store/sessionStore';
 import { StartSessionSheet } from '../session/StartSessionSheet';
@@ -55,7 +55,7 @@ function CenterSessionButton({ activeSession, startOrResume, onOpenStartSheet }:
 
   const handlePress = () => {
     if (activeSession) {
-      startOrResume(); // routes to active
+      startOrResume();
     } else {
       triggerHaptic('light');
       onOpenStartSheet();
@@ -63,7 +63,7 @@ function CenterSessionButton({ activeSession, startOrResume, onOpenStartSheet }:
   };
 
   return (
-    <View style={{ alignItems: 'center', justifyContent: 'flex-start', flex: 1, marginTop: -20 }}>
+    <View style={{ alignItems: 'center', justifyContent: 'flex-start', flex: 1, marginTop: -18 }}>
       <TouchableOpacity
         activeOpacity={0.8}
         onPress={handlePress}
@@ -71,33 +71,37 @@ function CenterSessionButton({ activeSession, startOrResume, onOpenStartSheet }:
         accessibilityLabel={activeSession ? `Resume session, ${displayTime} elapsed` : "Start session"}
         style={[
           {
-            width: 56,
-            height: 56,
-            borderRadius: 28,
-            backgroundColor: colors.accent,
+            width: 54,
+            height: 54,
+            borderRadius: 27,
+            backgroundColor: '#9A85FF',
             alignItems: 'center',
             justifyContent: 'center',
-            borderWidth: 4,
-            borderColor: colors.bg,
+            borderWidth: 3.5,
+            borderColor: '#0C0C10',
             zIndex: 10,
+            shadowColor: '#9A85FF',
+            shadowOpacity: 0.55,
+            shadowRadius: 12,
+            shadowOffset: { width: 0, height: 4 },
+            elevation: 8,
           },
-          shadow.floating
         ]}
       >
         {activeSession && !reduceMotion && (
           <Animated.View style={{
-            position: 'absolute', width: 56, height: 56, borderRadius: 28,
-            borderWidth: 2, borderColor: colors.accent,
+            position: 'absolute', width: 54, height: 54, borderRadius: 27,
+            borderWidth: 2, borderColor: '#9A85FF',
             transform: [{ scale: pulseAnim }], opacity: 0.3
           }} pointerEvents="none" />
         )}
         
         {activeSession ? (
           <View style={{ alignItems: 'center' }}>
-            <Text style={{ color: colors.textOnAccent, fontSize: 13, fontWeight: '700', fontFamily: type.heading.fontFamily }}>{displayTime}</Text>
+            <Text style={{ color: '#FFFFFF', fontSize: 12, fontWeight: '700', fontFamily: type.heading.fontFamily }}>{displayTime}</Text>
           </View>
         ) : (
-          <Plus size={24} color={colors.textOnAccent} strokeWidth={2.5} />
+          <Plus size={24} color="#FFFFFF" strokeWidth={2.2} />
         )}
       </TouchableOpacity>
       <Text 
@@ -106,9 +110,9 @@ function CenterSessionButton({ activeSession, startOrResume, onOpenStartSheet }:
         style={{ 
           color: colors.textMuted, 
           fontFamily: type.heading.fontFamily, 
-          fontSize: 11, 
+          fontSize: 10, 
           fontWeight: '600', 
-          marginTop: 4,
+          marginTop: 3,
         }}
       >
         {label}
@@ -124,7 +128,7 @@ export function FloatingTabBar({ state, descriptors, navigation }: any) {
   const [keyboardVisible, setKeyboardVisible] = useState(false);
   const { activeSession, startOrResume } = useSessionActions();
   const [isStartSheetOpen, setIsStartSheetOpen] = useState(false);
-    const setLastTab = useSessionStore(s => s.setLastTab);
+  const setLastTab = useSessionStore(s => s.setLastTab);
 
   useEffect(() => {
     const activeRoute = state.routes[state.index];
@@ -145,13 +149,30 @@ export function FloatingTabBar({ state, descriptors, navigation }: any) {
 
   if (keyboardVisible || state.routes[state.index].name.startsWith('session')) return null;
 
-    const routes = state.routes.filter((r: any) => visibleTabs.includes(r.name));
+  const routes = state.routes.filter((r: any) => visibleTabs.includes(r.name));
 
   return (
     <>
-      <View style={[styles.container, shadow.floating, { bottom: 24, left: 16, right: 16, borderRadius: radius.pill }]}>
-        <BlurView intensity={40} tint="light" style={[StyleSheet.absoluteFill, { borderRadius: radius.pill, backgroundColor: colors.glass, overflow: 'hidden' }]} />
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', height: 64, paddingHorizontal: 4 }}>
+      <View style={[styles.container, shadow.floating, { bottom: 24, left: 16, right: 16, borderRadius: radius.pill, overflow: 'visible' }]}>
+        {/* Frosted glass background layer */}
+        <View
+          pointerEvents="none"
+          style={[StyleSheet.absoluteFill, {
+            borderRadius: radius.pill,
+            borderWidth: 1,
+            borderColor: 'rgba(255, 255, 255, 0.08)',
+            overflow: 'hidden',
+          }]}
+        >
+          {Platform.OS === 'ios' ? (
+            <BlurView tint="dark" intensity={80} style={StyleSheet.absoluteFill} />
+          ) : (
+            <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(20, 20, 28, 0.85)' }]} />
+          )}
+          <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(20, 20, 28, 0.82)' }]} />
+        </View>
+
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', height: 66, paddingHorizontal: 6, overflow: 'visible' }}>
           {routes.map((route: any, index: number) => {
             const { options } = descriptors[route.key];
             const isFocused = state.index === state.routes.findIndex((r: any) => r.key === route.key);
@@ -165,7 +186,7 @@ export function FloatingTabBar({ state, descriptors, navigation }: any) {
             };
 
             let label = options.title !== undefined ? options.title : route.name;
-            let IconComponent = Home;
+            let IconComponent: any = Home;
             if (route.name === 'index') { IconComponent = Home; label = "Home"; }
             else if (route.name === 'projects') { IconComponent = Target; label = "Projects"; }
             else if (route.name === 'analytics') { IconComponent = TrendingUp; label = "Progress"; }
@@ -180,12 +201,31 @@ export function FloatingTabBar({ state, descriptors, navigation }: any) {
                 style={{ flex: 1, alignItems: 'center', justifyContent: 'center', height: '100%' }}
               >
                 <View style={{
-                  flexDirection: 'column', alignItems: 'center',
-                  backgroundColor: isFocused ? colors.accentSoft : 'transparent',
-                  paddingHorizontal: 8, paddingVertical: 6, borderRadius: radius.pill, minWidth: 54,
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  backgroundColor: isFocused ? 'rgba(154, 133, 255, 0.22)' : 'transparent',
+                  paddingHorizontal: isFocused ? 12 : 8,
+                  paddingVertical: 5,
+                  borderRadius: radius.pill,
+                  minWidth: 52,
                 }}>
-                  <IconComponent size={20} color={isFocused ? colors.accentText : colors.textMuted} strokeWidth={isFocused ? 2.5 : 2} />
-                  <Text numberOfLines={1} adjustsFontSizeToFit style={{ color: isFocused ? colors.accentText : colors.textMuted, fontFamily: type.heading.fontFamily, fontSize: 11, fontWeight: isFocused ? '600' : '500', marginTop: 2 }}>
+                  <IconComponent
+                    size={20}
+                    color={isFocused ? '#B89EFF' : '#727280'}
+                    strokeWidth={isFocused ? 2 : 1.75}
+                  />
+                  <Text
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                    style={{
+                      color: isFocused ? '#B89EFF' : '#727280',
+                      fontFamily: type.heading.fontFamily,
+                      fontSize: 10,
+                      fontWeight: isFocused ? '600' : '500',
+                      marginTop: 2,
+                    }}
+                  >
                     {label}
                   </Text>
                 </View>
@@ -197,7 +237,11 @@ export function FloatingTabBar({ state, descriptors, navigation }: any) {
               return (
                 <React.Fragment key={route.key}>
                   {tabElement}
-                  <CenterSessionButton activeSession={activeSession} startOrResume={startOrResume} onOpenStartSheet={() => setIsStartSheetOpen(true)} />
+                  <CenterSessionButton
+                    activeSession={activeSession}
+                    startOrResume={startOrResume}
+                    onOpenStartSheet={() => setIsStartSheetOpen(true)}
+                  />
                 </React.Fragment>
               );
             }

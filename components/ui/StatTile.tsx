@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text } from 'react-native';
+import { View, Text, ViewStyle, StyleProp } from 'react-native';
 import { useTheme } from '../../theme/useTheme';
 import { Card } from './Card';
 import { AnimatedCounter } from './AnimatedCounter';
@@ -11,40 +11,90 @@ interface StatTileProps {
   flex?: boolean;
   icon?: React.ReactNode;
   tintBg?: string; // optional meaning-based soft bg
+  style?: StyleProp<ViewStyle>;
 }
 
-export function StatTile({ value, label, trend, flex, icon, tintBg }: StatTileProps) {
+export function StatTile({ value, label, trend, flex, icon, tintBg, style }: StatTileProps) {
   const { colors, type, space } = useTheme();
 
   return (
-    <Card style={{
-      ...(flex ? { flex: 1 } : {}),
-      padding: space.lg,
-      alignItems: 'flex-start',
-      ...(tintBg ? { backgroundColor: tintBg } : {}),
-    }}>
+    <Card
+      style={[
+        {
+          ...(flex ? { flex: 1 } : {}),
+          padding: space.lg,
+          alignItems: 'flex-start',
+          ...(tintBg ? { backgroundColor: tintBg } : {}),
+        },
+        style,
+      ]}
+    >
       {icon && (
         <View style={{ marginBottom: space.sm }}>{icon}</View>
       )}
+
       {typeof value === 'number' ? (
         <AnimatedCounter
           value={value}
-          style={[{ color: colors.text, marginBottom: space.xs }, type.stat]}
+          style={[
+            type.stat,
+            {
+              color: colors.textWhitePrimary,
+              fontSize: 28,
+              lineHeight: 34,
+              fontVariant: ['tabular-nums'],
+              fontWeight: '200',
+              marginBottom: 2,
+            },
+          ]}
         />
       ) : (
         <Text
-          style={[{ color: colors.text, marginBottom: space.xs }, type.stat]}
+          style={[
+            type.stat,
+            {
+              color: colors.textWhitePrimary,
+              fontSize: 28,
+              lineHeight: 34,
+              fontVariant: ['tabular-nums'],
+              fontWeight: '200',
+              marginBottom: 2,
+            },
+          ]}
           adjustsFontSizeToFit
           numberOfLines={1}
         >
           {value}
         </Text>
       )}
-      <Text style={[{ color: colors.textMuted }, type.caption]} numberOfLines={1}>
+
+      <Text
+        style={[
+          type.label,
+          {
+            color: 'rgba(255, 255, 255, 0.4)',
+            fontSize: 10,
+            letterSpacing: 1.5,
+            textTransform: 'uppercase',
+          },
+        ]}
+        numberOfLines={1}
+      >
         {label}
       </Text>
+
       {trend ? (
-        <Text style={[{ color: colors.flashText, marginTop: space.xs }, type.caption]}>
+        <Text
+          style={[
+            type.caption,
+            {
+              color: colors.flashText, // Neon contrast result color
+              fontWeight: '700',
+              marginTop: space.xs,
+              letterSpacing: 0.3,
+            },
+          ]}
+        >
           {trend}
         </Text>
       ) : null}

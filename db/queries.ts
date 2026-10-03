@@ -370,8 +370,8 @@ export function getWeeklyVolumeTrends(timeframe: '30d' | '90d' | 'all' = 'all'):
   for (const log of rows) {
     const elapsed = log.logged_at - windowStart;
     const weekIdx = Math.min(weeksCount - 1, Math.max(0, Math.floor(elapsed / ONE_WEEK_MS)));
-    const isSend = log.result === 'flash' || log.result === 'send' || log.result === 'top';
-    if (isSend) {
+    const _isSend = isSend(log.result);
+    if (_isSend) {
       buckets[weekIdx].sends += 1;
       buckets[weekIdx].grades.push(log.grade_index);
     }

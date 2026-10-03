@@ -3,13 +3,13 @@ import {
   View,
   Text,
   TouchableOpacity,
-  ScrollView,
   Alert,
   Modal,
   TextInput,
   StyleSheet,
   Pressable,
 } from 'react-native';
+import Reanimated from 'react-native-reanimated';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
@@ -105,8 +105,12 @@ function CompactStatTile({ label, value }: { label: string; value: string | numb
         flex: 1,
         backgroundColor: colors.card,
         borderRadius: radius.md,
+        borderWidth: 1,
+        borderColor: colors.border,
+        minHeight: 64,
         padding: space.sm,
         alignItems: 'center',
+        justifyContent: 'center',
       }}
     >
       <Text
@@ -117,7 +121,7 @@ function CompactStatTile({ label, value }: { label: string; value: string | numb
         {value}
       </Text>
       <Text
-        style={[type.caption, { color: colors.textMuted, marginTop: 2 }]}
+        style={[type.label, { color: colors.textMuted, fontSize: 10, marginTop: 2 }]}
         numberOfLines={1}
         adjustsFontSizeToFit
       >
@@ -431,7 +435,7 @@ export default function SessionDetailScreen({
         )}
       </View>
 
-      <ScrollView
+      <Reanimated.ScrollView
         contentContainerStyle={{
           paddingHorizontal: space.lg,
           paddingTop: space.sm,
@@ -634,7 +638,7 @@ export default function SessionDetailScreen({
             </TouchableOpacity>
           </View>
         </View>
-      </ScrollView>
+      </Reanimated.ScrollView>
 
       {/* Done Button (Summary Variant only) */}
       {isSummary && (
@@ -813,10 +817,5 @@ const styles = StyleSheet.create({
     width: 180,
     borderWidth: 1,
     zIndex: 50,
-    elevation: 5,
-    shadowColor: '#000',
-    shadowOpacity: 0.1,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
   },
 });

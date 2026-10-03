@@ -70,7 +70,7 @@ const Particle = ({ active, index }: { active: boolean; index: number }) => {
       { translateY: translateY.value },
       { translateX: translateX.value },
       { rotate: rotate.value + 'deg' },
-    ],
+    ] as any,
     opacity: opacity.value,
   }));
 

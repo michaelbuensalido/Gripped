@@ -1,12 +1,11 @@
-import React, { useState, useRef } from 'react';
-import { View, Text, TouchableOpacity, Animated } from 'react-native';
+import React, { useRef } from 'react';
+import { View, Text, TouchableOpacity, Animated, Image, StyleSheet } from 'react-native';
 import { Swipeable } from 'react-native-gesture-handler';
 import { Archive, Plus } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
+import Svg, { Path } from 'react-native-svg';
 import { useTheme } from '../../theme/useTheme';
 import { GradePill } from './GradePill';
-import { Chip } from './Chip';
-import { SecondaryButton } from './SecondaryButton';
 
 function getRelativeTime(timestamp: number | null) {
   if (!timestamp) return 'Not yet';
@@ -16,23 +15,16 @@ function getRelativeTime(timestamp: number | null) {
   return `${days} days ago`;
 }
 
-function Sparkline({ data }: { data: number[] }) {
-  const { colors, radius } = useTheme();
-  if (!data || data.length === 0) return null;
-  const max = Math.max(...data, 1);
+function HoldPlaceholder({ color, bg }: { color: string; bg: string }) {
   return (
-    <View style={{ flexDirection: 'row', alignItems: 'flex-end', height: 24, gap: 2 }}>
-      {data.map((val, i) => (
-        <View 
-          key={i} 
-          style={{ 
-            width: 4, 
-            height: Math.max(4, (val / max) * 24), 
-            backgroundColor: colors.accent,
-            borderRadius: radius.sm 
-          }} 
+    <View style={{ width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center', backgroundColor: bg }}>
+      <Svg width={80} height={80} viewBox="0 0 100 100">
+        <Path
+          d="M80 30 C90 20, 100 40, 95 60 C90 80, 70 90, 50 85 C30 80, 20 60, 25 40 C30 20, 70 40, 80 30Z"
+          fill={color}
+          opacity={0.15}
         />
-      ))}
+      </Svg>
     </View>
   );
 }
@@ -48,7 +40,7 @@ export function ProjectCard({
   onArchive?: () => void;
   style?: any;
 }) {
-  const { colors, space, radius, type, shadow, gradeBand } = useTheme();
+  const { colors, space, radius, type, gradeBand } = useTheme();
   const swipeableRef = useRef<Swipeable>(null);
   const router = useRouter();
 
@@ -61,23 +53,10 @@ export function ProjectCard({
 
     return (
       <TouchableOpacity
-        style={{
-          width: 80,
-          backgroundColor: colors.accent,
-          justifyContent: 'center',
-          alignItems: 'center',
-          borderRadius: radius.lg,
-        }}
-        onPress={() => {
-          swipeableRef.current?.close();
-          onLogAttempt?.();
-        }}
-        accessibilityRole="button"
-        accessibilityLabel="Log attempt"
+        style={{ width: 80, backgroundColor: colors.accent, justifyContent: 'center', alignItems: 'center', borderRadius: radius.lg }}
+        onPress={() => { swipeableRef.current?.close(); onLogAttempt?.(); }}
       >
-        <Animated.View style={{ opacity }}>
-          <Plus size={24} color={colors.textOnAccent} />
-        </Animated.View>
+        <Animated.View style={{ opacity }}><Plus size={24} color={colors.textOnAccent} /></Animated.View>
       </TouchableOpacity>
     );
   };
@@ -91,110 +70,109 @@ export function ProjectCard({
 
     return (
       <TouchableOpacity
-        style={{
-          width: 80,
-          backgroundColor: colors.cardMuted,
-          justifyContent: 'center',
-          alignItems: 'center',
-          borderRadius: radius.lg,
-          marginLeft: space.sm,
-        }}
-        onPress={() => {
-          swipeableRef.current?.close();
-          onArchive?.();
-        }}
-        accessibilityRole="button"
-        accessibilityLabel="Archive project"
+        style={{ width: 80, backgroundColor: colors.cardMuted, justifyContent: 'center', alignItems: 'center', borderRadius: radius.lg, marginLeft: space.sm }}
+        onPress={() => { swipeableRef.current?.close(); onArchive?.(); }}
       >
-        <Animated.View style={{ opacity }}>
-          <Archive size={24} color={colors.text} />
-        </Animated.View>
+        <Animated.View style={{ opacity }}><Archive size={24} color={colors.text} /></Animated.View>
       </TouchableOpacity>
     );
   };
 
-  // Format Line 2: Gym · Angle · Hold
   const tags = [];
   if (project.gymName) tags.push(project.gymName);
   if (project.wallAngle) tags.push(project.wallAngle.charAt(0).toUpperCase() + project.wallAngle.slice(1));
   if (project.holdType) tags.push(project.holdType.charAt(0).toUpperCase() + project.holdType.slice(1));
   const subtitle = tags.join(' · ');
 
-  // Informative status chip
-  let statusChip = null;
-  if (project.statusChip && project.statusChip !== 'Not started') {
-    statusChip = project.statusChip;
-  }
-
-  const stripeColor = gradeBand(project.normalizedDifficulty ?? project.grade_index ?? 0).solid;
+  const band = gradeBand(project.normalizedDifficulty ?? project.grade_index ?? 0);
 
   const cardContent = (
     <TouchableOpacity
       activeOpacity={0.7}
       onPress={() => router.push(`/project/${project.id}` as any)}
-      style={[{ backgroundColor: colors.card, borderRadius: radius.lg, paddingLeft: space.md + 8, paddingRight: space.md, paddingTop: space.md, paddingBottom: space.md, overflow: 'hidden' }, shadow.card, style]}
-      testID={`project-card-${project.title.replace(/\\s+/g, '-')}`}
+      style={[{ 
+        backgroundColor: colors.materialBase, 
+        borderRadius: radius.lg, 
+        borderWidth: 0,
+        overflow: 'hidden',
+        position: 'relative',
+        minHeight: 140,
+        justifyContent: 'center',
+        padding: space.lg,
+      }, style]}
+      testID={`project-card-${project.title.replace(/\s+/g, '-')}`}
     >
-      {/* Grade-band left stripe */}
-      <View style={{
-        position: 'absolute',
-        left: 0,
-        top: 14,
-        bottom: 14,
-        width: 4,
-        borderRadius: 2,
-        
-        
-        backgroundColor: stripeColor,
-      }} />
+      {/* 4px left accent stripe, inset 14px from top and bottom */}
+      <View
+        style={{
+          position: 'absolute',
+          left: 0,
+          top: 14,
+          bottom: 14,
+          width: 4,
+          borderRadius: 2,
+          backgroundColor: band.solid,
+          zIndex: 10,
+        }}
+      />
 
-      {/* Row 1 */}
-      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: space.sm, gap: space.md }}>
-        <GradePill gradeIndex={project.normalizedDifficulty ?? project.grade_index ?? 0} label={project.gradeRaw ?? project.grade_raw ?? '—'} />
-        <View style={{ flex: 1 }}>
-          <Text style={[type.heading, { color: colors.text }]} numberOfLines={1}>
-            {project.title}
-          </Text>
+      {/* Edge-to-edge background */}
+      {project.mediaUri ? (
+        <>
+          <Image source={{ uri: project.mediaUri }} style={[StyleSheet.absoluteFill, { opacity: 0.6 }]} resizeMode="cover" />
+          <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.5)' }]} pointerEvents="none" />
+        </>
+      ) : (
+        <View style={{ position: 'absolute', top: -20, right: -20 }} pointerEvents="none">
+          <Image 
+            source={require('../../assets/holds-images/pink_pinch.png')} 
+            style={{
+              width: 140,
+              height: 140,
+              opacity: 0.7,
+            }}
+            resizeMode="contain"
+          />
         </View>
-        {statusChip && (
-          <View style={{ backgroundColor: colors.cardMuted, paddingHorizontal: 6, paddingVertical: 2, borderRadius: radius.sm }}>
-            <Text style={[type.caption, { color: colors.text }]}>{statusChip}</Text>
-          </View>
-        )}
-      </View>
+      )}
 
-      {/* Row 2 */}
-      {subtitle ? (
-        <Text style={[type.caption, { color: colors.textMuted, marginBottom: space.md }]} numberOfLines={1}>
-          {subtitle}
-        </Text>
-      ) : <View style={{ marginBottom: space.md }} />}
+      <View style={{ zIndex: 5, paddingLeft: space.xs, maxWidth: '75%' }}>
+        <View style={{ alignSelf: 'flex-start', marginBottom: space.sm }}>
+          <GradePill gradeIndex={project.normalizedDifficulty ?? project.grade_index ?? 0} label={project.gradeRaw ?? project.grade_raw ?? '—'} />
+        </View>
+        <Text style={[type.title, { color: colors.textWhitePrimary, marginBottom: 2 }]} numberOfLines={1}>{project.title}</Text>
+        {subtitle ? (
+          <Text style={[type.caption, { color: colors.textWhiteSecondary, marginBottom: space.sm }]} numberOfLines={1}>{subtitle}</Text>
+        ) : <View style={{ marginBottom: space.sm }} />}
 
-      {/* Row 3 */}
-      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-        {project.attempts > 0 ? (
-          <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, gap: space.sm }}>
-            <Text style={[type.caption, { color: colors.textMuted }]} numberOfLines={1}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+          {project.attempts > 0 ? (
+            <Text style={[type.caption, { color: colors.textWhiteMuted, flex: 1 }]} numberOfLines={1}>
               {`${project.attempts} burns`}
               {project.highWaterMarkMoves ? ` · ${project.highWaterMarkMoves} moves linked` : ''}
               {project.lastTriedAt ? ` · ${getRelativeTime(project.lastTriedAt)}` : ''}
             </Text>
-          </View>
-        ) : (
-          <Text style={[type.caption, { color: colors.textMuted, flex: 1 }]}>No attempts yet</Text>
-        )}
-
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.md }}>
-          {project.burnsPerSession && project.burnsPerSession.length > 0 && (
-            <Sparkline data={project.burnsPerSession} />
+          ) : (
+            <Text style={[type.caption, { color: colors.textWhiteMuted, flex: 1 }]}>No attempts yet</Text>
           )}
+
           {onLogAttempt && (
             <TouchableOpacity
               onPress={onLogAttempt}
-              style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingVertical: 4, paddingHorizontal: 8, backgroundColor: colors.accentSoft, borderRadius: radius.sm }}
+              style={{
+                minHeight: 44,
+                paddingVertical: 8,
+                paddingHorizontal: 16,
+                backgroundColor: colors.accent,
+                borderRadius: radius.pill,
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginLeft: space.md,
+              }}
+              accessibilityRole="button"
+              accessibilityLabel="Log Attempt"
             >
-              <Plus size={14} color={colors.accentText} />
-              <Text style={[type.body, { color: colors.accentText, fontWeight: '600', marginTop: 1 }]}>Log attempt</Text>
+              <Text style={[type.control, { color: colors.textWhitePrimary }]}>Attempt</Text>
             </TouchableOpacity>
           )}
         </View>
@@ -203,13 +181,7 @@ export function ProjectCard({
   );
 
   return (
-    <Swipeable 
-      ref={swipeableRef}
-      renderLeftActions={renderLeftActions} 
-      renderRightActions={renderRightActions}
-      overshootLeft={false}
-      overshootRight={false}
-    >
+    <Swipeable ref={swipeableRef} renderLeftActions={renderLeftActions} renderRightActions={renderRightActions} overshootLeft={false} overshootRight={false}>
       {cardContent}
     </Swipeable>
   );

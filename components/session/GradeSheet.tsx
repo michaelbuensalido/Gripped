@@ -4,9 +4,9 @@ import {
   Text,
   Modal,
   TouchableOpacity,
-  FlatList,
   Pressable,
 } from 'react-native';
+import Animated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { X as XIcon } from 'lucide-react-native';
 import { GRADES } from '../../constants/grades';
@@ -69,7 +69,7 @@ export function GradeSheet({ visible, selectedGrade, onSelect, onClose }: GradeS
         </View>
 
         {/* Grade grid — 2 columns */}
-        <FlatList
+        <Animated.FlatList
           data={GRADES}
           renderItem={renderItem}
           keyExtractor={(item) => item.label}

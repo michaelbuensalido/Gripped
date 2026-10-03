@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, Text, Modal, TouchableOpacity, ScrollView } from 'react-native';
+import { View, Text, Modal, TouchableOpacity, } from 'react-native';
+import Reanimated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { X, Check } from 'lucide-react-native';
 
@@ -69,7 +70,7 @@ export function StyleTagPickerModal({
           </View>
 
           {/* Tags Wrap */}
-          <ScrollView className="max-h-80" showsVerticalScrollIndicator={false}>
+          <Reanimated.ScrollView className="max-h-80" showsVerticalScrollIndicator={false}>
             <View className="flex-row flex-wrap gap-2 py-2">
               {COMMON_STYLE_TAGS.map((tag) => {
                 const isSelected = selectedTags.includes(tag);
@@ -96,7 +97,7 @@ export function StyleTagPickerModal({
                 );
               })}
             </View>
-          </ScrollView>
+          </Reanimated.ScrollView>
 
           {/* Done Button */}
           <TouchableOpacity

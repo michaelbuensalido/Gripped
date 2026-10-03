@@ -6,6 +6,7 @@ import Reanimated, { FadeInDown, useSharedValue, useAnimatedStyle, withRepeat, w
 import { GradePill } from './GradePill';
 import { ResultChip, ResultType } from './ResultChip';
 import { useTheme } from '../../theme/useTheme';
+import { listLayout } from '../../theme/layout';
 
 export interface ClimbRowProps {
   climb: any;
@@ -92,8 +93,10 @@ export function ClimbRow({ climb, onEdit, onDelete, animateEntry, isNewFlash }: 
         accessibilityRole="button"
         accessibilityLabel={`Edit climb ${climb.grade_raw} ${climb.result}`}
         style={{
-          backgroundColor: colors.card,
-          borderRadius: radius.md,
+          backgroundColor: colors.materialBase,
+          borderRadius: radius.lg,
+          borderWidth: 0,
+          minHeight: 56,
           flexDirection: 'row',
           alignItems: 'center',
           paddingLeft: space.md + 8,
@@ -112,8 +115,6 @@ export function ClimbRow({ climb, onEdit, onDelete, animateEntry, isNewFlash }: 
           bottom: 14,
           width: 4,
           borderRadius: 2,
-          
-          
           backgroundColor: stripeColor,
         }} />
 
@@ -127,15 +128,23 @@ export function ClimbRow({ climb, onEdit, onDelete, animateEntry, isNewFlash }: 
           }, shimmerStyle]} pointerEvents="none" />
         )}
 
-        <GradePill gradeIndex={climb.grade_index ?? 0} label={climb.grade_raw} />
+        <Text style={[type.display, { color: colors.textWhitePrimary, fontSize: 20, minWidth: 40 }]}>
+          {climb.grade_raw}
+        </Text>
         
         <View style={{ flex: 1 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm, marginBottom: climb.projectTitle ? 2 : 0 }}>
-            <ResultChip result={(climb.result as ResultType) || 'attempt'} />
-            {climb.attempts > 1 && (
-              <Text style={[type.caption, { color: colors.textMuted }]}>×{climb.attempts}</Text>
+            {climb.result === 'flash' ? (
+              <View style={{ backgroundColor: colors.flash, paddingHorizontal: 8, paddingVertical: 2, borderRadius: radius.pill }}>
+                <Text style={[type.caption, { color: '#000000', fontWeight: '800' }]}>FLASH</Text>
+              </View>
+            ) : (
+              <ResultChip result={(climb.result as ResultType) || 'attempt'} />
             )}
-            <Text style={[type.caption, { color: colors.textMuted, marginLeft: 'auto' }]}>
+            {climb.attempts > 1 && (
+              <Text style={[type.caption, { color: colors.textWhiteMuted }]}>×{climb.attempts}</Text>
+            )}
+            <Text style={[type.caption, { color: colors.textWhiteMuted, marginLeft: 'auto' }]}>
               {climb.logged_at ? formatTime(climb.logged_at) : ''}
             </Text>
           </View>
@@ -149,13 +158,12 @@ export function ClimbRow({ climb, onEdit, onDelete, animateEntry, isNewFlash }: 
     </Swipeable>
   );
 
-  if (animateEntry) {
-    return (
-      <Reanimated.View entering={FadeInDown.duration(400).springify()}>
-        {content}
-      </Reanimated.View>
-    );
-  }
-
-  return content;
+  return (
+    <Reanimated.View
+      layout={listLayout}
+      entering={animateEntry ? FadeInDown.duration(400).springify() : undefined}
+    >
+      {content}
+    </Reanimated.View>
+  );
 }

@@ -5,8 +5,8 @@ import {
   Modal,
   TouchableOpacity,
   TouchableWithoutFeedback,
-  ScrollView,
-} from 'react-native';
+  } from 'react-native';
+import Reanimated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Clock, Minus, Plus, X, Check } from 'lucide-react-native';
 import { triggerHaptic } from '../../utils/haptics';
@@ -182,7 +182,7 @@ export function RestTimerPickerSheet({
                 <Text className="text-[#9090A0] text-[11px] font-bold uppercase tracking-[1.2px] mb-2 px-1">
                   Quick Presets
                 </Text>
-                <ScrollView
+                <Reanimated.ScrollView
                   horizontal
                   showsHorizontalScrollIndicator={false}
                   contentContainerStyle={{ gap: 8, paddingVertical: 2 }}
@@ -218,7 +218,7 @@ export function RestTimerPickerSheet({
                       </TouchableOpacity>
                     );
                   })}
-                </ScrollView>
+                </Reanimated.ScrollView>
               </View>
 
               {/* Stepper Adjustment (-15s / +15s) */}

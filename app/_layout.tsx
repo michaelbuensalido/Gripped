@@ -29,6 +29,7 @@ import "../global.css";
 
 import { FloatingTabBar } from "../components/ui/FloatingTabBar";
 import { CelebrationProvider } from "../components/celebration/CelebrationProvider";
+import { colors } from "../theme/tokens";
 
 // Prevent the splash screen from hiding until fonts + DB are ready
 SplashScreen.preventAutoHideAsync();
@@ -40,7 +41,10 @@ function TabLayout() {
   return (
     <Tabs
       tabBar={(props) => <FloatingTabBar {...props} />}
-      screenOptions={{ headerShown: false }}
+      screenOptions={{
+        headerShown: false,
+        sceneStyle: { backgroundColor: "transparent" },
+      }}
     >
       <Tabs.Screen name="index"     options={{ title: "Home" }} />
       <Tabs.Screen name="projects"  options={{ title: "Projects" }} />
@@ -56,6 +60,7 @@ function TabLayout() {
       <Tabs.Screen name="session/end"          options={{ href: null }} />
       <Tabs.Screen name="session/summary"      options={{ href: null }} />
       <Tabs.Screen name="session/detail/[id]"  options={{ href: null }} />
+      <Tabs.Screen name="project/[id]"         options={{ href: null }} />
     </Tabs>
   );
 }
@@ -140,15 +145,15 @@ export default function RootLayout() {
   const isReady = (fontsLoaded || fontError) && isDbReady;
 
   return (
-    <GestureHandlerRootView style={{ flex: 1, backgroundColor: "#F5F2EC" }}>
+    <GestureHandlerRootView style={{ flex: 1, backgroundColor: "#0C0C10" }}>
       <ImageBackground
         source={require("../assets/speckled_mat_bg.jpg")}
         style={StyleSheet.absoluteFill}
-        imageStyle={{ opacity: 0.04 }}
+        imageStyle={{ opacity: 0.90 }}
         resizeMode="cover"
       />
       <SafeAreaProvider>
-        <StatusBar style="dark" />
+        <StatusBar style="light" />
         <CelebrationProvider>
           {isReady ? <TabLayout /> : null}
         </CelebrationProvider>

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
+import { View, Text, TouchableOpacity, } from 'react-native';
+import Reanimated from 'react-native-reanimated';
 import { Target, Zap, Check, AlertTriangle, Layers } from 'lucide-react-native';
 import { useSessionStore } from '../../store/sessionStore';
 import type { WallAngle, HoldType, Outcome, FailureReason } from '../../types';
@@ -81,7 +82,7 @@ export function ChalkSafeLogger() {
       {!isProjectMode && (
         <View className="gap-2.5 mb-4">
           {/* Grade Selector */}
-          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+          <Reanimated.ScrollView horizontal showsHorizontalScrollIndicator={false}>
             <View className="flex-row gap-1.5">
               {GRADES.map((g) => {
                 const isSelected = selectedGrade === g;
@@ -109,7 +110,7 @@ export function ChalkSafeLogger() {
                 );
               })}
             </View>
-          </ScrollView>
+          </Reanimated.ScrollView>
 
           {/* Angle Selector */}
           <View className="flex-row gap-1.5">

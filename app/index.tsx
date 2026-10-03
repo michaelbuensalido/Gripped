@@ -1,20 +1,32 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Animated, Image } from 'react-native';
+import { View, Text, TouchableOpacity, Image } from 'react-native';
+import Animated, {
+  useSharedValue,
+  useAnimatedScrollHandler,
+  useAnimatedStyle,
+  interpolate,
+  Extrapolation,
+} from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { Settings as SettingsIcon, Plus, PlayCircle, Trophy } from 'lucide-react-native';
+import {
+  Bell,
+  ChevronDown,
+  Clock,
+  Mountain,
+  Plus,
+  PlayCircle,
+  Trophy,
+} from 'lucide-react-native';
 import { Card } from '../components/ui/Card';
-import { HeroCard } from '../components/ui/HeroCard';
+import { GlowBackdrop } from '../components/ui/GlowBackdrop';
+import { listLayout } from '../theme/layout';
 import { ProjectCard } from '../components/ui/ProjectCard';
-import { PrimaryButton } from '../components/ui/PrimaryButton';
-import { StatTile } from '../components/ui/StatTile';
 import { SectionHeader } from '../components/ui/SectionHeader';
 import { SessionCard } from '../components/ui/SessionCard';
 import * as Q from '../db/queries';
-import { GradePill } from '../components/ui/GradePill';
 import { WeekStrip } from '../components/ui/WeekStrip';
 import { VolumeChart } from '../components/ui/VolumeChart';
-import { EmptyState } from '../components/ui/EmptyState';
 import { useCelebration } from '../components/celebration/CelebrationProvider';
 import { useCelebrationStore } from '../store/celebrationStore';
 import { getStreakMilestone } from '../utils/celebrationLogic';
@@ -31,13 +43,13 @@ function formatDuration(ms: number) {
   const h = Math.floor(totalSecs / 3600);
   const m = Math.floor((totalSecs % 3600) / 60);
   const s = totalSecs % 60;
-  if (h > 0) return `${h}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+  if (h > 0) return `${h}:${m.toString().padStart(2, '0')}`;
   return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
 }
 
 export default function HomeScreen() {
   const router = useRouter();
-  const { colors, type, space, radius, shadow, gradeBand } = useTheme();
+  const { colors, type, space, radius, shadow } = useTheme();
 
   const data = useHomeSummary();
   const { startOrResume } = useSessionActions();
@@ -57,7 +69,13 @@ export default function HomeScreen() {
     }
   }, [data?.streak, hasStreakCelebrated, markStreakCelebrated, triggerStreak]);
 
-  const scrollY = React.useRef(new Animated.Value(0)).current;
+  const scrollY = useSharedValue(0);
+  const onScroll = useAnimatedScrollHandler((e) => {
+    scrollY.value = e.contentOffset.y;
+  });
+  const scrimStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(scrollY.value, [0, 40], [0, 1], Extrapolation.CLAMP),
+  }));
 
   // Live timer for active session
   useEffect(() => {
@@ -77,249 +95,402 @@ export default function HomeScreen() {
     }
   };
 
-  // Greeting
-  const hour = new Date().getHours();
-  const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
+  const highWatermark = data.hardest30d ? data.hardest30d.gradeRaw : '7A';
 
   return (
-    <View style={{ flex: 1, backgroundColor: colors.bg }}>
+    <View style={{ flex: 1 }}>
       <Animated.ScrollView
-        onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], { useNativeDriver: true })}
+        onScroll={onScroll}
         scrollEventThrottle={16}
+        showsVerticalScrollIndicator={false}
         contentContainerStyle={{
-          paddingTop: Math.max(insets.top, space.xxl),
-          paddingHorizontal: space.lg + space.xs, // 20px sides per design system
+          paddingTop: Math.max(insets.top, 20) + 8,
+          paddingBottom: 130, // Clear the floating tab bar
+          paddingHorizontal: 20,
         }}
       >
-      {/* 1. Header — greeting, best grade chip, settings */}
-      <View style={{
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'flex-start',
-        marginBottom: space.xl,
-      }}>
-        <View style={{ flex: 1 }}>
-          <Text style={[type.caption, { color: colors.textMuted, marginBottom: space.xs }]}>
-            {greeting}
-          </Text>
-          <Text style={[type.display, { color: colors.text }]}>
-            CruxLog
-          </Text>
-          {data.hardest30d && (
-            <View style={{ marginTop: space.sm }}>
-              <GradePill
-                gradeIndex={data.hardest30d.gradeIndex}
-                label={`Best ${data.hardest30d.gradeRaw}`}
-              />
-            </View>
-          )}
-        </View>
-        <TouchableOpacity
-          onPress={() => router.push('/settings')}
-          style={{
-            width: 44,
-            height: 44,
-            justifyContent: 'center',
-            alignItems: 'center',
-            backgroundColor: colors.card,
-            borderRadius: radius.md,
-            ...shadow.card,
-          }}
-          accessibilityLabel="Settings"
-          accessibilityRole="button"
-        >
-          <SettingsIcon size={20} color={colors.textMuted} />
-        </TouchableOpacity>
-      </View>
-
-      {/* 2. HeroCard — the ONE primary action */}
-      <View style={{ marginBottom: space.xl }}>
-        {data.activeSession ? (
-          <HeroCard
-            title="Session in progress"
-            value={formatDuration(elapsed)}
-            subtitle={plural(data.activeSessionClimbCount, 'climb') + ' logged'}
-          >
-            <PrimaryButton
-              testID="resume-session-btn"
-              label="Resume session"
-              icon={<PlayCircle color={colors.textOnAccent} size={20} />}
-              onPress={handleStartSession}
-            />
-          </HeroCard>
-        ) : (
-          <>
-            {!data.hasAnyData && (
-              <Image
-                source={require('../assets/images/welcome-hero.png')}
-                style={{
-                  width: '100%',
-                  height: 180,
-                  borderRadius: radius.xl,
-                  marginBottom: space.lg,
-                }}
-                resizeMode="cover"
-              />
-            )}
-            <HeroCard
-              title={data.hasAnyData ? 'Ready to climb?' : 'Log your first session'}
-              subtitle={
-                data.lastSession
-                  ? `${data.lastSession.gymName} · ${data.lastSessionRelative}`
-                  : 'Tap below to get started'
-              }
-            >
-              <PrimaryButton
-                testID="start-session-btn"
-                label="Start session"
-                icon={<PlayCircle color={colors.textOnAccent} size={20} />}
-                onPress={handleStartSession}
-              />
-            </HeroCard>
-          </>
-        )}
-      </View>
-
-      {/* First-time user: stop here */}
-      {!data.hasAnyData ? (
-        <View style={{ marginTop: space.lg, paddingBottom: space.xxl }}>
-          <Text style={[type.body, { color: colors.textMuted, textAlign: 'center' }]}>
-            Start your first session to see your stats, streaks and progress here.
-          </Text>
-        </View>
-      ) : (
-        <>
-          {/* 3. WeekStrip — the hero visual */}
-          <View style={{ marginBottom: space.xl }}>
-            <WeekStrip days={data.weekDays} streak={data.streak} />
-          </View>
-
-          {/* 4. Three StatTiles — big numbers, neutral cards */}
-          <View style={{ flexDirection: 'row', gap: space.md, marginBottom: space.xl }}>
-            <StatTile flex label="Sessions" value={data.sessionsThisWeek} />
-            <StatTile flex label="Climbs" value={data.climbsThisWeek} />
-            <StatTile
-              flex
-              label="Sends"
-              value={data.sendsThisWeek}
-              trend={data.flashesThisWeek > 0 ? plural(data.flashesThisWeek, 'flash', 'flashes') : undefined}
-            />
-          </View>
-
-          {/* 5. Personal best banner */}
-          {data.personalBest && (
-            <Card style={{
+        {/* 1. Header Bar: Avatar Pill on Left, Notification Bell on Right */}
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
+          {/* User profile dropdown pill */}
+          <TouchableOpacity
+            activeOpacity={0.8}
+            onPress={() => router.push('/settings')}
+            style={{
               flexDirection: 'row',
               alignItems: 'center',
-              gap: space.md,
-              marginBottom: space.xl,
-            }}>
-              <View style={{
-                width: 40,
-                height: 40,
-                borderRadius: 20,
-                backgroundColor: colors.accentSoft,
+              backgroundColor: 'rgba(255, 255, 255, 0.08)',
+              paddingHorizontal: 12,
+              paddingVertical: 6,
+              borderRadius: radius.pill,
+              borderWidth: 1,
+              borderColor: 'rgba(255, 255, 255, 0.06)',
+              gap: 8,
+            }}
+          >
+            <Image
+              source={require('../assets/maya_avatar.jpg')}
+              style={{ width: 34, height: 34, borderRadius: 17 }}
+              resizeMode="cover"
+            />
+            <Text style={{ color: '#FFFFFF', fontSize: 14, fontWeight: '600', fontFamily: type.heading.fontFamily }}>
+              Maya Vong
+            </Text>
+            <ChevronDown size={16} color="rgba(255, 255, 255, 0.6)" />
+          </TouchableOpacity>
+
+          {/* Notification Bell Button with Neon Purple Dot */}
+          <TouchableOpacity
+            activeOpacity={0.8}
+            onPress={() => router.push('/settings')}
+            style={{
+              width: 44,
+              height: 44,
+              borderRadius: 22,
+              backgroundColor: 'rgba(255, 255, 255, 0.08)',
+              borderWidth: 1,
+              borderColor: 'rgba(255, 255, 255, 0.06)',
+              alignItems: 'center',
+              justifyContent: 'center',
+              position: 'relative',
+            }}
+          >
+            <Bell size={20} color="#FFFFFF" strokeWidth={1.8} />
+            <View
+              style={{
+                position: 'absolute',
+                top: 10,
+                right: 10,
+                width: 9,
+                height: 9,
+                borderRadius: 4.5,
+                backgroundColor: '#A872FF',
+              }}
+            />
+          </TouchableOpacity>
+        </View>
+
+        {/* 2. Main Title & Grade Pill */}
+        <Text style={{ color: '#FFFFFF', fontSize: 32, fontWeight: '700', fontFamily: type.display.fontFamily, marginBottom: 8, letterSpacing: -0.5 }}>
+          Keep climbing, Maya
+        </Text>
+        <View
+          style={{
+            backgroundColor: '#23442A',
+            paddingHorizontal: 14,
+            paddingVertical: 5,
+            borderRadius: 12,
+            alignSelf: 'flex-start',
+            marginBottom: 20,
+          }}
+        >
+          <Text style={{ color: '#72FF9B', fontSize: 15, fontWeight: '700', fontFamily: type.heading.fontFamily }}>
+            {highWatermark}
+          </Text>
+        </View>
+
+        {/* 3. Three Bento Stat Tiles */}
+        <View style={{ flexDirection: 'row', gap: 12, marginBottom: 22 }}>
+          {/* Tile 1: Sessions */}
+          <View
+            style={{
+              flex: 1,
+              backgroundColor: 'rgba(22, 22, 30, 0.85)',
+              borderRadius: 20,
+              padding: 16,
+              borderWidth: 1,
+              borderColor: 'rgba(255, 255, 255, 0.06)',
+            }}
+          >
+            <Text style={{ color: '#FFFFFF', fontSize: 26, fontWeight: '700', fontVariant: ['tabular-nums'], fontFamily: type.stat.fontFamily }}>
+              {data.sessionsThisWeek || 0}
+            </Text>
+            <Text
+              style={{
+                color: 'rgba(255, 255, 255, 0.45)',
+                fontSize: 10,
+                fontWeight: '600',
+                letterSpacing: 1.2,
+                textTransform: 'uppercase',
+                marginTop: 4,
+                lineHeight: 14,
+              }}
+            >
+              {'SESSIONS\nTHIS WEEK'}
+            </Text>
+          </View>
+
+          {/* Tile 2: Climbs */}
+          <View
+            style={{
+              flex: 1,
+              backgroundColor: 'rgba(22, 22, 30, 0.85)',
+              borderRadius: 20,
+              padding: 16,
+              borderWidth: 1,
+              borderColor: 'rgba(255, 255, 255, 0.06)',
+            }}
+          >
+            <Text style={{ color: '#FFFFFF', fontSize: 26, fontWeight: '700', fontVariant: ['tabular-nums'], fontFamily: type.stat.fontFamily }}>
+              {data.climbsThisWeek || 0}
+            </Text>
+            <Text
+              style={{
+                color: 'rgba(255, 255, 255, 0.45)',
+                fontSize: 10,
+                fontWeight: '600',
+                letterSpacing: 1.2,
+                textTransform: 'uppercase',
+                marginTop: 4,
+                lineHeight: 14,
+              }}
+            >
+              {'CLIMBS\nLOGGED'}
+            </Text>
+          </View>
+
+          {/* Tile 3: Sends */}
+          <View
+            style={{
+              flex: 1,
+              backgroundColor: 'rgba(22, 22, 30, 0.85)',
+              borderRadius: 20,
+              padding: 16,
+              borderWidth: 1,
+              borderColor: 'rgba(255, 255, 255, 0.06)',
+            }}
+          >
+            <Text style={{ color: '#FFFFFF', fontSize: 26, fontWeight: '700', fontVariant: ['tabular-nums'], fontFamily: type.stat.fontFamily }}>
+              {data.sendsThisWeek || 0}
+            </Text>
+            <Text
+              style={{
+                color: 'rgba(255, 255, 255, 0.45)',
+                fontSize: 10,
+                fontWeight: '600',
+                letterSpacing: 1.2,
+                textTransform: 'uppercase',
+                marginTop: 4,
+                lineHeight: 14,
+              }}
+            >
+              {'SENDS\nTHIS WEEK'}
+            </Text>
+          </View>
+        </View>
+
+        {/* 4. TODAY'S SESSION Hero Bento Card */}
+        <View
+          style={{
+            backgroundColor: 'rgba(24, 24, 34, 0.90)',
+            borderRadius: 26,
+            padding: 20,
+            borderWidth: 1,
+            borderColor: 'rgba(255, 255, 255, 0.08)',
+            marginBottom: 24,
+            ...shadow.floating,
+          }}
+        >
+          {/* Header Row: Label & Pagination Dots */}
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+            <Text style={{ color: '#A872FF', fontSize: 11, fontWeight: '700', letterSpacing: 1.5, textTransform: 'uppercase' }}>
+              TODAY'S SESSION
+            </Text>
+            <View style={{ flexDirection: 'row', gap: 6, alignItems: 'center' }}>
+              <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: '#9A85FF' }} />
+              <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: 'rgba(255, 255, 255, 0.2)' }} />
+              <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: 'rgba(255, 255, 255, 0.2)' }} />
+            </View>
+          </View>
+
+          {/* Grade / Title Row with Hold/Rock Icon */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 4 }}>
+            <Mountain size={28} color="#9A85FF" />
+            <Text style={{ color: '#FFFFFF', fontSize: 30, fontWeight: '700', fontFamily: type.stat.fontFamily }}>
+              {data.activeSession ? formatDuration(elapsed) : 'V5–V7A'}
+            </Text>
+          </View>
+
+          {/* Focus Subtitle */}
+          <Text style={{ color: 'rgba(255, 255, 255, 0.65)', fontSize: 14, fontFamily: type.body.fontFamily, marginBottom: 14 }}>
+            {data.activeSession
+              ? `${plural(data.activeSessionClimbCount, 'climb')} logged`
+              : data.lastSession
+              ? `${data.lastSession.gymName} • Power Endurance`
+              : 'Overhang • Power Endurance'}
+          </Text>
+
+          {/* Duration Pill Chip */}
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 6,
+              backgroundColor: 'rgba(154, 133, 255, 0.18)',
+              paddingHorizontal: 12,
+              paddingVertical: 6,
+              borderRadius: radius.pill,
+              alignSelf: 'flex-start',
+              marginBottom: 18,
+            }}
+          >
+            <Clock size={14} color="#D4CCFF" />
+            <Text style={{ color: '#D4CCFF', fontSize: 12, fontWeight: '600', fontFamily: type.caption.fontFamily }}>
+              {data.activeSession ? `Elapsed ${formatDuration(elapsed)}` : 'Duration 75 min'}
+            </Text>
+          </View>
+
+          {/* Massive START SESSION Button */}
+          <TouchableOpacity
+            testID={data.activeSession ? 'resume-session-btn' : 'start-session-btn'}
+            activeOpacity={0.85}
+            onPress={handleStartSession}
+            style={{
+              backgroundColor: '#9A85FF',
+              height: 56,
+              borderRadius: radius.pill,
+              alignItems: 'center',
+              justifyContent: 'center',
+              shadowColor: '#9A85FF',
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: 0.5,
+              shadowRadius: 16,
+              elevation: 6,
+            }}
+          >
+            <Text style={{ color: '#FFFFFF', fontSize: 16, fontWeight: '700', letterSpacing: 0.5, fontFamily: type.heading.fontFamily }}>
+              {data.activeSession ? 'RESUME SESSION' : 'START SESSION'}
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* 5. WeekStrip — Current week streak */}
+        <View style={{ marginBottom: 24 }}>
+          <WeekStrip days={data.weekDays} streak={data.streak} />
+        </View>
+
+        {/* 6. Personal best banner */}
+        {data.personalBest && (
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 14,
+              backgroundColor: 'rgba(22, 22, 30, 0.85)',
+              borderRadius: 20,
+              padding: 16,
+              borderWidth: 1,
+              borderColor: 'rgba(255, 255, 255, 0.06)',
+              marginBottom: 24,
+            }}
+          >
+            <GlowBackdrop />
+            <View
+              style={{
+                width: 42,
+                height: 42,
+                borderRadius: 21,
+                backgroundColor: 'rgba(154, 133, 255, 0.18)',
                 justifyContent: 'center',
                 alignItems: 'center',
-              }}>
-                <Trophy size={20} color={colors.accentText} />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={[type.heading, { color: colors.text }]}>
-                  New best: {data.personalBest.gradeRaw}
-                </Text>
-                <Text style={[type.caption, { color: colors.textMuted }]}>
-                  {data.personalBest.daysAgo === 0
-                    ? 'Today'
-                    : data.personalBest.daysAgo === 1
-                    ? 'Yesterday'
-                    : `${data.personalBest.daysAgo} days ago`}
-                </Text>
-              </View>
-            </Card>
-          )}
-
-          {/* 6. Projects strip — shared compact ProjectCard */}
-          <View style={{ marginBottom: space.xl }}>
-            <SectionHeader
-              title="Projects"
-              action={{ label: 'See all', onPress: () => router.push('/projects') }}
-            />
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              style={{ marginHorizontal: -(space.lg + space.xs) }}
-              contentContainerStyle={{ paddingHorizontal: space.lg + space.xs }}
+              }}
             >
-              <View style={{ flexDirection: 'row', gap: space.md }}>
-                {data.projects.length === 0 ? (
-                  <Card
-                    onPress={() => router.push('/projects')}
-                    style={{ width: 220, padding: space.xl }}
-                  >
-                    <View style={{
+              <Trophy size={20} color="#D4CCFF" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={[type.heading, { color: '#FFFFFF', fontWeight: '700' }]}>
+                New best: {data.personalBest.gradeRaw}
+              </Text>
+              <Text style={{ color: 'rgba(255, 255, 255, 0.5)', fontSize: 13, marginTop: 2 }}>
+                {data.personalBest.daysAgo === 0
+                  ? 'Today'
+                  : data.personalBest.daysAgo === 1
+                  ? 'Yesterday'
+                  : `${data.personalBest.daysAgo} days ago`}
+              </Text>
+            </View>
+          </View>
+        )}
+
+        {/* 7. Projects Strip — Project cards carousel */}
+        <View style={{ marginBottom: 26 }}>
+          <SectionHeader
+            title="Projects"
+            action={{ label: 'See all', onPress: () => router.push('/projects') }}
+          />
+          <Animated.ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={{ marginHorizontal: -20 }}
+            contentContainerStyle={{ paddingHorizontal: 20 }}
+          >
+            <View style={{ flexDirection: 'row', gap: 14 }}>
+              {data.projects.length === 0 ? (
+                <TouchableOpacity
+                  onPress={() => router.push('/projects')}
+                  style={{
+                    width: 220,
+                    padding: 20,
+                    backgroundColor: 'rgba(22, 22, 30, 0.85)',
+                    borderRadius: 22,
+                    borderWidth: 1,
+                    borderColor: 'rgba(255, 255, 255, 0.06)',
+                  }}
+                >
+                  <View
+                    style={{
                       width: 44,
                       height: 44,
                       borderRadius: 22,
-                      backgroundColor: colors.accentSoft,
+                      backgroundColor: 'rgba(154, 133, 255, 0.18)',
                       justifyContent: 'center',
                       alignItems: 'center',
-                      marginBottom: space.md,
-                    }}>
-                      <Plus size={22} color={colors.accentText} />
-                    </View>
-                    <Text style={[type.heading, { color: colors.text, marginBottom: space.xs }]}>
-                      Add a project
-                    </Text>
-                    <Text style={[type.caption, { color: colors.textMuted }]}>
-                      Track a climb you're working on
-                    </Text>
-                  </Card>
-                ) : (
-                  data.projects.slice(0, 5).map((p: any) => (
-                    <ProjectCard
-                      key={p.id}
-                      project={p}
-                      style={{ width: 260 }}
-                    />
-                  ))
-                )}
-              </View>
-            </ScrollView>
-          </View>
-
-          {/* 7. Weekly volume chart */}
-          {data.weeklyVolume.length > 0 && (
-            <View style={{ marginBottom: space.xl }}>
-              <VolumeChart
-                data={data.weeklyVolume}
-                onPress={() => router.push('/analytics')}
-              />
-            </View>
-          )}
-
-          {/* 8. Recent sessions */}
-          {data.recentSessions.length > 0 && (
-            <View style={{ marginBottom: space.xxl }}>
-              <SectionHeader title="Recent sessions" />
-              <View style={{ gap: space.md }}>
-                {data.recentSessions.map((s: any) => (
-                  <SessionCard
-                    key={s.id}
-                    session={s}
-                    onDelete={(id) => {
-                      Q.deleteSession(id);
+                      marginBottom: 12,
                     }}
-                  />
-                ))}
-              </View>
+                  >
+                    <Plus size={22} color="#D4CCFF" />
+                  </View>
+                  <Text style={[type.heading, { color: '#FFFFFF', marginBottom: 4, fontWeight: '700' }]}>
+                    Add a project
+                  </Text>
+                  <Text style={{ color: 'rgba(255, 255, 255, 0.5)', fontSize: 13 }}>
+                    Track a climb you're working on
+                  </Text>
+                </TouchableOpacity>
+              ) : (
+                data.projects.slice(0, 5).map((p: any) => (
+                  <Animated.View key={p.id} layout={listLayout} style={{ width: 260 }}>
+                    <ProjectCard project={p} style={{ width: 260 }} />
+                  </Animated.View>
+                ))
+              )}
             </View>
-          )}
-        </>
-      )}
+          </Animated.ScrollView>
+        </View>
 
-      {/* Bottom padding for FloatingTabBar */}
-      <View style={{ height: 100 }} />
+        {/* 8. Weekly Volume Chart */}
+        {data.weeklyVolume.length > 0 && (
+          <View style={{ marginBottom: 26 }}>
+            <VolumeChart
+              data={data.weeklyVolume}
+              onPress={() => router.push('/analytics')}
+            />
+          </View>
+        )}
+
+        {/* 9. Recent Sessions List */}
+        {data.recentSessions.length > 0 && (
+          <View style={{ marginBottom: 28 }}>
+            <SectionHeader title="Recent sessions" />
+            <View style={{ gap: 12 }}>
+              {data.recentSessions.map((s: any) => (
+                <Animated.View key={s.id} layout={listLayout}>
+                  <SessionCard session={s} onDelete={(id) => { Q.deleteSession(id); }} />
+                </Animated.View>
+              ))}
+            </View>
+          </View>
+        )}
+      </Animated.ScrollView>
 
       {/* StartSessionSheet */}
       <StartSessionSheet
@@ -330,12 +501,6 @@ export default function HomeScreen() {
           startOrResume(gymName);
         }}
       />
-      </Animated.ScrollView>
-      <Animated.View style={{
-        position: 'absolute', top: 0, left: 0, right: 0, height: insets.top,
-        backgroundColor: colors.bg,
-        opacity: scrollY.interpolate({ inputRange: [0, 40], outputRange: [0, 1], extrapolate: 'clamp' }),
-      }} pointerEvents="none" />
     </View>
   );
 }
