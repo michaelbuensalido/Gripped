@@ -169,15 +169,15 @@ export default function ProjectsScreen() {
         
         {/* Bento Telemetry Metric Strip */}
         <View style={{ flexDirection: 'row', gap: space.sm, marginBottom: space.md }}>
-          <View style={{ flex: 1, backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, padding: space.sm, minHeight: 64, alignItems: 'center', justifyContent: 'center' }}>
+          <View style={{ flex: 1, backgroundColor: colors.materialBase, borderWidth: 0, borderColor: colors.border, borderRadius: radius.md, padding: space.sm, minHeight: 64, alignItems: 'center', justifyContent: 'center' }}>
             <Text style={[type.stat, { fontSize: 22, color: colors.text, fontVariant: ['tabular-nums'] }]}>{activeProjects.length}</Text>
             <Text style={[type.label, { color: colors.textMuted, fontSize: 10, marginTop: 2 }]}>ACTIVE</Text>
           </View>
-          <View style={{ flex: 1, backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, padding: space.sm, minHeight: 64, alignItems: 'center', justifyContent: 'center' }}>
+          <View style={{ flex: 1, backgroundColor: colors.materialBase, borderWidth: 0, borderColor: colors.border, borderRadius: radius.md, padding: space.sm, minHeight: 64, alignItems: 'center', justifyContent: 'center' }}>
             <Text style={[type.stat, { fontSize: 22, color: colors.flashText, fontVariant: ['tabular-nums'] }]}>{sentProjects.length}</Text>
             <Text style={[type.label, { color: colors.textMuted, fontSize: 10, marginTop: 2 }]}>SENT</Text>
           </View>
-          <View style={{ flex: 1, backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, padding: space.sm, minHeight: 64, alignItems: 'center', justifyContent: 'center' }}>
+          <View style={{ flex: 1, backgroundColor: colors.materialBase, borderWidth: 0, borderColor: colors.border, borderRadius: radius.md, padding: space.sm, minHeight: 64, alignItems: 'center', justifyContent: 'center' }}>
             <Text style={[type.stat, { fontSize: 22, color: colors.text, fontVariant: ['tabular-nums'] }]}>{totalBurns}</Text>
             <Text style={[type.label, { color: colors.textMuted, fontSize: 10, marginTop: 2 }]}>BURNS</Text>
           </View>
@@ -189,10 +189,8 @@ export default function ProjectsScreen() {
             <View style={{
               flex: 1,
               flexDirection: 'row',
-              backgroundColor: colors.cardMuted,
-              borderRadius: radius.md,
-              borderWidth: 1,
-              borderColor: colors.border,
+              backgroundColor: colors.materialBase,
+              borderRadius: radius.pill,
               height: 56,
               minHeight: 56,
               padding: 4,
@@ -206,13 +204,11 @@ export default function ProjectsScreen() {
                   flex: 1,
                   alignItems: 'center',
                   justifyContent: 'center',
-                  borderRadius: radius.sm,
-                  backgroundColor: activeTab === 'in_progress' ? colors.card : 'transparent',
-                  borderWidth: activeTab === 'in_progress' ? 1 : 0,
-                  borderColor: colors.border,
+                  borderRadius: radius.pill,
+                  backgroundColor: activeTab === 'in_progress' ? colors.accent : 'transparent',
                 }}
               >
-                <Text style={[type.heading, { color: activeTab === 'in_progress' ? colors.text : colors.textMuted, fontSize: 13, fontWeight: activeTab === 'in_progress' ? '700' : '500' }]}>
+                <Text style={[type.heading, { color: activeTab === 'in_progress' ? colors.textWhitePrimary : colors.textWhiteSecondary, fontSize: 13, fontWeight: '400' }]}>
                   In progress ({activeProjects.length})
                 </Text>
               </TouchableOpacity>
@@ -225,13 +221,11 @@ export default function ProjectsScreen() {
                   flex: 1,
                   alignItems: 'center',
                   justifyContent: 'center',
-                  borderRadius: radius.sm,
-                  backgroundColor: activeTab === 'sent' ? colors.card : 'transparent',
-                  borderWidth: activeTab === 'sent' ? 1 : 0,
-                  borderColor: colors.border,
+                  borderRadius: radius.pill,
+                  backgroundColor: activeTab === 'sent' ? colors.accent : 'transparent',
                 }}
               >
-                <Text style={[type.heading, { color: activeTab === 'sent' ? colors.flashText : colors.textMuted, fontSize: 13, fontWeight: activeTab === 'sent' ? '700' : '500' }]}>
+                <Text style={[type.heading, { color: activeTab === 'sent' ? colors.textWhitePrimary : colors.textWhiteSecondary, fontSize: 13, fontWeight: '400' }]}>
                   Sent ({sentProjects.length})
                 </Text>
               </TouchableOpacity>
@@ -244,9 +238,9 @@ export default function ProjectsScreen() {
                   width: 56,
                   height: 56,
                   minHeight: 56,
-                  backgroundColor: colors.card,
+                  backgroundColor: colors.materialBase,
                   borderRadius: radius.md,
-                  borderWidth: 1,
+                  borderWidth: 0,
                   borderColor: colors.border,
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -265,9 +259,9 @@ export default function ProjectsScreen() {
                   width: 56,
                   height: 56,
                   minHeight: 56,
-                  backgroundColor: colors.card,
+                  backgroundColor: colors.materialBase,
                   borderRadius: radius.md,
-                  borderWidth: 1,
+                  borderWidth: 0,
                   borderColor: colors.border,
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -356,8 +350,8 @@ export default function ProjectsScreen() {
                   width: 44,
                   height: 44,
                   borderRadius: radius.md,
-                  backgroundColor: colors.card,
-                  borderWidth: 1,
+                  backgroundColor: colors.materialBase,
+                  borderWidth: 0,
                   borderColor: colors.border,
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -378,9 +372,9 @@ export default function ProjectsScreen() {
                 style={[
                   type.body,
                   {
-                    backgroundColor: colors.cardMuted,
+                    backgroundColor: colors.materialBase,
                     borderRadius: radius.md,
-                    borderWidth: 1,
+                    borderWidth: 0,
                     borderColor: colors.border,
                     paddingHorizontal: space.md,
                     height: 56,
@@ -424,9 +418,9 @@ export default function ProjectsScreen() {
                 style={[
                   type.body,
                   {
-                    backgroundColor: colors.cardMuted,
+                    backgroundColor: colors.materialBase,
                     borderRadius: radius.md,
-                    borderWidth: 1,
+                    borderWidth: 0,
                     borderColor: colors.border,
                     paddingHorizontal: space.md,
                     height: 56,
@@ -447,9 +441,9 @@ export default function ProjectsScreen() {
                 style={[
                   type.body,
                   {
-                    backgroundColor: colors.cardMuted,
+                    backgroundColor: colors.materialBase,
                     borderRadius: radius.md,
-                    borderWidth: 1,
+                    borderWidth: 0,
                     borderColor: colors.border,
                     padding: space.md,
                     marginBottom: space.xl,
@@ -469,7 +463,7 @@ export default function ProjectsScreen() {
       {/* Filter Modal */}
       <Modal visible={isFilterModalOpen} animationType="slide" transparent>
         <View style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.6)' }}>
-          <View style={{ backgroundColor: colors.card, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl, borderWidth: 1, borderColor: colors.border, padding: space.xl, paddingBottom: Math.max(insets.bottom, space.xl) }}>
+          <View style={{ backgroundColor: colors.materialBase, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl, borderWidth: 0, borderColor: colors.border, padding: space.xl, paddingBottom: Math.max(insets.bottom, space.xl) }}>
             {/* Drag Handle */}
             <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: colors.border, alignSelf: 'center', marginBottom: space.md }} />
             
@@ -483,7 +477,7 @@ export default function ProjectsScreen() {
                   width: 36,
                   height: 36,
                   borderRadius: radius.sm,
-                  backgroundColor: colors.cardMuted,
+                  backgroundColor: colors.materialBase,
                   alignItems: 'center',
                   justifyContent: 'center',
                 }}

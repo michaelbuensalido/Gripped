@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, Alert, TextInput, StyleSheet } from 'reac
 import Reanimated from 'react-native-reanimated';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ChevronLeft, MoreVertical, Edit2 } from 'lucide-react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Screen } from '../../components/ui/Screen';
 import { GradePill } from '../../components/ui/GradePill';
 import { Chip } from '../../components/ui/Chip';
@@ -88,8 +89,8 @@ export default function ProjectDetailScreen() {
             width: 48,
             height: 48,
             borderRadius: radius.md,
-            backgroundColor: colors.card,
-            borderWidth: 1,
+            backgroundColor: colors.materialBase,
+            borderWidth: 0,
             borderColor: colors.border,
             alignItems: 'center',
             justifyContent: 'center',
@@ -107,8 +108,8 @@ export default function ProjectDetailScreen() {
               width: 48,
               height: 48,
               borderRadius: radius.md,
-              backgroundColor: colors.card,
-              borderWidth: 1,
+              backgroundColor: colors.materialBase,
+              borderWidth: 0,
               borderColor: colors.border,
               alignItems: 'center',
               justifyContent: 'center',
@@ -119,7 +120,7 @@ export default function ProjectDetailScreen() {
         </View>
 
         {showMenu && (
-          <View style={[styles.menu, { backgroundColor: colors.card, borderColor: colors.border, borderRadius: radius.md, top: insets.top + 40, right: space.lg }]}>
+          <View style={[styles.menu, { backgroundColor: colors.materialBase, borderColor: colors.border, borderRadius: radius.md, top: insets.top + 40, right: space.lg }]}>
             {project.status !== 'sent' && (
               <TouchableOpacity onPress={handleMarkSent} style={{ padding: space.md, borderBottomWidth: 1, borderBottomColor: colors.border }}>
                 <Text style={[type.body, { color: colors.text }]}>Mark as sent</Text>
@@ -140,25 +141,30 @@ export default function ProjectDetailScreen() {
         <View
           style={{
             width: '100%',
-            height: 200,
-            backgroundColor: colors.card,
-            borderRadius: radius.lg,
-            borderWidth: 1,
-            borderColor: colors.border,
-            overflow: 'hidden',
+            height: 240,
+            backgroundColor: '#000000',
             marginBottom: space.lg,
             alignItems: 'center',
             justifyContent: 'center',
+            position: 'relative',
           }}
         >
           {project.mediaUri ? (
-            <VideoPlayerView
-              uri={project.mediaUri}
-              style={{ width: '100%', height: '100%', backgroundColor: colors.card }}
-              contentFit="cover"
-            />
+            <>
+              <VideoPlayerView
+                uri={project.mediaUri}
+                style={{ width: '100%', height: '100%', backgroundColor: '#000000' }}
+                contentFit="cover"
+              />
+              <LinearGradient
+                colors={['transparent', '#000000']}
+                start={{ x: 0, y: 0.5 }}
+                end={{ x: 0, y: 1 }}
+                style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 100 }}
+              />
+            </>
           ) : (
-            <View style={{ width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center', backgroundColor: colors.cardMuted }}>
+            <View style={{ width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center', backgroundColor: colors.materialBase }}>
               <Svg width={90} height={90} viewBox="0 0 100 100">
                 <Path
                   d="M80 30 C90 20, 100 40, 95 60 C90 80, 70 90, 50 85 C30 80, 20 60, 25 40 C30 20, 70 40, 80 30Z"
@@ -197,9 +203,9 @@ export default function ProjectDetailScreen() {
         <View style={{ flexDirection: 'row', gap: space.md, marginBottom: space.xl }}>
           <View style={{
             flex: 1,
-            backgroundColor: colors.card,
+            backgroundColor: colors.materialBase,
             borderRadius: radius.md,
-            borderWidth: 1,
+            borderWidth: 0,
             borderColor: colors.border,
             padding: space.md,
             minHeight: 72,
@@ -210,9 +216,9 @@ export default function ProjectDetailScreen() {
           </View>
           <View style={{
             flex: 1,
-            backgroundColor: colors.card,
+            backgroundColor: colors.materialBase,
             borderRadius: radius.md,
-            borderWidth: 1,
+            borderWidth: 0,
             borderColor: colors.border,
             padding: space.md,
             minHeight: 72,
@@ -238,7 +244,7 @@ export default function ProjectDetailScreen() {
                   width: 32,
                   height: 32,
                   borderRadius: radius.sm,
-                  backgroundColor: colors.cardMuted,
+                  backgroundColor: colors.materialBase,
                   alignItems: 'center',
                   justifyContent: 'center',
                 }}
@@ -249,9 +255,9 @@ export default function ProjectDetailScreen() {
           </View>
           
           <View style={{
-            backgroundColor: colors.card,
+            backgroundColor: colors.materialBase,
             borderRadius: radius.md,
-            borderWidth: 1,
+            borderWidth: 0,
             borderColor: colors.border,
             padding: space.md,
           }}>
@@ -265,9 +271,9 @@ export default function ProjectDetailScreen() {
                   style={[
                     type.body,
                     {
-                      backgroundColor: colors.cardMuted,
+                      backgroundColor: colors.materialBase,
                       borderRadius: radius.sm,
-                      borderWidth: 1,
+                      borderWidth: 0,
                       borderColor: colors.border,
                       padding: space.md,
                       color: colors.text,
@@ -349,7 +355,7 @@ const styles = StyleSheet.create({
   menu: {
     position: 'absolute',
     width: 200,
-    borderWidth: 1,
+    borderWidth: 0,
     zIndex: 50,
   },
 });
