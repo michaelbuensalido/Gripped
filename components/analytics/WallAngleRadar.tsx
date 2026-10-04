@@ -20,10 +20,10 @@ export interface WallAngleRadarProps {
 }
 
 const DEFAULT_DATA: WallAngleData = {
-  slab: 72,
-  vertical: 55,
-  overhang: 38,
-  roof: 20,
+  slab: 0,
+  vertical: 0,
+  overhang: 0,
+  roof: 0,
 };
 
 // ── Geometry constants ────────────────────────────────────────────────────────
@@ -85,6 +85,7 @@ export default function WallAngleRadar({ data = DEFAULT_DATA }: WallAngleRadarPr
     return axisPoint(angle, ratio);
   });
   const dataPolygon = dataPoints.map(({ x, y }) => `${x},${y}`).join(' ');
+  const isEmpty = AXES.every(({ key }) => !data[key]);
 
   return (
     <View
@@ -115,13 +116,16 @@ export default function WallAngleRadar({ data = DEFAULT_DATA }: WallAngleRadarPr
       {/* SVG Chart */}
       <View style={{ alignItems: 'center', justifyContent: 'center' }}>
         <Svg width={SVG_SIZE} height={SVG_SIZE}>
-          {/* Background outer ring using ultra-thin white/10 */}
-          <Polygon
-            points={ringPoints(1.0)}
-            fill="none"
-            stroke="rgba(255, 255, 255, 0.1)"
-            strokeWidth={1}
-          />
+          {/* Guide rings using ultra-thin white/10 (inner rings only in zero-state) */}
+          {(isEmpty ? RING_RATIOS : [1.0]).map((r) => (
+            <Polygon
+              key={`ring-${r}`}
+              points={ringPoints(r)}
+              fill="none"
+              stroke={r === 1 ? 'rgba(255, 255, 255, 0.1)' : colors.chartGhost}
+              strokeWidth={1}
+            />
+          ))}
 
           {/* Axis spokes */}
           {AXES.map(({ angle, key }) => {
@@ -140,22 +144,24 @@ export default function WallAngleRadar({ data = DEFAULT_DATA }: WallAngleRadarPr
           })}
 
           {/* Data polygon with glowing Neon Violet */}
-          <Polygon
-            points={dataPolygon}
-            fill="rgba(142, 124, 255, 0.1)"
-            stroke={colors.accent}
-            strokeWidth={2}
-            strokeLinejoin="round"
-          />
+          {!isEmpty && (
+            <Polygon
+              points={dataPolygon}
+              fill="rgba(142, 124, 255, 0.1)"
+              stroke={colors.accent}
+              strokeWidth={2}
+              strokeLinejoin="round"
+            />
+          )}
 
-          {/* Dots at data points */}
+          {/* Dots at data points (collapsed to centre when empty) */}
           {dataPoints.map(({ x, y }, i) => (
             <Circle
               key={`dot-${i}`}
               cx={x}
               cy={y}
-              r={4}
-              fill={colors.accent}
+              r={isEmpty ? 3 : 4}
+              fill={isEmpty ? colors.chartGhostStrong : colors.accent}
             />
           ))}
 
@@ -222,6 +228,12 @@ export default function WallAngleRadar({ data = DEFAULT_DATA }: WallAngleRadarPr
           </View>
         ))}
       </View>
+
+      {isEmpty && (
+        <Text style={[type.caption, { color: colors.textWhiteMuted, marginTop: space.md, textAlign: 'center' }]}>
+          Tag a wall angle when logging to map your strengths.
+        </Text>
+      )}
     </View>
   );
 }

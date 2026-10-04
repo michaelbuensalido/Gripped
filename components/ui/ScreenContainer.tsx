@@ -1,6 +1,8 @@
 import React from 'react';
 import { View, ImageBackground, StyleSheet, ViewStyle, StyleProp } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
+import { colors } from '../../theme/tokens';
 
 interface ScreenContainerProps {
   children: React.ReactNode;
@@ -20,13 +22,18 @@ export function ScreenContainer({
   const insets = useSafeAreaInsets();
 
   return (
-    <View style={[{ flex: 1, backgroundColor: '#111113' }, style]}>
-      {/* ── Textured Speckled Gym Mat Background Layer with Subdued Opacity ── */}
+    <View style={[{ flex: 1, backgroundColor: colors.bgTexture }, style]}>
+      {/* ── Textured Speckled Gym Mat Background Layer, heavily dimmed ── */}
       <ImageBackground
         source={require('../../assets/speckled_mat_bg.jpg')}
         style={StyleSheet.absoluteFill}
-        imageStyle={{ opacity: 0.22 }}
+        imageStyle={{ opacity: colors.backdropImageOpacity }}
         resizeMode="cover"
+      />
+      <LinearGradient
+        pointerEvents="none"
+        colors={[colors.backdropScrimTop, colors.backdropScrimBottom]}
+        style={StyleSheet.absoluteFill}
       />
       <View
         style={{

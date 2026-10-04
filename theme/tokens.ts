@@ -1,10 +1,17 @@
 export const colors = {
   // Surfaces: translucent on dark speckled mat background
   bg: "transparent",
-  bgTexture: "#0C0C10",
-  card: "rgba(22, 22, 30, 0.88)",
-  cardMuted: "rgba(28, 28, 38, 0.70)", // inset tiles, inputs, unselected chips
+  bgTexture: "#050507",
+  // Backdrop dimming: the speckled mat should sit far behind content
+  backdropImageOpacity: 0.16,
+  backdropScrimTop: "rgba(0, 0, 0, 0.35)",
+  backdropScrimBottom: "rgba(0, 0, 0, 0.75)",
+  card: "rgba(22, 22, 30, 0.92)",
+  cardMuted: "rgba(28, 28, 38, 0.80)", // inset tiles, inputs, unselected chips
   border: "rgba(255, 255, 255, 0.06)",
+  // Zero-state chart skeleton
+  chartGhost: "rgba(255, 255, 255, 0.06)",
+  chartGhostStrong: "rgba(255, 255, 255, 0.12)",
 
   // Text
   text: "#FFFFFF",
@@ -62,7 +69,7 @@ export const colors = {
   glow: "rgba(154, 133, 255, 0.25)",
 
   // Translucent Materials (v4.0 Spatial Editorial)
-  materialBase: "rgba(22, 22, 30, 0.85)",
+  materialBase: "rgba(22, 22, 30, 0.92)",
   materialBorder: "rgba(255, 255, 255, 0.06)",
   materialHighlight: "rgba(255, 255, 255, 0.10)",
 

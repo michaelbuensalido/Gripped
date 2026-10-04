@@ -141,7 +141,7 @@ export default function ProjectsScreen() {
 
   return (
     <>
-    <View style={{ flex: 1, backgroundColor: colors.bg }}>
+    <View style={{ flex: 1, backgroundColor: "#000000" }}>
       <View style={{ paddingHorizontal: 20, paddingTop: Math.max(insets.top, 16) + 8 }}>
         {/* Header */}
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: space.md }}>
@@ -339,7 +339,7 @@ export default function ProjectsScreen() {
       {/* New Project Modal */}
       <Modal visible={isAddModalOpen} animationType="slide" transparent>
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
-          <View style={{ flex: 1, backgroundColor: colors.bg, paddingTop: Math.max(insets.top, 24) }}>
+          <View style={{ flex: 1, backgroundColor: "#000000", paddingTop: Math.max(insets.top, 24) }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: space.lg, marginBottom: space.lg }}>
               <Text style={[type.display, { color: colors.text }]}>New Project</Text>
               <TouchableOpacity

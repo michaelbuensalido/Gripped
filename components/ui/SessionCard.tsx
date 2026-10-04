@@ -1,60 +1,36 @@
 import React, { useRef } from 'react';
-import { View, Text, TouchableOpacity, Animated, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, Alert, Animated } from 'react-native';
 import { useRouter } from 'expo-router';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Swipeable } from 'react-native-gesture-handler';
 import { Trash2 } from 'lucide-react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../../theme/useTheme';
 import { GradePill } from './GradePill';
-import { SessionBadge } from '../../utils/sessionBadges';
 
 export interface SessionCardProps {
-  session: {
-    id: string;
-    gymName: string;
-    startTime: number;
-    endTime: number;
-    notes?: string;
-    effort?: number;
-    climbsCount: number;
-    sendsCount: number;
-    flashesCount: number;
-    hardestGradeIndex: number;
-    hardestLabel: string;
-    badges: SessionBadge[];
-    resultMix: { flash: number; top: number; attempt: number };
-  };
-  onDelete: (id: string, climbsCount: number) => void;
+  session: any;
+  onDelete: (id: string, count: number) => void;
 }
 
 function formatSessionDate(ms: number) {
   const d = new Date(ms);
-  const weekday = d.toLocaleDateString('en-US', { weekday: 'short' });
-  const day = d.getDate();
-  return { weekday, day };
+  return {
+    weekday: d.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase(),
+    day: d.getDate().toString().padStart(2, '0'),
+    month: d.toLocaleDateString('en-US', { month: 'short' }).toUpperCase(),
+  };
 }
 
-function formatSessionTime(startMs: number, endMs: number) {
-  const s = new Date(startMs);
-  const e = endMs ? new Date(endMs) : s;
-  
-  const h1 = s.getHours() % 12 || 12;
-  const m1 = s.getMinutes().toString().padStart(2, '0');
-  const a1 = s.getHours() >= 12 ? 'PM' : 'AM';
-  
-  const h2 = e.getHours() % 12 || 12;
-  const m2 = e.getMinutes().toString().padStart(2, '0');
-  const a2 = e.getHours() >= 12 ? 'PM' : 'AM';
-  
-  if (a1 === a2) {
-    return `${h1}:${m1}-${h2}:${m2} ${a2}`;
-  }
-  return `${h1}:${m1} ${a1} - ${h2}:${m2} ${a2}`;
+function formatSessionTime(start: number, end?: number | null) {
+  const s = new Date(start).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+  if (!end) return `${s} - Ongoing`;
+  const e = new Date(end).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+  return `${s} - ${e}`;
 }
 
-function formatDuration(startMs: number, endMs: number) {
-  if (!endMs) return '<1 min';
-  const durationMs = endMs - startMs;
+function formatDuration(start: number, end?: number | null) {
+  if (!end) return 'Active';
+  const durationMs = end - start;
   if (durationMs < 60000) return '<1 min';
   const totalMins = Math.floor(durationMs / 60000);
   const h = Math.floor(totalMins / 60);
@@ -68,7 +44,7 @@ export function SessionCard({ session, onDelete }: SessionCardProps) {
   const router = useRouter();
   const swipeableRef = useRef<Swipeable>(null);
 
-  const { weekday, day } = formatSessionDate(session.startTime);
+  const { weekday, day, month } = formatSessionDate(session.startTime);
   const timeRange = formatSessionTime(session.startTime, session.endTime);
   const duration = formatDuration(session.startTime, session.endTime);
   const totalMix = session.resultMix.flash + session.resultMix.top + session.resultMix.attempt;
@@ -87,7 +63,7 @@ export function SessionCard({ session, onDelete }: SessionCardProps) {
           backgroundColor: colors.danger,
           justifyContent: 'center',
           alignItems: 'center',
-          borderRadius: radius.lg,
+          borderRadius: radius.xl,
           marginBottom: space.lg,
           marginLeft: space.sm,
         }}
@@ -106,8 +82,6 @@ export function SessionCard({ session, onDelete }: SessionCardProps) {
             ]
           );
         }}
-        accessibilityRole="button"
-        accessibilityLabel="Delete session"
       >
         <Animated.View style={{ opacity }}>
           <Trash2 size={24} color={colors.textOnAccent} />
@@ -123,106 +97,67 @@ export function SessionCard({ session, onDelete }: SessionCardProps) {
         onPress={() => router.push(`/session/detail/${session.id}?variant=summary`)}
         style={[
           {
-            backgroundColor: colors.materialBase,
-            borderRadius: radius.lg,
+            backgroundColor: 'rgba(255,255,255,0.03)',
+            borderRadius: radius.xl,
             padding: space.xl,
             marginBottom: space.lg,
-          },
-          shadow.card,
+            borderWidth: 1,
+            borderColor: 'rgba(255,255,255,0.04)',
+          }
         ]}
-        accessibilityRole="button"
-        accessibilityLabel={`Session at ${session.gymName}`}
       >
-        <View style={{ flexDirection: 'row', gap: space.md, marginBottom: space.sm }}>
-          {/* Date Badge */}
-          <View style={{
-            backgroundColor: colors.cardMuted,
-            borderRadius: radius.md,
-            width: 48,
-            height: 48,
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}>
-            <Text style={[type.label, { color: colors.textMuted, fontSize: 10, lineHeight: 12, marginBottom: 2 }]}>{weekday}</Text>
-            <Text style={[type.heading, { color: colors.textWhitePrimary }]}>{day}</Text>
+        {/* Top Header */}
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: space.lg }}>
+          <View>
+            <Text style={[type.display, { color: colors.textWhitePrimary, fontSize: 24, lineHeight: 28, letterSpacing: -0.5 }]} numberOfLines={1}>
+              {session.gymName}
+            </Text>
+            <Text style={[type.caption, { color: 'rgba(255,255,255,0.4)', marginTop: 4, letterSpacing: 0.5 }]} numberOfLines={1}>
+              {timeRange} • {duration}
+            </Text>
           </View>
           
-          {/* Header Info */}
-          <View style={{ flex: 1, justifyContent: 'center' }}>
-            <Text style={[type.heading, { color: colors.textWhitePrimary }]} numberOfLines={1}>{session.gymName}</Text>
-            <Text style={[type.caption, { color: colors.textWhiteSecondary, marginTop: 2 }]} numberOfLines={1}>
-              {timeRange} · {duration}
-            </Text>
+          <View style={{ alignItems: 'flex-end' }}>
+            <Text style={[type.label, { color: colors.accent, fontSize: 10, letterSpacing: 2, marginBottom: 2 }]}>{month}</Text>
+            <Text style={[type.display, { color: colors.textWhitePrimary, fontSize: 26, lineHeight: 28 }]}>{day}</Text>
           </View>
         </View>
 
         {/* Stats Row */}
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: space.lg }}>
-          <View style={{ flex: 1, alignItems: 'flex-start' }}>
-            <Text style={[type.label, { color: colors.textWhiteMuted, fontSize: 10, letterSpacing: 2 }]}>CLIMBS</Text>
-            <Text style={[type.heading, { color: colors.textWhitePrimary, marginTop: 4 }]}>{session.climbsCount}</Text>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: space.lg }}>
+          <View style={{ flex: 1 }}>
+            <Text style={[type.label, { color: 'rgba(255,255,255,0.3)', fontSize: 9, letterSpacing: 2, marginBottom: 4 }]}>CLIMBS</Text>
+            <Text style={[type.heading, { color: colors.textWhitePrimary, fontSize: 20 }]}>{session.climbsCount}</Text>
           </View>
-          <View style={{ flex: 1, alignItems: 'flex-start' }}>
-            <Text style={[type.label, { color: colors.textWhiteMuted, fontSize: 10, letterSpacing: 2 }]}>SENDS</Text>
-            <Text style={[type.heading, { color: colors.textWhitePrimary, marginTop: 4 }]}>{session.sendsCount}</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={[type.label, { color: 'rgba(255,255,255,0.3)', fontSize: 9, letterSpacing: 2, marginBottom: 4 }]}>SENDS</Text>
+            <Text style={[type.heading, { color: colors.textWhitePrimary, fontSize: 20 }]}>{session.sendsCount}</Text>
           </View>
-          <View style={{ flex: 1, alignItems: 'flex-start' }}>
-            <Text style={[type.label, { color: colors.textWhiteMuted, fontSize: 10, letterSpacing: 2 }]}>FLASHES</Text>
-            <Text style={[type.heading, { color: colors.textWhitePrimary, marginTop: 4 }]}>{session.flashesCount}</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={[type.label, { color: 'rgba(255,255,255,0.3)', fontSize: 9, letterSpacing: 2, marginBottom: 4 }]}>FLASHES</Text>
+            <Text style={[type.heading, { color: colors.flash, fontSize: 20 }]}>{session.flashesCount}</Text>
           </View>
           <View style={{ flex: 1, alignItems: 'flex-end' }}>
-            <Text style={[type.label, { color: colors.textWhiteMuted, fontSize: 10, letterSpacing: 2, marginBottom: 4 }]}>HARDEST</Text>
+            <Text style={[type.label, { color: 'rgba(255,255,255,0.3)', fontSize: 9, letterSpacing: 2, marginBottom: 4 }]}>HARDEST</Text>
             {session.hardestLabel !== '–' ? (
               <GradePill gradeIndex={session.hardestGradeIndex} label={session.hardestLabel} />
             ) : (
-              <Text style={[type.heading, { color: colors.textWhitePrimary }]}>–</Text>
+              <Text style={[type.heading, { color: 'rgba(255,255,255,0.3)', fontSize: 20 }]}>–</Text>
             )}
           </View>
         </View>
 
-        {/* Result mix bar with min width and legend */}
+        {/* Thin Gradient Bar */}
         {totalMix > 0 && (
-          <View style={{ marginBottom: space.md }} accessible={true} accessibilityLabel={`Result mix: ${session.resultMix.flash} flashes, ${session.resultMix.top} tops, ${session.resultMix.attempt} attempts`}>
-            <LinearGradient
-              colors={[colors.flash, colors.top, colors.attempt]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={{ height: 2, borderRadius: 1, opacity: 0.8 }}
-            />
-            <View style={{ flexDirection: 'row', gap: space.sm, marginTop: 8 }}>
-              {session.resultMix.flash > 0 && <Text style={[type.caption, { color: colors.textWhiteSecondary, fontSize: 10 }]}>{session.resultMix.flash} Flash</Text>}
-              {session.resultMix.top > 0 && <Text style={[type.caption, { color: colors.textWhiteSecondary, fontSize: 10 }]}>{session.resultMix.top} Top</Text>}
-              {session.resultMix.attempt > 0 && <Text style={[type.caption, { color: colors.textWhiteSecondary, fontSize: 10 }]}>{session.resultMix.attempt} Attempt</Text>}
+          <View style={{ marginTop: space.sm }}>
+            <View style={{ height: 1, backgroundColor: 'rgba(255,255,255,0.06)', borderRadius: 1, overflow: 'hidden', flexDirection: 'row' }}>
+              <LinearGradient
+                colors={[colors.flash, colors.top, colors.attempt]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={{ flex: 1 }}
+              />
             </View>
-          </View>
-        )}
-
-        {/* Badges */}
-        {session.badges && session.badges.length > 0 && (
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.xs, marginBottom: (session.effort || session.notes) ? space.md : 0 }}>
-            {session.badges.map(b => (
-              <View key={b.id} style={{ backgroundColor: colors[`${b.color}Soft`], paddingHorizontal: 8, paddingVertical: 4, borderRadius: radius.sm }}>
-                <Text style={[type.caption, { color: colors[`${b.color}Text`], fontWeight: '600' }]}>{b.label}</Text>
-              </View>
-            ))}
-          </View>
-        )}
-
-        {/* Effort & Notes */}
-        {(session.effort || session.notes) && (
-          <View style={{ borderTopWidth: 1, borderTopColor: colors.border, paddingTop: space.sm, flexDirection: 'row', alignItems: 'center', gap: space.md }}>
-            {session.effort ? (
-              <View style={{ flexDirection: 'row', gap: 2 }}>
-                {[1, 2, 3, 4, 5].map(n => (
-                  <View key={n} style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: n <= session.effort! ? colors.accent : colors.cardMuted }} />
-                ))}
-              </View>
-            ) : null}
-            {session.notes && (
-              <Text style={[type.body, { color: colors.textMuted, flex: 1 }]} numberOfLines={1}>
-                {session.notes}
-              </Text>
-            )}
           </View>
         )}
       </TouchableOpacity>

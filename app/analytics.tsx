@@ -67,29 +67,37 @@ export default function ProgressScreen() {
     }
   }, []);
 
-  const hasData = stats.resultCounts.top > 0 || stats.resultCounts.attempt > 0 || stats.resultCounts.flash > 0;
-
-  if (!hasData && period === 'all') {
-    return (
-      <View style={{ flex: 1, paddingHorizontal: 20, paddingTop: Math.max(insets.top, 20) + 10 }}>
-        <EmptyState
-          title="No data yet"
-          body="Log some climbs to see your stats and progression over time."
-          cta={<PrimaryButton
-            label="START SESSION"
-            onPress={() => router.push('/')}
-          />}
-        />
-      </View>
-    );
-  }
-
   const { resultCounts, avgGradeLast20, weeklyVolume, rates, hardestSend, gradePyramid } = stats;
 
-  const weeklyVolVal = weeklyVolume.length > 0 ? weeklyVolume[weeklyVolume.length - 1].count : 12;
-  const flashRateVal = rates?.flashRate ? `${rates.flashRate}%` : '32%';
-  const avgGradeVal = avgGradeLast20 ? formatGrade(avgGradeLast20) : 'V7';
-  const hardestSendVal = hardestSend.length > 0 ? formatGrade(hardestSend[hardestSend.length - 1].max_grade) : 'V8';
+  const weeklyVolVal = weeklyVolume.length > 0 ? weeklyVolume[weeklyVolume.length - 1].count : 0;
+  const flashRateVal = rates?.flashRate ? `${rates.flashRate}%` : '0%';
+  const avgGradeVal = avgGradeLast20 ? formatGrade(avgGradeLast20) : '-';
+  const hardestSendVal = hardestSend.length > 0 ? formatGrade(hardestSend[hardestSend.length - 1].max_grade) : '-';
+
+  // Map Data for deep dive components
+  const progressionData = hardestSend.map(item => ({
+    date: item.week.split('-').pop() ?? item.week,
+    gradeNum: item.max_grade,
+    gradeRaw: formatGrade(item.max_grade)
+  }));
+
+  const ascentPyramidData = gradePyramid.map(item => ({
+    grade: formatGrade(item.grade),
+    flashes: item.flashes,
+    sends: item.sends,
+    attempts: 0
+  }));
+
+  const failureReasonMap = new Map(stats.failureReasons.map(r => [r.reason, r.count]));
+  const totalFailures = stats.failureReasons.reduce((sum, r) => sum + r.count, 0);
+  const getPercentage = (count: number) => totalFailures > 0 ? Math.round((count / totalFailures) * 100) : 0;
+  const failureSegments = [
+    { reason: 'pump', count: failureReasonMap.get('pump') || 0, percentage: getPercentage(failureReasonMap.get('pump') || 0), color: colors.danger, label: 'Pump' },
+    { reason: 'foot_slip', count: failureReasonMap.get('foot_slip') || 0, percentage: getPercentage(failureReasonMap.get('foot_slip') || 0), color: colors.top, label: 'Foot Slip' },
+    { reason: 'power', count: failureReasonMap.get('power') || 0, percentage: getPercentage(failureReasonMap.get('power') || 0), color: colors.flash, label: 'Power' },
+    { reason: 'beta_error', count: failureReasonMap.get('beta_error') || 0, percentage: getPercentage(failureReasonMap.get('beta_error') || 0), color: colors.attempt, label: 'Beta Error' },
+    { reason: 'fear', count: failureReasonMap.get('fear') || 0, percentage: getPercentage(failureReasonMap.get('fear') || 0), color: colors.fail, label: 'Fear' },
+  ];
 
   return (
     <View style={{ flex: 1 }}>
@@ -167,191 +175,189 @@ export default function ProgressScreen() {
           })}
         </View>
 
-        {!hasData ? (
-          <View style={{ alignItems: 'center', paddingVertical: 40 }}>
-            <Text style={{ color: 'rgba(255, 255, 255, 0.5)' }}>No activity in this period.</Text>
-          </View>
-        ) : (
-          <>
-            {/* 3. Result Donut Hero Card */}
-            <View
-              style={{
-                backgroundColor: 'rgba(22, 22, 30, 0.85)',
-                borderRadius: 24,
-                paddingVertical: 20,
-                paddingHorizontal: 16,
-                borderWidth: 1,
-                borderColor: 'rgba(255, 255, 255, 0.06)',
-                marginBottom: 24,
-                alignItems: 'center',
-              }}
-            >
-              <ResultDonut
-                flashCount={resultCounts.flash || 10}
-                topCount={resultCounts.top || 6}
-                attemptCount={resultCounts.attempt || 3}
-                failCount={1}
-                centerGrade={avgGradeVal}
-                centerLabel="Average of last 20 routes"
-              />
-            </View>
+        {/* 3. Result Donut Hero Card */}
+        <View
+          style={{
+            backgroundColor: 'rgba(22, 22, 30, 0.85)',
+            borderRadius: 24,
+            paddingVertical: 20,
+            paddingHorizontal: 16,
+            borderWidth: 1,
+            borderColor: 'rgba(255, 255, 255, 0.06)',
+            marginBottom: 24,
+            alignItems: 'center',
+          }}
+        >
+          <ResultDonut
+            flashCount={resultCounts.flash || 0}
+            topCount={resultCounts.top || 0}
+            attemptCount={resultCounts.attempt || 0}
+            failCount={0}
+            centerGrade={avgGradeVal}
+            centerLabel="Average of last 20 routes"
+          />
+        </View>
 
-            {/* 4. PERFORMANCE TRENDS Section Header & 3 Bento Tiles */}
+        {/* 4. PERFORMANCE TRENDS Section Header & 3 Bento Tiles */}
+        <Text
+          style={{
+            color: 'rgba(255, 255, 255, 0.45)',
+            fontSize: 10.5,
+            fontWeight: '600',
+            letterSpacing: 1.5,
+            textTransform: 'uppercase',
+            marginBottom: 12,
+          }}
+        >
+          PERFORMANCE TRENDS
+        </Text>
+
+        <View style={{ flexDirection: 'row', gap: 10, marginBottom: 28 }}>
+          {/* Tile 1: Weekly Volume */}
+          <TouchableOpacity
+            activeOpacity={0.8}
+            onPress={() => router.push(`/analytics/stat-detail?stat=volume&period=${period}` as any)}
+            style={{
+              flex: 1,
+              backgroundColor: 'rgba(22, 22, 30, 0.85)',
+              borderRadius: 20,
+              padding: 14,
+              borderWidth: 1,
+              borderColor: 'rgba(255, 255, 255, 0.06)',
+            }}
+          >
             <Text
               style={{
                 color: 'rgba(255, 255, 255, 0.45)',
-                fontSize: 10.5,
+                fontSize: 9.5,
                 fontWeight: '600',
-                letterSpacing: 1.5,
+                letterSpacing: 1.2,
                 textTransform: 'uppercase',
-                marginBottom: 12,
+                lineHeight: 13,
               }}
             >
-              PERFORMANCE TRENDS
+              {'WEEKLY\nVOLUME'}
             </Text>
+            <Text style={{ color: '#9A85FF', fontSize: 12, fontWeight: '600', marginTop: 6 }}>
+              Routes
+            </Text>
+            <Text style={{ color: '#FFFFFF', fontSize: 26, fontWeight: '700', fontVariant: ['tabular-nums'], marginTop: 2 }}>
+              {weeklyVolVal}
+            </Text>
+          </TouchableOpacity>
 
-            <View style={{ flexDirection: 'row', gap: 10, marginBottom: 28 }}>
-              {/* Tile 1: Weekly Volume */}
-              <TouchableOpacity
-                activeOpacity={0.8}
-                onPress={() => router.push(`/analytics/stat-detail?stat=volume&period=${period}` as any)}
-                style={{
-                  flex: 1,
-                  backgroundColor: 'rgba(22, 22, 30, 0.85)',
-                  borderRadius: 20,
-                  padding: 14,
-                  borderWidth: 1,
-                  borderColor: 'rgba(255, 255, 255, 0.06)',
-                }}
-              >
-                <Text
-                  style={{
-                    color: 'rgba(255, 255, 255, 0.45)',
-                    fontSize: 9.5,
-                    fontWeight: '600',
-                    letterSpacing: 1.2,
-                    textTransform: 'uppercase',
-                    lineHeight: 13,
-                  }}
-                >
-                  {'WEEKLY\nVOLUME'}
-                </Text>
-                <Text style={{ color: '#9A85FF', fontSize: 12, fontWeight: '600', marginTop: 6 }}>
-                  Routes
-                </Text>
-                <Text style={{ color: '#FFFFFF', fontSize: 26, fontWeight: '700', fontVariant: ['tabular-nums'], marginTop: 2 }}>
-                  {weeklyVolVal}
-                </Text>
-              </TouchableOpacity>
-
-              {/* Tile 2: Flash Efficiency */}
-              <TouchableOpacity
-                activeOpacity={0.8}
-                onPress={() => router.push(`/analytics/stat-detail?stat=flash&period=${period}` as any)}
-                style={{
-                  flex: 1,
-                  backgroundColor: 'rgba(22, 22, 30, 0.85)',
-                  borderRadius: 20,
-                  padding: 14,
-                  borderWidth: 1,
-                  borderColor: 'rgba(255, 255, 255, 0.06)',
-                }}
-              >
-                <Text
-                  style={{
-                    color: 'rgba(255, 255, 255, 0.45)',
-                    fontSize: 9.5,
-                    fontWeight: '600',
-                    letterSpacing: 1.2,
-                    textTransform: 'uppercase',
-                    lineHeight: 13,
-                  }}
-                >
-                  {'FLASH\nEFFICIENCY'}
-                </Text>
-                <Text style={{ color: '#72FF9B', fontSize: 12, fontWeight: '600', marginTop: 6 }}>
-                  Flashes
-                </Text>
-                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 2 }}>
-                  <Text style={{ color: '#FFFFFF', fontSize: 26, fontWeight: '700', fontVariant: ['tabular-nums'] }}>
-                    {flashRateVal}
-                  </Text>
-                  <SparklineGreen />
-                </View>
-              </TouchableOpacity>
-
-              {/* Tile 3: Overhang / Hardest */}
-              <TouchableOpacity
-                activeOpacity={0.8}
-                onPress={() => router.push(`/analytics/stat-detail?stat=hardest&period=${period}` as any)}
-                style={{
-                  flex: 1,
-                  backgroundColor: 'rgba(22, 22, 30, 0.85)',
-                  borderRadius: 20,
-                  padding: 14,
-                  borderWidth: 1,
-                  borderColor: 'rgba(255, 255, 255, 0.06)',
-                }}
-              >
-                <Text
-                  style={{
-                    color: 'rgba(255, 255, 255, 0.45)',
-                    fontSize: 9.5,
-                    fontWeight: '600',
-                    letterSpacing: 1.2,
-                    textTransform: 'uppercase',
-                    lineHeight: 13,
-                  }}
-                >
-                  {'HARDEST\nSEND'}
-                </Text>
-                <Text style={{ color: 'rgba(255, 255, 255, 0.7)', fontSize: 12, fontWeight: '500', marginTop: 6 }}>
-                  Peak
-                </Text>
-                <Text style={{ color: '#FFFFFF', fontSize: 26, fontWeight: '700', fontVariant: ['tabular-nums'], marginTop: 2 }}>
-                  {hardestSendVal}
-                </Text>
-              </TouchableOpacity>
+          {/* Tile 2: Flash Efficiency */}
+          <TouchableOpacity
+            activeOpacity={0.8}
+            onPress={() => router.push(`/analytics/stat-detail?stat=flash&period=${period}` as any)}
+            style={{
+              flex: 1,
+              backgroundColor: 'rgba(22, 22, 30, 0.85)',
+              borderRadius: 20,
+              padding: 14,
+              borderWidth: 1,
+              borderColor: 'rgba(255, 255, 255, 0.06)',
+            }}
+          >
+            <Text
+              style={{
+                color: 'rgba(255, 255, 255, 0.45)',
+                fontSize: 9.5,
+                fontWeight: '600',
+                letterSpacing: 1.2,
+                textTransform: 'uppercase',
+                lineHeight: 13,
+              }}
+            >
+              {'FLASH\nEFFICIENCY'}
+            </Text>
+            <Text style={{ color: '#72FF9B', fontSize: 12, fontWeight: '600', marginTop: 6 }}>
+              Flashes
+            </Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 2 }}>
+              <Text style={{ color: '#FFFFFF', fontSize: 26, fontWeight: '700', fontVariant: ['tabular-nums'] }}>
+                {flashRateVal}
+              </Text>
+              {parseFloat(flashRateVal) > 0 && <SparklineGreen />}
             </View>
+          </TouchableOpacity>
 
-            {/* 5. Sends by Grade (Grade Pyramid) */}
-            <SectionHeader title="Sends by Grade" />
-            <Card style={{ marginBottom: 28, backgroundColor: 'rgba(22, 22, 30, 0.85)', borderRadius: 22, borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.06)' }}>
-              <GradePyramid data={gradePyramid} formatGrade={formatGrade} />
-            </Card>
+          {/* Tile 3: Overhang / Hardest */}
+          <TouchableOpacity
+            activeOpacity={0.8}
+            onPress={() => router.push(`/analytics/stat-detail?stat=hardest&period=${period}` as any)}
+            style={{
+              flex: 1,
+              backgroundColor: 'rgba(22, 22, 30, 0.85)',
+              borderRadius: 20,
+              padding: 14,
+              borderWidth: 1,
+              borderColor: 'rgba(255, 255, 255, 0.06)',
+            }}
+          >
+            <Text
+              style={{
+                color: 'rgba(255, 255, 255, 0.45)',
+                fontSize: 9.5,
+                fontWeight: '600',
+                letterSpacing: 1.2,
+                textTransform: 'uppercase',
+                lineHeight: 13,
+              }}
+            >
+              {'HARDEST\nSEND'}
+            </Text>
+            <Text style={{ color: 'rgba(255, 255, 255, 0.7)', fontSize: 12, fontWeight: '500', marginTop: 6 }}>
+              Peak
+            </Text>
+            <Text style={{ color: '#FFFFFF', fontSize: 26, fontWeight: '700', fontVariant: ['tabular-nums'], marginTop: 2 }}>
+              {hardestSendVal}
+            </Text>
+          </TouchableOpacity>
+        </View>
 
-            {/* 6. Deep Dive Telemetry Section */}
-            <SectionHeader title="Deep Dive" />
-            <View style={{ gap: 18, marginBottom: 28 }}>
-              <GradeProgressionTimeline />
-              <AscentPyramid />
-              <WallAngleRadar />
-              <RootCauseFailureChart />
-              {acwrData && <ACWRWidget data={acwrData} />}
+        {/* 5. Sends by Grade (Grade Pyramid) */}
+        <SectionHeader title="Sends by Grade" />
+        <Card style={{ marginBottom: 28, backgroundColor: 'rgba(22, 22, 30, 0.85)', borderRadius: 22, borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.06)' }}>
+          <GradePyramid data={gradePyramid} formatGrade={formatGrade} />
+        </Card>
+
+        {/* 6. Deep Dive Telemetry Section */}
+        <SectionHeader title="Deep Dive" />
+        <View style={{ gap: 18, marginBottom: 28 }}>
+          <GradeProgressionTimeline data={progressionData.length > 0 ? progressionData : undefined} />
+          <AscentPyramid data={ascentPyramidData.length > 0 ? ascentPyramidData : undefined} />
+          <WallAngleRadar data={stats.wallAngleRates} />
+          <RootCauseFailureChart segments={totalFailures > 0 ? failureSegments : undefined} totalFailures={totalFailures} />
+          {acwrData && <ACWRWidget data={acwrData} />}
+        </View>
+
+        {/* 7. Recent Sessions List */}
+        <SectionHeader title="Recent Sessions" action={{ label: "See all", onPress: () => router.push('/profile') }} />
+        <Card style={{ padding: 0, overflow: 'hidden', marginBottom: 40, backgroundColor: 'rgba(22, 22, 30, 0.85)', borderRadius: 22, borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.06)' }}>
+          {recentSessions.length === 0 ? (
+            <View style={{ padding: 20, alignItems: 'center' }}>
+              <Text style={{ color: 'rgba(255, 255, 255, 0.4)', fontSize: 14 }}>No recent sessions</Text>
             </View>
-
-            {/* 7. Recent Sessions List */}
-            <SectionHeader title="Recent Sessions" action={{ label: "See all", onPress: () => router.push('/profile') }} />
-            <Card style={{ padding: 0, overflow: 'hidden', marginBottom: 40, backgroundColor: 'rgba(22, 22, 30, 0.85)', borderRadius: 22, borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.06)' }}>
-              {recentSessions.map((s: any, i: number) => {
-                const summary = require('../db/queries').getSessionSummary(s.id);
-                return (
-                  <SessionRow
-                    key={s.id}
-                    id={s.id}
-                    gymName={s.gymName}
-                    startedAt={s.startTime}
-                    durationMs={summary.duration}
-                    climbs={summary.climbs}
-                    sends={summary.sends}
-                    hardestGrade={summary.hardestGradeRaw !== '–' ? summary.hardestGradeRaw : undefined}
-                    isLast={i === recentSessions.length - 1}
-                  />
-                );
-              })}
-            </Card>
-          </>
-        )}
+          ) : (
+            recentSessions.map((s: any, i: number) => {
+              const summary = require('../db/queries').getSessionSummary(s.id);
+              return (
+                <SessionRow
+                  key={s.id}
+                  id={s.id}
+                  gymName={s.gymName}
+                  startedAt={s.startTime}
+                  durationMs={summary.duration}
+                  climbs={summary.climbs}
+                  sends={summary.sends}
+                  hardestGrade={summary.hardestGradeRaw !== '–' ? summary.hardestGradeRaw : undefined}
+                  isLast={i === recentSessions.length - 1}
+                />
+              );
+            })
+          )}
+        </Card>
       </ScrollView>
     </View>
   );

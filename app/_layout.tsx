@@ -9,6 +9,7 @@ import {
 } from "react-native";
 import { Tabs, SplashScreen } from "expo-router";
 import { StatusBar } from "expo-status-bar";
+import { LinearGradient } from "expo-linear-gradient";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import {
@@ -145,12 +146,17 @@ export default function RootLayout() {
   const isReady = (fontsLoaded || fontError) && isDbReady;
 
   return (
-    <GestureHandlerRootView style={{ flex: 1, backgroundColor: "#0C0C10" }}>
+    <GestureHandlerRootView style={{ flex: 1, backgroundColor: colors.bgTexture }}>
       <ImageBackground
         source={require("../assets/speckled_mat_bg.jpg")}
         style={StyleSheet.absoluteFill}
-        imageStyle={{ opacity: 0.90 }}
+        imageStyle={{ opacity: colors.backdropImageOpacity }}
         resizeMode="cover"
+      />
+      <LinearGradient
+        pointerEvents="none"
+        colors={[colors.backdropScrimTop, colors.backdropScrimBottom]}
+        style={StyleSheet.absoluteFill}
       />
       <SafeAreaProvider>
         <StatusBar style="light" />

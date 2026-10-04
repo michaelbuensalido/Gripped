@@ -13,15 +13,12 @@ export interface GradeProgressionTimelineProps {
   data?: GradePoint[];
 }
 
-// Fallback data
-const FALLBACK: GradePoint[] = [
-  { date: 'Apr', gradeNum: 5, gradeRaw: 'V5' },
-  { date: 'May', gradeNum: 5, gradeRaw: 'V5' },
-  { date: 'Jun', gradeNum: 6, gradeRaw: 'V6' },
-  { date: 'Jul', gradeNum: 7, gradeRaw: 'V7' },
-  { date: 'Aug', gradeNum: 7, gradeRaw: 'V7' },
-  { date: 'Sep', gradeNum: 8, gradeRaw: 'V8' },
-];
+// Zero-state placeholder: flat line at V0 so the chart frame is visible before any sends
+const EMPTY_POINTS: GradePoint[] = ['W1', 'W2', 'W3', 'W4', 'W5', 'W6'].map((date) => ({
+  date,
+  gradeNum: 0,
+  gradeRaw: '',
+}));
 
 // Y-axis labels — displayed bottom → top by gifted-charts
 const Y_AXIS_LABELS = ['V0', 'V2', 'V4', 'V6', 'V8', 'V10'];
@@ -32,7 +29,8 @@ export default function GradeProgressionTimeline({
   const { width: screenWidth } = useWindowDimensions();
   const { colors, type, space, radius } = useTheme();
 
-  const data = propData && propData.length > 0 ? propData : FALLBACK;
+  const isEmpty = !propData || propData.length === 0;
+  const data = isEmpty ? EMPTY_POINTS : propData!;
   const chartData = data.map((p) => ({
     value: p.gradeNum,
     label: p.date,
@@ -45,6 +43,7 @@ export default function GradeProgressionTimeline({
   // Determine Y max: round up to nearest even number ≥ max grade
   const maxGrade = Math.max(...data.map((p) => p.gradeNum));
   const yMax = Math.max(10, Math.ceil(maxGrade / 2) * 2 + 2);
+  const lineColor = isEmpty ? colors.chartGhostStrong : colors.accent;
 
   return (
     <View
@@ -81,17 +80,18 @@ export default function GradeProgressionTimeline({
           width={chartWidth}
           height={160}
           // Area fill with Send Lavender accent
-          areaChart
+          areaChart={!isEmpty}
           startFillColor="rgba(142, 124, 255, 0.15)"
           endFillColor="rgba(142, 124, 255, 0)"
           startOpacity={1}
           endOpacity={1}
           // Line style
-          color={colors.accent}
+          color={lineColor}
           thickness={2}
+          strokeDashArray={isEmpty ? [4, 6] : undefined}
           // Data point style
-          dataPointsColor={colors.accent}
-          dataPointsRadius={4}
+          dataPointsColor={lineColor}
+          dataPointsRadius={isEmpty ? 3 : 4}
           textColor={colors.textWhitePrimary || colors.text}
           textFontSize={10}
           // Y-axis
@@ -105,8 +105,10 @@ export default function GradeProgressionTimeline({
           xAxisColor="rgba(255,255,255,0.1)"
           xAxisThickness={1}
           xAxisLabelTextStyle={{ color: 'rgba(255,255,255,0.4)', fontSize: 10, fontWeight: '500' }}
-          // Grid rules
-          hideRules={true}
+          // Grid rules — faint guides in zero-state so the frame reads as a chart
+          hideRules={!isEmpty}
+          rulesColor={colors.chartGhost}
+          rulesType="dashed"
           // Animation
           isAnimated
           animationDuration={600}
@@ -114,14 +116,14 @@ export default function GradeProgressionTimeline({
           curved
           curvature={0.2}
           hideDataPoints={false}
-          showValuesAsDataPointsText
+          showValuesAsDataPointsText={!isEmpty}
           initialSpacing={16}
           endSpacing={16}
           spacing={(chartWidth - 32) / Math.max(data.length - 1, 1)}
           // Background
           backgroundColor="transparent"
           // Pointer
-          focusEnabled
+          focusEnabled={!isEmpty}
           showStripOnFocus
           stripColor={colors.accent + '40'}
           stripWidth={1}
@@ -130,8 +132,14 @@ export default function GradeProgressionTimeline({
         />
       </View>
 
+      {isEmpty && (
+        <Text style={[type.caption, { color: colors.textWhiteMuted, marginTop: space.sm }]}>
+          Your hardest send each week will plot here.
+        </Text>
+      )}
+
       {/* Footer: delta indicator */}
-      {data.length >= 2 && (() => {
+      {!isEmpty && data.length >= 2 && (() => {
         const first = data[0].gradeNum;
         const last = data[data.length - 1].gradeNum;
         const delta = last - first;

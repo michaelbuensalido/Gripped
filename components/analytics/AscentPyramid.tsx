@@ -14,15 +14,13 @@ export interface AscentPyramidProps {
   data?: PyramidRow[];
 }
 
-// Fallback data
-const FALLBACK: PyramidRow[] = [
-  { grade: 'V4', flashes: 5, sends: 8, attempts: 15 },
-  { grade: 'V5', flashes: 3, sends: 6, attempts: 12 },
-  { grade: 'V6', flashes: 2, sends: 4, attempts: 10 },
-  { grade: 'V7', flashes: 1, sends: 2, attempts: 8 },
-  { grade: 'V8', flashes: 0, sends: 1, attempts: 6 },
-  { grade: 'V9', flashes: 0, sends: 0, attempts: 3 },
-];
+// Zero-state rows: grade axis is visible with empty bars before any climbs are logged
+const EMPTY_ROWS: PyramidRow[] = ['V0', 'V1', 'V2', 'V3', 'V4', 'V5'].map((grade) => ({
+  grade,
+  flashes: 0,
+  sends: 0,
+  attempts: 0,
+}));
 
 function LegendItem({ color, label }: { color: string; label: string }) {
   const { colors, type, space } = useTheme();
@@ -46,15 +44,18 @@ export default function AscentPyramid({ data: propData }: AscentPyramidProps) {
   const { width: screenWidth } = useWindowDimensions();
   const { colors, type, space, radius } = useTheme();
   
-  const data = propData && propData.length > 0 ? propData : FALLBACK;
+  const isEmpty = !propData || propData.length === 0;
+  const data = isEmpty ? EMPTY_ROWS : propData!;
 
   const stackData = data.map((row) => ({
     label: row.grade,
-    stacks: [
-      { value: row.flashes, color: colors.flash, marginBottom: 0 },
-      { value: row.sends, color: colors.top, marginBottom: 2 }, // Send Lavender
-      { value: row.attempts, color: colors.fail, marginBottom: 2 },
-    ],
+    stacks: isEmpty
+      ? [{ value: 0.4, color: colors.chartGhostStrong, marginBottom: 0 }]
+      : [
+          { value: row.flashes, color: colors.flash, marginBottom: 0 },
+          { value: row.sends, color: colors.top, marginBottom: 2 }, // Send Lavender
+          { value: row.attempts, color: colors.fail, marginBottom: 2 },
+        ],
     barBorderRadius: 4,
   }));
 
@@ -132,6 +133,12 @@ export default function AscentPyramid({ data: propData }: AscentPyramidProps) {
           endSpacing={8}
         />
       </View>
+
+      {isEmpty && (
+        <Text style={[type.caption, { color: colors.textWhiteMuted, marginTop: space.sm }]}>
+          Flashes, sends and attempts per grade will stack here.
+        </Text>
+      )}
 
       {/* Legend */}
       <View

@@ -7,7 +7,7 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
-  } from 'react-native';
+} from 'react-native';
 import Reanimated from 'react-native-reanimated';
 import { useRouter, Redirect } from 'expo-router';
 import { Screen } from '../../components/ui/Screen';
@@ -15,8 +15,10 @@ import { PrimaryButton } from '../../components/ui/PrimaryButton';
 import { SecondaryButton } from '../../components/ui/SecondaryButton';
 import { SectionHeader } from '../../components/ui/SectionHeader';
 import { Card } from '../../components/ui/Card';
+import { StatTile } from '../../components/ui/StatTile';
+import { SessionInsights } from '../../components/session/SessionInsights';
 import { useTheme } from '../../theme/useTheme';
-import { useActiveSession } from '../../db/hooks';
+import { useActiveSession, useSessionClimbs } from '../../db/hooks';
 import { completeSessionWrapUp, deleteSession } from '../../db/queries';
 import { useSessionStore } from '../../store/sessionStore';
 import { triggerHaptic } from '../../utils/haptics';
@@ -28,6 +30,7 @@ export default function EndSessionScreen() {
   const { colors, type, space, radius } = useTheme();
   const session = useActiveSession();
   const setActiveSessionId = useSessionStore((s) => s.setActiveSessionId);
+  const climbs = useSessionClimbs(session?.id || '');
 
   const [notes, setNotes] = useState('');
   const [effort, setEffort] = useState<number | null>(null);
@@ -35,6 +38,15 @@ export default function EndSessionScreen() {
   if (!session) {
     return <Redirect href="/" />;
   }
+
+  const durationMs = Date.now() - session.startTime;
+  const durationMin = Math.max(1, Math.round(durationMs / 60000));
+  
+  // Calculate top grade
+  const sends = climbs.filter(c => c.deleted_at === null && ['send', 'top', 'flash'].includes(c.result));
+  const topGrade = sends.length > 0 
+    ? [...sends].sort((a, b) => b.grade_index - a.grade_index)[0].grade_raw 
+    : '–';
 
   const handleFinish = () => {
     triggerHaptic('medium');
@@ -50,7 +62,6 @@ export default function EndSessionScreen() {
     setActiveSessionId(null);
     router.replace('/session/summary');
   };
-
 
   const handleDiscard = () => {
     Alert.alert(
@@ -80,12 +91,22 @@ export default function EndSessionScreen() {
   };
 
   return (
-    <Screen title="End Session" subtitle="How did it go?" scroll={false}>
+    <Screen title="Session Wrap-Up" subtitle="Great work today." scroll={false}>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={{ flex: 1, marginTop: space.lg }}
       >
         <Reanimated.ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ gap: space.xl, paddingBottom: 140 }}>
+
+          {/* Session Overview Stats */}
+          <View>
+            <SectionHeader title="Session Overview" />
+            <View style={{ flexDirection: 'row', gap: 10, marginBottom: space.sm }}>
+              <StatTile label="CLIMBS" value={climbs.filter(c => !c.deleted_at).length} flex />
+              <StatTile label="HARDEST" value={topGrade} flex />
+              <StatTile label="DURATION" value={`${durationMin}m`} flex />
+            </View>
+          </View>
 
           {/* Effort selector */}
           <View>
@@ -144,11 +165,18 @@ export default function EndSessionScreen() {
               ]}
             />
           </View>
+          
+          {/* Visual Insights */}
+          <View>
+            <SectionHeader title="Performance Insights" />
+            <SessionInsights climbs={climbs} />
+          </View>
+
         </Reanimated.ScrollView>
 
-        <View style={{ gap: space.md, paddingBottom: space.xl }}>
+        <View style={{ gap: space.md, paddingBottom: space.xl, backgroundColor: 'transparent' }}>
           <PrimaryButton testID="finish-session-btn" label="SAVE & FINISH" onPress={handleFinish} />
-                    <SecondaryButton label="Back to Session" onPress={handleCancel} />
+          <SecondaryButton label="Back to Session" onPress={handleCancel} />
           <TouchableOpacity 
             onPress={handleDiscard}
             style={{ minHeight: 48, justifyContent: 'center', alignItems: 'center', marginTop: space.xs }}
