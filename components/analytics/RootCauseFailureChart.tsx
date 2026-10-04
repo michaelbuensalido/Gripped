@@ -105,16 +105,18 @@ export default function RootCauseFailureChart({
 }: RootCauseFailureChartProps) {
   const { colors, type, space, radius } = useTheme();
 
-  const fallback: FailureSegment[] = [
-    { reason: 'pump', count: 12, percentage: 40, color: colors.danger, label: 'Pump' },
-    { reason: 'foot_slip', count: 9, percentage: 30, color: colors.top, label: 'Foot Slip' }, // Send Lavender
-    { reason: 'power', count: 5, percentage: 17, color: colors.flash, label: 'Power' },
-    { reason: 'beta_error', count: 2, percentage: 7, color: colors.attempt, label: 'Beta Error' },
-    { reason: 'fear', count: 2, percentage: 6, color: colors.fail, label: 'Fear' },
+  // Zero-state: all five root causes listed at 0 so users know what will be tracked
+  const emptySegments: FailureSegment[] = [
+    { reason: 'pump', count: 0, percentage: 0, color: colors.danger, label: 'Pump' },
+    { reason: 'foot_slip', count: 0, percentage: 0, color: colors.top, label: 'Foot Slip' },
+    { reason: 'power', count: 0, percentage: 0, color: colors.flash, label: 'Power' },
+    { reason: 'beta_error', count: 0, percentage: 0, color: colors.attempt, label: 'Beta Error' },
+    { reason: 'fear', count: 0, percentage: 0, color: colors.fail, label: 'Fear' },
   ];
 
-  const segments = propSegments && propSegments.length > 0 ? propSegments : fallback;
+  const segments = propSegments && propSegments.length > 0 ? propSegments : emptySegments;
   const totalFailures = propTotal ?? segments.reduce((sum, s) => sum + s.count, 0);
+  const isEmpty = totalFailures === 0;
 
   const [highlightedReason, setHighlightedReason] = useState<string | null>(null);
 
@@ -178,7 +180,7 @@ export default function RootCauseFailureChart({
           width: '100%',
           borderRadius: radius.pill,
           overflow: 'hidden',
-          backgroundColor: colors.materialBase,
+          backgroundColor: isEmpty ? colors.chartGhostStrong : colors.materialBase,
           height: 10,
           marginBottom: space.md,
           justifyContent: 'center',

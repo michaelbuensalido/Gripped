@@ -1621,3 +1621,99 @@ export function getLogbookHistory(filters: LogbookFilters, nowMs: number = Date.
   
   return Array.from(monthGroups.values());
 }
+
+
+// ─── Progress: period-scoped breakdowns (real data, zeros when empty) ──────────
+
+export interface WallAngleSendRates {
+  slab: number;
+  vertical: number;
+  overhang: number;
+  roof: number;
+}
+
+/** Send rate (0–100) per wall angle for climbs logged in the period. */
+export function getWallAngleSendRates(period: ProgressPeriod, nowMs: number = Date.now()): WallAngleSendRates {
+  const since = getSince(period, nowMs);
+  const db = getDatabase();
+  const rows = db.getAllSync<{ wall_angle: string | null; total: number; sends: number }>(`
+    SELECT LOWER(wall_angle) as wall_angle,
+           COUNT(*) as total,
+           SUM(CASE WHEN result IN ('send','top','flash') THEN 1 ELSE 0 END) as sends
+    FROM climbs
+    WHERE logged_at >= ? AND deleted_at IS NULL AND wall_angle IS NOT NULL
+    GROUP BY LOWER(wall_angle)
+  `, [since]);
+
+  const out: WallAngleSendRates = { slab: 0, vertical: 0, overhang: 0, roof: 0 };
+  for (const r of rows) {
+    const key = r.wall_angle as keyof WallAngleSendRates;
+    if (key in out && r.total > 0) out[key] = Math.round((r.sends / r.total) * 100);
+  }
+  return out;
+}
+
+export interface FailureReasonCount {
+  reason: 'pump' | 'foot_slip' | 'power' | 'beta_error' | 'fear';
+  count: number;
+}
+
+/** Fall counts per root cause in the period. Legacy values are folded into the new taxonomy. */
+export function getFailureReasonCounts(period: ProgressPeriod, nowMs: number = Date.now()): FailureReasonCount[] {
+  const since = getSince(period, nowMs);
+  const db = getDatabase();
+  const rows = db.getAllSync<{ failure_reason: string; count: number }>(`
+    SELECT failure_reason, COUNT(*) as count
+    FROM climbs
+    WHERE logged_at >= ? AND deleted_at IS NULL AND failure_reason IS NOT NULL
+    GROUP BY failure_reason
+  `, [since]);
+
+  const legacy: Record<string, FailureReasonCount['reason']> = {
+    pumped: 'pump',
+    grip_strength: 'power',
+    reach_span: 'beta_error',
+  };
+  const counts: Record<FailureReasonCount['reason'], number> = {
+    pump: 0, foot_slip: 0, power: 0, beta_error: 0, fear: 0,
+  };
+  for (const r of rows) {
+    const key = (legacy[r.failure_reason] ?? r.failure_reason) as FailureReasonCount['reason'];
+    if (key in counts) counts[key] += r.count;
+  }
+  return (Object.keys(counts) as FailureReasonCount['reason'][]).map((reason) => ({ reason, count: counts[reason] }));
+}
+
+export interface SessionPeriodStats {
+  sessions: number;
+  totalClimbs: number;
+  avgClimbsPerSession: number;
+  avgDurationMin: number;
+  totalMinutes: number;
+}
+
+/** Session-level totals for the period (only sessions with ≥1 climb). */
+export function getSessionPeriodStats(period: ProgressPeriod, nowMs: number = Date.now()): SessionPeriodStats {
+  const since = getSince(period, nowMs);
+  const db = getDatabase();
+  const rows = db.getAllSync<{ id: string; started_at: number; ended_at: number | null; climbs: number }>(`
+    SELECT s.id, s.started_at, s.ended_at, COUNT(c.id) as climbs
+    FROM sessions s
+    JOIN climbs c ON c.session_id = s.id AND c.deleted_at IS NULL
+    WHERE s.started_at >= ? AND s.deleted_at IS NULL AND s.ended_at IS NOT NULL
+    GROUP BY s.id
+  `, [since]);
+
+  const sessions = rows.length;
+  const totalClimbs = rows.reduce((a, r) => a + r.climbs, 0);
+  const totalMinutes = Math.round(
+    rows.reduce((a, r) => a + Math.max(0, (r.ended_at ?? r.started_at) - r.started_at), 0) / 60000,
+  );
+  return {
+    sessions,
+    totalClimbs,
+    avgClimbsPerSession: sessions ? Math.round((totalClimbs / sessions) * 10) / 10 : 0,
+    avgDurationMin: sessions ? Math.round(totalMinutes / sessions) : 0,
+    totalMinutes,
+  };
+}

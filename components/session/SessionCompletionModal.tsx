@@ -26,6 +26,7 @@ import * as Haptics from 'expo-haptics';
 import { triggerHaptic } from '../../utils/haptics';
 import { ConfettiBurst } from '../ui/ConfettiBurst';
 import { THEME_COLORS } from '../../constants/theme';
+import { colors } from '../../theme/tokens';
 import type { Session, BoulderGroup, BoulderLog } from '../../types';
 
 interface GroupWithLogs extends BoulderGroup {
@@ -200,7 +201,7 @@ export function SessionCompletionModal({
     >
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        style={{ flex: 1, backgroundColor: '#111113' }}
+        style={{ flex: 1, backgroundColor: colors.bgTexture }}
       >
         <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
           <View style={{ flex: 1 }}>
@@ -208,7 +209,7 @@ export function SessionCompletionModal({
             <ImageBackground
               source={require('../../assets/speckled_mat_bg.jpg')}
               style={StyleSheet.absoluteFill}
-              imageStyle={{ opacity: 0.18 }}
+              imageStyle={{ opacity: colors.backdropImageOpacity }}
               resizeMode="cover"
             />
 

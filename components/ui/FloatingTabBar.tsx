@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Keyboard, Platform, Animated } from 'react-native';
-import { BlurView } from 'expo-blur';
 import { useTheme } from '../../theme/useTheme';
 import { Home, Plus, TrendingUp, Target, BookOpen } from 'lucide-react-native';
 import { useSessionActions } from '../../hooks/useSessionActions';
@@ -164,12 +163,7 @@ export function FloatingTabBar({ state, descriptors, navigation }: any) {
             overflow: 'hidden',
           }]}
         >
-          {Platform.OS === 'ios' ? (
-            <BlurView tint="dark" intensity={80} style={StyleSheet.absoluteFill} />
-          ) : (
-            <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(20, 20, 28, 0.85)' }]} />
-          )}
-          <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(20, 20, 28, 0.82)' }]} />
+          <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(20, 20, 28, 0.94)' }]} />
         </View>
 
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', height: 66, paddingHorizontal: 6, overflow: 'visible' }}>

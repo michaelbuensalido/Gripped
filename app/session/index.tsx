@@ -307,7 +307,7 @@ export default function ActiveSessionScreen() {
     setRestTimer,
   } = useSessionStore();
 
-  const [isLogSheetOpen, setLogSheetOpen] = useState(false);
+  const [isLogSheetOpen, setLogSheetOpen] = useState(climbs.filter((c: any) => c.deleted_at === null).length === 0);
   const [editingClimb, setEditingClimb] = useState<any>(null);
   const [deletedClimbId, setDeletedClimbId] = useState<string | null>(null);
   const [showMenu, setShowMenu] = useState(false);
