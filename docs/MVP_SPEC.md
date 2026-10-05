@@ -586,3 +586,95 @@ Phases 1 and 2 together are the product; if time is short, ship them as a local-
 5. Outdoor areas and topo data
 6. Badges, challenges and gym leaderboards
 7. Apple Watch / Wear OS session tracking
+
+## Beta (Move Sequences, Notes and Video)
+
+**Purpose:** Let climbers record, revisit and share _how_ they climb a project: the move sequence, key tips, and video of attempts. Fully usable offline.
+
+### MVP scope
+
+| Feature              | Description                                                                                          |
+| -------------------- | ---------------------------------------------------------------------------------------------------- |
+| Structured move list | Ordered moves per project, e.g. "1. Start LH crimp, RH sloper"                                       |
+| Crux marker          | Flag one move as the hardest                                                                         |
+| Key tip              | Single-line headline tip, e.g. "Don't skip the left foot"                                            |
+| Beta versions        | Multiple versions per project (v1, v2, ...) with one marked "current"                                |
+| Video attachment     | Attach one or more short clips to a project or attempt, stored on-device                             |
+| Timestamped notes    | Notes on a video, e.g. "0:08 foot slipped"                                                           |
+| Share card           | Export project + beta as an image/PDF via the system share sheet                                     |
+| Spoiler hiding       | Beta collapsed by default, "Show beta" toggle; shared output excludes beta unless the sender opts in |
+| Voice-to-text        | Dictate moves/notes (chalky hands between attempts)                                                  |
+
+### Later (Pro / post-MVP)
+
+- Photo hold markers: numbered circles on the project photo, tagged LH / RH / LF / RF, with start and top flags
+- Attempt-linked beta: tie a beta version to a specific attempt ("Attempt 7: tried the left heel hook")
+- Route replay / beta overlay on the photo
+- Community or gym beta feed (needs accounts, backend and moderation; conflicts with offline-first, so deferred)
+- Reach/height field on the profile so friends can judge whether someone's beta applies to them
+
+### Data model (local, offline-first)
+
+**Beta**
+
+- `id`
+- `projectId`
+- `version` (int), `label` (e.g. "New heel hook")
+- `isCurrent` (bool)
+- `keyTip` (string, optional)
+- `cruxMoveId` (optional)
+- `createdAt`, `updatedAt`
+
+**BetaMove**
+
+- `id`, `betaId`
+- `order` (int)
+- `text` (string)
+- `limb` (optional: LH / RH / LF / RF)
+
+**BetaVideo**
+
+- `id`, `projectId`, `attemptId` (optional)
+- `localUri`, `durationSec`
+- `createdAt`
+
+**VideoNote**
+
+- `id`, `videoId`
+- `timestampSec`
+- `text`
+
+### Screens and navigation
+
+1. **Project Detail > Beta tab/section**
+   - Shows the current beta version (collapsed behind "Show beta")
+   - Version switcher, "Add version" button
+   - Entry points: Edit beta, Add video, Share
+2. **Beta Editor**
+   - Key tip field, reorderable move list, crux toggle per move, voice input
+   - Save creates or updates the current version
+3. **Video Player**
+   - Playback with a timestamped notes list; tap a note to seek; add a note at the current time
+4. **Share Sheet**
+   - Choose what to include (photo, details, beta, video link/clip), preview the card, send via system share
+
+### How it connects to the rest of the app
+
+- **Projects:** Beta lives under a project. Creating a project stays quick (name, grade, gym); beta is added afterwards from the detail page.
+- **Attempts / session log:** Videos can attach to an attempt. Later, a beta version can link to an attempt to show which change led to a send.
+- **Analytics:** Once beta is linked to attempts, show "attempts before and after your current beta" on the project and in the send efficiency section. Projects with beta logged can also feed the insights engine ("You sent 3 of your last 4 projects after changing your beta").
+- **Profile:** Optional height/reach, used for showing beta context when sharing.
+
+### Offline and storage notes
+
+- All beta data and videos are stored on-device; no network required.
+- Videos are the heaviest asset: cap clip length (e.g. 60s), compress on save, and show per-project storage use with a way to delete clips.
+- Sharing uses the system share sheet, so it works without a backend.
+
+### Acceptance criteria
+
+- A climber can add a move list and key tip to a project in under a minute.
+- Beta is hidden by default and never included in a shared card unless the sender opts in.
+- A project can hold multiple beta versions and switch between them.
+- A video can be attached and played back offline, with timestamped notes.
+- A project with beta can be exported as a share card via the system share sheet.

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { dbEvents } from './events';
 import * as Q from './queries';
+import * as B from './betaQueries';
 
 function useLiveQuery<T>(queryFn: () => T, deps: any[] = []): T {
   const [data, setData] = useState<T>(queryFn);
@@ -96,4 +97,25 @@ export function useLogbookSummary(filters: Q.LogbookFilters) {
 
 export function useLogbookHistory(filters: Q.LogbookFilters) {
   return useLiveQuery(() => Q.getLogbookHistory(filters), [JSON.stringify(filters)]);
+}
+
+// ─── Beta ────────────────────────────────────────────────────────────────────
+export function useProjectBetas(projectId: string) {
+  return useLiveQuery(() => (projectId ? B.getBetasForProject(projectId) : []), [projectId]);
+}
+
+export function useBetaMoves(betaId: string | null) {
+  return useLiveQuery(() => (betaId ? B.getMovesForBeta(betaId) : []), [betaId]);
+}
+
+export function useProjectVideos(projectId: string) {
+  return useLiveQuery(() => (projectId ? B.getVideosForProject(projectId) : []), [projectId]);
+}
+
+export function useVideoNotes(videoId: string) {
+  return useLiveQuery(() => (videoId ? B.getNotesForVideo(videoId) : []), [videoId]);
+}
+
+export function useProjectStorageBytes(projectId: string) {
+  return useLiveQuery(() => (projectId ? B.getProjectStorageBytes(projectId) : 0), [projectId]);
 }

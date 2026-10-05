@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, Modal, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Menu } from 'lucide-react-native';
+import { Menu, ChevronDown, Check } from 'lucide-react-native';
 import Svg, { Path } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Card } from '../components/ui/Card';
@@ -23,6 +23,13 @@ import { ACWRWidget } from '../components/analytics/ACWRWidget';
 import { calculateACWR } from '../services/loadCalculations';
 
 type Period = '7d' | '30d' | '90d' | '1y' | 'all';
+const PERIOD_LABELS: Record<Period, string> = {
+  '7d': 'Last 7 Days',
+  '30d': 'Last 30 Days',
+  '90d': 'Last 3 Months',
+  '1y': 'Last Year',
+  'all': 'All Time',
+};
 const PERIODS: { label: string; value: Period }[] = [
   { label: '7D', value: '7d' },
   { label: '30D', value: '30d' },
@@ -56,6 +63,7 @@ export default function ProgressScreen() {
   const { colors, type, space, radius } = useTheme();
   const insets = useSafeAreaInsets();
   const [period, setPeriod] = useState<Period>('30d');
+  const [isPeriodSheetOpen, setPeriodSheetOpen] = useState(false);
 
   const stats = useProgressStats(period);
   const recentSessions = useRecentSessions().slice(0, 5);
@@ -115,9 +123,16 @@ export default function ProgressScreen() {
             <Text style={{ color: '#FFFFFF', fontSize: 34, fontWeight: '700', fontFamily: type.display.fontFamily, letterSpacing: -0.5 }}>
               Your Progress
             </Text>
-            <Text style={{ color: 'rgba(255, 255, 255, 0.55)', fontSize: 14, fontFamily: type.body.fontFamily, marginTop: 4 }}>
-              This month's climbing overview
-            </Text>
+            <TouchableOpacity 
+              activeOpacity={0.7}
+              onPress={() => { triggerHaptic('light'); setPeriodSheetOpen(true); }}
+              style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 6 }}
+            >
+              <Text style={{ color: colors.accent, fontSize: 14, fontWeight: '600', fontFamily: type.heading.fontFamily }}>
+                {PERIOD_LABELS[period]}
+              </Text>
+              <ChevronDown size={16} color={colors.accent} strokeWidth={2.5} />
+            </TouchableOpacity>
           </View>
 
           {/* Menu Button Circle */}
@@ -137,42 +152,6 @@ export default function ProgressScreen() {
           >
             <Menu size={22} color="#FFFFFF" strokeWidth={2} />
           </TouchableOpacity>
-        </View>
-
-        {/* 2. Period Selector — Frosted Pill Chips */}
-        <View style={{ flexDirection: 'row', gap: 8, marginBottom: 24 }}>
-          {PERIODS.map((p) => {
-            const active = period === p.value;
-            return (
-              <TouchableOpacity
-                key={p.value}
-                onPress={() => { triggerHaptic('light'); setPeriod(p.value); }}
-                accessibilityRole="button"
-                accessibilityState={{ selected: active }}
-                style={{
-                  flex: 1,
-                  height: 46,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  backgroundColor: active ? 'rgba(154, 133, 255, 0.22)' : 'rgba(22, 22, 30, 0.85)',
-                  borderRadius: radius.pill,
-                  borderWidth: 1,
-                  borderColor: active ? '#9A85FF' : 'rgba(255, 255, 255, 0.06)',
-                }}
-              >
-                <Text
-                  style={{
-                    color: active ? '#D4CCFF' : 'rgba(255, 255, 255, 0.55)',
-                    fontSize: 13,
-                    fontWeight: active ? '700' : '500',
-                    fontFamily: type.heading.fontFamily,
-                  }}
-                >
-                  {p.label}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
         </View>
 
         {/* 3. Result Donut Hero Card */}
@@ -359,6 +338,59 @@ export default function ProgressScreen() {
           )}
         </Card>
       </ScrollView>
+          {/* Custom Spatial Action Sheet for Period Selection */}
+      <Modal visible={isPeriodSheetOpen} animationType="slide" transparent>
+        <View style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.6)' }}>
+          <Pressable style={{ flex: 1 }} onPress={() => setPeriodSheetOpen(false)} />
+          <View style={{ 
+            backgroundColor: 'rgba(22, 22, 30, 0.98)', 
+            borderTopLeftRadius: radius.xl, 
+            borderTopRightRadius: radius.xl, 
+            borderWidth: 1, 
+            borderColor: 'rgba(255,255,255,0.06)', 
+            padding: space.xl, 
+            paddingBottom: Math.max(insets.bottom, space.xl) 
+          }}>
+            {/* Drag Handle */}
+            <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.1)', alignSelf: 'center', marginBottom: space.xl }} />
+            
+            <Text style={[type.heading, { color: colors.textWhiteMuted, fontSize: 12, letterSpacing: 1.5, marginBottom: space.lg, textTransform: 'uppercase' }]}>
+              Select Timeframe
+            </Text>
+
+            <View style={{ gap: space.xs }}>
+              {(Object.keys(PERIOD_LABELS) as Period[]).map((p) => {
+                const isActive = period === p;
+                return (
+                  <TouchableOpacity
+                    key={p}
+                    activeOpacity={0.7}
+                    onPress={() => {
+                      triggerHaptic('selection');
+                      setPeriod(p);
+                      setPeriodSheetOpen(false);
+                    }}
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      paddingVertical: space.md,
+                      paddingHorizontal: space.sm,
+                      backgroundColor: isActive ? 'rgba(154, 133, 255, 0.1)' : 'transparent',
+                      borderRadius: radius.md,
+                    }}
+                  >
+                    <Text style={[type.heading, { color: isActive ? colors.accent : colors.textWhitePrimary, fontSize: 16 }]}>
+                      {PERIOD_LABELS[p]}
+                    </Text>
+                    {isActive && <Check size={20} color={colors.accent} />}
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }

@@ -5,6 +5,7 @@ import { getDatabase } from './schema';
 import type { Session, BoulderGroup, BoulderLog, FailureReason, Project, ProjectStatus, Outcome, Sector, Route, Attempt, HoldType, WallAngle, RouteStatus } from '../types';
 import { v4 as uuid } from 'uuid';
 import { dbEvents } from './events';
+import { cascadeDeleteProjectBeta } from './betaQueries';
 
 // ─── Sessions ────────────────────────────────────────────────────────────────
 
@@ -251,10 +252,9 @@ export function getAscentsForSession(sessionId: string): any[] {
 // ─── Projects ────────────────────────────────────────────────────────────────
 
 export function createProject(p: Omit<Project, 'id' | 'createdAt' | 'updatedAt'>): string {
-  const db = getDatabase();
   const id = uuid();
   const now = Date.now();
-  db.runSync(
+  runMutation('projects', id, 'INSERT',
     `INSERT INTO projects (id, title, grade_raw, grade_index, wall_angle, hold_type, status, high_water_mark_moves, total_moves, micro_beta, photo_url, created_at, updated_at)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [id, p.title, p.gradeRaw, p.normalizedDifficulty, p.wallAngle, p.holdType, p.status, p.highWaterMarkMoves, p.totalMoves ?? null, p.microBeta ?? null, p.mediaUri ?? null, now, now]
@@ -263,16 +263,18 @@ export function createProject(p: Omit<Project, 'id' | 'createdAt' | 'updatedAt'>
 }
 
 export function updateProjectStatus(id: string, status: ProjectStatus): void {
-  getDatabase().runSync(`UPDATE projects SET status = ?, updated_at = ? WHERE id = ?`, [status, Date.now(), id]);
+  runMutation('projects', id, 'UPDATE', `UPDATE projects SET status = ?, updated_at = ? WHERE id = ?`, [status, Date.now(), id]);
 }
 export function updateProjectHighWaterMark(id: string, moves: number): void {
-  getDatabase().runSync(`UPDATE projects SET high_water_mark_moves = ?, updated_at = ? WHERE id = ?`, [moves, Date.now(), id]);
+  runMutation('projects', id, 'UPDATE', `UPDATE projects SET high_water_mark_moves = ?, updated_at = ? WHERE id = ?`, [moves, Date.now(), id]);
 }
 export function updateProjectBeta(id: string, microBeta: string, mediaUri?: string | null): void {
-  getDatabase().runSync(`UPDATE projects SET micro_beta = ?, photo_url = COALESCE(?, photo_url), updated_at = ? WHERE id = ?`, [microBeta, mediaUri ?? null, Date.now(), id]);
+  runMutation('projects', id, 'UPDATE', `UPDATE projects SET micro_beta = ?, photo_url = COALESCE(?, photo_url), updated_at = ? WHERE id = ?`, [microBeta, mediaUri ?? null, Date.now(), id]);
 }
 export function deleteProject(id: string): void {
-  getDatabase().runSync(`DELETE FROM projects WHERE id = ?`, [id]);
+  cascadeDeleteProjectBeta(id, () =>
+    runMutation('projects', id, 'DELETE', `DELETE FROM projects WHERE id = ?`, [id]),
+  );
 }
 export function getAllProjects(): Project[] {
   const rows = getDatabase().getAllSync<any>(`SELECT * FROM projects ORDER BY created_at DESC`);

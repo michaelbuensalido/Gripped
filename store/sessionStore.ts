@@ -26,6 +26,7 @@ interface SessionState {
 
   // Actions
   
+  startQuickSession: (gymName?: string) => string;
   createProject: (data: any) => string;
   updateProjectStatus: (id: string, status: any) => void;
   updateProjectHighWaterMark: (id: string, moves: number) => void;
