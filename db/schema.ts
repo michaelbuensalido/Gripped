@@ -126,6 +126,49 @@ export function getDatabase(): SQLite.SQLiteDatabase {
 
       CREATE INDEX IF NOT EXISTS idx_climbs_session ON climbs(session_id);
       CREATE INDEX IF NOT EXISTS idx_climbs_project ON climbs(project_id);
+
+      -- Beta (local-only: no outbox / sync columns yet)
+      CREATE TABLE IF NOT EXISTS betas (
+        id TEXT PRIMARY KEY,
+        project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+        version INTEGER NOT NULL,
+        label TEXT NOT NULL DEFAULT '',
+        is_current INTEGER NOT NULL DEFAULT 0,
+        key_tip TEXT,
+        crux_move_id TEXT,
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_betas_project ON betas(project_id);
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_betas_one_current ON betas(project_id) WHERE is_current = 1;
+
+      CREATE TABLE IF NOT EXISTS beta_moves (
+        id TEXT PRIMARY KEY,
+        beta_id TEXT NOT NULL REFERENCES betas(id) ON DELETE CASCADE,
+        ord INTEGER NOT NULL,
+        text TEXT NOT NULL DEFAULT '',
+        limb TEXT
+      );
+      CREATE INDEX IF NOT EXISTS idx_beta_moves_beta ON beta_moves(beta_id);
+
+      CREATE TABLE IF NOT EXISTS beta_videos (
+        id TEXT PRIMARY KEY,
+        project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+        attempt_id TEXT,
+        local_uri TEXT NOT NULL,
+        duration_sec REAL NOT NULL DEFAULT 0,
+        size_bytes INTEGER NOT NULL DEFAULT 0,
+        created_at INTEGER NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_beta_videos_project ON beta_videos(project_id);
+
+      CREATE TABLE IF NOT EXISTS video_notes (
+        id TEXT PRIMARY KEY,
+        video_id TEXT NOT NULL REFERENCES beta_videos(id) ON DELETE CASCADE,
+        timestamp_sec REAL NOT NULL DEFAULT 0,
+        text TEXT NOT NULL DEFAULT ''
+      );
+      CREATE INDEX IF NOT EXISTS idx_video_notes_video ON video_notes(video_id);
     `);
   }
   return _db;

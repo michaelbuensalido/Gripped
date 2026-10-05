@@ -34,11 +34,13 @@ export function ProjectCard({
   onLogAttempt,
   onArchive,
   style,
+  disableSwipe,
 }: { 
   project: any; 
   onLogAttempt?: () => void;
   onArchive?: () => void;
   style?: any;
+  disableSwipe?: boolean;
 }) {
   const { colors, space, radius, type, gradeBand } = useTheme();
   const swipeableRef = useRef<Swipeable>(null);
@@ -100,7 +102,7 @@ export function ProjectCard({
         justifyContent: 'center',
         padding: space.lg,
       }, style]}
-      testID={`project-card-${project.title.replace(/\s+/g, '-')}`}
+      testID={`project-card-${project.title.replace(/\\s+/g, '-')}`}
     >
       {/* 4px left accent stripe, inset 14px from top and bottom */}
       <View
@@ -179,6 +181,10 @@ export function ProjectCard({
       </View>
     </TouchableOpacity>
   );
+
+  if (disableSwipe) {
+    return cardContent;
+  }
 
   return (
     <Swipeable ref={swipeableRef} renderLeftActions={renderLeftActions} renderRightActions={renderRightActions} overshootLeft={false} overshootRight={false}>

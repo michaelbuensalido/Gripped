@@ -31,8 +31,11 @@ function formatSessionTime(start: number, end?: number | null) {
 function formatDuration(start: number, end?: number | null) {
   if (!end) return 'Active';
   const durationMs = end - start;
-  if (durationMs < 60000) return '<1 min';
   const totalMins = Math.floor(durationMs / 60000);
+  if (totalMins === 0) {
+    const s = Math.floor(durationMs / 1000);
+    return `${s}s`;
+  }
   const h = Math.floor(totalMins / 60);
   const m = totalMins % 60;
   if (h > 0) return `${h}h ${m}m`;

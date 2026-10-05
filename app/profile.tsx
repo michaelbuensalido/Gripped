@@ -1,10 +1,9 @@
 import React, { useState, useMemo, useRef } from 'react';
-import { View, Text, TouchableOpacity, TextInput, SectionList, ActionSheetIOS, Platform } from 'react-native';
+import { View, Text, TouchableOpacity, TextInput, SectionList, ActionSheetIOS, Platform, Modal, Pressable } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { plural } from '../utils/string';
-import { Filter, Calendar, List, Settings } from 'lucide-react-native';
-import { Modal } from 'react-native';
-import { Settings as SettingsIcon, Search, X } from 'lucide-react-native';
+import { Filter, Calendar, List, Settings as SettingsIcon, Search, X, ChevronDown, Check } from 'lucide-react-native';
 import { Screen } from '../components/ui/Screen';
 import { Chip } from '../components/ui/Chip';
 import { EmptyState } from '../components/ui/EmptyState';
@@ -18,9 +17,27 @@ import { softDeleteSession, undoDeleteSession } from '../db/queries';
 import { useTheme } from '../theme/useTheme';
 import { triggerHaptic } from '../utils/haptics';
 
+const PERIOD_LABELS: Record<string, string> = {
+  all: 'All Time',
+  week: 'This Week',
+  month: 'This Month',
+  '3months': 'Last 3 Months',
+  year: 'This Year',
+};
+
+const PERIOD_OPTIONS: { key: LogbookFilters['period']; label: string }[] = [
+  { key: 'all', label: 'All Time' },
+  { key: 'week', label: 'This Week' },
+  { key: 'month', label: 'This Month' },
+  { key: '3months', label: 'Last 3 Months' },
+  { key: 'year', label: 'This Year' },
+];
+
 export default function LogbookScreen() {
   const router = useRouter();
   const { colors, space, radius, type } = useTheme();
+  const insets = useSafeAreaInsets();
+  const [isPeriodSheetOpen, setIsPeriodSheetOpen] = useState(false);
 
   // Filters State
   const [filters, setFilters] = useState<LogbookFilters>({
@@ -129,10 +146,22 @@ export default function LogbookScreen() {
       <View style={{ paddingHorizontal: space.lg, marginBottom: space.sm }}>
         {/* Compact Top Header */}
         {!isSearchActive ? (
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', height: 48 }}>
-            <Text style={[type.display, { color: colors.text, fontSize: 28 }]}>Logbook</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 4 }}>
+            <View>
+              <Text style={[type.display, { color: colors.text, fontSize: 28 }]}>Logbook</Text>
+              <TouchableOpacity 
+                activeOpacity={0.7}
+                onPress={() => { triggerHaptic('light'); setIsPeriodSheetOpen(true); }}
+                style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4, marginBottom: 8 }}
+              >
+                <Text style={{ color: colors.accent, fontSize: 14, fontWeight: '600', fontFamily: type.heading.fontFamily }}>
+                  {PERIOD_LABELS[filters.period]}
+                </Text>
+                <ChevronDown size={16} color={colors.accent} strokeWidth={2.5} />
+              </TouchableOpacity>
+            </View>
             
-            <View style={{ flexDirection: 'row', gap: space.xs, alignItems: 'center' }}>
+            <View style={{ flexDirection: 'row', gap: space.xs, alignItems: 'center', marginTop: 4 }}>
               <TouchableOpacity
                 onPress={() => setIsSearchActive(true)}
                 accessibilityRole="button"
@@ -215,7 +244,7 @@ export default function LogbookScreen() {
             </View>
           </View>
         ) : (
-          <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: colors.cardMuted, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, paddingHorizontal: space.md, height: 48 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: colors.cardMuted, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, paddingHorizontal: space.md, height: 48, marginBottom: 8 }}>
             <Search size={18} color={colors.textMuted} />
             <TextInput 
               style={[type.body, { flex: 1, marginLeft: space.sm, color: colors.text }]}
@@ -237,74 +266,36 @@ export default function LogbookScreen() {
           </View>
         )}
 
-        {/* Period Segmented Control & Filters */}
-        <View style={{ flexDirection: 'row', marginTop: space.md, gap: space.sm, alignItems: 'center' }}>
-          <View
-            style={{
-              flex: 1,
-              flexDirection: 'row',
-              backgroundColor: colors.card,
-              borderRadius: radius.md,
-              borderWidth: 1,
-              borderColor: colors.border,
-              height: 52,
-              padding: 4,
-            }}
-          >
-            {['week', 'month', '3months', 'year', 'all'].map(p => {
-              const active = filters.period === p;
-              const label = p === 'week' ? 'Week' : p === 'month' ? 'Month' : p === '3months' ? '3 mo' : p === 'year' ? 'Year' : 'All';
-              return (
-                <TouchableOpacity
-                  key={p}
-                  onPress={() => setFilters(f => ({ ...f, period: p as any }))}
-                  accessibilityRole="button"
-                  accessibilityState={{ selected: active }}
-                  style={{
-                    flex: 1,
-                    backgroundColor: active ? colors.accentSoft : 'transparent',
-                    borderRadius: radius.sm,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
-                >
-                  <Text
-                    style={[
-                      type.caption,
-                      {
-                        color: active ? colors.accentText : colors.textMuted,
-                        fontWeight: active ? '700' : '500',
-                      },
-                    ]}
-                  >
-                    {label}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-
+        {/* Filters Button */}
+        <View style={{ flexDirection: 'row', gap: space.sm, alignItems: 'center' }}>
           <TouchableOpacity
             onPress={() => setIsFilterModalOpen(true)}
             accessibilityRole="button"
             accessibilityLabel="Filters"
             style={{
-              width: 52,
-              height: 52,
+              flexDirection: 'row',
+              height: 44,
               backgroundColor: colors.card,
               borderRadius: radius.md,
               borderWidth: 1,
               borderColor: colors.border,
               alignItems: 'center',
               justifyContent: 'center',
-              position: 'relative',
+              paddingHorizontal: 16,
+              gap: 8,
             }}
           >
-            <Filter size={20} color={hasActiveFilters ? colors.accentText : colors.text} />
+            <Filter size={18} color={hasActiveFilters ? colors.accentText : colors.text} />
+            <Text style={[type.heading, { color: hasActiveFilters ? colors.accentText : colors.text, fontSize: 14 }]}>Filters</Text>
             {hasActiveFilters && (
-              <View style={{ position: 'absolute', top: 12, right: 12, width: 8, height: 8, borderRadius: 4, backgroundColor: colors.accent }} />
+              <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: colors.accent }} />
             )}
           </TouchableOpacity>
+          {hasActiveFilters && (
+            <View style={{ flex: 1 }}>
+              <Text style={[type.caption, { color: colors.accentText }]} numberOfLines={1}>{activeFilterLabel}</Text>
+            </View>
+          )}
         </View>
 
         {/* Caption Line */}
@@ -429,6 +420,60 @@ export default function LogbookScreen() {
             </View>
 
             <PrimaryButton label="APPLY FILTERS" onPress={() => setIsFilterModalOpen(false)} />
+          </View>
+        </View>
+      </Modal>
+
+      {/* Custom Spatial Action Sheet for Logbook Period Selection */}
+      <Modal visible={isPeriodSheetOpen} animationType="slide" transparent>
+        <View style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.6)' }}>
+          <Pressable style={{ flex: 1 }} onPress={() => setIsPeriodSheetOpen(false)} />
+          <View style={{ 
+            backgroundColor: 'rgba(22, 22, 30, 0.98)', 
+            borderTopLeftRadius: radius.xl, 
+            borderTopRightRadius: radius.xl, 
+            borderWidth: 1, 
+            borderColor: 'rgba(255,255,255,0.06)', 
+            padding: space.xl, 
+            paddingBottom: Math.max(insets.bottom, space.xl) 
+          }}>
+            {/* Drag Handle */}
+            <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.1)', alignSelf: 'center', marginBottom: space.xl }} />
+            
+            <Text style={[type.heading, { color: 'rgba(255, 255, 255, 0.5)', fontSize: 12, letterSpacing: 1.5, marginBottom: space.lg, textTransform: 'uppercase' }]}>
+              Select Timeframe
+            </Text>
+
+            <View style={{ gap: space.xs }}>
+              {PERIOD_OPTIONS.map((opt) => {
+                const isActive = filters.period === opt.key;
+                return (
+                  <TouchableOpacity
+                    key={opt.key}
+                    activeOpacity={0.7}
+                    onPress={() => {
+                      triggerHaptic('selection');
+                      setFilters(f => ({ ...f, period: opt.key }));
+                      setIsPeriodSheetOpen(false);
+                    }}
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      paddingVertical: space.md,
+                      paddingHorizontal: space.sm,
+                      backgroundColor: isActive ? 'rgba(154, 133, 255, 0.12)' : 'transparent',
+                      borderRadius: radius.md,
+                    }}
+                  >
+                    <Text style={[type.heading, { color: isActive ? colors.accent : '#FFFFFF', fontSize: 16 }]}>
+                      {opt.label}
+                    </Text>
+                    {isActive && <Check size={20} color={colors.accent} strokeWidth={2.5} />}
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
           </View>
         </View>
       </Modal>

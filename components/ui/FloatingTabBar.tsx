@@ -9,12 +9,11 @@ import { AccessibilityInfo } from 'react-native';
 import { triggerHaptic } from '../../utils/haptics';
 
 function formatDuration(ms: number) {
-  const totalSecs = Math.floor(ms / 1000);
-  if (totalSecs < 60) return '<1 min';
+  const totalSecs = Math.max(0, Math.floor(ms / 1000));
   const h = Math.floor(totalSecs / 3600);
   const m = Math.floor((totalSecs % 3600) / 60);
   const s = totalSecs % 60;
-  if (h > 0) return `${h}:${m.toString().padStart(2, '0')}`;
+  if (h > 0) return `${h}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
   return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
 }
 
@@ -34,7 +33,7 @@ function CenterSessionButton({ activeSession, startOrResume, onOpenStartSheet }:
     setElapsed(Date.now() - start);
     const interval = setInterval(() => setElapsed(Date.now() - start), 1000);
     return () => clearInterval(interval);
-  }, [activeSession]);
+  }, [activeSession?.id, activeSession?.startTime]);
 
   useEffect(() => {
     if (activeSession && !reduceMotion) {

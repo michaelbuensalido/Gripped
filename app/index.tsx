@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, TouchableOpacity, Image } from 'react-native';
 import Animated, {
   useSharedValue,
@@ -8,7 +8,7 @@ import Animated, {
   Extrapolation,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import {
   Bell,
   ChevronDown,
@@ -38,12 +38,11 @@ import { triggerHaptic } from '../utils/haptics';
 import { plural } from '../utils/string';
 
 function formatDuration(ms: number) {
-  const totalSecs = Math.floor(ms / 1000);
-  if (totalSecs < 60) return '<1 min';
+  const totalSecs = Math.max(0, Math.floor(ms / 1000));
   const h = Math.floor(totalSecs / 3600);
   const m = Math.floor((totalSecs % 3600) / 60);
   const s = totalSecs % 60;
-  if (h > 0) return `${h}:${m.toString().padStart(2, '0')}`;
+  if (h > 0) return `${h}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
   return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
 }
 
@@ -58,6 +57,12 @@ export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const { triggerStreak } = useCelebration();
   const { hasStreakCelebrated, markStreakCelebrated } = useCelebrationStore();
+
+  useFocusEffect(
+    useCallback(() => {
+      import('../db/events').then((mod) => mod.dbEvents.emit());
+    }, [])
+  );
 
   useEffect(() => {
     if (data?.streak) {
@@ -84,7 +89,7 @@ export default function HomeScreen() {
     setElapsed(Date.now() - start);
     const interval = setInterval(() => setElapsed(Date.now() - start), 1000);
     return () => clearInterval(interval);
-  }, [data.activeSession?.id]);
+  }, [data.activeSession?.id, data.activeSession?.startTime]);
 
   const handleStartSession = () => {
     triggerHaptic('medium');
@@ -278,7 +283,7 @@ export default function HomeScreen() {
           </View>
         </View>
 
-        {/* 4. TODAY'S SESSION Hero Bento Card */}
+        {/* 4. Hero Bento Card */}
         <View
           style={{
             backgroundColor: 'rgba(24, 24, 34, 0.90)',
@@ -293,7 +298,11 @@ export default function HomeScreen() {
           {/* Header Row: Label & Pagination Dots */}
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
             <Text style={{ color: '#A872FF', fontSize: 11, fontWeight: '700', letterSpacing: 1.5, textTransform: 'uppercase' }}>
-              TODAY'S SESSION
+              {data.activeSession 
+                ? "TODAY'S SESSION" 
+                : (data.projects && data.projects.length > 0 
+                    ? "NEXT OBJECTIVE" 
+                    : (data.lastSession ? "LATEST SESSION" : "WELCOME"))}
             </Text>
             <View style={{ flexDirection: 'row', gap: 6, alignItems: 'center' }}>
               <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: '#9A85FF' }} />
@@ -302,11 +311,14 @@ export default function HomeScreen() {
             </View>
           </View>
 
-          {/* Grade / Title Row with Hold/Rock Icon */}
+          {/* Grade / Title Row */}
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 4 }}>
-            <Mountain size={28} color="#9A85FF" />
-            <Text style={{ color: '#FFFFFF', fontSize: 30, fontWeight: '700', fontFamily: type.stat.fontFamily }}>
-              {data.activeSession ? formatDuration(elapsed) : 'V5–V7A'}
+            <Text style={{ color: '#FFFFFF', fontSize: data.activeSession ? 30 : 24, fontWeight: '700', fontFamily: type.stat.fontFamily }}>
+              {data.activeSession 
+                ? formatDuration(elapsed) 
+                : (data.projects && data.projects.length > 0 
+                    ? data.projects[0].title 
+                    : (data.lastSession ? data.lastSession.gymName : 'Let\'s send it'))}
             </Text>
           </View>
 
@@ -314,12 +326,14 @@ export default function HomeScreen() {
           <Text style={{ color: 'rgba(255, 255, 255, 0.65)', fontSize: 14, fontFamily: type.body.fontFamily, marginBottom: 14 }}>
             {data.activeSession
               ? `${plural(data.activeSessionClimbCount, 'climb')} logged`
-              : data.lastSession
-              ? `${data.lastSession.gymName} • Power Endurance`
-              : 'Overhang • Power Endurance'}
+              : (data.projects && data.projects.length > 0
+                  ? `Active Project • ${data.projects[0].gradeRaw || 'Unknown Grade'}`
+                  : (data.lastSession 
+                      ? `Last climbed ${data.lastSessionRelative.toLowerCase()}` 
+                      : 'Log your first session today'))}
           </Text>
 
-          {/* Duration Pill Chip */}
+          {/* Duration / Status Pill Chip */}
           <View
             style={{
               flexDirection: 'row',
@@ -333,9 +347,12 @@ export default function HomeScreen() {
               marginBottom: 18,
             }}
           >
-            <Clock size={14} color="#D4CCFF" />
             <Text style={{ color: '#D4CCFF', fontSize: 12, fontWeight: '600', fontFamily: type.caption.fontFamily }}>
-              {data.activeSession ? `Elapsed ${formatDuration(elapsed)}` : 'Duration 75 min'}
+              {data.activeSession 
+                ? `Elapsed ${formatDuration(elapsed)}` 
+                : (data.projects && data.projects.length > 0 
+                    ? `${data.projects[0].attempts || 0} burns logged`
+                    : (data.hardest30d ? `Hardest recent: ${data.hardest30d.gradeRaw}` : 'Fresh Start'))}
             </Text>
           </View>
 
@@ -459,7 +476,7 @@ export default function HomeScreen() {
               ) : (
                 data.projects.slice(0, 5).map((p: any) => (
                   <Animated.View key={p.id} layout={listLayout} style={{ width: 260 }}>
-                    <ProjectCard project={p} style={{ width: 260 }} />
+                    <ProjectCard project={p} style={{ width: 260 }} disableSwipe={true} />
                   </Animated.View>
                 ))
               )}

@@ -13,6 +13,8 @@ import { PrimaryButton } from '../components/ui/PrimaryButton';
 import { useRichProjects } from '../db/hooks';
 import { triggerHaptic } from '../utils/haptics';
 import * as Q from '../db/queries';
+import { LogSheet } from '../components/session/LogSheet';
+import { useSessionStore } from '../store/sessionStore';
 
 const GRADES = ['VB', 'V0', 'V1', 'V2', 'V3', 'V4', 'V5', 'V6', 'V7', 'V8', 'V9', 'V10', 'V11', 'V12', 'V13', 'V14', 'V15'];
 const WALL_ANGLES = [
@@ -48,6 +50,7 @@ export default function ProjectsScreen() {
   
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
+  const [loggingProject, setLoggingProject] = useState<any>(null);
 
   // Form state
   const [newTitle, setNewTitle] = useState('');
@@ -141,7 +144,7 @@ export default function ProjectsScreen() {
 
   return (
     <>
-    <View style={{ flex: 1, backgroundColor: "#000000" }}>
+    <View style={{ flex: 1, backgroundColor: "transparent" }}>
       <View style={{ paddingHorizontal: 20, paddingTop: Math.max(insets.top, 16) + 8 }}>
         {/* Header */}
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: space.md }}>
@@ -327,7 +330,7 @@ export default function ProjectsScreen() {
             <Reanimated.View key={p.id} layout={listLayout}>
               <ProjectCard
                 project={p}
-                onLogAttempt={activeTab === 'in_progress' ? () => Alert.alert('Log Attempt', 'Use active session.') : undefined}
+                onLogAttempt={activeTab === 'in_progress' ? () => setLoggingProject(p) : undefined}
                 onArchive={activeTab === 'in_progress' ? () => handleArchive(p.id) : undefined}
               />
             </Reanimated.View>
@@ -339,7 +342,7 @@ export default function ProjectsScreen() {
       {/* New Project Modal */}
       <Modal visible={isAddModalOpen} animationType="slide" transparent>
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
-          <View style={{ flex: 1, backgroundColor: "#000000", paddingTop: Math.max(insets.top, 24) }}>
+          <View style={{ flex: 1, backgroundColor: "transparent", paddingTop: Math.max(insets.top, 24) }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: space.lg, marginBottom: space.lg }}>
               <Text style={[type.display, { color: colors.text }]}>New Project</Text>
               <TouchableOpacity
@@ -504,6 +507,31 @@ export default function ProjectsScreen() {
           </View>
         </View>
       </Modal>
+          {/* Project Log Sheet */}
+      <LogSheet
+        visible={!!loggingProject}
+        onClose={() => setLoggingProject(null)}
+        onSave={(grade, result, attempts, notes) => {
+          triggerHaptic('medium');
+          let sessionId = useSessionStore.getState().activeSessionId;
+          if (!sessionId) {
+            sessionId = useSessionStore.getState().startQuickSession();
+          }
+          useSessionStore.getState().logGenericAscent({
+            gradeRaw: grade,
+            outcome: result === 'top' ? 'send' : result,
+            movesLinked: attempts,
+            notes,
+            projectId: loggingProject?.id,
+          });
+          setLoggingProject(null);
+          Alert.alert('Attempt Logged', 'Your attempt was successfully logged to your active session.');
+        }}
+        initialGrade={loggingProject?.gradeRaw || 'V4'}
+        initialResult="attempt"
+        initialAttempts={1}
+        initialNotes=""
+      />
     </>
   );
 }
