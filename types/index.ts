@@ -51,6 +51,9 @@ export interface Project {
   highWaterMarkMoves: number;
   totalMoves?: number | null;
   microBeta?: string | null;
+  gymName?: string | null;
+  zone?: string | null;
+  setDate?: string | null;
   mediaUri?: string | null;
   createdAt: number;
   updatedAt: number;

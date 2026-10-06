@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { View, Text, TouchableOpacity, } from 'react-native';
-import Reanimated from 'react-native-reanimated';
+import Reanimated, { FadeInDown, FadeOutDown, SlideInDown, SlideOutDown } from 'react-native-reanimated';
+import { useSessionActions } from '../../hooks/useSessionActions';
 import { Target, Zap, Check, AlertTriangle, Layers } from 'lucide-react-native';
 import { useSessionStore } from '../../store/sessionStore';
 import type { WallAngle, HoldType, Outcome, FailureReason } from '../../types';
@@ -34,6 +35,10 @@ export function ChalkSafeLogger() {
   const [selectedHold, setSelectedHold] = useState<HoldType>(activeProject?.holdType ?? 'crimps');
   const [isProjectMode, setIsProjectMode] = useState<boolean>(Boolean(activeProject));
 
+  const undoLastClimb = useSessionStore(s => s.undoLastClimb);
+  const [showToast, setShowToast] = useState(false);
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const handleLog = (outcome: Outcome) => {
     triggerHaptic(outcome === 'flash' ? 'heavy' : outcome === 'send' ? 'medium' : 'light');
 
@@ -44,6 +49,17 @@ export function ChalkSafeLogger() {
       outcome,
       projectId: isProjectMode && activeProject ? activeProject.id : null,
     });
+    
+    setShowToast(true);
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+    toastTimer.current = setTimeout(() => setShowToast(false), 4000);
+  };
+
+  const handleUndo = () => {
+    triggerHaptic('medium');
+    undoLastClimb();
+    setShowToast(false);
+    if (toastTimer.current) clearTimeout(toastTimer.current);
   };
 
   const handleSelectFailureReason = (reason: FailureReason | null) => {
@@ -219,6 +235,21 @@ export function ChalkSafeLogger() {
           if (pendingAttemptId) setAttemptFailureReason(pendingAttemptId, null);
         }}
       />
+
+      {showToast && (
+        <Reanimated.View 
+          entering={SlideInDown.springify().damping(15)} 
+          exiting={SlideOutDown.duration(200)}
+          style={{ position: 'absolute', bottom: -60, left: 0, right: 0, alignItems: 'center', zIndex: 999 }}
+        >
+          <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#27272F', paddingHorizontal: 16, paddingVertical: 12, borderRadius: 24, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 5 }}>
+            <Text style={{ color: '#FFFFFF', fontSize: 13, fontWeight: '600', marginRight: 16 }}>Climb logged.</Text>
+            <TouchableOpacity onPress={handleUndo} style={{ backgroundColor: '#19191D', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16, borderWidth: 1, borderColor: '#3E3E48' }}>
+              <Text style={{ color: '#8E7CFF', fontSize: 12, fontWeight: '700' }}>UNDO</Text>
+            </TouchableOpacity>
+          </View>
+        </Reanimated.View>
+      )}
     </View>
   );
 }

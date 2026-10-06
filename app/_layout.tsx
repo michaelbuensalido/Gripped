@@ -1,4 +1,5 @@
 import "react-native-get-random-values";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import React, { useEffect } from "react";
 import {
   View,
@@ -7,9 +8,9 @@ import {
   Text,
   TouchableOpacity,
 } from "react-native";
-import { Tabs, SplashScreen } from "expo-router";
+import { Tabs, SplashScreen, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { LinearGradient } from "expo-linear-gradient";
+import { Platform } from 'react-native';
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import {
@@ -48,7 +49,8 @@ function TabLayout() {
       }}
     >
       <Tabs.Screen name="index"     options={{ title: "Home" }} />
-      <Tabs.Screen name="projects"  options={{ title: "Projects" }} />
+      <Tabs.Screen name="explore"  options={{ title: "Explore" }} />
+      <Tabs.Screen name="projects"  options={{ href: null }} />
       <Tabs.Screen name="analytics" options={{ title: "Progress" }} />
       <Tabs.Screen name="profile"   options={{ title: "Logbook" }} />
       <Tabs.Screen name="gallery"   options={{ title: "Gallery", href: null }} />
@@ -107,6 +109,8 @@ const styles = StyleSheet.create({
 
 export default function RootLayout() {
   const [isDbReady, setIsDbReady] = React.useState(false);
+  const [hasOnboarded, setHasOnboarded] = React.useState<boolean | null>(null);
+  const router = useRouter();
 
   const [soraLoaded, soraError] = useSoraFonts({
     Sora_400Regular,
@@ -127,7 +131,8 @@ export default function RootLayout() {
     (async () => {
       try {
         await initializeDatabase();
-        // initActiveSession is removed
+        const onboarded = await AsyncStorage.getItem('@cruxlog/onboarded');
+        setHasOnboarded(onboarded === 'true');
         setIsDbReady(true);
         notificationEngine.requestPermissions();
       } catch (e) {
@@ -138,12 +143,15 @@ export default function RootLayout() {
 
   // Hide splash screen once both fonts and DB are ready
   useEffect(() => {
-    if ((fontsLoaded || fontError) && isDbReady) {
+    if ((fontsLoaded || fontError) && isDbReady && hasOnboarded !== null) {
       SplashScreen.hideAsync();
+      if (!hasOnboarded) {
+        setTimeout(() => router.replace('/welcome'), 0);
+      }
     }
-  }, [fontsLoaded, fontError, isDbReady]);
+  }, [fontsLoaded, fontError, isDbReady, hasOnboarded, router]);
 
-  const isReady = (fontsLoaded || fontError) && isDbReady;
+  const isReady = (fontsLoaded || fontError) && isDbReady && hasOnboarded !== null;
 
   return (
     <GestureHandlerRootView style={{ flex: 1, backgroundColor: colors.bgTexture }}>
@@ -153,11 +161,7 @@ export default function RootLayout() {
         imageStyle={{ opacity: colors.backdropImageOpacity }}
         resizeMode="cover"
       />
-      <LinearGradient
-        pointerEvents="none"
-        colors={[colors.backdropScrimTop, colors.backdropScrimBottom]}
-        style={StyleSheet.absoluteFill}
-      />
+      <View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: colors.backdropScrimBottom, opacity: 0.8 }]} />
       <SafeAreaProvider>
         <StatusBar style="light" />
         <CelebrationProvider>

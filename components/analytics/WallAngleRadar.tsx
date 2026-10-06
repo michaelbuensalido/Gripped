@@ -13,6 +13,7 @@ export interface WallAngleData {
   vertical: number;
   overhang: number;
   roof: number;
+  hasData?: boolean;
 }
 
 export interface WallAngleRadarProps {
@@ -81,11 +82,11 @@ export default function WallAngleRadar({ data = DEFAULT_DATA }: WallAngleRadarPr
 
   // Build data polygon points
   const dataPoints = AXES.map(({ key, angle }) => {
-    const ratio = Math.min(Math.max((data[key] ?? 0) / 100, 0), 1);
+    const ratio = Math.min(Math.max(((data[key] as number) ?? 0) / 100, 0), 1);
     return axisPoint(angle, ratio);
   });
   const dataPolygon = dataPoints.map(({ x, y }) => `${x},${y}`).join(' ');
-  const isEmpty = AXES.every(({ key }) => !data[key]);
+  const isEmpty = data.hasData === false || (data.hasData === undefined && AXES.every(({ key }) => !data[key]));
 
   return (
     <View
@@ -209,7 +210,7 @@ export default function WallAngleRadar({ data = DEFAULT_DATA }: WallAngleRadarPr
                 },
               ]}
             >
-              {data[key] ?? 0}%
+              {(data[key] as number) ?? 0}%
             </Text>
             <Text
               style={[

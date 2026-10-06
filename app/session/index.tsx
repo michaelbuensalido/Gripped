@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   View,
@@ -305,6 +306,8 @@ export default function ActiveSessionScreen() {
     restTimerEndTime,
     isRestTimerRunning,
     setRestTimer,
+    activeProjectTarget,
+    setActiveProjectTarget,
   } = useSessionStore();
 
   const [isLogSheetOpen, setLogSheetOpen] = useState(climbs.filter((c: any) => c.deleted_at === null).length === 0);
@@ -350,6 +353,12 @@ export default function ActiveSessionScreen() {
     sends.length > 0
       ? sends.find((c: any) => (c.grade_index ?? 0) === hardestIndex)?.grade_raw || '–'
       : '–';
+
+  useEffect(() => {
+    if (activeProjectTarget && !isLogSheetOpen) {
+      setLogSheetOpen(true);
+    }
+  }, [activeProjectTarget]);
 
   // Rest Timer calculation
   useEffect(() => {
@@ -494,10 +503,16 @@ export default function ActiveSessionScreen() {
       outcome: result === 'top' ? 'send' : result,
       movesLinked: attempts,
       notes,
+      projectId: activeProjectTarget ? activeProjectTarget.id : undefined,
+      wallAngle: activeProjectTarget ? activeProjectTarget.wallAngle : undefined,
+      holdType: activeProjectTarget ? activeProjectTarget.holdType : undefined,
     });
     setDeletedClimbId(newId);
     setLogSheetOpen(false);
     setEditingClimb(null);
+    if (activeProjectTarget) {
+      setActiveProjectTarget(null);
+    }
 
     // Auto-start rest timer
     setRestTimer(Date.now() + 3 * 60 * 1000, true);
@@ -866,7 +881,7 @@ export default function ActiveSessionScreen() {
           setEditingClimb(null);
         }}
         onSave={handleSaveLog}
-        initialGrade={editingClimb?.grade || recentGrades[0]?.gradeRaw || 'V4'}
+        initialGrade={editingClimb?.grade || activeProjectTarget?.gradeRaw || recentGrades[0]?.gradeRaw || 'V4'}
         initialResult={editingClimb?.result || 'top'}
         initialAttempts={editingClimb?.attempts || 1}
         initialNotes={editingClimb?.notes || ''}

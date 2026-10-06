@@ -92,6 +92,9 @@ export function getDatabase(): SQLite.SQLiteDatabase {
         high_water_mark_moves INTEGER NOT NULL DEFAULT 0,
         total_moves INTEGER,
         micro_beta TEXT,
+        gym_name TEXT,
+        zone TEXT,
+        set_date TEXT,
         photo_url TEXT,
         created_at INTEGER NOT NULL,
         updated_at INTEGER NOT NULL,
@@ -169,11 +172,8 @@ export function getDatabase(): SQLite.SQLiteDatabase {
         text TEXT NOT NULL DEFAULT ''
       );
       CREATE INDEX IF NOT EXISTS idx_video_notes_video ON video_notes(video_id);
+      CREATE INDEX IF NOT EXISTS idx_video_notes_video ON video_notes(video_id);
     `);
-  }
-  return _db;
-}
-
 
     const columnsToAdd = [
       "ALTER TABLE sessions ADD COLUMN effort INTEGER;",
@@ -185,12 +185,18 @@ export function getDatabase(): SQLite.SQLiteDatabase {
       "ALTER TABLE projects ADD COLUMN total_moves INTEGER;",
       "ALTER TABLE projects ADD COLUMN high_water_mark_moves INTEGER;",
       "ALTER TABLE projects ADD COLUMN micro_beta TEXT;",
+      "ALTER TABLE projects ADD COLUMN gym_name TEXT;",
+      "ALTER TABLE projects ADD COLUMN zone TEXT;",
+      "ALTER TABLE projects ADD COLUMN set_date TEXT;",
     ];
     for (const sql of columnsToAdd) {
       try {
         _db.execSync(sql);
       } catch (e) {}
     }
+  }
+  return _db;
+}
 
 export async function initializeDatabase(): Promise<void> {
   getDatabase();

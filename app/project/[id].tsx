@@ -31,6 +31,8 @@ import {
   updateProjectBeta,
 } from "../../db/queries";
 import { triggerHaptic } from "../../utils/haptics";
+import { useSessionStore } from "../../store/sessionStore";
+import { getActiveSession } from "../../db/queries";
 
 export default function ProjectDetailScreen() {
   const { id } = useLocalSearchParams();
@@ -51,6 +53,19 @@ export default function ProjectDetailScreen() {
     project?.wallAngle && project?.holdType
       ? `${project.wallAngle.charAt(0).toUpperCase() + project.wallAngle.slice(1)} • ${project.holdType.charAt(0).toUpperCase() + project.holdType.slice(1)}`
       : "Overhang • Power endurance";
+
+  const handleLogAttempt = () => {
+    triggerHaptic("medium");
+    if (project) {
+      const state = useSessionStore.getState();
+      let session = getActiveSession();
+      if (!session) {
+        state.startQuickSession(project.gymName || "Local Gym");
+      }
+      state.setActiveProjectTarget(project);
+      router.push("/session/active");
+    }
+  };
 
   const handleMarkSent = () => {
     triggerHaptic("success");
@@ -87,7 +102,7 @@ export default function ProjectDetailScreen() {
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: "#0C0C10" }}>
+    <View style={{ flex: 1, backgroundColor: colors.bg }}>
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 130 }}
@@ -130,14 +145,14 @@ export default function ProjectDetailScreen() {
                   justifyContent: "center",
                 }}
               >
-                <ChevronLeft size={22} color="#FFFFFF" />
+                <ChevronLeft size={22} color={colors.text} />
               </TouchableOpacity>
 
               {/* Title & Subtitle in Center */}
               <View style={{ alignItems: "center" }}>
                 <Text
                   style={{
-                    color: "#FFFFFF",
+                    color: colors.text,
                     fontSize: 17,
                     fontWeight: "700",
                     fontFamily: type.heading.fontFamily,
@@ -173,7 +188,7 @@ export default function ProjectDetailScreen() {
                   justifyContent: "center",
                 }}
               >
-                <MoreHorizontal size={22} color="#FFFFFF" />
+                <MoreHorizontal size={22} color={colors.text} />
               </TouchableOpacity>
             </View>
 
@@ -204,7 +219,7 @@ export default function ProjectDetailScreen() {
                   >
                     <Text
                       style={{
-                        color: "#FFFFFF",
+                        color: colors.text,
                         fontSize: 14,
                         fontWeight: "600",
                       }}
@@ -221,7 +236,7 @@ export default function ProjectDetailScreen() {
                     borderBottomColor: "rgba(255, 255, 255, 0.08)",
                   }}
                 >
-                  <Text style={{ color: "#FFFFFF", fontSize: 14 }}>
+                  <Text style={{ color: colors.text, fontSize: 14 }}>
                     Archive
                   </Text>
                 </TouchableOpacity>
@@ -229,7 +244,7 @@ export default function ProjectDetailScreen() {
                   onPress={handleDelete}
                   style={{ padding: 14 }}
                 >
-                  <Text style={{ color: "#FF7272", fontSize: 14 }}>Delete</Text>
+                  <Text style={{ color: colors.dangerText, fontSize: 14 }}>Delete</Text>
                 </TouchableOpacity>
               </View>
             )}
@@ -255,7 +270,7 @@ export default function ProjectDetailScreen() {
                   width: 14,
                   height: 14,
                   borderRadius: 7,
-                  backgroundColor: "#FFFFFF",
+                  backgroundColor: colors.text,
                 }}
               />
             </View>
@@ -278,10 +293,10 @@ export default function ProjectDetailScreen() {
                 gap: 10,
               }}
             >
-              <Hand size={18} color="#D4CCFF" />
+              <Hand size={18} color={colors.accentText} />
               <Text
                 style={{
-                  color: "#FFFFFF",
+                  color: colors.text,
                   fontSize: 13,
                   fontWeight: "500",
                   lineHeight: 17,
@@ -312,7 +327,7 @@ export default function ProjectDetailScreen() {
                   width: 14,
                   height: 14,
                   borderRadius: 7,
-                  backgroundColor: "#FFFFFF",
+                  backgroundColor: colors.text,
                 }}
               />
             </View>
@@ -345,12 +360,12 @@ export default function ProjectDetailScreen() {
                   justifyContent: "center",
                 }}
               >
-                <Sparkles size={18} color="#FFFFFF" />
+                <Sparkles size={18} color={colors.text} />
               </View>
               <Text
                 style={{
                   flex: 1,
-                  color: "#FFFFFF",
+                  color: colors.text,
                   fontSize: 13,
                   fontWeight: "500",
                   lineHeight: 18,
@@ -406,7 +421,7 @@ export default function ProjectDetailScreen() {
               </Text>
               <Text
                 style={{
-                  color: "#FFFFFF",
+                  color: colors.text,
                   fontSize: 26,
                   fontWeight: "700",
                   fontVariant: ["tabular-nums"],
@@ -440,7 +455,7 @@ export default function ProjectDetailScreen() {
               </Text>
               <Text
                 style={{
-                  color: "#FFFFFF",
+                  color: colors.text,
                   fontSize: 26,
                   fontWeight: "700",
                   fontVariant: ["tabular-nums"],
@@ -493,7 +508,7 @@ export default function ProjectDetailScreen() {
                     setIsEditingNotes(true);
                   }}
                 >
-                  <Edit2 size={16} color="#9A85FF" />
+                  <Edit2 size={16} color={colors.accent} />
                 </TouchableOpacity>
               )}
             </View>
@@ -507,7 +522,7 @@ export default function ProjectDetailScreen() {
                   placeholder="Add notes..."
                   placeholderTextColor="rgba(255, 255, 255, 0.4)"
                   style={{
-                    color: "#FFFFFF",
+                    color: colors.text,
                     backgroundColor: "rgba(255, 255, 255, 0.06)",
                     borderRadius: 12,
                     padding: 12,
@@ -602,7 +617,7 @@ export default function ProjectDetailScreen() {
                   <View>
                     <Text
                       style={{
-                        color: "#FFFFFF",
+                        color: colors.text,
                         fontSize: 14,
                         fontWeight: "600",
                       }}
@@ -650,27 +665,56 @@ export default function ProjectDetailScreen() {
           {/* Action Buttons */}
           <View style={{ gap: 12 }}>
             {project?.status !== "sent" && (
-              <TouchableOpacity
-                activeOpacity={0.85}
-                onPress={handleMarkSent}
+              <>
+                <TouchableOpacity
+                  activeOpacity={0.85}
+                  onPress={handleLogAttempt}
+                  style={{
+                    backgroundColor: colors.accent,
+                    height: 56,
+                    borderRadius: radius.pill,
+                    alignItems: "center",
+                    justifyContent: "center",
+                    flexDirection: "row",
+                    gap: 8,
+                    shadowColor: colors.accent,
+                    shadowOpacity: 0.5,
+                    shadowRadius: 16,
+                    elevation: 6,
+                  }}
+                >
+                  <Sparkles size={20} color={colors.textOnAccent} />
+                  <Text
+                    style={{
+                      color: colors.textOnAccent,
+                      fontSize: 16,
+                      fontWeight: "700",
+                      letterSpacing: 0.5,
+                    }}
+                  >
+                    LOG ATTEMPT
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  activeOpacity={0.85}
+                  onPress={handleMarkSent}
                 style={{
-                  backgroundColor: "#9A85FF",
+                  backgroundColor: colors.card,
+                  borderColor: colors.border,
+                  borderWidth: 1,
                   height: 56,
                   borderRadius: radius.pill,
                   alignItems: "center",
                   justifyContent: "center",
                   flexDirection: "row",
                   gap: 8,
-                  shadowColor: "#9A85FF",
-                  shadowOpacity: 0.5,
-                  shadowRadius: 16,
-                  elevation: 6,
                 }}
               >
-                <CheckCircle2 size={20} color="#FFFFFF" />
+                <CheckCircle2 size={20} color={colors.text} />
                 <Text
                   style={{
-                    color: "#FFFFFF",
+                    color: colors.text,
                     fontSize: 16,
                     fontWeight: "700",
                     letterSpacing: 0.5,
@@ -679,6 +723,7 @@ export default function ProjectDetailScreen() {
                   MARK AS SENT
                 </Text>
               </TouchableOpacity>
+              </>
             )}
           </View>
         </View>

@@ -255,9 +255,9 @@ export function createProject(p: Omit<Project, 'id' | 'createdAt' | 'updatedAt'>
   const id = uuid();
   const now = Date.now();
   runMutation('projects', id, 'INSERT',
-    `INSERT INTO projects (id, title, grade_raw, grade_index, wall_angle, hold_type, status, high_water_mark_moves, total_moves, micro_beta, photo_url, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    [id, p.title, p.gradeRaw, p.normalizedDifficulty, p.wallAngle, p.holdType, p.status, p.highWaterMarkMoves, p.totalMoves ?? null, p.microBeta ?? null, p.mediaUri ?? null, now, now]
+    `INSERT INTO projects (id, title, grade_raw, grade_index, wall_angle, hold_type, status, high_water_mark_moves, total_moves, micro_beta, gym_name, zone, set_date, photo_url, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [id, p.title, p.gradeRaw, p.normalizedDifficulty, p.wallAngle, p.holdType, p.status, p.highWaterMarkMoves, p.totalMoves ?? null, p.microBeta ?? null, p.gymName ?? null, p.zone ?? null, p.setDate ?? null, p.mediaUri ?? null, now, now]
   );
   return id;
 }
@@ -268,7 +268,7 @@ export function updateProjectStatus(id: string, status: ProjectStatus): void {
 export function updateProjectHighWaterMark(id: string, moves: number): void {
   runMutation('projects', id, 'UPDATE', `UPDATE projects SET high_water_mark_moves = ?, updated_at = ? WHERE id = ?`, [moves, Date.now(), id]);
 }
-export function updateProjectBeta(id: string, microBeta: string, mediaUri?: string | null): void {
+export function updateProjectBeta(id: string, microBeta: string | null, mediaUri?: string | null): void {
   runMutation('projects', id, 'UPDATE', `UPDATE projects SET micro_beta = ?, photo_url = COALESCE(?, photo_url), updated_at = ? WHERE id = ?`, [microBeta, mediaUri ?? null, Date.now(), id]);
 }
 export function deleteProject(id: string): void {
@@ -289,6 +289,9 @@ export function getAllProjects(): Project[] {
     highWaterMarkMoves: r.high_water_mark_moves,
     totalMoves: r.total_moves,
     microBeta: r.micro_beta,
+    gymName: r.gym_name,
+    zone: r.zone,
+    setDate: r.set_date,
     mediaUri: r.photo_url,
     createdAt: r.created_at,
     updatedAt: r.updated_at,
@@ -1161,7 +1164,7 @@ export function getRichProjects(): any[] {
   return projects.map(p => {
     const pClimbs = climbs.filter((c: any) => c.project_id === p.id);
     const lastClimb = pClimbs[0];
-    const gymName = lastClimb ? lastClimb.gym_name : null;
+    const gymName = p.gym_name || (lastClimb ? lastClimb.gym_name : null);
     const lastTriedAt = lastClimb ? lastClimb.logged_at : null;
     
     const sessionMap = new Map();
@@ -1632,6 +1635,7 @@ export interface WallAngleSendRates {
   vertical: number;
   overhang: number;
   roof: number;
+  hasData?: boolean;
 }
 
 /** Send rate (0–100) per wall angle for climbs logged in the period. */
@@ -1647,10 +1651,10 @@ export function getWallAngleSendRates(period: ProgressPeriod, nowMs: number = Da
     GROUP BY LOWER(wall_angle)
   `, [since]);
 
-  const out: WallAngleSendRates = { slab: 0, vertical: 0, overhang: 0, roof: 0 };
+  const out: WallAngleSendRates = { slab: 0, vertical: 0, overhang: 0, roof: 0, hasData: rows.length > 0 };
   for (const r of rows) {
     const key = r.wall_angle as keyof WallAngleSendRates;
-    if (key in out && r.total > 0) out[key] = Math.round((r.sends / r.total) * 100);
+    if (key in out && r.total > 0) (out as any)[key] = Math.round((r.sends / r.total) * 100);
   }
   return out;
 }
@@ -1718,4 +1722,57 @@ export function getSessionPeriodStats(period: ProgressPeriod, nowMs: number = Da
     avgDurationMin: sessions ? Math.round(totalMinutes / sessions) : 0,
     totalMinutes,
   };
+}
+
+export function getRecentGyms(): string[] {
+  const db = getDatabase();
+  const rows = db.getAllSync<{ gym_name: string }>(`
+    SELECT DISTINCT name AS gym_name FROM gyms WHERE name != '' AND name IS NOT NULL AND deleted_at IS NULL
+    UNION
+    SELECT DISTINCT gym_name FROM sessions WHERE gym_name != '' AND gym_name IS NOT NULL
+    UNION
+    SELECT DISTINCT gym_name FROM projects WHERE gym_name != '' AND gym_name IS NOT NULL
+    ORDER BY gym_name ASC
+  `);
+  return rows.map(r => r.gym_name);
+}
+
+export function insertGym(name: string): void {
+  const trimmed = name.trim();
+  if (!trimmed) return;
+  const db = getDatabase();
+  const existing = db.getFirstSync<{ id: string }>(`SELECT id FROM gyms WHERE LOWER(name) = LOWER(?) AND deleted_at IS NULL`, [trimmed]);
+  if (!existing) {
+    const now = Date.now();
+    const id = `gym_${now}_${Math.random().toString(36).substring(2, 7)}`;
+    db.runSync(
+      `INSERT INTO gyms (id, name, created_at, updated_at, sync_status) VALUES (?, ?, ?, ?, 'pending')`,
+      [id, trimmed, now, now]
+    );
+    dbEvents.emit();
+  }
+}
+
+export function getLastUsedGym(): string | null {
+  const db = getDatabase();
+  const sessionRow = db.getFirstSync<{ gym_name: string }>(`SELECT gym_name FROM sessions WHERE gym_name != '' AND gym_name IS NOT NULL ORDER BY started_at DESC LIMIT 1`);
+  if (sessionRow) return sessionRow.gym_name;
+  const projectRow = db.getFirstSync<{ gym_name: string }>(`SELECT gym_name FROM projects WHERE gym_name != '' AND gym_name IS NOT NULL ORDER BY created_at DESC LIMIT 1`);
+  return projectRow ? projectRow.gym_name : null;
+}
+
+export async function exportDataToJSON(): Promise<string> {
+  const db = getDatabase();
+  const data: any = {};
+  const tables = ['gyms', 'walls', 'sessions', 'projects', 'climbs', 'betas', 'beta_moves', 'beta_videos', 'video_notes'];
+  
+  for (const table of tables) {
+    try {
+      const rows = db.getAllSync(`SELECT * FROM ${table}`);
+      data[table] = rows;
+    } catch (e) {
+      console.error(`Failed to export table ${table}`, e);
+    }
+  }
+  return JSON.stringify(data, null, 2);
 }

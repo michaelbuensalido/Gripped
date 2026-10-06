@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, Modal, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Menu, ChevronDown, Check } from 'lucide-react-native';
+import { Menu, ChevronDown, Check, Target } from 'lucide-react-native';
 import Svg, { Path } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Card } from '../components/ui/Card';
 import { SectionHeader } from '../components/ui/SectionHeader';
 import { EmptyState } from '../components/ui/EmptyState';
+
 import { PrimaryButton } from '../components/ui/PrimaryButton';
 import { ResultDonut } from '../components/ui/ResultDonut';
 import { SessionRow } from '../components/ui/SessionRow';
@@ -120,7 +121,7 @@ export default function ProgressScreen() {
         {/* 1. Header Bar: Title on Left, Menu Icon Button on Right */}
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
           <View>
-            <Text style={{ color: '#FFFFFF', fontSize: 34, fontWeight: '700', fontFamily: type.display.fontFamily, letterSpacing: -0.5 }}>
+            <Text style={{ color: colors.text, fontSize: 34, fontWeight: '700', fontFamily: type.display.fontFamily, letterSpacing: -0.5 }}>
               Your Progress
             </Text>
             <TouchableOpacity 
@@ -128,32 +129,28 @@ export default function ProgressScreen() {
               onPress={() => { triggerHaptic('light'); setPeriodSheetOpen(true); }}
               style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 6 }}
             >
-              <Text style={{ color: colors.accent, fontSize: 14, fontWeight: '600', fontFamily: type.heading.fontFamily }}>
+              <Text style={{ color: colors.accent, fontSize: 16, fontWeight: '600', fontFamily: type.body.fontFamily }}>
                 {PERIOD_LABELS[period]}
               </Text>
               <ChevronDown size={16} color={colors.accent} strokeWidth={2.5} />
             </TouchableOpacity>
           </View>
-
-          {/* Menu Button Circle */}
           <TouchableOpacity
-            activeOpacity={0.8}
-            onPress={() => router.push('/settings')}
-            style={{
-              width: 44,
-              height: 44,
-              borderRadius: 22,
-              backgroundColor: 'rgba(255, 255, 255, 0.08)',
-              borderWidth: 1,
-              borderColor: 'rgba(255, 255, 255, 0.06)',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
+            style={{ width: 44, height: 44, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.05)', alignItems: 'center', justifyContent: 'center' }}
+            onPress={() => { triggerHaptic('light'); }}
           >
-            <Menu size={22} color="#FFFFFF" strokeWidth={2} />
+            <Menu size={22} color={colors.text} strokeWidth={2} />
           </TouchableOpacity>
         </View>
 
+        {stats.sessionStats.sessions === 0 ? (
+          <EmptyState
+            icon={<Target size={32} color={colors.textMuted} />}
+            title="No data for this period"
+            body="Log some sessions or change your time filter to see your progress charts."
+          />
+        ) : (
+          <View>
         {/* 3. Result Donut Hero Card */}
         <View
           style={{
@@ -337,7 +334,7 @@ export default function ProgressScreen() {
             })
           )}
         </Card>
-      </ScrollView>
+      </View>)}</ScrollView>
           {/* Custom Spatial Action Sheet for Period Selection */}
       <Modal visible={isPeriodSheetOpen} animationType="slide" transparent>
         <View style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.6)' }}>

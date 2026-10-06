@@ -3,9 +3,11 @@ import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Eye, EyeOff, Edit2, Plus, Share, Video } from 'lucide-react-native';
 import { useTheme } from '../../theme/useTheme';
-import { useProjectBetas, useBetaMoves } from '../../db/hooks';
+import { useProjectBetas, useBetaMoves, useProjectVideos } from '../../db/hooks';
 import * as B from '../../db/betaQueries';
 import { SecondaryButton } from '../ui/SecondaryButton';
+import { BetaVideoPlayerModal } from '../media/BetaVideoPlayerModal';
+import { BetaCameraRecorder } from '../media/BetaCameraRecorder';
 
 export function BetaSection({ projectId }: { projectId: string }) {
   const { colors, radius, space, type } = useTheme();
@@ -14,8 +16,11 @@ export function BetaSection({ projectId }: { projectId: string }) {
   const betas = useProjectBetas(projectId);
   const currentBeta = betas.find(b => b.isCurrent) || betas[0] || null;
   const moves = useBetaMoves(currentBeta?.id || null);
+  const videos = useProjectVideos(projectId);
   
   const [isVisible, setIsVisible] = useState(false);
+  const [isPlayerOpen, setIsPlayerOpen] = useState(false);
+  const [isRecorderOpen, setIsRecorderOpen] = useState(false);
   
   if (betas.length === 0) {
     return (
@@ -131,10 +136,38 @@ export function BetaSection({ projectId }: { projectId: string }) {
               <Text style={[type.control, { color: colors.text }]}>Add Version</Text>
             </TouchableOpacity>
             
-            {/* The entry points for Add Video and Share will be handled here or inside the parent? */}
+            {videos.length > 0 ? (
+              <TouchableOpacity 
+                onPress={() => setIsPlayerOpen(true)}
+                style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: colors.accentSoft, paddingHorizontal: 16, paddingVertical: 10, borderRadius: radius.pill }}
+              >
+                <Video size={16} color={colors.accent} />
+                <Text style={[type.control, { color: colors.accent }]}>Watch Video</Text>
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity 
+                onPress={() => setIsRecorderOpen(true)}
+                style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: colors.cardMuted, paddingHorizontal: 16, paddingVertical: 10, borderRadius: radius.pill }}
+              >
+                <Video size={16} color={colors.text} />
+                <Text style={[type.control, { color: colors.text }]}>Record Video</Text>
+              </TouchableOpacity>
+            )}
           </View>
         </View>
       )}
+
+      <BetaVideoPlayerModal visible={isPlayerOpen} videoUri={videos[0]?.localUri || null} onClose={() => setIsPlayerOpen(false)} />
+      <BetaCameraRecorder 
+        visible={isRecorderOpen} 
+        onClose={() => setIsRecorderOpen(false)} 
+        onAttach={(uri) => {
+          import('uuid').then(({ v4 }) => {
+            B.insertVideo({ id: v4(), projectId, localUri: uri, durationSec: 0, sizeBytes: 0 });
+            setIsRecorderOpen(false);
+          });
+        }}
+      />
     </View>
   );
 }

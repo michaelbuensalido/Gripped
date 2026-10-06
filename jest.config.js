@@ -1,13 +1,19 @@
 module.exports = {
-  preset: 'ts-jest',
-  testEnvironment: 'node',
-  testMatch: ['**/__tests__/**/*.test.ts', '**/__tests__/**/*.test.tsx'],
-  globals: {
-    'ts-jest': {
-      diagnostics: { ignoreCodes: ['TS2593', 'TS2304'] },
-      tsconfig: {
-        types: ['jest'],
-      },
-    }
-  }
+  preset: 'jest-expo',
+  transformIgnorePatterns: [
+    'node_modules/(?!((jest-)?react-native|@react-native(-community)?)|expo(nent)?|@expo(nent)?/.*|@expo-google-fonts/.*|react-navigation|@react-navigation/.*|@unimodules/.*|unimodules|sentry-expo|native-base|react-native-svg)',
+  ],
+  moduleNameMapper: {
+    '^@/(.*)$': '<rootDir>/$1',
+  },
+  testMatch: [
+    '**/__tests__/**/*.ts?(x)',
+    '**/?(*.)+(spec|test).ts?(x)',
+  ],
+  // Only run pure-logic tests (no native modules). UI component tests
+  // require a full dev-client build and are skipped in CI by default.
+  testPathIgnorePatterns: [
+    '/node_modules/',
+    '/app/',
+  ],
 };
