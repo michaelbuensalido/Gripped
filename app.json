@@ -5,18 +5,23 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "dark",
     "scheme": "cruxlog",
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#F5F2EC"
+      "backgroundColor": "#000000"
     },
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.cruxlog.app",
+      "buildNumber": "1",
+      "icon": "./assets/icon.png",
       "infoPlist": {
-        "NSCameraUsageDescription": "CruxLog needs camera access to detect climbing holds and human pose in real time.",
+        "NSCameraUsageDescription": "CruxLog uses the camera to record beta videos of your climbing attempts.",
+        "NSMicrophoneUsageDescription": "CruxLog records audio alongside your beta videos so you can narrate your sequences.",
+        "NSPhotoLibraryUsageDescription": "CruxLog saves your beta recordings to your photo library for easy access and sharing.",
+        "NSPhotoLibraryAddUsageDescription": "CruxLog saves your beta recordings to your photo library.",
         "ITSAppUsesNonExemptEncryption": false,
         "NSSupportsLiveActivities": true,
         "NSSupportsLiveActivitiesFrequentUpdates": true
@@ -25,10 +30,19 @@
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png",
         "backgroundColor": "#0F0F0F"
       },
       "package": "com.cruxlog.app",
-      "permissions": ["android.permission.CAMERA"]
+      "versionCode": 1,
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.READ_MEDIA_IMAGES",
+        "android.permission.READ_MEDIA_VIDEO",
+        "android.permission.WRITE_EXTERNAL_STORAGE"
+      ]
     },
     "plugins": [
       "expo-router",
@@ -42,7 +56,17 @@
       [
         "react-native-vision-camera",
         {
-          "cameraPermissionText": "CruxLog needs camera access to detect climbing holds and human pose in real time."
+          "cameraPermissionText": "CruxLog uses the camera to record beta videos of your climbing attempts.",
+          "enableMicrophonePermission": true,
+          "microphonePermissionText": "CruxLog records audio alongside your beta videos."
+        }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "CruxLog uses the camera to record beta videos of your climbing attempts.",
+          "microphonePermission": "CruxLog records audio alongside your beta videos.",
+          "recordAudioAndroid": true
         }
       ],
       "./plugins/withClimbingPoseTracker",
@@ -60,3 +84,4 @@
     }
   }
 }
+

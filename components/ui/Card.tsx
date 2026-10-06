@@ -1,5 +1,6 @@
 import React, { useRef } from 'react';
-import { View, Pressable, Animated, ViewProps, StyleProp, ViewStyle } from 'react-native';
+import { View, Pressable, Animated, ViewProps, StyleProp, ViewStyle, StyleSheet } from 'react-native';
+import { Platform } from 'react-native';
 import { useTheme } from '../../theme/useTheme';
 
 interface CardProps extends ViewProps {
@@ -17,8 +18,10 @@ export function Card({ children, variant = 'default', onPress, style, ...props }
   const baseStyle: ViewStyle = {
     borderRadius: radius.lg,
     padding: space.lg,
-    backgroundColor: variant === 'muted' ? colors.cardMuted : colors.materialBase,
-    borderWidth: 0,
+    backgroundColor: variant === 'muted' ? 'rgba(255, 255, 255, 0.05)' : 'rgba(255, 255, 255, 0.1)',
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.15)',
     ...(variant === 'muted' ? {} : shadow.card),
   };
 
@@ -52,6 +55,7 @@ export function Card({ children, variant = 'default', onPress, style, ...props }
           style={[baseStyle, style, { transform: [{ scale: scaleAnim }] }]}
           {...props}
         >
+          <View style={[StyleSheet.absoluteFill, { backgroundColor: "rgba(255, 255, 255, 0.05)" }]} />
           {children}
         </Animated.View>
       </Pressable>
@@ -60,6 +64,7 @@ export function Card({ children, variant = 'default', onPress, style, ...props }
 
   return (
     <View style={[baseStyle, style]} {...props}>
+      <View style={[StyleSheet.absoluteFill, { backgroundColor: "rgba(255, 255, 255, 0.05)" }]} />
       {children}
     </View>
   );

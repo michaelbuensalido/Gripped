@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, Modal, TextInput, Pressable } from 'react-native';
+import { View, Text, Modal, TextInput, Pressable, ScrollView } from 'react-native';
 import { useTheme } from '../../theme/useTheme';
 import { PrimaryButton } from '../ui/PrimaryButton';
 import { SecondaryButton } from '../ui/SecondaryButton';
-import { useAllSessions } from '../../db/hooks';
+import { useRecentGyms } from '../../db/hooks';
+import { Chip } from '../ui/Chip';
+import { triggerHaptic } from '../../utils/haptics';
 
 interface StartSessionSheetProps {
   visible: boolean;
@@ -16,8 +18,8 @@ interface StartSessionSheetProps {
 export function StartSessionSheet({ visible, onClose, onStart, title = "Start a session", subtitle = "Start a session to log your climbs." }: StartSessionSheetProps) {
   const { colors, space, type, radius, shadow } = useTheme();
   
-  const sessions = useAllSessions();
-  const lastGym = sessions.length > 0 ? sessions[0].gymName : 'Local Gym';
+  const recentGyms = useRecentGyms();
+  const lastGym = recentGyms.length > 0 ? recentGyms[0] : 'Local Gym';
   
   const [gymName, setGymName] = useState(lastGym);
 
@@ -40,13 +42,42 @@ export function StartSessionSheet({ visible, onClose, onStart, title = "Start a 
             </View>
 
             <Text style={[type.label, { color: colors.textMuted, marginBottom: space.xs }]}>Gym / Location</Text>
-            <TextInput 
-              value={gymName} 
-              onChangeText={setGymName} 
-              style={[type.body, { backgroundColor: colors.cardMuted, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, minHeight: 56, padding: space.md, marginBottom: space.xl, color: colors.text }]} 
-            />
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: space.xl }}>
+              <View style={{ flexDirection: 'row', gap: space.sm, alignItems: 'center' }}>
+                {recentGyms.map((gym) => (
+                  <Chip
+                    key={gym}
+                    label={gym}
+                    active={gymName === gym}
+                    onPress={() => {
+                      triggerHaptic('light');
+                      setGymName(gym);
+                    }}
+                  />
+                ))}
+                <TextInput
+                  value={!recentGyms.includes(gymName) ? gymName : ''}
+                  onChangeText={setGymName}
+                  placeholder="+ Add new gym"
+                  placeholderTextColor={colors.textMuted}
+                  style={[
+                    type.body,
+                    {
+                      backgroundColor: !recentGyms.includes(gymName) && gymName !== '' ? colors.accent : colors.cardMuted,
+                      color: !recentGyms.includes(gymName) && gymName !== '' ? colors.textOnAccent : colors.text,
+                      paddingHorizontal: space.md,
+                      height: 36,
+                      borderRadius: 18,
+                      minWidth: 120,
+                      borderWidth: 1,
+                      borderColor: colors.border,
+                    },
+                  ]}
+                />
+              </View>
+            </ScrollView>
 
-            <PrimaryButton testID="start-session-submit-btn" label="Start session" onPress={() => onStart(gymName)} style={{ marginBottom: space.md }} />
+            <PrimaryButton testID="start-session-submit-btn" label="Start session" onPress={() => onStart(gymName)} style={{ marginBottom: space.md }} disabled={!gymName.trim()} />
             <SecondaryButton testID="cancel-start-session-btn" label="Cancel" onPress={onClose} />
           </View>
         </Pressable>

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Keyboard, Platform, Animated } from 'react-native';
 import { useTheme } from '../../theme/useTheme';
-import { Home, Plus, TrendingUp, Target, BookOpen } from 'lucide-react-native';
+import { Home, Plus, TrendingUp, MapPin, BookOpen } from 'lucide-react-native';
 import { useSessionActions } from '../../hooks/useSessionActions';
 import { useSessionStore } from '../../store/sessionStore';
 import { StartSessionSheet } from '../session/StartSessionSheet';
@@ -119,7 +119,7 @@ function CenterSessionButton({ activeSession, startOrResume, onOpenStartSheet }:
   );
 }
 
-const visibleTabs = ['index', 'projects', 'analytics', 'profile'];
+const visibleTabs = ['index', 'explore', 'analytics', 'profile'];
 
 export function FloatingTabBar({ state, descriptors, navigation }: any) {
   const { colors, radius, shadow, type } = useTheme();
@@ -181,7 +181,7 @@ export function FloatingTabBar({ state, descriptors, navigation }: any) {
             let label = options.title !== undefined ? options.title : route.name;
             let IconComponent: any = Home;
             if (route.name === 'index') { IconComponent = Home; label = "Home"; }
-            else if (route.name === 'projects') { IconComponent = Target; label = "Projects"; }
+            else if (route.name === 'explore') { IconComponent = MapPin; label = "Explore"; }
             else if (route.name === 'analytics') { IconComponent = TrendingUp; label = "Progress"; }
             else if (route.name === 'profile') { IconComponent = BookOpen; label = "Logbook"; }
 

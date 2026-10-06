@@ -119,3 +119,7 @@ export function useVideoNotes(videoId: string) {
 export function useProjectStorageBytes(projectId: string) {
   return useLiveQuery(() => (projectId ? B.getProjectStorageBytes(projectId) : 0), [projectId]);
 }
+
+export function useRecentGyms() {
+  return useLiveQuery(() => Q.getRecentGyms(), []);
+}

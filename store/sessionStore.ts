@@ -31,6 +31,7 @@ interface SessionState {
   updateProjectStatus: (id: string, status: any) => void;
   updateProjectHighWaterMark: (id: string, moves: number) => void;
   logGenericAscent: (payload: any) => string;
+  undoLastClimb: () => void;
   setAttemptFailureReason: (attemptId: string, reason: string) => void;
 }
 
@@ -95,6 +96,23 @@ export const useSessionStore = create<SessionState>((set, get) => ({
 
   updateProjectHighWaterMark: (id, moves) => {
     Q.updateProjectHighWaterMark(id, moves);
+  },
+
+  
+  undoLastClimb: () => {
+    const activeSession = Q.getActiveSession();
+    if (!activeSession) return;
+    const db = require('../db/schema').getDatabase();
+    
+    // Find the most recent climb for this session
+    const lastClimb = db.getFirstSync("SELECT id, project_id FROM climbs WHERE session_id = ? AND deleted_at IS NULL ORDER BY created_at DESC LIMIT 1", [activeSession.id]);
+    
+    if (lastClimb) {
+      db.runSync("UPDATE climbs SET deleted_at = ? WHERE id = ?", [Date.now(), lastClimb.id]);
+      
+      // If it was a project climb, we also need to update the project status appropriately, but for MVP soft-deleting the climb is sufficient to undo it from the session stats
+      require('../db/events').dbEvents.emit();
+    }
   },
 
   logGenericAscent: (payload) => {

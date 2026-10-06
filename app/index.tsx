@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, TouchableOpacity, Image } from 'react-native';
+import { View, Text, TouchableOpacity, Image, ScrollView, Dimensions } from 'react-native';
 import Animated, {
   useSharedValue,
   useAnimatedScrollHandler,
@@ -54,6 +54,7 @@ export default function HomeScreen() {
   const { startOrResume } = useSessionActions();
   const [isStartSheetOpen, setIsStartSheetOpen] = useState(false);
   const [elapsed, setElapsed] = useState(0);
+  const [heroIndex, setHeroIndex] = useState(0);
   const insets = useSafeAreaInsets();
   const { triggerStreak } = useCelebration();
   const { hasStreakCelebrated, markStreakCelebrated } = useCelebrationStore();
@@ -137,7 +138,7 @@ export default function HomeScreen() {
               style={{ width: 34, height: 34, borderRadius: 17 }}
               resizeMode="cover"
             />
-            <Text style={{ color: '#FFFFFF', fontSize: 14, fontWeight: '600', fontFamily: type.heading.fontFamily }}>
+            <Text style={{ color: colors.text, fontSize: 14, fontWeight: '600', fontFamily: type.heading.fontFamily }}>
               Maya Vong
             </Text>
             <ChevronDown size={16} color="rgba(255, 255, 255, 0.6)" />
@@ -159,7 +160,7 @@ export default function HomeScreen() {
               position: 'relative',
             }}
           >
-            <Bell size={20} color="#FFFFFF" strokeWidth={1.8} />
+            <Bell size={20} color={colors.text} strokeWidth={1.8} />
             <View
               style={{
                 position: 'absolute',
@@ -168,19 +169,19 @@ export default function HomeScreen() {
                 width: 9,
                 height: 9,
                 borderRadius: 4.5,
-                backgroundColor: '#A872FF',
+                backgroundColor: colors.accent,
               }}
             />
           </TouchableOpacity>
         </View>
 
         {/* 2. Main Title & Grade Pill */}
-        <Text style={{ color: '#FFFFFF', fontSize: 32, fontWeight: '700', fontFamily: type.display.fontFamily, marginBottom: 8, letterSpacing: -0.5 }}>
+        <Text style={{ color: colors.text, fontSize: 32, fontWeight: '700', fontFamily: type.display.fontFamily, marginBottom: 8, letterSpacing: -0.5 }}>
           Keep climbing, Maya
         </Text>
         <View
           style={{
-            backgroundColor: '#23442A',
+            backgroundColor: colors.flashSoft,
             paddingHorizontal: 14,
             paddingVertical: 5,
             borderRadius: 12,
@@ -188,7 +189,7 @@ export default function HomeScreen() {
             marginBottom: 20,
           }}
         >
-          <Text style={{ color: '#72FF9B', fontSize: 15, fontWeight: '700', fontFamily: type.heading.fontFamily }}>
+          <Text style={{ color: colors.flash, fontSize: 15, fontWeight: '700', fontFamily: type.heading.fontFamily }}>
             {highWatermark}
           </Text>
         </View>
@@ -206,7 +207,7 @@ export default function HomeScreen() {
               borderColor: 'rgba(255, 255, 255, 0.06)',
             }}
           >
-            <Text style={{ color: '#FFFFFF', fontSize: 26, fontWeight: '700', fontVariant: ['tabular-nums'], fontFamily: type.stat.fontFamily }}>
+            <Text style={{ color: colors.text, fontSize: 26, fontWeight: '700', fontVariant: ['tabular-nums'], fontFamily: type.stat.fontFamily }}>
               {data.sessionsThisWeek || 0}
             </Text>
             <Text
@@ -235,7 +236,7 @@ export default function HomeScreen() {
               borderColor: 'rgba(255, 255, 255, 0.06)',
             }}
           >
-            <Text style={{ color: '#FFFFFF', fontSize: 26, fontWeight: '700', fontVariant: ['tabular-nums'], fontFamily: type.stat.fontFamily }}>
+            <Text style={{ color: colors.text, fontSize: 26, fontWeight: '700', fontVariant: ['tabular-nums'], fontFamily: type.stat.fontFamily }}>
               {data.climbsThisWeek || 0}
             </Text>
             <Text
@@ -264,7 +265,7 @@ export default function HomeScreen() {
               borderColor: 'rgba(255, 255, 255, 0.06)',
             }}
           >
-            <Text style={{ color: '#FFFFFF', fontSize: 26, fontWeight: '700', fontVariant: ['tabular-nums'], fontFamily: type.stat.fontFamily }}>
+            <Text style={{ color: colors.text, fontSize: 26, fontWeight: '700', fontVariant: ['tabular-nums'], fontFamily: type.stat.fontFamily }}>
               {data.sendsThisWeek || 0}
             </Text>
             <Text
@@ -297,64 +298,108 @@ export default function HomeScreen() {
         >
           {/* Header Row: Label & Pagination Dots */}
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-            <Text style={{ color: '#A872FF', fontSize: 11, fontWeight: '700', letterSpacing: 1.5, textTransform: 'uppercase' }}>
+            <Text style={{ color: colors.accent, fontSize: 11, fontWeight: '700', letterSpacing: 1.5, textTransform: 'uppercase' }}>
               {data.activeSession 
                 ? "TODAY'S SESSION" 
                 : (data.projects && data.projects.length > 0 
                     ? "NEXT OBJECTIVE" 
                     : (data.lastSession ? "LATEST SESSION" : "WELCOME"))}
             </Text>
-            <View style={{ flexDirection: 'row', gap: 6, alignItems: 'center' }}>
-              <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: '#9A85FF' }} />
-              <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: 'rgba(255, 255, 255, 0.2)' }} />
-              <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: 'rgba(255, 255, 255, 0.2)' }} />
-            </View>
+            {(!data.activeSession && data.projects && data.projects.length > 1) && (
+              <View style={{ flexDirection: 'row', gap: 6, alignItems: 'center' }}>
+                {data.projects.map((_, i) => (
+                  <View key={i} style={{ 
+                    width: heroIndex === i ? 10 : 8, 
+                    height: heroIndex === i ? 10 : 8, 
+                    borderRadius: 5, 
+                    backgroundColor: heroIndex === i ? colors.accent : 'rgba(255, 255, 255, 0.2)' 
+                  }} />
+                ))}
+              </View>
+            )}
           </View>
 
-          {/* Grade / Title Row */}
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 4 }}>
-            <Text style={{ color: '#FFFFFF', fontSize: data.activeSession ? 30 : 24, fontWeight: '700', fontFamily: type.stat.fontFamily }}>
-              {data.activeSession 
-                ? formatDuration(elapsed) 
-                : (data.projects && data.projects.length > 0 
-                    ? data.projects[0].title 
-                    : (data.lastSession ? data.lastSession.gymName : 'Let\'s send it'))}
-            </Text>
-          </View>
+          {data.activeSession || !data.projects || data.projects.length === 0 ? (
+            <View>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 4 }}>
+                <Text style={{ color: colors.text, fontSize: data.activeSession ? 30 : 24, fontWeight: '700', fontFamily: type.stat.fontFamily }}>
+                  {data.activeSession 
+                    ? formatDuration(elapsed) 
+                    : (data.lastSession ? data.lastSession.gymName : 'Let\'s send it')}
+                </Text>
+              </View>
 
-          {/* Focus Subtitle */}
-          <Text style={{ color: 'rgba(255, 255, 255, 0.65)', fontSize: 14, fontFamily: type.body.fontFamily, marginBottom: 14 }}>
-            {data.activeSession
-              ? `${plural(data.activeSessionClimbCount, 'climb')} logged`
-              : (data.projects && data.projects.length > 0
-                  ? `Active Project • ${data.projects[0].gradeRaw || 'Unknown Grade'}`
+              <Text style={{ color: 'rgba(255, 255, 255, 0.65)', fontSize: 14, fontFamily: type.body.fontFamily, marginBottom: 14 }}>
+                {data.activeSession
+                  ? `${plural(data.activeSessionClimbCount, 'climb')} logged`
                   : (data.lastSession 
                       ? `Last climbed ${data.lastSessionRelative.toLowerCase()}` 
-                      : 'Log your first session today'))}
-          </Text>
+                      : 'Log your first session today')}
+              </Text>
 
-          {/* Duration / Status Pill Chip */}
-          <View
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              gap: 6,
-              backgroundColor: 'rgba(154, 133, 255, 0.18)',
-              paddingHorizontal: 12,
-              paddingVertical: 6,
-              borderRadius: radius.pill,
-              alignSelf: 'flex-start',
-              marginBottom: 18,
-            }}
-          >
-            <Text style={{ color: '#D4CCFF', fontSize: 12, fontWeight: '600', fontFamily: type.caption.fontFamily }}>
-              {data.activeSession 
-                ? `Elapsed ${formatDuration(elapsed)}` 
-                : (data.projects && data.projects.length > 0 
-                    ? `${data.projects[0].attempts || 0} burns logged`
-                    : (data.hardest30d ? `Hardest recent: ${data.hardest30d.gradeRaw}` : 'Fresh Start'))}
-            </Text>
-          </View>
+              <View
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 6,
+                  backgroundColor: 'rgba(154, 133, 255, 0.18)',
+                  paddingHorizontal: 12,
+                  paddingVertical: 6,
+                  borderRadius: radius.pill,
+                  alignSelf: 'flex-start',
+                  marginBottom: 18,
+                }}
+              >
+                <Text style={{ color: colors.accentText, fontSize: 12, fontWeight: '600', fontFamily: type.caption.fontFamily }}>
+                  {data.activeSession 
+                    ? `Elapsed ${formatDuration(elapsed)}` 
+                    : (data.hardest30d ? `Hardest recent: ${data.hardest30d.gradeRaw}` : 'Fresh Start')}
+                </Text>
+              </View>
+            </View>
+          ) : (
+            <ScrollView
+              horizontal
+              pagingEnabled
+              showsHorizontalScrollIndicator={false}
+              onMomentumScrollEnd={(e) => {
+                const newIndex = Math.round(e.nativeEvent.contentOffset.x / (Dimensions.get('window').width - 40));
+                if (newIndex !== heroIndex) setHeroIndex(newIndex);
+              }}
+              style={{ marginHorizontal: -20, marginBottom: 18 }}
+            >
+              {data.projects.map((proj, i) => (
+                <View key={proj.id} style={{ width: Dimensions.get('window').width - 40, paddingHorizontal: 20 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 4 }}>
+                    <Text style={{ color: colors.text, fontSize: 24, fontWeight: '700', fontFamily: type.stat.fontFamily }}>
+                      {proj.title}
+                    </Text>
+                  </View>
+
+                  <Text style={{ color: 'rgba(255, 255, 255, 0.65)', fontSize: 14, fontFamily: type.body.fontFamily, marginBottom: 14 }}>
+                    Active Project • {proj.gradeRaw || 'Unknown Grade'}
+                  </Text>
+
+                  <View
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      gap: 6,
+                      backgroundColor: 'rgba(154, 133, 255, 0.18)',
+                      paddingHorizontal: 12,
+                      paddingVertical: 6,
+                      borderRadius: radius.pill,
+                      alignSelf: 'flex-start',
+                    }}
+                  >
+                    <Text style={{ color: colors.accentText, fontSize: 12, fontWeight: '600', fontFamily: type.caption.fontFamily }}>
+                      {proj.attempts || 0} burns logged
+                    </Text>
+                  </View>
+                </View>
+              ))}
+            </ScrollView>
+          )}
 
           {/* Massive START SESSION Button */}
           <TouchableOpacity
@@ -362,19 +407,19 @@ export default function HomeScreen() {
             activeOpacity={0.85}
             onPress={handleStartSession}
             style={{
-              backgroundColor: '#9A85FF',
+              backgroundColor: colors.accent,
               height: 56,
               borderRadius: radius.pill,
               alignItems: 'center',
               justifyContent: 'center',
-              shadowColor: '#9A85FF',
+              shadowColor: colors.accent,
               shadowOffset: { width: 0, height: 4 },
               shadowOpacity: 0.5,
               shadowRadius: 16,
               elevation: 6,
             }}
           >
-            <Text style={{ color: '#FFFFFF', fontSize: 16, fontWeight: '700', letterSpacing: 0.5, fontFamily: type.heading.fontFamily }}>
+            <Text style={{ color: colors.text, fontSize: 16, fontWeight: '700', letterSpacing: 0.5, fontFamily: type.heading.fontFamily }}>
               {data.activeSession ? 'RESUME SESSION' : 'START SESSION'}
             </Text>
           </TouchableOpacity>
@@ -411,10 +456,10 @@ export default function HomeScreen() {
                 alignItems: 'center',
               }}
             >
-              <Trophy size={20} color="#D4CCFF" />
+              <Trophy size={20} color={colors.accentText} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={[type.heading, { color: '#FFFFFF', fontWeight: '700' }]}>
+              <Text style={[type.heading, { color: colors.text, fontWeight: '700' }]}>
                 New best: {data.personalBest.gradeRaw}
               </Text>
               <Text style={{ color: 'rgba(255, 255, 255, 0.5)', fontSize: 13, marginTop: 2 }}>
@@ -464,9 +509,9 @@ export default function HomeScreen() {
                       marginBottom: 12,
                     }}
                   >
-                    <Plus size={22} color="#D4CCFF" />
+                    <Plus size={22} color={colors.accentText} />
                   </View>
-                  <Text style={[type.heading, { color: '#FFFFFF', marginBottom: 4, fontWeight: '700' }]}>
+                  <Text style={[type.heading, { color: colors.text, marginBottom: 4, fontWeight: '700' }]}>
                     Add a project
                   </Text>
                   <Text style={{ color: 'rgba(255, 255, 255, 0.5)', fontSize: 13 }}>

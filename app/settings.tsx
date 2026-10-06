@@ -9,7 +9,7 @@ import {
 } from 'react-native';
 import Reanimated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ChevronLeft, Trash2 } from 'lucide-react-native';
+import { ChevronLeft, ChevronRight, Trash2 } from 'lucide-react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { seedDemoData } from '../db/seed';
@@ -21,6 +21,9 @@ import { PrimaryButton } from '../components/ui/PrimaryButton';
 import { getHapticsEnabled, setHapticsEnabled, HAPTICS_STORAGE_KEY } from '../utils/haptics';
 import { useCelebrationStore } from '../store/celebrationStore';
 import { triggerHaptic } from '../utils/haptics';
+import { exportDataToJSON } from '../db/queries';
+import * as FileSystem from 'expo-file-system';
+import * as Sharing from 'expo-sharing';
 
 const REST_TIMER_KEY = '@cruxlog/rest_timer_seconds';
 const DEFAULT_REST = 90;
@@ -104,6 +107,22 @@ export default function SettingsScreen() {
       setRestInput(String(restSeconds));
     }
   }, [restSeconds]);
+
+  const handleExportData = async () => {
+    try {
+      const jsonStr = await exportDataToJSON();
+      const fileUri = `${(FileSystem as any).documentDirectory}cruxlog-export-${new Date().toISOString().split('T')[0]}.json`;
+      await FileSystem.writeAsStringAsync(fileUri, jsonStr, { encoding: FileSystem.EncodingType.UTF8 });
+      
+      if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(fileUri, { dialogTitle: 'Export CruxLog Data' });
+      } else {
+        Alert.alert('Export Complete', 'Data saved locally, but sharing is not available on this device.');
+      }
+    } catch (e) {
+      Alert.alert('Export Failed', 'An error occurred while exporting your data.');
+    }
+  };
 
   const handleClearData = useCallback(() => {
     Alert.alert(
@@ -294,8 +313,14 @@ export default function SettingsScreen() {
             <SettingsRow
               label="Storage"
               sublabel="Offline-first SQLite local store"
-              isLast
               right={<Text style={[type.body, { color: colors.flashText }]}>Local</Text>}
+            />
+            <SettingsRow
+              label="Privacy Policy"
+              sublabel="How CruxLog handles your data"
+              isLast
+              onPress={() => router.push('/privacy-policy' as any)}
+              right={<ChevronRight size={16} color={colors.textMuted} />}
             />
           </Card>
         </View>
@@ -304,6 +329,39 @@ export default function SettingsScreen() {
         <View>
           <SectionHeader title="Data Management" />
           <Card>
+            <TouchableOpacity
+              onPress={handleExportData}
+              activeOpacity={0.7}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: space.md,
+                paddingVertical: space.sm,
+                borderBottomWidth: 1,
+                borderBottomColor: colors.border,
+                marginBottom: space.sm,
+              }}
+            >
+              <View
+                style={{
+                  width: 44,
+                  height: 44,
+                  borderRadius: radius.md,
+                  backgroundColor: colors.accentSoft,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <Text style={{ fontSize: 20 }}>⬇️</Text>
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[type.heading, { color: colors.text }]}>Export Data</Text>
+                <Text style={[type.caption, { color: colors.textMuted, marginTop: 2 }]}>
+                  Download all data as JSON
+                </Text>
+              </View>
+            </TouchableOpacity>
+
             <TouchableOpacity
               onPress={handleClearData}
               activeOpacity={0.7}

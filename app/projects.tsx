@@ -3,17 +3,18 @@ import { View, Text, TouchableOpacity, Modal, TextInput, KeyboardAvoidingView, P
 import Reanimated from 'react-native-reanimated';
 import { listLayout } from '../theme/layout';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { X, Filter, ChevronDown, Plus, Flag, ArrowUpDown } from 'lucide-react-native';
 import { useTheme } from '../theme/useTheme';
 import { ProjectCard } from '../components/ui/ProjectCard';
 import { EmptyState } from '../components/ui/EmptyState';
 import { Chip } from '../components/ui/Chip';
 import { PrimaryButton } from '../components/ui/PrimaryButton';
-import { useRichProjects } from '../db/hooks';
+import { useRichProjects, useRecentGyms } from '../db/hooks';
 import { triggerHaptic } from '../utils/haptics';
 import * as Q from '../db/queries';
 import { LogSheet } from '../components/session/LogSheet';
+import { CreateProjectModal } from '../components/project/CreateProjectModal';
 import { useSessionStore } from '../store/sessionStore';
 
 const GRADES = ['VB', 'V0', 'V1', 'V2', 'V3', 'V4', 'V5', 'V6', 'V7', 'V8', 'V9', 'V10', 'V11', 'V12', 'V13', 'V14', 'V15'];
@@ -37,6 +38,7 @@ export default function ProjectsScreen() {
   const { colors, space, radius, type } = useTheme();
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const params = useLocalSearchParams<{ create?: string; gym?: string }>();
   
   const allProjects = useRichProjects();
 
@@ -52,13 +54,11 @@ export default function ProjectsScreen() {
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
   const [loggingProject, setLoggingProject] = useState<any>(null);
 
-  // Form state
-  const [newTitle, setNewTitle] = useState('');
-  const [newGrade, setNewGrade] = useState('');
-  const [newAngle, setNewAngle] = useState('overhang');
-  const [newHoldType, setNewHoldType] = useState('crimps');
-  const [newTotalMoves, setNewTotalMoves] = useState('');
-  const [newBeta, setNewBeta] = useState('');
+  React.useEffect(() => {
+    if (params.create === 'true') {
+      setIsAddModalOpen(true);
+    }
+  }, [params.create]);
 
   const activeProjects = useMemo(() => allProjects.filter(p => p.status === 'in_progress'), [allProjects]);
   const sentProjects = useMemo(() => allProjects.filter(p => p.status === 'sent'), [allProjects]);
@@ -94,24 +94,6 @@ export default function ProjectsScreen() {
     Q.updateProjectStatus(id, 'abandoned');
   };
 
-  const handleSaveProject = () => {
-    Q.createProject({
-      title: newTitle.trim(),
-      gradeRaw: newGrade,
-      normalizedDifficulty: GRADES.indexOf(newGrade as any),
-      wallAngle: newAngle as any,
-      holdType: newHoldType as any,
-      status: 'in_progress',
-      highWaterMarkMoves: 0,
-      totalMoves: parseInt(newTotalMoves) || undefined,
-      microBeta: newBeta.trim() || undefined,
-    });
-    setNewTitle('');
-    setNewGrade('');
-    setNewTotalMoves('');
-    setNewBeta('');
-    setIsAddModalOpen(false);
-  };
 
   const openSortMenu = () => {
     triggerHaptic('light');
@@ -340,128 +322,11 @@ export default function ProjectsScreen() {
     </View>
 
       {/* New Project Modal */}
-      <Modal visible={isAddModalOpen} animationType="slide" transparent>
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
-          <View style={{ flex: 1, backgroundColor: "transparent", paddingTop: Math.max(insets.top, 24) }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: space.lg, marginBottom: space.lg }}>
-              <Text style={[type.display, { color: colors.text }]}>New Project</Text>
-              <TouchableOpacity
-                onPress={() => setIsAddModalOpen(false)}
-                accessibilityRole="button"
-                accessibilityLabel="Close"
-                style={{
-                  width: 44,
-                  height: 44,
-                  borderRadius: radius.md,
-                  backgroundColor: colors.materialBase,
-                  borderWidth: 0,
-                  borderColor: colors.border,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                <X size={22} color={colors.text} />
-              </TouchableOpacity>
-            </View>
-
-            <Reanimated.ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: space.lg, paddingBottom: 120 }}>
-              <Text style={[type.label, { color: colors.textMuted, marginBottom: space.xs }]}>PROJECT NAME</Text>
-              <TextInput
-                testID="project-nickname-input"
-                value={newTitle}
-                onChangeText={setNewTitle}
-                placeholder="e.g. Blue sloper on the prow"
-                placeholderTextColor={colors.textMuted}
-                style={[
-                  type.body,
-                  {
-                    backgroundColor: colors.materialBase,
-                    borderRadius: radius.md,
-                    borderWidth: 0,
-                    borderColor: colors.border,
-                    paddingHorizontal: space.md,
-                    height: 56,
-                    minHeight: 56,
-                    marginBottom: space.lg,
-                    color: colors.text,
-                  },
-                ]}
-              />
-
-              <Text style={[type.label, { color: colors.textMuted, marginBottom: space.xs }]}>TARGET GRADE</Text>
-              <Reanimated.ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: space.lg }}>
-                <View style={{ flexDirection: 'row', gap: space.sm }}>
-                  {GRADES.map(g => (
-                    <Chip key={g} label={g} active={newGrade === g} onPress={() => { triggerHaptic('light'); setNewGrade(g); }} />
-                  ))}
-                </View>
-              </Reanimated.ScrollView>
-
-              <Text style={[type.label, { color: colors.textMuted, marginBottom: space.xs }]}>WALL ANGLE</Text>
-              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.sm, marginBottom: space.lg }}>
-                {WALL_ANGLES.map(a => (
-                  <Chip key={a.key} label={a.label} active={newAngle === a.key} onPress={() => { triggerHaptic('light'); setNewAngle(a.key); }} />
-                ))}
-              </View>
-
-              <Text style={[type.label, { color: colors.textMuted, marginBottom: space.xs }]}>HOLD TYPE</Text>
-              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.sm, marginBottom: space.lg }}>
-                {HOLD_TYPES.map(h => (
-                  <Chip key={h.key} label={h.label} active={newHoldType === h.key} onPress={() => { triggerHaptic('light'); setNewHoldType(h.key); }} />
-                ))}
-              </View>
-
-              <Text style={[type.label, { color: colors.textMuted, marginBottom: space.xs }]}>ESTIMATED TOTAL MOVES (OPTIONAL)</Text>
-              <TextInput
-                value={newTotalMoves}
-                onChangeText={setNewTotalMoves}
-                keyboardType="numeric"
-                placeholder="12"
-                placeholderTextColor={colors.textMuted}
-                style={[
-                  type.body,
-                  {
-                    backgroundColor: colors.materialBase,
-                    borderRadius: radius.md,
-                    borderWidth: 0,
-                    borderColor: colors.border,
-                    paddingHorizontal: space.md,
-                    height: 56,
-                    minHeight: 56,
-                    marginBottom: space.lg,
-                    color: colors.text,
-                  },
-                ]}
-              />
-
-              <Text style={[type.label, { color: colors.textMuted, marginBottom: space.xs }]}>INITIAL NOTES (OPTIONAL)</Text>
-              <TextInput
-                value={newBeta}
-                onChangeText={setNewBeta}
-                multiline
-                placeholder="Micro-beta, sequence..."
-                placeholderTextColor={colors.textMuted}
-                style={[
-                  type.body,
-                  {
-                    backgroundColor: colors.materialBase,
-                    borderRadius: radius.md,
-                    borderWidth: 0,
-                    borderColor: colors.border,
-                    padding: space.md,
-                    marginBottom: space.xl,
-                    minHeight: 96,
-                    color: colors.text,
-                    textAlignVertical: 'top',
-                  },
-                ]}
-              />
-
-              <PrimaryButton testID="save-project-btn" label="SAVE PROJECT" onPress={handleSaveProject} disabled={!newTitle.trim() || !newGrade} />
-            </Reanimated.ScrollView>
-          </View>
-        </KeyboardAvoidingView>
-      </Modal>
+      <CreateProjectModal
+        visible={isAddModalOpen}
+        onClose={() => setIsAddModalOpen(false)}
+        defaultGym={params.gym}
+      />
 
       {/* Filter Modal */}
       <Modal visible={isFilterModalOpen} animationType="slide" transparent>
