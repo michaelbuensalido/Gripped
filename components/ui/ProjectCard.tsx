@@ -5,6 +5,7 @@ import { Archive, Plus } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import Svg, { Path } from 'react-native-svg';
 import { useTheme } from '../../theme/useTheme';
+import { triggerHaptic } from '../../utils/haptics';
 import { GradePill } from './GradePill';
 
 function getRelativeTime(timestamp: number | null) {
@@ -56,7 +57,7 @@ export function ProjectCard({
     return (
       <TouchableOpacity
         style={{ width: 80, backgroundColor: colors.accent, justifyContent: 'center', alignItems: 'center', borderRadius: radius.lg }}
-        onPress={() => { swipeableRef.current?.close(); onLogAttempt?.(); }}
+        onPress={() => { triggerHaptic('medium'); swipeableRef.current?.close(); onLogAttempt?.(); }}
       >
         <Animated.View style={{ opacity }}><Plus size={24} color={colors.textOnAccent} /></Animated.View>
       </TouchableOpacity>
@@ -73,7 +74,7 @@ export function ProjectCard({
     return (
       <TouchableOpacity
         style={{ width: 80, backgroundColor: colors.cardMuted, justifyContent: 'center', alignItems: 'center', borderRadius: radius.lg, marginLeft: space.sm }}
-        onPress={() => { swipeableRef.current?.close(); onArchive?.(); }}
+        onPress={() => { triggerHaptic('light'); swipeableRef.current?.close(); onArchive?.(); }}
       >
         <Animated.View style={{ opacity }}><Archive size={24} color={colors.text} /></Animated.View>
       </TouchableOpacity>
@@ -91,7 +92,7 @@ export function ProjectCard({
   const cardContent = (
     <TouchableOpacity
       activeOpacity={0.7}
-      onPress={() => router.push(`/project/${project.id}` as any)}
+      onPress={() => { triggerHaptic('light'); router.push(`/project/${project.id}` as any); }}
       style={[{ 
         backgroundColor: colors.materialBase, 
         borderRadius: radius.lg, 
@@ -160,7 +161,7 @@ export function ProjectCard({
 
           {onLogAttempt && (
             <TouchableOpacity
-              onPress={onLogAttempt}
+              onPress={() => { triggerHaptic('medium'); onLogAttempt?.(); }}
               style={{
                 minHeight: 44,
                 paddingVertical: 8,

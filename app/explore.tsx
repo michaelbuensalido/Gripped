@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Search, MapPin, ChevronRight, Plus, X } from 'lucide-react-native';
 import { useTheme } from '../theme/useTheme';
+import { Card } from '../components/ui/Card';
 import { useRecentGyms } from '../db/hooks';
 import * as Q from '../db/queries';
 import { triggerHaptic } from '../utils/haptics';
@@ -104,9 +105,8 @@ export default function ExploreScreen() {
         ) : (
           <View style={{ gap: space.sm }}>
             {filteredGyms.map(gym => (
-              <TouchableOpacity
+              <Card
                 key={gym}
-                activeOpacity={0.7}
                 onPress={() => {
                   triggerHaptic('light');
                   router.push(`/gym/${encodeURIComponent(gym)}` as any);
@@ -114,11 +114,6 @@ export default function ExploreScreen() {
                 style={{
                   flexDirection: 'row',
                   alignItems: 'center',
-                  backgroundColor: colors.card,
-                  padding: space.lg,
-                  borderRadius: radius.md,
-                  borderWidth: 1,
-                  borderColor: colors.border,
                 }}
               >
                 <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: colors.accentSoft, alignItems: 'center', justifyContent: 'center', marginRight: space.md }}>
@@ -129,7 +124,7 @@ export default function ExploreScreen() {
                   <Text style={[type.caption, { color: colors.textMuted }]}>View projects & sessions</Text>
                 </View>
                 <ChevronRight size={20} color={colors.textMuted} />
-              </TouchableOpacity>
+              </Card>
             ))}
           </View>
         )}

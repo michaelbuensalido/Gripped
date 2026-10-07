@@ -315,13 +315,17 @@ export default function SettingsScreen() {
               sublabel="Offline-first SQLite local store"
               right={<Text style={[type.body, { color: colors.flashText }]}>Local</Text>}
             />
-            <SettingsRow
-              label="Privacy Policy"
-              sublabel="How CruxLog handles your data"
-              isLast
+            <TouchableOpacity
+              activeOpacity={0.7}
               onPress={() => router.push('/privacy-policy' as any)}
-              right={<ChevronRight size={16} color={colors.textMuted} />}
-            />
+            >
+              <SettingsRow
+                label="Privacy Policy"
+                sublabel="How CruxLog handles your data"
+                isLast
+                right={<ChevronRight size={16} color={colors.textMuted} />}
+              />
+            </TouchableOpacity>
           </Card>
         </View>
 

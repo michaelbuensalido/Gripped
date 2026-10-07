@@ -45,12 +45,13 @@ function formatGrade(idx: number) {
 
 // Upward green sparkline vector
 function SparklineGreen() {
+  const { colors } = useTheme();
   return (
     <Svg width={36} height={22} viewBox="0 0 38 24">
       <Path
         d="M2 20 L12 16 L20 18 L28 8 L36 4"
         fill="none"
-        stroke="#72FF9B"
+        stroke={colors.flash}
         strokeWidth={2.5}
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -136,7 +137,7 @@ export default function ProgressScreen() {
             </TouchableOpacity>
           </View>
           <TouchableOpacity
-            style={{ width: 44, height: 44, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.05)', alignItems: 'center', justifyContent: 'center' }}
+            style={{ width: 44, height: 44, borderRadius: 12, backgroundColor: colors.cardMuted, alignItems: 'center', justifyContent: 'center' }}
             onPress={() => { triggerHaptic('light'); }}
           >
             <Menu size={22} color={colors.text} strokeWidth={2} />
@@ -154,12 +155,12 @@ export default function ProgressScreen() {
         {/* 3. Result Donut Hero Card */}
         <View
           style={{
-            backgroundColor: 'rgba(22, 22, 30, 0.85)',
+            backgroundColor: colors.card,
             borderRadius: 24,
             paddingVertical: 20,
             paddingHorizontal: 16,
             borderWidth: 1,
-            borderColor: 'rgba(255, 255, 255, 0.06)',
+            borderColor: colors.border,
             marginBottom: 24,
             alignItems: 'center',
           }}
@@ -177,7 +178,7 @@ export default function ProgressScreen() {
         {/* 4. PERFORMANCE TRENDS Section Header & 3 Bento Tiles */}
         <Text
           style={{
-            color: 'rgba(255, 255, 255, 0.45)',
+            color: colors.textMuted,
             fontSize: 10.5,
             fontWeight: '600',
             letterSpacing: 1.5,
@@ -195,16 +196,16 @@ export default function ProgressScreen() {
             onPress={() => router.push(`/analytics/stat-detail?stat=volume&period=${period}` as any)}
             style={{
               flex: 1,
-              backgroundColor: 'rgba(22, 22, 30, 0.85)',
+              backgroundColor: colors.card,
               borderRadius: 20,
               padding: 14,
               borderWidth: 1,
-              borderColor: 'rgba(255, 255, 255, 0.06)',
+              borderColor: colors.border,
             }}
           >
             <Text
               style={{
-                color: 'rgba(255, 255, 255, 0.45)',
+                color: colors.textMuted,
                 fontSize: 9.5,
                 fontWeight: '600',
                 letterSpacing: 1.2,
@@ -214,10 +215,10 @@ export default function ProgressScreen() {
             >
               {'WEEKLY\nVOLUME'}
             </Text>
-            <Text style={{ color: '#9A85FF', fontSize: 12, fontWeight: '600', marginTop: 6 }}>
+            <Text style={{ color: colors.accent, fontSize: 12, fontWeight: '600', marginTop: 6 }}>
               Routes
             </Text>
-            <Text style={{ color: '#FFFFFF', fontSize: 26, fontWeight: '700', fontVariant: ['tabular-nums'], marginTop: 2 }}>
+            <Text style={{ color: colors.text, fontSize: 26, fontWeight: '700', fontVariant: ['tabular-nums'], marginTop: 2 }}>
               {weeklyVolVal}
             </Text>
           </TouchableOpacity>
@@ -228,16 +229,16 @@ export default function ProgressScreen() {
             onPress={() => router.push(`/analytics/stat-detail?stat=flash&period=${period}` as any)}
             style={{
               flex: 1,
-              backgroundColor: 'rgba(22, 22, 30, 0.85)',
+              backgroundColor: colors.card,
               borderRadius: 20,
               padding: 14,
               borderWidth: 1,
-              borderColor: 'rgba(255, 255, 255, 0.06)',
+              borderColor: colors.border,
             }}
           >
             <Text
               style={{
-                color: 'rgba(255, 255, 255, 0.45)',
+                color: colors.textMuted,
                 fontSize: 9.5,
                 fontWeight: '600',
                 letterSpacing: 1.2,
@@ -247,11 +248,11 @@ export default function ProgressScreen() {
             >
               {'FLASH\nEFFICIENCY'}
             </Text>
-            <Text style={{ color: '#72FF9B', fontSize: 12, fontWeight: '600', marginTop: 6 }}>
+            <Text style={{ color: colors.flash, fontSize: 12, fontWeight: '600', marginTop: 6 }}>
               Flashes
             </Text>
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 2 }}>
-              <Text style={{ color: '#FFFFFF', fontSize: 26, fontWeight: '700', fontVariant: ['tabular-nums'] }}>
+              <Text style={{ color: colors.text, fontSize: 26, fontWeight: '700', fontVariant: ['tabular-nums'] }}>
                 {flashRateVal}
               </Text>
               {parseFloat(flashRateVal) > 0 && <SparklineGreen />}
@@ -264,16 +265,16 @@ export default function ProgressScreen() {
             onPress={() => router.push(`/analytics/stat-detail?stat=hardest&period=${period}` as any)}
             style={{
               flex: 1,
-              backgroundColor: 'rgba(22, 22, 30, 0.85)',
+              backgroundColor: colors.card,
               borderRadius: 20,
               padding: 14,
               borderWidth: 1,
-              borderColor: 'rgba(255, 255, 255, 0.06)',
+              borderColor: colors.border,
             }}
           >
             <Text
               style={{
-                color: 'rgba(255, 255, 255, 0.45)',
+                color: colors.textMuted,
                 fontSize: 9.5,
                 fontWeight: '600',
                 letterSpacing: 1.2,
@@ -283,10 +284,10 @@ export default function ProgressScreen() {
             >
               {'HARDEST\nSEND'}
             </Text>
-            <Text style={{ color: 'rgba(255, 255, 255, 0.7)', fontSize: 12, fontWeight: '500', marginTop: 6 }}>
+            <Text style={{ color: colors.textWhiteSecondary, fontSize: 12, fontWeight: '500', marginTop: 6 }}>
               Peak
             </Text>
-            <Text style={{ color: '#FFFFFF', fontSize: 26, fontWeight: '700', fontVariant: ['tabular-nums'], marginTop: 2 }}>
+            <Text style={{ color: colors.text, fontSize: 26, fontWeight: '700', fontVariant: ['tabular-nums'], marginTop: 2 }}>
               {hardestSendVal}
             </Text>
           </TouchableOpacity>
@@ -294,7 +295,7 @@ export default function ProgressScreen() {
 
         {/* 5. Sends by Grade (Grade Pyramid) */}
         <SectionHeader title="Sends by Grade" />
-        <Card style={{ marginBottom: 28, backgroundColor: 'rgba(22, 22, 30, 0.85)', borderRadius: 22, borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.06)' }}>
+        <Card style={{ marginBottom: 28, backgroundColor: colors.card, borderRadius: 22, borderWidth: 1, borderColor: colors.border }}>
           <GradePyramid data={gradePyramid} formatGrade={formatGrade} />
         </Card>
 
@@ -310,10 +311,10 @@ export default function ProgressScreen() {
 
         {/* 7. Recent Sessions List */}
         <SectionHeader title="Recent Sessions" action={{ label: "See all", onPress: () => router.push('/profile') }} />
-        <Card style={{ padding: 0, overflow: 'hidden', marginBottom: 40, backgroundColor: 'rgba(22, 22, 30, 0.85)', borderRadius: 22, borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.06)' }}>
+        <Card style={{ padding: 0, overflow: 'hidden', marginBottom: 40, backgroundColor: colors.card, borderRadius: 22, borderWidth: 1, borderColor: colors.border }}>
           {recentSessions.length === 0 ? (
             <View style={{ padding: 20, alignItems: 'center' }}>
-              <Text style={{ color: 'rgba(255, 255, 255, 0.4)', fontSize: 14 }}>No recent sessions</Text>
+              <Text style={{ color: colors.textMuted, fontSize: 14 }}>No recent sessions</Text>
             </View>
           ) : (
             recentSessions.map((s: any, i: number) => {
@@ -337,19 +338,19 @@ export default function ProgressScreen() {
       </View>)}</ScrollView>
           {/* Custom Spatial Action Sheet for Period Selection */}
       <Modal visible={isPeriodSheetOpen} animationType="slide" transparent>
-        <View style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.6)' }}>
+        <View style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: colors.scrim }}>
           <Pressable style={{ flex: 1 }} onPress={() => setPeriodSheetOpen(false)} />
           <View style={{ 
-            backgroundColor: 'rgba(22, 22, 30, 0.98)', 
+            backgroundColor: colors.materialBase, 
             borderTopLeftRadius: radius.xl, 
             borderTopRightRadius: radius.xl, 
             borderWidth: 1, 
-            borderColor: 'rgba(255,255,255,0.06)', 
+            borderColor: colors.border, 
             padding: space.xl, 
             paddingBottom: Math.max(insets.bottom, space.xl) 
           }}>
             {/* Drag Handle */}
-            <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.1)', alignSelf: 'center', marginBottom: space.xl }} />
+            <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: colors.border, alignSelf: 'center', marginBottom: space.xl }} />
             
             <Text style={[type.heading, { color: colors.textWhiteMuted, fontSize: 12, letterSpacing: 1.5, marginBottom: space.lg, textTransform: 'uppercase' }]}>
               Select Timeframe
@@ -373,7 +374,7 @@ export default function ProgressScreen() {
                       justifyContent: 'space-between',
                       paddingVertical: space.md,
                       paddingHorizontal: space.sm,
-                      backgroundColor: isActive ? 'rgba(154, 133, 255, 0.1)' : 'transparent',
+                      backgroundColor: isActive ? colors.accentSoft : 'transparent',
                       borderRadius: radius.md,
                     }}
                   >

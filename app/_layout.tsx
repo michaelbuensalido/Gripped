@@ -46,24 +46,25 @@ function TabLayout() {
       screenOptions={{
         headerShown: false,
         sceneStyle: { backgroundColor: "transparent" },
+        animation: "shift",
       }}
     >
       <Tabs.Screen name="index"     options={{ title: "Home" }} />
       <Tabs.Screen name="explore"  options={{ title: "Explore" }} />
-      <Tabs.Screen name="projects"  options={{ href: null }} />
+      <Tabs.Screen name="projects"  options={{ href: null, animation: "none" as any }} />
       <Tabs.Screen name="analytics" options={{ title: "Progress" }} />
       <Tabs.Screen name="profile"   options={{ title: "Logbook" }} />
-      <Tabs.Screen name="gallery"   options={{ title: "Gallery", href: null }} />
+      <Tabs.Screen name="gallery"   options={{ title: "Gallery", href: null, animation: "none" as any }} />
 
       {/* Hidden screens — no tab bar entry */}
-      <Tabs.Screen name="settings"             options={{ href: null }} />
-      <Tabs.Screen name="session/new"          options={{ href: null }} />
-      <Tabs.Screen name="session/active"       options={{ href: null }} />
-      <Tabs.Screen name="session/index"        options={{ href: null }} />
-      <Tabs.Screen name="session/end"          options={{ href: null }} />
-      <Tabs.Screen name="session/summary"      options={{ href: null }} />
-      <Tabs.Screen name="session/detail/[id]"  options={{ href: null }} />
-      <Tabs.Screen name="project/[id]"         options={{ href: null }} />
+      <Tabs.Screen name="settings"             options={{ href: null, animation: "none" as any }} />
+      <Tabs.Screen name="session/new"          options={{ href: null, animation: "none" as any }} />
+      <Tabs.Screen name="session/active"       options={{ href: null, animation: "none" as any }} />
+      <Tabs.Screen name="session/index"        options={{ href: null, animation: "none" as any }} />
+      <Tabs.Screen name="session/end"          options={{ href: null, animation: "none" as any }} />
+      <Tabs.Screen name="session/summary"      options={{ href: null, animation: "none" as any }} />
+      <Tabs.Screen name="session/detail/[id]"  options={{ href: null, animation: "none" as any }} />
+      <Tabs.Screen name="project/[id]"         options={{ href: null, animation: "none" as any }} />
     </Tabs>
   );
 }

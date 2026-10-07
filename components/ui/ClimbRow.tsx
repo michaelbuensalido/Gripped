@@ -6,6 +6,7 @@ import Reanimated, { FadeInDown, useSharedValue, useAnimatedStyle, withRepeat, w
 import { GradePill } from './GradePill';
 import { ResultChip, ResultType } from './ResultChip';
 import { useTheme } from '../../theme/useTheme';
+import { triggerHaptic } from '../../utils/haptics';
 import { listLayout } from '../../theme/layout';
 
 export interface ClimbRowProps {
@@ -70,6 +71,7 @@ export function ClimbRow({ climb, onEdit, onDelete, animateEntry, isNewFlash }: 
           marginLeft: space.sm,
         }}
         onPress={() => {
+          triggerHaptic('heavy');
           swipeableRef.current?.close();
           onDelete(climb.id);
         }}
@@ -89,7 +91,10 @@ export function ClimbRow({ climb, onEdit, onDelete, animateEntry, isNewFlash }: 
     <Swipeable ref={swipeableRef} renderRightActions={renderRightActions} overshootRight={false}>
       <TouchableOpacity
         activeOpacity={0.7}
-        onPress={() => onEdit(climb)}
+        onPress={() => {
+          triggerHaptic('light');
+          onEdit(climb);
+        }}
         accessibilityRole="button"
         accessibilityLabel={`Edit climb ${climb.grade_raw} ${climb.result}`}
         style={{

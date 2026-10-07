@@ -94,7 +94,7 @@ export function CreateProjectModal({ visible, onClose, defaultGym, onCreated }: 
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
-      <View style={{ flex: 1, backgroundColor: '#101015' }}>
+      <View style={{ flex: 1, backgroundColor: colors.bgTexture }}>
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
           <View style={{ flex: 1, paddingTop: Math.max(insets.top, 20) }}>
             {/* Header */}
