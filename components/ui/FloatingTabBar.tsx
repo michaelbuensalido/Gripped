@@ -72,13 +72,13 @@ function CenterSessionButton({ activeSession, startOrResume, onOpenStartSheet }:
             width: 54,
             height: 54,
             borderRadius: 27,
-            backgroundColor: '#9A85FF',
+            backgroundColor: colors.accent,
             alignItems: 'center',
             justifyContent: 'center',
             borderWidth: 3.5,
-            borderColor: '#0C0C10',
+            borderColor: colors.bgTexture,
             zIndex: 10,
-            shadowColor: '#9A85FF',
+            shadowColor: colors.accent,
             shadowOpacity: 0.55,
             shadowRadius: 12,
             shadowOffset: { width: 0, height: 4 },
@@ -89,17 +89,17 @@ function CenterSessionButton({ activeSession, startOrResume, onOpenStartSheet }:
         {activeSession && !reduceMotion && (
           <Animated.View style={{
             position: 'absolute', width: 54, height: 54, borderRadius: 27,
-            borderWidth: 2, borderColor: '#9A85FF',
+            borderWidth: 2, borderColor: colors.accent,
             transform: [{ scale: pulseAnim }], opacity: 0.3
           }} pointerEvents="none" />
         )}
         
         {activeSession ? (
           <View style={{ alignItems: 'center' }}>
-            <Text style={{ color: '#FFFFFF', fontSize: 12, fontWeight: '700', fontFamily: type.heading.fontFamily }}>{displayTime}</Text>
+            <Text style={{ color: colors.text, fontSize: 12, fontWeight: '700', fontFamily: type.heading.fontFamily }}>{displayTime}</Text>
           </View>
         ) : (
-          <Plus size={24} color="#FFFFFF" strokeWidth={2.2} />
+          <Plus size={24} color={colors.text} strokeWidth={2.2} />
         )}
       </TouchableOpacity>
       <Text 
@@ -158,11 +158,11 @@ export function FloatingTabBar({ state, descriptors, navigation }: any) {
           style={[StyleSheet.absoluteFill, {
             borderRadius: radius.pill,
             borderWidth: 1,
-            borderColor: 'rgba(255, 255, 255, 0.08)',
+            borderColor: colors.glassBorder,
             overflow: 'hidden',
           }]}
         >
-          <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(20, 20, 28, 0.94)' }]} />
+          <View style={[StyleSheet.absoluteFill, { backgroundColor: colors.materialBase }]} />
         </View>
 
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', height: 66, paddingHorizontal: 6, overflow: 'visible' }}>
@@ -171,6 +171,7 @@ export function FloatingTabBar({ state, descriptors, navigation }: any) {
             const isFocused = state.index === state.routes.findIndex((r: any) => r.key === route.key);
 
             const onPress = () => {
+              triggerHaptic('light');
               const event = navigation.emit({ type: 'tabPress', target: route.key, canPreventDefault: true });
               if (!isFocused && !event.defaultPrevented) {
                 setLastTab('/' + (route.name === 'index' ? '' : route.name));
@@ -197,7 +198,7 @@ export function FloatingTabBar({ state, descriptors, navigation }: any) {
                   flexDirection: 'column',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  backgroundColor: isFocused ? 'rgba(154, 133, 255, 0.22)' : 'transparent',
+                  backgroundColor: isFocused ? colors.accentSoft : 'transparent',
                   paddingHorizontal: isFocused ? 12 : 8,
                   paddingVertical: 5,
                   borderRadius: radius.pill,
@@ -205,14 +206,14 @@ export function FloatingTabBar({ state, descriptors, navigation }: any) {
                 }}>
                   <IconComponent
                     size={20}
-                    color={isFocused ? '#B89EFF' : '#727280'}
+                    color={isFocused ? colors.accentText : colors.textMuted}
                     strokeWidth={isFocused ? 2 : 1.75}
                   />
                   <Text
                     numberOfLines={1}
                     adjustsFontSizeToFit
                     style={{
-                      color: isFocused ? '#B89EFF' : '#727280',
+                      color: isFocused ? colors.accentText : colors.textMuted,
                       fontFamily: type.heading.fontFamily,
                       fontSize: 10,
                       fontWeight: isFocused ? '600' : '500',

@@ -1,6 +1,7 @@
 import React from 'react';
 import { TouchableOpacity, Text, View } from 'react-native';
 import { useTheme } from '../../theme/useTheme';
+import { triggerHaptic } from '../../utils/haptics';
 
 export function Chip({ label, active = false, onPress }: { label: string; active?: boolean; onPress?: () => void }) {
   const { colors, type, space, radius } = useTheme();
@@ -22,7 +23,7 @@ export function Chip({ label, active = false, onPress }: { label: string; active
 
   if (onPress) {
     return (
-      <TouchableOpacity activeOpacity={0.7} onPress={onPress}>
+      <TouchableOpacity activeOpacity={0.7} onPress={() => { triggerHaptic('light'); onPress(); }}>
         {content}
       </TouchableOpacity>
     );

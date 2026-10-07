@@ -6,7 +6,7 @@ import Animated, {
   withSpring,
   useReducedMotion,
 } from 'react-native-reanimated';
-import * as Haptics from 'expo-haptics';
+import { triggerHaptic } from '../../utils/haptics';
 import { useTheme } from '../../theme/useTheme';
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
@@ -57,9 +57,7 @@ export function PrimaryButton({
 
   const handlePress = () => {
     if (isDisabled) return;
-    try {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    } catch (_) {}
+    triggerHaptic('medium');
     onPress();
   };
 

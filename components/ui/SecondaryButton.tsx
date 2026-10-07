@@ -1,6 +1,6 @@
 import React from 'react';
 import { TouchableOpacity, Text, ViewStyle, StyleProp } from 'react-native';
-import * as Haptics from 'expo-haptics';
+import { triggerHaptic } from '../../utils/haptics';
 import { useTheme } from '../../theme/useTheme';
 
 interface SecondaryButtonProps {
@@ -26,9 +26,7 @@ export function SecondaryButton({
 
   const handlePress = () => {
     if (disabled) return;
-    try {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    } catch (_) {}
+    triggerHaptic('medium');
     onPress();
   };
 

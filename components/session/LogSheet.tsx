@@ -328,10 +328,11 @@ export function LogSheet({
           <Pressable onPress={(e) => e.stopPropagation()}>
             <View
               style={{
-                backgroundColor: '#121214',
+                backgroundColor: colors.card,
                 borderTopLeftRadius: radius.xl,
                 borderTopRightRadius: radius.xl,
-                borderWidth: 0,
+                borderWidth: 1,
+                borderColor: colors.border,
                 paddingHorizontal: space.lg,
                 paddingTop: space.md,
                 paddingBottom: space.xxl + 24,

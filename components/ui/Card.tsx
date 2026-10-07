@@ -18,10 +18,10 @@ export function Card({ children, variant = 'default', onPress, style, ...props }
   const baseStyle: ViewStyle = {
     borderRadius: radius.lg,
     padding: space.lg,
-    backgroundColor: variant === 'muted' ? 'rgba(255, 255, 255, 0.05)' : 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: variant === 'muted' ? colors.cardMuted : colors.card,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.15)',
+    borderColor: colors.border,
     ...(variant === 'muted' ? {} : shadow.card),
   };
 
@@ -55,7 +55,7 @@ export function Card({ children, variant = 'default', onPress, style, ...props }
           style={[baseStyle, style, { transform: [{ scale: scaleAnim }] }]}
           {...props}
         >
-          <View style={[StyleSheet.absoluteFill, { backgroundColor: "rgba(255, 255, 255, 0.05)" }]} />
+          <View style={[StyleSheet.absoluteFill, { backgroundColor: colors.cardMuted }]} />
           {children}
         </Animated.View>
       </Pressable>
@@ -64,7 +64,7 @@ export function Card({ children, variant = 'default', onPress, style, ...props }
 
   return (
     <View style={[baseStyle, style]} {...props}>
-      <View style={[StyleSheet.absoluteFill, { backgroundColor: "rgba(255, 255, 255, 0.05)" }]} />
+      <View style={[StyleSheet.absoluteFill, { backgroundColor: colors.cardMuted }]} />
       {children}
     </View>
   );

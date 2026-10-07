@@ -6,6 +6,8 @@ import Animated, {
   useAnimatedStyle,
   interpolate,
   Extrapolation,
+  FadeInDown,
+  FadeInRight,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, useFocusEffect } from 'expo-router';
@@ -24,6 +26,7 @@ import { listLayout } from '../theme/layout';
 import { ProjectCard } from '../components/ui/ProjectCard';
 import { SectionHeader } from '../components/ui/SectionHeader';
 import { SessionCard } from '../components/ui/SessionCard';
+import { StatTile } from '../components/ui/StatTile';
 import * as Q from '../db/queries';
 import { WeekStrip } from '../components/ui/WeekStrip';
 import { VolumeChart } from '../components/ui/VolumeChart';
@@ -124,12 +127,12 @@ export default function HomeScreen() {
             style={{
               flexDirection: 'row',
               alignItems: 'center',
-              backgroundColor: 'rgba(255, 255, 255, 0.08)',
+              backgroundColor: colors.bevelHighlight,
               paddingHorizontal: 12,
               paddingVertical: 6,
               borderRadius: radius.pill,
               borderWidth: 1,
-              borderColor: 'rgba(255, 255, 255, 0.06)',
+              borderColor: colors.border,
               gap: 8,
             }}
           >
@@ -152,9 +155,9 @@ export default function HomeScreen() {
               width: 44,
               height: 44,
               borderRadius: 22,
-              backgroundColor: 'rgba(255, 255, 255, 0.08)',
+              backgroundColor: colors.bevelHighlight,
               borderWidth: 1,
-              borderColor: 'rgba(255, 255, 255, 0.06)',
+              borderColor: colors.border,
               alignItems: 'center',
               justifyContent: 'center',
               position: 'relative',
@@ -196,102 +199,19 @@ export default function HomeScreen() {
 
         {/* 3. Three Bento Stat Tiles */}
         <View style={{ flexDirection: 'row', gap: 12, marginBottom: 22 }}>
-          {/* Tile 1: Sessions */}
-          <View
-            style={{
-              flex: 1,
-              backgroundColor: 'rgba(22, 22, 30, 0.85)',
-              borderRadius: 20,
-              padding: 16,
-              borderWidth: 1,
-              borderColor: 'rgba(255, 255, 255, 0.06)',
-            }}
-          >
-            <Text style={{ color: colors.text, fontSize: 26, fontWeight: '700', fontVariant: ['tabular-nums'], fontFamily: type.stat.fontFamily }}>
-              {data.sessionsThisWeek || 0}
-            </Text>
-            <Text
-              style={{
-                color: 'rgba(255, 255, 255, 0.45)',
-                fontSize: 10,
-                fontWeight: '600',
-                letterSpacing: 1.2,
-                textTransform: 'uppercase',
-                marginTop: 4,
-                lineHeight: 14,
-              }}
-            >
-              {'SESSIONS\nTHIS WEEK'}
-            </Text>
-          </View>
-
-          {/* Tile 2: Climbs */}
-          <View
-            style={{
-              flex: 1,
-              backgroundColor: 'rgba(22, 22, 30, 0.85)',
-              borderRadius: 20,
-              padding: 16,
-              borderWidth: 1,
-              borderColor: 'rgba(255, 255, 255, 0.06)',
-            }}
-          >
-            <Text style={{ color: colors.text, fontSize: 26, fontWeight: '700', fontVariant: ['tabular-nums'], fontFamily: type.stat.fontFamily }}>
-              {data.climbsThisWeek || 0}
-            </Text>
-            <Text
-              style={{
-                color: 'rgba(255, 255, 255, 0.45)',
-                fontSize: 10,
-                fontWeight: '600',
-                letterSpacing: 1.2,
-                textTransform: 'uppercase',
-                marginTop: 4,
-                lineHeight: 14,
-              }}
-            >
-              {'CLIMBS\nLOGGED'}
-            </Text>
-          </View>
-
-          {/* Tile 3: Sends */}
-          <View
-            style={{
-              flex: 1,
-              backgroundColor: 'rgba(22, 22, 30, 0.85)',
-              borderRadius: 20,
-              padding: 16,
-              borderWidth: 1,
-              borderColor: 'rgba(255, 255, 255, 0.06)',
-            }}
-          >
-            <Text style={{ color: colors.text, fontSize: 26, fontWeight: '700', fontVariant: ['tabular-nums'], fontFamily: type.stat.fontFamily }}>
-              {data.sendsThisWeek || 0}
-            </Text>
-            <Text
-              style={{
-                color: 'rgba(255, 255, 255, 0.45)',
-                fontSize: 10,
-                fontWeight: '600',
-                letterSpacing: 1.2,
-                textTransform: 'uppercase',
-                marginTop: 4,
-                lineHeight: 14,
-              }}
-            >
-              {'SENDS\nTHIS WEEK'}
-            </Text>
-          </View>
+          <StatTile flex value={data.sessionsThisWeek || 0} label={"SESSIONS\nTHIS WEEK"} />
+          <StatTile flex value={data.climbsThisWeek || 0} label={"CLIMBS\nLOGGED"} />
+          <StatTile flex value={data.sendsThisWeek || 0} label={"SENDS\nTHIS WEEK"} />
         </View>
 
         {/* 4. Hero Bento Card */}
         <View
           style={{
-            backgroundColor: 'rgba(24, 24, 34, 0.90)',
+            backgroundColor: colors.materialBase,
             borderRadius: 26,
             padding: 20,
             borderWidth: 1,
-            borderColor: 'rgba(255, 255, 255, 0.08)',
+            borderColor: colors.border,
             marginBottom: 24,
             ...shadow.floating,
           }}
@@ -329,7 +249,7 @@ export default function HomeScreen() {
                 </Text>
               </View>
 
-              <Text style={{ color: 'rgba(255, 255, 255, 0.65)', fontSize: 14, fontFamily: type.body.fontFamily, marginBottom: 14 }}>
+              <Text style={{ color: colors.textWhiteSecondary, fontSize: 14, fontFamily: type.body.fontFamily, marginBottom: 14 }}>
                 {data.activeSession
                   ? `${plural(data.activeSessionClimbCount, 'climb')} logged`
                   : (data.lastSession 
@@ -342,7 +262,7 @@ export default function HomeScreen() {
                   flexDirection: 'row',
                   alignItems: 'center',
                   gap: 6,
-                  backgroundColor: 'rgba(154, 133, 255, 0.18)',
+                  backgroundColor: colors.accentSoft,
                   paddingHorizontal: 12,
                   paddingVertical: 6,
                   borderRadius: radius.pill,
@@ -376,7 +296,7 @@ export default function HomeScreen() {
                     </Text>
                   </View>
 
-                  <Text style={{ color: 'rgba(255, 255, 255, 0.65)', fontSize: 14, fontFamily: type.body.fontFamily, marginBottom: 14 }}>
+                  <Text style={{ color: colors.textWhiteSecondary, fontSize: 14, fontFamily: type.body.fontFamily, marginBottom: 14 }}>
                     Active Project • {proj.gradeRaw || 'Unknown Grade'}
                   </Text>
 
@@ -385,7 +305,7 @@ export default function HomeScreen() {
                       flexDirection: 'row',
                       alignItems: 'center',
                       gap: 6,
-                      backgroundColor: 'rgba(154, 133, 255, 0.18)',
+                      backgroundColor: colors.accentSoft,
                       paddingHorizontal: 12,
                       paddingVertical: 6,
                       borderRadius: radius.pill,
@@ -437,11 +357,11 @@ export default function HomeScreen() {
               flexDirection: 'row',
               alignItems: 'center',
               gap: 14,
-              backgroundColor: 'rgba(22, 22, 30, 0.85)',
+              backgroundColor: colors.cardMuted,
               borderRadius: 20,
               padding: 16,
               borderWidth: 1,
-              borderColor: 'rgba(255, 255, 255, 0.06)',
+              borderColor: colors.border,
               marginBottom: 24,
             }}
           >
@@ -451,7 +371,7 @@ export default function HomeScreen() {
                 width: 42,
                 height: 42,
                 borderRadius: 21,
-                backgroundColor: 'rgba(154, 133, 255, 0.18)',
+                backgroundColor: colors.accentSoft,
                 justifyContent: 'center',
                 alignItems: 'center',
               }}
@@ -462,7 +382,7 @@ export default function HomeScreen() {
               <Text style={[type.heading, { color: colors.text, fontWeight: '700' }]}>
                 New best: {data.personalBest.gradeRaw}
               </Text>
-              <Text style={{ color: 'rgba(255, 255, 255, 0.5)', fontSize: 13, marginTop: 2 }}>
+              <Text style={{ color: colors.textMuted, fontSize: 13, marginTop: 2 }}>
                 {data.personalBest.daysAgo === 0
                   ? 'Today'
                   : data.personalBest.daysAgo === 1
@@ -474,7 +394,7 @@ export default function HomeScreen() {
         )}
 
         {/* 7. Projects Strip — Project cards carousel */}
-        <View style={{ marginBottom: 26 }}>
+        <Animated.View entering={FadeInDown.delay(200).springify().damping(14)} style={{ marginBottom: 26 }}>
           <SectionHeader
             title="Projects"
             action={{ label: 'See all', onPress: () => router.push('/projects') }}
@@ -492,10 +412,10 @@ export default function HomeScreen() {
                   style={{
                     width: 220,
                     padding: 20,
-                    backgroundColor: 'rgba(22, 22, 30, 0.85)',
+                    backgroundColor: colors.cardMuted,
                     borderRadius: 22,
                     borderWidth: 1,
-                    borderColor: 'rgba(255, 255, 255, 0.06)',
+                    borderColor: colors.border,
                   }}
                 >
                   <View
@@ -503,7 +423,7 @@ export default function HomeScreen() {
                       width: 44,
                       height: 44,
                       borderRadius: 22,
-                      backgroundColor: 'rgba(154, 133, 255, 0.18)',
+                      backgroundColor: colors.accentSoft,
                       justifyContent: 'center',
                       alignItems: 'center',
                       marginBottom: 12,
@@ -514,7 +434,7 @@ export default function HomeScreen() {
                   <Text style={[type.heading, { color: colors.text, marginBottom: 4, fontWeight: '700' }]}>
                     Add a project
                   </Text>
-                  <Text style={{ color: 'rgba(255, 255, 255, 0.5)', fontSize: 13 }}>
+                  <Text style={{ color: colors.textMuted, fontSize: 13 }}>
                     Track a climb you're working on
                   </Text>
                 </TouchableOpacity>
@@ -527,7 +447,7 @@ export default function HomeScreen() {
               )}
             </View>
           </Animated.ScrollView>
-        </View>
+        </Animated.View>
 
         {/* 8. Weekly Volume Chart */}
         {data.weeklyVolume.length > 0 && (
