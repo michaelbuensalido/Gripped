@@ -882,9 +882,12 @@ export default function ActiveSessionScreen() {
         }}
         onSave={handleSaveLog}
         initialGrade={editingClimb?.grade || activeProjectTarget?.gradeRaw || recentGrades[0]?.gradeRaw || 'V4'}
-        initialResult={editingClimb?.result || 'top'}
+        initialResult={editingClimb?.result || (activeProjectTarget ? 'attempt' : 'top')}
         initialAttempts={editingClimb?.attempts || 1}
         initialNotes={editingClimb?.notes || ''}
+        lockGrade={Boolean(activeProjectTarget && !editingClimb)}
+        disableFlash={Boolean(activeProjectTarget && ((activeProjectTarget.attempts || 0) > 0 || (activeProjectTarget.burns || 0) > 0))}
+        title={activeProjectTarget ? `Log Attempt • ${activeProjectTarget.title}` : editingClimb ? 'Edit Climb' : 'Log Climb'}
       />
 
       {/* Undo Toast */}

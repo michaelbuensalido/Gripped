@@ -396,6 +396,9 @@ export default function ProjectsScreen() {
         initialResult="attempt"
         initialAttempts={1}
         initialNotes=""
+        lockGrade={true}
+        disableFlash={(loggingProject?.attempts || 0) > 0 || (loggingProject?.burns || 0) > 0}
+        title={loggingProject ? `Log Attempt • ${loggingProject.title}` : 'Log Attempt'}
       />
     </>
   );

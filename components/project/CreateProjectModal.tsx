@@ -8,6 +8,8 @@ import { PrimaryButton } from '../ui/PrimaryButton';
 import { useRecentGyms } from '../../db/hooks';
 import { triggerHaptic } from '../../utils/haptics';
 import * as Q from '../../db/queries';
+import * as ImagePicker from 'expo-image-picker';
+import { Image } from 'react-native';
 
 const GRADES = ['VB', 'V0', 'V1', 'V2', 'V3', 'V4', 'V5', 'V6', 'V7', 'V8', 'V9', 'V10', 'V11', 'V12', 'V13', 'V14', 'V15'];
 const WALL_ANGLES = [
@@ -45,6 +47,7 @@ export function CreateProjectModal({ visible, onClose, defaultGym, onCreated }: 
   const [newGym, setNewGym] = useState(defaultGym || '');
   const [newZone, setNewZone] = useState('');
   const [newSetDate, setNewSetDate] = useState('');
+  const [newMediaUri, setNewMediaUri] = useState<string | null>(null);
   const [showMoreDetails, setShowMoreDetails] = useState(false);
 
   useEffect(() => {
@@ -56,6 +59,19 @@ export function CreateProjectModal({ visible, onClose, defaultGym, onCreated }: 
       }
     }
   }, [visible, defaultGym]);
+
+  
+  const pickImage = async () => {
+    let result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [4, 3],
+      quality: 1,
+    });
+    if (!result.canceled) {
+      setNewMediaUri(result.assets[0].uri);
+    }
+  };
 
   const handleSave = () => {
     if (!newTitle.trim() || !newGrade || !newGym.trim()) return;
@@ -74,10 +90,12 @@ export function CreateProjectModal({ visible, onClose, defaultGym, onCreated }: 
       gymName: newGym.trim() || undefined,
       zone: newZone.trim() || undefined,
       setDate: newSetDate.trim() || undefined,
+      mediaUri: newMediaUri || undefined,
     });
 
     // Reset fields
     setNewTitle('');
+    setNewMediaUri(null);
     setNewGrade('');
     setNewTotalMoves('');
     setNewBeta('');
@@ -124,6 +142,19 @@ export function CreateProjectModal({ visible, onClose, defaultGym, onCreated }: 
 
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: space.lg, paddingTop: space.lg, paddingBottom: 120 }}>
 
+
+              
+              {/* Project Image */}
+              <Text style={[type.label, { color: colors.textMuted, marginBottom: space.xs }]}>PROJECT IMAGE (OPTIONAL)</Text>
+              <TouchableOpacity onPress={pickImage} style={{ marginBottom: space.lg }}>
+                {newMediaUri ? (
+                  <Image source={{ uri: newMediaUri }} style={{ width: '100%', height: 200, borderRadius: radius.md }} />
+                ) : (
+                  <View style={{ width: '100%', height: 100, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, borderStyle: 'dashed', backgroundColor: colors.cardMuted, alignItems: 'center', justifyContent: 'center' }}>
+                    <Text style={[type.body, { color: colors.textMuted }]}>+ Add a photo of the problem</Text>
+                  </View>
+                )}
+              </TouchableOpacity>
 
               {/* Project Name */}
               <Text style={[type.label, { color: colors.textMuted, marginBottom: space.xs }]}>PROJECT NAME</Text>

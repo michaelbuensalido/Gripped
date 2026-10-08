@@ -10,10 +10,11 @@ import {
   Platform,
 } from 'react-native';
 import Reanimated from 'react-native-reanimated';
-import { Plus, X, Minus, ChevronLeft, ChevronRight } from 'lucide-react-native';
+import { Plus, X, Minus, ChevronLeft, ChevronRight, Lock } from 'lucide-react-native';
 import { SectionHeader } from '../ui/SectionHeader';
 import { PrimaryButton } from '../ui/PrimaryButton';
 import { ResultType } from '../ui/ResultChip';
+import { GradePill } from '../ui/GradePill';
 import { useTheme } from '../../theme/useTheme';
 import { triggerHaptic } from '../../utils/haptics';
 import { FailureTagSelector } from './FailureTagSelector';
@@ -157,13 +158,23 @@ function GradePicker({ value, onChange }: { value: string; onChange: (g: string)
   );
 }
 
-function ResultSelector({ value, onChange }: { value: ResultType; onChange: (r: ResultType) => void }) {
+function ResultSelector({
+  value,
+  onChange,
+  disableFlash = false,
+}: {
+  value: ResultType;
+  onChange: (r: ResultType) => void;
+  disableFlash?: boolean;
+}) {
   const { colors, space, radius, type } = useTheme();
-  const options: { result: ResultType; label: string; color: string; bg: string; border: string; testID?: string }[] = [
+  const allOptions: { result: ResultType; label: string; color: string; bg: string; border: string; testID?: string }[] = [
     { result: 'flash', label: 'Flash', color: colors.flashText, bg: colors.flashSoft, border: colors.flash },
     { result: 'top',   label: 'Top',   color: colors.topText,   bg: colors.topSoft,   border: colors.top },
     { result: 'attempt', label: 'Attempt', color: colors.attemptText, bg: colors.attemptSoft, border: colors.attempt, testID: 'log-attempt-chip' },
   ];
+
+  const options = disableFlash ? allOptions.filter(o => o.result !== 'flash') : allOptions;
 
   return (
     <View style={{ flexDirection: 'row', gap: space.sm }}>
@@ -282,6 +293,9 @@ export function LogSheet({
   initialResult,
   initialAttempts,
   initialNotes,
+  lockGrade = false,
+  disableFlash = false,
+  title,
 }: {
   visible: boolean;
   onClose: () => void;
@@ -290,6 +304,9 @@ export function LogSheet({
   initialResult?: ResultType;
   initialAttempts?: number;
   initialNotes?: string;
+  lockGrade?: boolean;
+  disableFlash?: boolean;
+  title?: string;
 }) {
   const { colors, space, type, radius, shadow } = useTheme();
   const [grade, setGrade] = useState(initialGrade ?? 'V4');
@@ -301,16 +318,26 @@ export function LogSheet({
   useEffect(() => {
     if (visible) {
       setGrade(initialGrade ?? 'V4');
-      setResult(initialResult ?? 'top');
+      let defaultResult = initialResult ?? 'top';
+      if (disableFlash && defaultResult === 'flash') {
+        defaultResult = 'attempt';
+      }
+      setResult(defaultResult);
       setAttempts(initialAttempts ?? 1);
       setNotes(initialNotes ?? '');
       setFailureReason(null);
     }
-  }, [visible, initialGrade, initialResult, initialAttempts, initialNotes]);
+  }, [visible, initialGrade, initialResult, initialAttempts, initialNotes, disableFlash]);
 
   useEffect(() => {
     if (result === 'flash') setAttempts(1);
   }, [result]);
+
+  useEffect(() => {
+    if (attempts > 1 && result === 'flash') {
+      setResult('top');
+    }
+  }, [attempts, result]);
 
   const handleSave = () => {
     let finalNotes = notes.trim();
@@ -361,7 +388,7 @@ export function LogSheet({
                   marginBottom: space.lg,
                 }}
               >
-                <Text style={[type.title, { color: colors.text }]}>Log Climb</Text>
+                <Text style={[type.title, { color: colors.text }]}>{title || 'Log Climb'}</Text>
                 <TouchableOpacity onPress={onClose} hitSlop={{ top: 12, right: 12, bottom: 12, left: 12 }}>
                   <X size={22} color={colors.textMuted} />
                 </TouchableOpacity>
@@ -371,7 +398,11 @@ export function LogSheet({
                 {/* Result Section */}
                 <View>
                   <SectionHeader title="Outcome" />
-                  <ResultSelector value={result} onChange={setResult} />
+                  <ResultSelector
+                    value={result}
+                    onChange={setResult}
+                    disableFlash={disableFlash || attempts > 1}
+                  />
                 </View>
 
                 {/* Root Cause Failure tags if Attempt */}
@@ -387,8 +418,37 @@ export function LogSheet({
 
                 {/* Grade Section */}
                 <View>
-                  <SectionHeader title="Grade" />
-                  <GradePicker value={grade} onChange={setGrade} />
+                  <SectionHeader title={lockGrade ? "Grade (Locked to Project)" : "Grade"} />
+                  {lockGrade ? (
+                    <View
+                      style={{
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        backgroundColor: colors.cardMuted,
+                        borderRadius: radius.md,
+                        paddingHorizontal: space.md,
+                        height: 56,
+                        borderWidth: 1,
+                        borderColor: colors.border,
+                      }}
+                    >
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm }}>
+                        <GradePill gradeIndex={Math.max(0, GRADES.indexOf(grade))} label={grade} />
+                        <Text style={[type.body, { color: colors.textMuted, fontSize: 13 }]}>
+                          Fixed to project
+                        </Text>
+                      </View>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                        <Lock size={14} color={colors.textMuted} />
+                        <Text style={[type.caption, { color: colors.textMuted, fontWeight: '600' }]}>
+                          LOCKED
+                        </Text>
+                      </View>
+                    </View>
+                  ) : (
+                    <GradePicker value={grade} onChange={setGrade} />
+                  )}
                 </View>
 
                 {/* Attempts Stepper */}

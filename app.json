@@ -71,7 +71,13 @@
       ],
       "./plugins/withClimbingPoseTracker",
       "./plugins/withStripPushNotifications",
-      "expo-asset"
+      "expo-asset",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "CruxLog needs access to your photos so you can attach images to your projects."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true
@@ -84,4 +90,3 @@
     }
   }
 }
-

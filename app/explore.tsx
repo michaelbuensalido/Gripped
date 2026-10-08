@@ -27,7 +27,7 @@ export default function ExploreScreen() {
     Q.insertGym(trimmed);
     setNewGymName('');
     setIsAddModalOpen(false);
-    router.push(`/gym/${encodeURIComponent(trimmed)}` as any);
+    router.push(`/gym/${encodeURIComponent(trimmed)}?from=explore` as any);
   };
 
   return (
@@ -109,7 +109,7 @@ export default function ExploreScreen() {
                 key={gym}
                 onPress={() => {
                   triggerHaptic('light');
-                  router.push(`/gym/${encodeURIComponent(gym)}` as any);
+                  router.push(`/gym/${encodeURIComponent(gym)}?from=explore` as any);
                 }}
                 style={{
                   flexDirection: 'row',
