@@ -24,10 +24,6 @@ export function SessionInsights({ climbs }: SessionInsightsProps) {
       .sort((a, b) => a.logged_at - b.logged_at);
   }, [climbs]);
 
-  if (activeClimbs.length < 2) {
-    return null; // The prompt says: "Show a fallback empty state in this block if there are fewer than 2 climbs", wait actually we should return a placeholder? Let's just return null and the parent will handle empty state, or we render a simple Card.
-  }
-
   // Card 1: Session pyramid (using BarChart)
   const pyramidData = useMemo(() => {
     const counts: Record<string, { flashes: number; tops: number; attempts: number; gradeIndex: number }> = {};
@@ -83,6 +79,10 @@ export function SessionInsights({ climbs }: SessionInsightsProps) {
   }, [activeClimbs]);
 
   const maxDiff = Math.max(1, ...difficultyData.map(d => d.value));
+
+  if (activeClimbs.length < 2) {
+    return null;
+  }
 
   return (
     <View style={{ marginBottom: space.xl }}>

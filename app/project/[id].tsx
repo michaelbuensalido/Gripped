@@ -24,7 +24,7 @@ import { Chip } from "../../components/ui/Chip";
 import { PrimaryButton } from "../../components/ui/PrimaryButton";
 import { SecondaryButton } from "../../components/ui/SecondaryButton";
 import { BetaSection } from "../../components/project/BetaSection";
-import { useProject, useProjectHistory } from "../../db/hooks";
+import { useProject, useProjectHistory, useActiveSession } from "../../db/hooks";
 import {
   updateProjectStatus,
   deleteProject,
@@ -33,19 +33,27 @@ import {
 import { triggerHaptic } from "../../utils/haptics";
 import { useSessionStore } from "../../store/sessionStore";
 import { getActiveSession } from "../../db/queries";
+import { LogSheet } from "../../components/session/LogSheet";
+import { UndoToast } from "../../components/ui/UndoToast";
+import { ResultType } from "../../components/ui/ResultChip";
+import { useCelebration } from "../../components/celebration/CelebrationProvider";
 
 export default function ProjectDetailScreen() {
   const { id } = useLocalSearchParams();
   const router = useRouter();
   const { colors, space, type, radius } = useTheme();
   const insets = useSafeAreaInsets();
+  const { triggerBig } = useCelebration();
 
   const project = useProject(id as string);
   const history = useProjectHistory(id as string);
+  const activeSession = useActiveSession();
 
   const [showMenu, setShowMenu] = useState(false);
   const [isEditingNotes, setIsEditingNotes] = useState(false);
   const [notesDraft, setNotesDraft] = useState("");
+  const [isLogModalOpen, setIsLogModalOpen] = useState(false);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   const displayTitle = project?.title || "Ripple Effect";
   const displayGrade = project?.gradeRaw || "V6";
@@ -54,17 +62,58 @@ export default function ProjectDetailScreen() {
       ? `${project.wallAngle.charAt(0).toUpperCase() + project.wallAngle.slice(1)} • ${project.holdType.charAt(0).toUpperCase() + project.holdType.slice(1)}`
       : "Overhang • Power endurance";
 
+  const hasPriorAttempts = (project?.attempts || 0) > 0 || (history && history.length > 0);
+
   const handleLogAttempt = () => {
     triggerHaptic("medium");
-    if (project) {
-      const state = useSessionStore.getState();
-      let session = getActiveSession();
-      if (!session) {
-        state.startQuickSession(project.gymName || "Local Gym");
-      }
-      state.setActiveProjectTarget(project);
-      router.push("/session/active");
+    setIsLogModalOpen(true);
+  };
+
+  const handleSaveAttempt = (
+    grade: string,
+    result: ResultType,
+    attempts: number,
+    notes: string
+  ) => {
+    triggerHaptic("medium");
+    if (!project) return;
+
+    const state = useSessionStore.getState();
+    let session = getActiveSession();
+    if (!session) {
+      state.startQuickSession(project.gymName || "Local Gym");
     }
+
+    state.logGenericAscent({
+      gradeRaw: project.gradeRaw,
+      outcome: result === "top" ? "send" : result,
+      movesLinked: attempts,
+      notes,
+      projectId: project.id,
+      wallAngle: project.wallAngle,
+      holdType: project.holdType,
+    });
+
+    setIsLogModalOpen(false);
+
+    if (result === "top" || result === "flash") {
+      triggerBig({
+        nickname: project.title,
+        gradeRaw: project.gradeRaw,
+        burns: (project.attempts || 0) + attempts,
+        sessions: (history?.length || 0) + 1,
+      });
+      setToastMessage("Project sent! Congratulations!");
+    } else {
+      triggerHaptic("success");
+      setToastMessage(`Attempt logged (${attempts} burn${attempts > 1 ? "s" : ""})`);
+    }
+  };
+
+  const handleUndo = () => {
+    triggerHaptic("light");
+    useSessionStore.getState().undoLastClimb();
+    setToastMessage(null);
   };
 
   const handleMarkSent = () => {
@@ -249,132 +298,6 @@ export default function ProjectDetailScreen() {
               </View>
             )}
 
-            {/* Interactive Hold Marker 1 (Upper Hold with Purple Circle & White Dot) */}
-            <View
-              style={{
-                position: "absolute",
-                top: 130,
-                left: 130,
-                width: 90,
-                height: 90,
-                borderRadius: 45,
-                borderWidth: 2,
-                borderColor: "rgba(168, 114, 255, 0.65)",
-                backgroundColor: "rgba(168, 114, 255, 0.12)",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <View
-                style={{
-                  width: 14,
-                  height: 14,
-                  borderRadius: 7,
-                  backgroundColor: colors.text,
-                }}
-              />
-            </View>
-
-            {/* Callout Badge 1: "Use an open-hand grip here" (Frosted Violet Capsule) */}
-            <View
-              style={{
-                position: "absolute",
-                top: 200,
-                left: 20,
-                backgroundColor: "rgba(38, 30, 60, 0.88)",
-                borderWidth: 1,
-                borderColor: "rgba(168, 114, 255, 0.35)",
-                borderRadius: 22,
-                paddingHorizontal: 14,
-                paddingVertical: 10,
-                maxWidth: 210,
-                flexDirection: "row",
-                alignItems: "center",
-                gap: 10,
-              }}
-            >
-              <Hand size={18} color={colors.accentText} />
-              <Text
-                style={{
-                  color: colors.text,
-                  fontSize: 13,
-                  fontWeight: "500",
-                  lineHeight: 17,
-                }}
-              >
-                {"Use an open-\nhand grip here"}
-              </Text>
-            </View>
-
-            {/* Interactive Hold Marker 2 (Middle Hold with Purple Circle & White Dot) */}
-            <View
-              style={{
-                position: "absolute",
-                top: 250,
-                right: 80,
-                width: 90,
-                height: 90,
-                borderRadius: 45,
-                borderWidth: 2,
-                borderColor: "rgba(168, 114, 255, 0.65)",
-                backgroundColor: "rgba(168, 114, 255, 0.12)",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <View
-                style={{
-                  width: 14,
-                  height: 14,
-                  borderRadius: 7,
-                  backgroundColor: colors.text,
-                }}
-              />
-            </View>
-
-            {/* Callout Badge 2: "Keep your hips close to the wall..." (Bottom Frosted Glass) */}
-            <View
-              style={{
-                position: "absolute",
-                bottom: 24,
-                left: 20,
-                right: 20,
-                backgroundColor: "rgba(20, 20, 28, 0.88)",
-                borderWidth: 1,
-                borderColor: "rgba(255, 255, 255, 0.12)",
-                borderRadius: 22,
-                paddingHorizontal: 16,
-                paddingVertical: 14,
-                flexDirection: "row",
-                alignItems: "center",
-                gap: 12,
-              }}
-            >
-              <View
-                style={{
-                  width: 36,
-                  height: 36,
-                  borderRadius: 18,
-                  backgroundColor: "rgba(255, 255, 255, 0.08)",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                <Sparkles size={18} color={colors.text} />
-              </View>
-              <Text
-                style={{
-                  flex: 1,
-                  color: colors.text,
-                  fontSize: 13,
-                  fontWeight: "500",
-                  lineHeight: 18,
-                }}
-              >
-                Keep your hips close to the wall to stay stable on the lower
-                slopers.
-              </Text>
-            </View>
           </ImageBackground>
         </View>
 
@@ -662,6 +585,39 @@ export default function ProjectDetailScreen() {
             )}
           </View>
 
+          {/* Active Session Info Banner if running */}
+          {activeSession && (
+            <TouchableOpacity
+              activeOpacity={0.8}
+              onPress={() => {
+                triggerHaptic("light");
+                router.push("/session/active");
+              }}
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "space-between",
+                backgroundColor: colors.cardMuted,
+                borderRadius: radius.md,
+                paddingHorizontal: space.md,
+                paddingVertical: space.sm + 2,
+                borderWidth: 1,
+                borderColor: colors.border,
+                marginBottom: space.sm,
+              }}
+            >
+              <View style={{ flexDirection: "row", alignItems: "center", gap: space.sm }}>
+                <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: colors.flash }} />
+                <Text style={[type.caption, { color: colors.text, fontWeight: "500" }]}>
+                  Logging to {activeSession.gymName || "Session"}
+                </Text>
+              </View>
+              <Text style={[type.caption, { color: colors.accentText, fontWeight: "600" }]}>
+                View session →
+              </Text>
+            </TouchableOpacity>
+          )}
+
           {/* Action Buttons */}
           <View style={{ gap: 12 }}>
             {project?.status !== "sent" && (
@@ -699,35 +655,57 @@ export default function ProjectDetailScreen() {
                 <TouchableOpacity
                   activeOpacity={0.85}
                   onPress={handleMarkSent}
-                style={{
-                  backgroundColor: colors.card,
-                  borderColor: colors.border,
-                  borderWidth: 1,
-                  height: 56,
-                  borderRadius: radius.pill,
-                  alignItems: "center",
-                  justifyContent: "center",
-                  flexDirection: "row",
-                  gap: 8,
-                }}
-              >
-                <CheckCircle2 size={20} color={colors.text} />
-                <Text
                   style={{
-                    color: colors.text,
-                    fontSize: 16,
-                    fontWeight: "700",
-                    letterSpacing: 0.5,
+                    backgroundColor: colors.card,
+                    borderColor: colors.border,
+                    borderWidth: 1,
+                    height: 56,
+                    borderRadius: radius.pill,
+                    alignItems: "center",
+                    justifyContent: "center",
+                    flexDirection: "row",
+                    gap: 8,
                   }}
                 >
-                  MARK AS SENT
-                </Text>
-              </TouchableOpacity>
+                  <CheckCircle2 size={20} color={colors.text} />
+                  <Text
+                    style={{
+                      color: colors.text,
+                      fontSize: 16,
+                      fontWeight: "700",
+                      letterSpacing: 0.5,
+                    }}
+                  >
+                    MARK AS SENT
+                  </Text>
+                </TouchableOpacity>
               </>
             )}
           </View>
         </View>
       </ScrollView>
+
+      {/* In-Project Log Sheet */}
+      <LogSheet
+        visible={isLogModalOpen}
+        onClose={() => setIsLogModalOpen(false)}
+        onSave={handleSaveAttempt}
+        initialGrade={displayGrade}
+        lockGrade={true}
+        disableFlash={hasPriorAttempts}
+        initialResult="attempt"
+        initialAttempts={1}
+        initialNotes=""
+        title={`Log Attempt • ${displayTitle}`}
+      />
+
+      {/* Feedback Toast with Undo */}
+      <UndoToast
+        visible={Boolean(toastMessage)}
+        message={toastMessage || ""}
+        onUndo={handleUndo}
+        onDismiss={() => setToastMessage(null)}
+      />
     </View>
   );
 }

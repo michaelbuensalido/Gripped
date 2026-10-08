@@ -11,7 +11,7 @@ import { useRichProjects } from '../../db/hooks';
 import { triggerHaptic } from '../../utils/haptics';
 
 export default function GymDetailScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, from } = useLocalSearchParams<{ id: string; from?: string }>();
   const decodedId = decodeURIComponent(id || '');
   const { colors, type, space, radius } = useTheme();
   const insets = useSafeAreaInsets();
@@ -28,11 +28,28 @@ export default function GymDetailScreen() {
     setIsAddProjectOpen(true);
   };
 
+  const handleBack = () => {
+    triggerHaptic('light');
+    if (from === 'explore') {
+      router.navigate('/explore' as any);
+    } else if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.navigate('/explore' as any);
+    }
+  };
+
   return (
     <View style={{ flex: 1, backgroundColor: colors.bgTexture }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: space.lg, paddingTop: Math.max(insets.top, 20), paddingBottom: space.md }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, marginRight: space.sm }}>
-          <TouchableOpacity onPress={() => router.back()} style={{ padding: space.xs, marginLeft: -space.xs }}>
+          <TouchableOpacity
+            onPress={handleBack}
+            accessibilityRole="button"
+            accessibilityLabel="Back"
+            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+            style={{ padding: space.xs, marginLeft: -space.xs }}
+          >
             <ChevronLeft color={colors.text} size={24} />
           </TouchableOpacity>
           <Text style={[type.display, { color: colors.text, fontSize: 22, marginLeft: space.sm }]} numberOfLines={1}>
