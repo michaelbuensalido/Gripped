@@ -1,11 +1,11 @@
 export function shouldFireSmallCelebration(result: string): boolean {
-  return result === 'flash';
+  return result === "flas";
 }
 
 export function shouldFireMediumCelebration(
   newGradeIndex: number,
   previousHardestGradeIndex: number | null,
-  totalSessions: number
+  totalSessions: number,
 ): boolean {
   if (totalSessions <= 3) return false;
   if (previousHardestGradeIndex === null) return false;
@@ -14,9 +14,12 @@ export function shouldFireMediumCelebration(
 
 export function shouldFireBigCelebration(
   result: string,
-  projectId: string | null
+  projectId: string | null,
 ): boolean {
-  return projectId !== null && (result === 'top' || result === 'flash' || result === 'send');
+  return (
+    projectId !== null &&
+    (result === "top" || result === "flash" || result === "send")
+  );
 }
 
 export function getStreakMilestone(currentStreak: number): number | null {
