@@ -4,12 +4,21 @@ import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../theme/useTheme';
 import { PrimaryButton } from '../components/ui/PrimaryButton';
-import { SecondaryButton } from '../components/ui/SecondaryButton';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function WelcomeScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { colors, type, space, radius } = useTheme();
+
+  const handleGetStarted = () => {
+    router.push('/onboarding');
+  };
+
+  const handleSkip = async () => {
+    await AsyncStorage.setItem('@cruxlog/onboarded', 'true');
+    router.replace('/');
+  };
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
@@ -31,18 +40,14 @@ export default function WelcomeScreen() {
 
         <View style={{ gap: space.md }}>
           <PrimaryButton 
-            label="Log In" 
-            onPress={() => router.push('/login')}
-          />
-          <SecondaryButton 
-            label="Sign Up" 
-            onPress={() => router.push('/signup')}
+            label="Get Started" 
+            onPress={handleGetStarted}
           />
           <TouchableOpacity 
-            onPress={() => router.push('/onboarding')}
-            style={{ paddingVertical: space.sm, alignItems: 'center', marginTop: space.sm }}
+            onPress={handleSkip}
+            style={{ paddingVertical: space.sm, alignItems: 'center' }}
           >
-            <Text style={[type.control, { color: colors.accentText }]}>Try without an account</Text>
+            <Text style={[type.control, { color: colors.accentText }]}>Skip setup</Text>
           </TouchableOpacity>
         </View>
       </View>
