@@ -10,8 +10,8 @@ import {
   undoDeleteSession,
 } from '../../db/queries';
 
-let idCounter = 0;
-jest.mock('uuid', () => ({ v4: () => `test-uuid-summary-${idCounter++}` }));
+let mockIdCounter = 0;
+jest.mock('uuid', () => ({ v4: () => `test-uuid-summary-${mockIdCounter++}` }));
 
 describe('getSessionSummary and session aggregates', () => {
   let db: any;

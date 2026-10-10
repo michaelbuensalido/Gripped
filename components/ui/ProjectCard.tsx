@@ -1,12 +1,13 @@
 import React, { useRef } from 'react';
 import { View, Text, TouchableOpacity, Animated, Image, StyleSheet } from 'react-native';
 import { Swipeable } from 'react-native-gesture-handler';
-import { Archive, Plus } from 'lucide-react-native';
+import { Archive, Plus, RotateCcw } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import Svg, { Path } from 'react-native-svg';
 import { useTheme } from '../../theme/useTheme';
 import { triggerHaptic } from '../../utils/haptics';
 import { GradePill } from './GradePill';
+import { ScalePressable } from './ScalePressable';
 
 function getRelativeTime(timestamp: number | null) {
   if (!timestamp) return 'Not yet';
@@ -34,20 +35,24 @@ export function ProjectCard({
   project, 
   onLogAttempt,
   onArchive,
+  onRestore,
   style,
   disableSwipe,
 }: { 
   project: any; 
   onLogAttempt?: () => void;
   onArchive?: () => void;
+  onRestore?: () => void;
   style?: any;
   disableSwipe?: boolean;
 }) {
   const { colors, space, radius, type, gradeBand } = useTheme();
   const swipeableRef = useRef<Swipeable>(null);
   const router = useRouter();
+  const isArchived = project?.status === 'abandoned';
 
   const renderLeftActions = (progress: Animated.AnimatedInterpolation<number>, dragX: Animated.AnimatedInterpolation<number>) => {
+    if (!onLogAttempt) return null;
     const opacity = dragX.interpolate({
       inputRange: [0, 50, 100],
       outputRange: [0, 0.5, 1],
@@ -71,12 +76,35 @@ export function ProjectCard({
       extrapolate: 'clamp',
     });
 
+    if (onRestore || isArchived) {
+      return (
+        <TouchableOpacity
+          style={{ width: 80, backgroundColor: colors.accent, justifyContent: 'center', alignItems: 'center', borderRadius: radius.lg, marginLeft: space.sm }}
+          onPress={() => { triggerHaptic('medium'); swipeableRef.current?.close(); onRestore?.(); }}
+          accessibilityRole="button"
+          accessibilityLabel="Restore project"
+        >
+          <Animated.View style={{ opacity, alignItems: 'center', gap: 4 }}>
+            <RotateCcw size={22} color={colors.textOnAccent} />
+            <Text style={{ color: colors.textOnAccent, fontSize: 11, fontWeight: '600' }}>Restore</Text>
+          </Animated.View>
+        </TouchableOpacity>
+      );
+    }
+
+    if (!onArchive) return null;
+
     return (
       <TouchableOpacity
         style={{ width: 80, backgroundColor: colors.cardMuted, justifyContent: 'center', alignItems: 'center', borderRadius: radius.lg, marginLeft: space.sm }}
         onPress={() => { triggerHaptic('light'); swipeableRef.current?.close(); onArchive?.(); }}
+        accessibilityRole="button"
+        accessibilityLabel="Archive project"
       >
-        <Animated.View style={{ opacity }}><Archive size={24} color={colors.text} /></Animated.View>
+        <Animated.View style={{ opacity, alignItems: 'center', gap: 4 }}>
+          <Archive size={22} color={colors.text} />
+          <Text style={{ color: colors.text, fontSize: 11, fontWeight: '500' }}>Archive</Text>
+        </Animated.View>
       </TouchableOpacity>
     );
   };
@@ -90,9 +118,10 @@ export function ProjectCard({
   const band = gradeBand(project.normalizedDifficulty ?? project.grade_index ?? 0);
 
   const cardContent = (
-    <TouchableOpacity
-      activeOpacity={0.7}
-      onPress={() => { triggerHaptic('light'); router.push(`/project/${project.id}` as any); }}
+    <ScalePressable
+      haptic="light"
+      activeScale={0.98}
+      onPress={() => router.push(`/project/${project.id}` as any)}
       style={[{ 
         backgroundColor: colors.materialBase, 
         borderRadius: radius.lg, 
@@ -103,7 +132,7 @@ export function ProjectCard({
         justifyContent: 'center',
         padding: space.lg,
       }, style]}
-      testID={`project-card-${project.title.replace(/\\s+/g, '-')}`}
+      testID={`project-card-${project.title.replace(/\s+/g, '-')}`}
     >
       {/* 4px left accent stripe, inset 14px from top and bottom */}
       <View
@@ -140,8 +169,13 @@ export function ProjectCard({
       )}
 
       <View style={{ zIndex: 5, paddingLeft: space.xs, maxWidth: '75%' }}>
-        <View style={{ alignSelf: 'flex-start', marginBottom: space.sm }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: space.sm }}>
           <GradePill gradeIndex={project.normalizedDifficulty ?? project.grade_index ?? 0} label={project.gradeRaw ?? project.grade_raw ?? '—'} />
+          {isArchived && (
+            <View style={{ backgroundColor: colors.cardMuted, paddingHorizontal: 8, paddingVertical: 3, borderRadius: radius.sm, borderWidth: 1, borderColor: colors.border }}>
+              <Text style={[type.label, { color: colors.textMuted, fontSize: 10, letterSpacing: 0.5 }]}>ARCHIVED</Text>
+            </View>
+          )}
         </View>
         <Text style={[type.title, { color: colors.textWhitePrimary, marginBottom: 2 }]} numberOfLines={1}>{project.title}</Text>
         {subtitle ? (
@@ -159,9 +193,31 @@ export function ProjectCard({
             <Text style={[type.caption, { color: colors.textWhiteMuted, flex: 1 }]}>No attempts yet</Text>
           )}
 
-          {onLogAttempt && (
-            <TouchableOpacity
-              onPress={() => { triggerHaptic('medium'); onLogAttempt?.(); }}
+          {onRestore ? (
+            <ScalePressable
+              onPress={onRestore}
+              haptic="medium"
+              activeScale={0.95}
+              style={{
+                minHeight: 44,
+                paddingVertical: 8,
+                paddingHorizontal: 16,
+                backgroundColor: colors.accent,
+                borderRadius: radius.pill,
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginLeft: space.md,
+              }}
+              accessibilityRole="button"
+              accessibilityLabel="Restore project"
+            >
+              <Text style={[type.control, { color: colors.textOnAccent, fontWeight: '600' }]}>Restore</Text>
+            </ScalePressable>
+          ) : onLogAttempt ? (
+            <ScalePressable
+              onPress={onLogAttempt}
+              haptic="medium"
+              activeScale={0.95}
               style={{
                 minHeight: 44,
                 paddingVertical: 8,
@@ -176,11 +232,11 @@ export function ProjectCard({
               accessibilityLabel="Log Attempt"
             >
               <Text style={[type.control, { color: colors.textWhitePrimary }]}>Attempt</Text>
-            </TouchableOpacity>
-          )}
+            </ScalePressable>
+          ) : null}
         </View>
       </View>
-    </TouchableOpacity>
+    </ScalePressable>
   );
 
   if (disableSwipe) {

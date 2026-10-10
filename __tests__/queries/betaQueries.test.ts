@@ -1,11 +1,11 @@
 import { jest, describe, it, expect, beforeEach } from '@jest/globals';
 
-let idCounter = 0;
-jest.mock('uuid', () => ({ v4: () => `beta-uuid-${idCounter++}` }));
+let mockIdCounter = 0;
+jest.mock('uuid', () => ({ v4: () => `beta-uuid-${mockIdCounter++}` }));
 
-const deletedFiles: string[] = [];
+const mockDeletedFiles: string[] = [];
 jest.mock('../../services/betaFiles', () => ({
-  deleteClipFile: (uri: string) => { deletedFiles.push(uri); },
+  deleteClipFile: (uri: string) => { mockDeletedFiles.push(uri); },
   deleteProjectClipDir: () => {},
   storeClip: () => ({ uri: '', sizeBytes: 0 }),
 }));
@@ -47,7 +47,7 @@ describe('beta queries (SQLite)', () => {
   beforeEach(() => {
     const db = getDatabase();
     db.execSync(`DELETE FROM video_notes; DELETE FROM beta_videos; DELETE FROM beta_moves; DELETE FROM betas; DELETE FROM outbox; DELETE FROM projects;`);
-    deletedFiles.length = 0;
+    mockDeletedFiles.length = 0;
     insertProject({ id: 'p1', title: 'P1', gradeRaw: 'V4', normalizedDifficulty: 4, wallAngle: 'slab', holdType: 'crimps', status: 'in_progress', highWaterMarkMoves: 0, totalMoves: 10, microBeta: null, mediaUri: null });
   });
 
@@ -136,7 +136,7 @@ describe('beta queries (SQLite)', () => {
     expect(count('beta_moves')).toBe(0);
     expect(count('beta_videos')).toBe(0);
     expect(count('video_notes')).toBe(0);
-    expect(deletedFiles.sort()).toEqual(['file:///v1.mp4', 'file:///v2.mp4']);
+    expect(mockDeletedFiles.sort()).toEqual(['file:///v1.mp4', 'file:///v2.mp4']);
     expect(betaId).toBeTruthy();
   });
 
@@ -158,7 +158,7 @@ describe('beta queries (SQLite)', () => {
     deleteVideo('v1');
     expect(getVideosForProject('p1')).toHaveLength(0);
     expect(count('video_notes')).toBe(0);
-    expect(deletedFiles).toEqual(['file:///v1.mp4']);
+    expect(mockDeletedFiles).toEqual(['file:///v1.mp4']);
     expect(getProjectStorageBytes('p1')).toBe(0);
   });
 });

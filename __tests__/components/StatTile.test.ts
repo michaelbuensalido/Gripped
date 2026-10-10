@@ -26,6 +26,16 @@ jest.mock('expo-linear-gradient', () => ({
   LinearGradient: 'LinearGradient'
 }), { virtual: true });
 
+jest.mock('../../utils/haptics', () => ({
+  triggerHaptic: jest.fn(),
+}));
+
+jest.mock('expo-haptics', () => ({
+  notificationAsync: jest.fn(),
+  impactAsync: jest.fn(),
+  selectionAsync: jest.fn(),
+}), { virtual: true });
+
 import { StatTile } from '../../components/ui/StatTile';
 import { colors } from '../../theme/tokens';
 

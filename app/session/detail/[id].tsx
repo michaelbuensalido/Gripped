@@ -582,6 +582,7 @@ export default function SessionDetailScreen({
                     ...p,
                     statusChip: p.isToppedInSession ? 'Sent' : p.statusChip,
                   }}
+                  disableSwipe
                 />
               ))}
             </View>

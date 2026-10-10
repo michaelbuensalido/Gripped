@@ -1,6 +1,6 @@
 import React from 'react';
-import { TouchableOpacity, Text, ViewStyle, StyleProp } from 'react-native';
-import { triggerHaptic } from '../../utils/haptics';
+import { Text, ViewStyle, StyleProp } from 'react-native';
+import { ScalePressable } from './ScalePressable';
 import { useTheme } from '../../theme/useTheme';
 
 interface SecondaryButtonProps {
@@ -24,17 +24,13 @@ export function SecondaryButton({
 
   const isAccent = variant === 'accentSoft';
 
-  const handlePress = () => {
-    if (disabled) return;
-    triggerHaptic('medium');
-    onPress();
-  };
-
   return (
-    <TouchableOpacity
+    <ScalePressable
       testID={testID}
-      onPress={handlePress}
-      activeOpacity={0.75}
+      onPress={onPress}
+      disabled={disabled}
+      haptic="medium"
+      activeScale={0.97}
       accessibilityRole="button"
       accessibilityState={{ disabled }}
       style={[
@@ -60,11 +56,12 @@ export function SecondaryButton({
             color: isAccent ? colors.accentText : colors.text,
             fontSize: 16,
             letterSpacing: 0.3,
+            fontWeight: '600',
           },
         ]}
       >
         {label}
       </Text>
-    </TouchableOpacity>
+    </ScalePressable>
   );
 }

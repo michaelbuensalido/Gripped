@@ -30,6 +30,8 @@ import { Card } from '../../components/ui/Card';
 import { SectionHeader } from '../../components/ui/SectionHeader';
 import { LogSheet } from '../../components/session/LogSheet';
 import { UndoToast } from '../../components/ui/UndoToast';
+import { ScalePressable } from '../../components/ui/ScalePressable';
+import { EmptyState } from '../../components/ui/EmptyState';
 import { useTheme } from '../../theme/useTheme';
 import {
   useActiveSession,
@@ -207,10 +209,11 @@ function StickyActionBar({
       }}
     >
       {/* Secondary REST Toggle */}
-      <TouchableOpacity
-        activeOpacity={0.75}
+      <ScalePressable
         onPress={onToggleRest}
         onLongPress={onResetRest}
+        haptic="light"
+        activeScale={0.96}
         accessibilityRole="button"
         accessibilityLabel="Rest Timer"
         style={{
@@ -219,15 +222,21 @@ function StickyActionBar({
           minHeight: 56,
           borderRadius: radius.pill,
           backgroundColor: isRestComplete
-            ? 'rgba(110, 231, 86, 0.1)' // flashSoft equivalent ghost
+            ? 'rgba(110, 231, 86, 0.12)'
             : isRestRunning
-            ? 'rgba(168, 114, 255, 0.1)' // accentSoft equivalent ghost
+            ? 'rgba(142, 124, 255, 0.15)'
             : colors.materialBase,
           flexDirection: 'row',
           alignItems: 'center',
           justifyContent: 'center',
           paddingHorizontal: space.md,
           gap: space.xs,
+          borderWidth: 1,
+          borderColor: isRestComplete
+            ? colors.flash
+            : isRestRunning
+            ? colors.accent
+            : colors.border,
         }}
       >
         {isRestComplete ? (
@@ -275,7 +284,7 @@ function StickyActionBar({
               : '3:00'}
           </Text>
         </View>
-      </TouchableOpacity>
+      </ScalePressable>
 
       {/* Massive + LOG CLIMB PrimaryButton */}
       <View style={{ flex: 1.15 }}>
@@ -579,8 +588,10 @@ export default function ActiveSessionScreen() {
         }}
       >
         {/* Left: Back */}
-        <TouchableOpacity
+        <ScalePressable
           onPress={() => router.back()}
+          haptic="light"
+          activeScale={0.92}
           accessibilityRole="button"
           accessibilityLabel="Back"
           hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
@@ -596,7 +607,7 @@ export default function ActiveSessionScreen() {
           }}
         >
           <ChevronLeft size={22} color={colors.text} />
-        </TouchableOpacity>
+        </ScalePressable>
 
         {/* Center: Gym Name & Sync */}
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.xs }}>
@@ -608,8 +619,10 @@ export default function ActiveSessionScreen() {
 
         {/* Right: Menu & End */}
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.xs }}>
-          <TouchableOpacity
+          <ScalePressable
             onPress={() => setShowMenu(!showMenu)}
+            haptic="light"
+            activeScale={0.92}
             accessibilityRole="button"
             accessibilityLabel="More options"
             hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
@@ -625,14 +638,16 @@ export default function ActiveSessionScreen() {
             }}
           >
             <MoreHorizontal size={20} color={colors.text} />
-          </TouchableOpacity>
-          <TouchableOpacity
+          </ScalePressable>
+          <ScalePressable
             onPress={() => router.push('/session/end')}
+            haptic="medium"
+            activeScale={0.94}
             accessibilityRole="button"
             accessibilityLabel="End session"
             style={{
               height: 44,
-              paddingHorizontal: 14,
+              paddingHorizontal: 16,
               borderRadius: radius.md,
               backgroundColor: colors.cardMuted,
               borderWidth: 1,
@@ -641,8 +656,8 @@ export default function ActiveSessionScreen() {
               justifyContent: 'center',
             }}
           >
-            <Text style={[type.heading, { color: colors.text, fontSize: 14 }]}>End</Text>
-          </TouchableOpacity>
+            <Text style={[type.heading, { color: colors.text, fontSize: 14, fontWeight: '600' }]}>End</Text>
+          </ScalePressable>
         </View>
 
         {/* Dropdown Menu Overlay */}
@@ -747,10 +762,8 @@ export default function ActiveSessionScreen() {
 
         {/* 3. Fast Repeat / +1 Attempt Quick Action */}
         {activeClimbs.length > 0 && (
-          <TouchableOpacity
-            activeOpacity={0.75}
+          <ScalePressable
             onPress={() => {
-              triggerHaptic('light');
               const lastClimb = activeClimbs[0];
               const gradeToUse = {
                 gradeRaw: lastClimb.grade_raw,
@@ -765,6 +778,8 @@ export default function ActiveSessionScreen() {
               setDeletedClimbId(attemptId);
               setRestTimer(Date.now() + 3 * 60 * 1000, true);
             }}
+            haptic="medium"
+            activeScale={0.97}
             accessibilityRole="button"
             accessibilityLabel="Quick +1 Attempt"
             style={{
@@ -782,10 +797,10 @@ export default function ActiveSessionScreen() {
             }}
           >
             <Plus size={20} color={colors.attemptText} />
-            <Text style={[type.heading, { color: colors.text, fontSize: 15 }]}>
+            <Text style={[type.heading, { color: colors.text, fontSize: 15, fontWeight: '600' }]}>
               +1 Attempt on {activeClimbs[0]?.grade_raw}
             </Text>
-          </TouchableOpacity>
+          </ScalePressable>
         )}
 
         {/* 4. Active Projects Strip */}
@@ -799,16 +814,13 @@ export default function ActiveSessionScreen() {
             >
               <View style={{ flexDirection: 'row', paddingHorizontal: space.lg, gap: space.sm }}>
                 {activeProjects.map((p: any) => (
-                  <TouchableOpacity
+                  <View
                     key={p.id}
-                    activeOpacity={0.8}
-                    onPress={() => router.push(`/projects/${p.id}` as any)}
                     style={{ width: 260 }}
                   >
                     <ProjectCard
                       project={p}
                       onLogAttempt={() => {
-                        triggerHaptic('light');
                         const attemptId = logGenericAscent({
                           projectId: p.id,
                           gradeRaw: p.gradeRaw ?? p.grade_raw,
@@ -820,7 +832,7 @@ export default function ActiveSessionScreen() {
                         setRestTimer(Date.now() + 3 * 60 * 1000, true);
                       }}
                     />
-                  </TouchableOpacity>
+                  </View>
                 ))}
               </View>
             </Reanimated.ScrollView>
@@ -848,14 +860,12 @@ export default function ActiveSessionScreen() {
             ))}
 
           {activeClimbs.length === 0 && (
-            <Card style={{ alignItems: 'center', paddingVertical: space.xxl }}>
-              <Text style={[type.heading, { color: colors.text, marginBottom: space.xs }]}>
-                Ready to send?
-              </Text>
-              <Text style={[type.body, { color: colors.textMuted, textAlign: 'center' }]}>
-                Tap + LOG CLIMB below to record your first climb of this session.
-              </Text>
-            </Card>
+            <EmptyState
+              asCard
+              icon={<Zap size={24} color={colors.accent} />}
+              title="Ready to send?"
+              body="Tap + LOG CLIMB below to record your first climb of this session."
+            />
           )}
         </View>
       </Reanimated.ScrollView>

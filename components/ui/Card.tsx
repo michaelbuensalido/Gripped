@@ -1,7 +1,7 @@
-import React, { useRef } from 'react';
-import { View, Pressable, Animated, ViewProps, StyleProp, ViewStyle, StyleSheet } from 'react-native';
-import { Platform } from 'react-native';
+import React from 'react';
+import { View, ViewProps, StyleProp, ViewStyle, StyleSheet } from 'react-native';
 import { useTheme } from '../../theme/useTheme';
+import { ScalePressable } from './ScalePressable';
 
 interface CardProps extends ViewProps {
   children: React.ReactNode;
@@ -12,9 +12,8 @@ interface CardProps extends ViewProps {
 
 export function Card({ children, variant = 'default', onPress, style, ...props }: CardProps) {
   const { colors, radius, space, shadow } = useTheme();
-  const scaleAnim = useRef(new Animated.Value(1)).current;
 
-  // Borderless ghost cards (v4.0): translucent backgrounds floating on soft shadows.
+  // Borderless ghost cards: translucent backgrounds floating on soft shadows.
   const baseStyle: ViewStyle = {
     borderRadius: radius.lg,
     padding: space.lg,
@@ -26,39 +25,18 @@ export function Card({ children, variant = 'default', onPress, style, ...props }
   };
 
   if (onPress) {
-    const handlePressIn = () => {
-      Animated.spring(scaleAnim, {
-        toValue: 0.98,
-        useNativeDriver: true,
-        speed: 50,
-        bounciness: 4,
-      }).start();
-    };
-
-    const handlePressOut = () => {
-      Animated.spring(scaleAnim, {
-        toValue: 1,
-        useNativeDriver: true,
-        speed: 50,
-        bounciness: 4,
-      }).start();
-    };
-
     return (
-      <Pressable
+      <ScalePressable
         onPress={onPress}
-        onPressIn={handlePressIn}
-        onPressOut={handlePressOut}
-        style={{ width: '100%' }}
+        haptic="light"
+        activeScale={0.98}
+        style={[{ width: '100%' }]}
       >
-        <Animated.View
-          style={[baseStyle, style, { transform: [{ scale: scaleAnim }] }]}
-          {...props}
-        >
+        <View style={[baseStyle, style]} {...props}>
           <View style={[StyleSheet.absoluteFill, { backgroundColor: colors.cardMuted }]} />
           {children}
-        </Animated.View>
-      </Pressable>
+        </View>
+      </ScalePressable>
     );
   }
 

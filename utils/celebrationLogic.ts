@@ -1,5 +1,5 @@
 export function shouldFireSmallCelebration(result: string): boolean {
-  return result === "flas";
+  return result === "flash";
 }
 
 export function shouldFireMediumCelebration(

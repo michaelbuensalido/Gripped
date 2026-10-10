@@ -7,21 +7,15 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Card } from '../components/ui/Card';
 import { SectionHeader } from '../components/ui/SectionHeader';
 import { EmptyState } from '../components/ui/EmptyState';
-
+import { ScalePressable } from '../components/ui/ScalePressable';
 import { PrimaryButton } from '../components/ui/PrimaryButton';
 import { ResultDonut } from '../components/ui/ResultDonut';
 import { SessionRow } from '../components/ui/SessionRow';
 import { GradePyramid } from '../components/ui/GradePyramid';
+import WallAngleRadar from '../components/analytics/WallAngleRadar';
 import { useProgressStats, useRecentSessions } from '../db/hooks';
 import { useTheme } from '../theme/useTheme';
 import { triggerHaptic } from '../utils/haptics';
-
-import GradeProgressionTimeline from '../components/analytics/GradeProgressionTimeline';
-import AscentPyramid from '../components/analytics/AscentPyramid';
-import WallAngleRadar from '../components/analytics/WallAngleRadar';
-import RootCauseFailureChart from '../components/analytics/RootCauseFailureChart';
-import { ACWRWidget } from '../components/analytics/ACWRWidget';
-import { calculateACWR } from '../services/loadCalculations';
 
 type Period = '7d' | '30d' | '90d' | '1y' | 'all';
 const PERIOD_LABELS: Record<Period, string> = {
@@ -69,45 +63,12 @@ export default function ProgressScreen() {
 
   const stats = useProgressStats(period);
   const recentSessions = useRecentSessions().slice(0, 5);
-  const acwrData = React.useMemo(() => {
-    try {
-      return calculateACWR();
-    } catch (e) {
-      return null;
-    }
-  }, []);
-
   const { resultCounts, avgGradeLast20, weeklyVolume, rates, hardestSend, gradePyramid } = stats;
 
   const weeklyVolVal = weeklyVolume.length > 0 ? weeklyVolume[weeklyVolume.length - 1].count : 0;
   const flashRateVal = rates?.flashRate ? `${rates.flashRate}%` : '0%';
   const avgGradeVal = avgGradeLast20 ? formatGrade(avgGradeLast20) : '-';
   const hardestSendVal = hardestSend.length > 0 ? formatGrade(hardestSend[hardestSend.length - 1].max_grade) : '-';
-
-  // Map Data for deep dive components
-  const progressionData = hardestSend.map(item => ({
-    date: item.week.split('-').pop() ?? item.week,
-    gradeNum: item.max_grade,
-    gradeRaw: formatGrade(item.max_grade)
-  }));
-
-  const ascentPyramidData = gradePyramid.map(item => ({
-    grade: formatGrade(item.grade),
-    flashes: item.flashes,
-    sends: item.sends,
-    attempts: 0
-  }));
-
-  const failureReasonMap = new Map(stats.failureReasons.map(r => [r.reason, r.count]));
-  const totalFailures = stats.failureReasons.reduce((sum, r) => sum + r.count, 0);
-  const getPercentage = (count: number) => totalFailures > 0 ? Math.round((count / totalFailures) * 100) : 0;
-  const failureSegments = [
-    { reason: 'pump', count: failureReasonMap.get('pump') || 0, percentage: getPercentage(failureReasonMap.get('pump') || 0), color: colors.danger, label: 'Pump' },
-    { reason: 'foot_slip', count: failureReasonMap.get('foot_slip') || 0, percentage: getPercentage(failureReasonMap.get('foot_slip') || 0), color: colors.top, label: 'Foot Slip' },
-    { reason: 'power', count: failureReasonMap.get('power') || 0, percentage: getPercentage(failureReasonMap.get('power') || 0), color: colors.flash, label: 'Power' },
-    { reason: 'beta_error', count: failureReasonMap.get('beta_error') || 0, percentage: getPercentage(failureReasonMap.get('beta_error') || 0), color: colors.attempt, label: 'Beta Error' },
-    { reason: 'fear', count: failureReasonMap.get('fear') || 0, percentage: getPercentage(failureReasonMap.get('fear') || 0), color: colors.fail, label: 'Fear' },
-  ];
 
   return (
     <View style={{ flex: 1 }}>
@@ -125,23 +86,27 @@ export default function ProgressScreen() {
             <Text style={{ color: colors.text, fontSize: 34, fontWeight: '700', fontFamily: type.display.fontFamily, letterSpacing: -0.5 }}>
               Your Progress
             </Text>
-            <TouchableOpacity 
-              activeOpacity={0.7}
-              onPress={() => { triggerHaptic('light'); setPeriodSheetOpen(true); }}
-              style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 6 }}
+            <ScalePressable
+              haptic="light"
+              activeScale={0.96}
+              onPress={() => setPeriodSheetOpen(true)}
+              hitSlop={{ top: 8, bottom: 8, left: 4, right: 8 }}
+              style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 6, minHeight: 44 }}
             >
               <Text style={{ color: colors.accent, fontSize: 16, fontWeight: '600', fontFamily: type.body.fontFamily }}>
                 {PERIOD_LABELS[period]}
               </Text>
               <ChevronDown size={16} color={colors.accent} strokeWidth={2.5} />
-            </TouchableOpacity>
+            </ScalePressable>
           </View>
-          <TouchableOpacity
+          <ScalePressable
+            haptic="light"
+            activeScale={0.92}
             style={{ width: 44, height: 44, borderRadius: 12, backgroundColor: colors.cardMuted, alignItems: 'center', justifyContent: 'center' }}
-            onPress={() => { triggerHaptic('light'); }}
+            onPress={() => {}}
           >
             <Menu size={22} color={colors.text} strokeWidth={2} />
-          </TouchableOpacity>
+          </ScalePressable>
         </View>
 
         {stats.sessionStats.sessions === 0 ? (
@@ -191,8 +156,9 @@ export default function ProgressScreen() {
 
         <View style={{ flexDirection: 'row', gap: 10, marginBottom: 28 }}>
           {/* Tile 1: Weekly Volume */}
-          <TouchableOpacity
-            activeOpacity={0.8}
+          <ScalePressable
+            haptic="light"
+            activeScale={0.96}
             onPress={() => router.push(`/analytics/stat-detail?stat=volume&period=${period}` as any)}
             style={{
               flex: 1,
@@ -221,11 +187,12 @@ export default function ProgressScreen() {
             <Text style={{ color: colors.text, fontSize: 26, fontWeight: '700', fontVariant: ['tabular-nums'], marginTop: 2 }}>
               {weeklyVolVal}
             </Text>
-          </TouchableOpacity>
+          </ScalePressable>
 
           {/* Tile 2: Flash Efficiency */}
-          <TouchableOpacity
-            activeOpacity={0.8}
+          <ScalePressable
+            haptic="light"
+            activeScale={0.96}
             onPress={() => router.push(`/analytics/stat-detail?stat=flash&period=${period}` as any)}
             style={{
               flex: 1,
@@ -257,11 +224,12 @@ export default function ProgressScreen() {
               </Text>
               {parseFloat(flashRateVal) > 0 && <SparklineGreen />}
             </View>
-          </TouchableOpacity>
+          </ScalePressable>
 
           {/* Tile 3: Overhang / Hardest */}
-          <TouchableOpacity
-            activeOpacity={0.8}
+          <ScalePressable
+            haptic="light"
+            activeScale={0.96}
             onPress={() => router.push(`/analytics/stat-detail?stat=hardest&period=${period}` as any)}
             style={{
               flex: 1,
@@ -290,7 +258,7 @@ export default function ProgressScreen() {
             <Text style={{ color: colors.text, fontSize: 26, fontWeight: '700', fontVariant: ['tabular-nums'], marginTop: 2 }}>
               {hardestSendVal}
             </Text>
-          </TouchableOpacity>
+          </ScalePressable>
         </View>
 
         {/* 5. Sends by Grade (Grade Pyramid) */}
@@ -299,14 +267,10 @@ export default function ProgressScreen() {
           <GradePyramid data={gradePyramid} formatGrade={formatGrade} />
         </Card>
 
-        {/* 6. Deep Dive Telemetry Section */}
-        <SectionHeader title="Deep Dive" />
-        <View style={{ gap: 18, marginBottom: 28 }}>
-          <GradeProgressionTimeline data={progressionData.length > 0 ? progressionData : undefined} />
-          <AscentPyramid data={ascentPyramidData.length > 0 ? ascentPyramidData : undefined} />
+        {/* 6. Wall Angle Proficiency */}
+        <SectionHeader title="Wall Angle Proficiency" />
+        <View style={{ marginBottom: 28 }}>
           <WallAngleRadar data={stats.wallAngleRates} />
-          <RootCauseFailureChart segments={totalFailures > 0 ? failureSegments : undefined} totalFailures={totalFailures} />
-          {acwrData && <ACWRWidget data={acwrData} />}
         </View>
 
         {/* 7. Recent Sessions List */}
@@ -360,11 +324,11 @@ export default function ProgressScreen() {
               {(Object.keys(PERIOD_LABELS) as Period[]).map((p) => {
                 const isActive = period === p;
                 return (
-                  <TouchableOpacity
+                  <ScalePressable
                     key={p}
-                    activeOpacity={0.7}
+                    haptic="selection"
+                    activeScale={0.97}
                     onPress={() => {
-                      triggerHaptic('selection');
                       setPeriod(p);
                       setPeriodSheetOpen(false);
                     }}
@@ -376,13 +340,14 @@ export default function ProgressScreen() {
                       paddingHorizontal: space.sm,
                       backgroundColor: isActive ? colors.accentSoft : 'transparent',
                       borderRadius: radius.md,
+                      minHeight: 48,
                     }}
                   >
-                    <Text style={[type.heading, { color: isActive ? colors.accent : colors.textWhitePrimary, fontSize: 16 }]}>
+                    <Text style={[type.heading, { color: isActive ? colors.accent : colors.textWhitePrimary, fontSize: 16, fontWeight: isActive ? '700' : '400' }]}>
                       {PERIOD_LABELS[p]}
                     </Text>
                     {isActive && <Check size={20} color={colors.accent} />}
-                  </TouchableOpacity>
+                  </ScalePressable>
                 );
               })}
             </View>

@@ -91,9 +91,9 @@ export default function WallAngleRadar({ data = DEFAULT_DATA }: WallAngleRadarPr
   return (
     <View
       style={{
-        backgroundColor: colors.materialBase,
+        backgroundColor: colors.card,
         borderRadius: radius.lg,
-        borderWidth: 0,
+        borderWidth: 1,
         borderColor: colors.border,
         padding: space.lg,
       }}

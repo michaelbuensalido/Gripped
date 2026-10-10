@@ -25,6 +25,8 @@ import {
 import * as Haptics from 'expo-haptics';
 import { triggerHaptic } from '../../utils/haptics';
 import { ConfettiBurst } from '../ui/ConfettiBurst';
+import { PrimaryButton } from '../ui/PrimaryButton';
+import { ScalePressable } from '../ui/ScalePressable';
 import { THEME_COLORS } from '../../constants/theme';
 import { colors } from '../../theme/tokens';
 import type { Session, BoulderGroup, BoulderLog } from '../../types';
@@ -770,33 +772,10 @@ export function SessionCompletionModal({
             backgroundColor: 'rgba(19, 19, 22, 0.96)',
           }}
         >
-          <TouchableOpacity
-            activeOpacity={0.85}
+          <PrimaryButton
+            label="LOG SESSION"
             onPress={handleSavePress}
-            style={{
-              backgroundColor: '#8E7CFF',
-              height: 54,
-              borderRadius: 16,
-              alignItems: 'center',
-              justifyContent: 'center',
-              shadowColor: '#8E7CFF',
-              shadowOffset: { width: 0, height: 4 },
-              shadowOpacity: 0.45,
-              shadowRadius: 10,
-              elevation: 6,
-            }}
-          >
-            <Text
-              style={{
-                color: '#FFFFFF',
-                fontSize: 16,
-                fontWeight: '700',
-                letterSpacing: 0.5,
-              }}
-            >
-              LOG SESSION
-            </Text>
-          </TouchableOpacity>
+          />
         </View>
 
           {/* Celebratory Animated Confetti Burst Overlay (Non-blocking worklet animation) */}

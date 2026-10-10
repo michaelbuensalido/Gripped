@@ -27,6 +27,8 @@ import { ProjectCard } from '../components/ui/ProjectCard';
 import { SectionHeader } from '../components/ui/SectionHeader';
 import { SessionCard } from '../components/ui/SessionCard';
 import { StatTile } from '../components/ui/StatTile';
+import { PrimaryButton } from '../components/ui/PrimaryButton';
+import { ScalePressable } from '../components/ui/ScalePressable';
 import * as Q from '../db/queries';
 import { WeekStrip } from '../components/ui/WeekStrip';
 import { VolumeChart } from '../components/ui/VolumeChart';
@@ -121,8 +123,9 @@ export default function HomeScreen() {
         {/* 1. Header Bar: Avatar Pill on Left, Notification Bell on Right */}
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
           {/* User profile dropdown pill */}
-          <TouchableOpacity
-            activeOpacity={0.8}
+          <ScalePressable
+            haptic="light"
+            activeScale={0.96}
             onPress={() => router.push('/settings')}
             style={{
               flexDirection: 'row',
@@ -134,6 +137,7 @@ export default function HomeScreen() {
               borderWidth: 1,
               borderColor: colors.border,
               gap: 8,
+              minHeight: 44,
             }}
           >
             <Image
@@ -145,12 +149,14 @@ export default function HomeScreen() {
               Maya Vong
             </Text>
             <ChevronDown size={16} color="rgba(255, 255, 255, 0.6)" />
-          </TouchableOpacity>
+          </ScalePressable>
 
           {/* Notification Bell Button with Neon Purple Dot */}
-          <TouchableOpacity
-            activeOpacity={0.8}
+          <ScalePressable
+            haptic="light"
+            activeScale={0.92}
             onPress={() => router.push('/settings')}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             style={{
               width: 44,
               height: 44,
@@ -175,7 +181,7 @@ export default function HomeScreen() {
                 backgroundColor: colors.accent,
               }}
             />
-          </TouchableOpacity>
+          </ScalePressable>
         </View>
 
         {/* 2. Main Title & Grade Pill */}
@@ -321,28 +327,12 @@ export default function HomeScreen() {
             </ScrollView>
           )}
 
-          {/* Massive START SESSION Button */}
-          <TouchableOpacity
+          {/* Primary Action Button */}
+          <PrimaryButton
             testID={data.activeSession ? 'resume-session-btn' : 'start-session-btn'}
-            activeOpacity={0.85}
+            label={data.activeSession ? 'RESUME SESSION' : 'START SESSION'}
             onPress={handleStartSession}
-            style={{
-              backgroundColor: colors.accent,
-              height: 56,
-              borderRadius: radius.pill,
-              alignItems: 'center',
-              justifyContent: 'center',
-              shadowColor: colors.accent,
-              shadowOffset: { width: 0, height: 4 },
-              shadowOpacity: 0.5,
-              shadowRadius: 16,
-              elevation: 6,
-            }}
-          >
-            <Text style={{ color: colors.text, fontSize: 16, fontWeight: '700', letterSpacing: 0.5, fontFamily: type.heading.fontFamily }}>
-              {data.activeSession ? 'RESUME SESSION' : 'START SESSION'}
-            </Text>
-          </TouchableOpacity>
+          />
         </View>
 
         {/* 5. WeekStrip — Current week streak */}
@@ -407,8 +397,10 @@ export default function HomeScreen() {
           >
             <View style={{ flexDirection: 'row', gap: 14 }}>
               {data.projects.length === 0 ? (
-                <TouchableOpacity
+                <ScalePressable
                   onPress={() => router.push('/projects')}
+                  haptic="light"
+                  activeScale={0.97}
                   style={{
                     width: 220,
                     padding: 20,
@@ -437,7 +429,7 @@ export default function HomeScreen() {
                   <Text style={{ color: colors.textMuted, fontSize: 13 }}>
                     Track a climb you're working on
                   </Text>
-                </TouchableOpacity>
+                </ScalePressable>
               ) : (
                 data.projects.slice(0, 5).map((p: any) => (
                   <Animated.View key={p.id} layout={listLayout} style={{ width: 260 }}>

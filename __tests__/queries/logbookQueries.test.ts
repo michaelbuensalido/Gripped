@@ -2,8 +2,8 @@ import { jest, describe, it, expect, beforeEach } from '@jest/globals';
 import { getDatabase } from '../../db/schema';
 import { getLogbookSummary, getLogbookHistory, insertSession, deleteSession } from '../../db/queries';
 
-let idCounter = 0;
-jest.mock('uuid', () => ({ v4: () => `test-uuid-logbook-${idCounter++}` }));
+let mockIdCounter = 0;
+jest.mock('uuid', () => ({ v4: () => `test-uuid-logbook-${mockIdCounter++}` }));
 
 describe('Logbook Queries', () => {
   let db: any;
