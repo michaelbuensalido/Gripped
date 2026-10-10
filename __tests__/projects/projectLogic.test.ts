@@ -95,3 +95,57 @@ describe('buildCaptionCounts', () => {
     expect(buildCaptionCounts(projects)).toBe('2 active · 0 sent · 3 burns');
   });
 });
+
+// --- Tab filtering and Archive/Restore logic ---
+function filterProjectsByTab(
+  projects: { id: string; status: 'in_progress' | 'sent' | 'abandoned' }[],
+  tab: 'in_progress' | 'sent' | 'archived'
+) {
+  if (tab === 'in_progress') return projects.filter(p => p.status === 'in_progress');
+  if (tab === 'sent') return projects.filter(p => p.status === 'sent');
+  return projects.filter(p => p.status === 'abandoned');
+}
+
+describe('filterProjectsByTab (Archive & Tabs)', () => {
+  const sample = [
+    { id: '1', status: 'in_progress' as const },
+    { id: '2', status: 'sent' as const },
+    { id: '3', status: 'abandoned' as const },
+    { id: '4', status: 'in_progress' as const },
+    { id: '5', status: 'abandoned' as const },
+  ];
+
+  it('filters active projects correctly', () => {
+    const res = filterProjectsByTab(sample, 'in_progress');
+    expect(res.map(p => p.id)).toEqual(['1', '4']);
+  });
+
+  it('filters sent projects correctly', () => {
+    const res = filterProjectsByTab(sample, 'sent');
+    expect(res.map(p => p.id)).toEqual(['2']);
+  });
+
+  it('filters archived projects correctly', () => {
+    const res = filterProjectsByTab(sample, 'archived');
+    expect(res.map(p => p.id)).toEqual(['3', '5']);
+  });
+
+  it('transitions from in_progress to abandoned (archiving)', () => {
+    let p: { id: string; status: 'in_progress' | 'abandoned' } = { id: '1', status: 'in_progress' };
+    const archive = (item: typeof p) => ({ ...item, status: 'abandoned' as const });
+    p = archive(p);
+    expect(p.status).toBe('abandoned');
+    expect(filterProjectsByTab([p], 'archived')).toHaveLength(1);
+    expect(filterProjectsByTab([p], 'in_progress')).toHaveLength(0);
+  });
+
+  it('transitions from abandoned to in_progress (restoring)', () => {
+    let p: { id: string; status: 'in_progress' | 'abandoned' } = { id: '1', status: 'abandoned' };
+    const restore = (item: typeof p) => ({ ...item, status: 'in_progress' as const });
+    p = restore(p);
+    expect(p.status).toBe('in_progress');
+    expect(filterProjectsByTab([p], 'in_progress')).toHaveLength(1);
+    expect(filterProjectsByTab([p], 'archived')).toHaveLength(0);
+  });
+});
+

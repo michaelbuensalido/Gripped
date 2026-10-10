@@ -115,15 +115,22 @@ export const type = {
 };
 
 export const motion = {
-  duration: { fast: 120, base: 200, slow: 320, celebrate: 900 },
-  easing: {
-    standard: [0.2, 0, 0, 1],
-    enter: [0, 0, 0, 1],
-    exit: [0.4, 0, 1, 1],
+  duration: {
+    instant: 80,
+    fast: 140,
+    base: 220,
+    slow: 280,
+    celebrate: 280,
   },
-  spring: { damping: 18, stiffness: 220 },
-  layoutSpring: { damping: 14, stiffness: 100 },
-  pressSpring: { damping: 15, stiffness: 300, scale: 0.96 },
+  easing: {
+    standard: [0.2, 0, 0, 1] as const,
+    enter: [0.23, 1, 0.32, 1] as const,
+    exit: [0.4, 0, 1, 1] as const,
+  },
+  spring: { damping: 20, stiffness: 240, mass: 0.8 },
+  layoutSpring: { damping: 18, stiffness: 200 },
+  pressSpring: { damping: 18, stiffness: 350, scale: 0.97 },
+  sheetSpring: { damping: 24, stiffness: 260 },
 };
 
 export const gradeBands = [

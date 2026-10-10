@@ -1,13 +1,16 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, TextInput, Modal, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, ScrollView, TextInput, Modal, KeyboardAvoidingView, Platform, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Search, MapPin, ChevronRight, Plus, X } from 'lucide-react-native';
 import { useTheme } from '../theme/useTheme';
 import { Card } from '../components/ui/Card';
+import { ScalePressable } from '../components/ui/ScalePressable';
+import { PrimaryButton } from '../components/ui/PrimaryButton';
+import { SecondaryButton } from '../components/ui/SecondaryButton';
+import { EmptyState } from '../components/ui/EmptyState';
 import { useRecentGyms } from '../db/hooks';
 import * as Q from '../db/queries';
-import { triggerHaptic } from '../utils/haptics';
 
 export default function ExploreScreen() {
   const { colors, type, space, radius } = useTheme();
@@ -23,7 +26,6 @@ export default function ExploreScreen() {
   const handleAddGym = () => {
     const trimmed = newGymName.trim();
     if (!trimmed) return;
-    triggerHaptic('medium');
     Q.insertGym(trimmed);
     setNewGymName('');
     setIsAddModalOpen(false);
@@ -42,23 +44,23 @@ export default function ExploreScreen() {
       >
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: space.xl }}>
           <Text style={[type.display, { color: colors.text, fontSize: 34 }]}>Explore</Text>
-          <TouchableOpacity
-            onPress={() => {
-              triggerHaptic('light');
-              setIsAddModalOpen(true);
-            }}
+          <ScalePressable
+            haptic="light"
+            activeScale={0.94}
+            onPress={() => setIsAddModalOpen(true)}
             style={{
               flexDirection: 'row',
               alignItems: 'center',
               backgroundColor: colors.accent,
               paddingHorizontal: space.md,
-              paddingVertical: 8,
+              paddingVertical: 10,
               borderRadius: radius.pill,
+              minHeight: 44,
             }}
           >
-            <Plus size={16} color={colors.textOnAccent} style={{ marginRight: 4 }} />
+            <Plus size={16} color={colors.textOnAccent} style={{ marginRight: 6 }} />
             <Text style={[type.label, { color: colors.textOnAccent, fontWeight: '700' }]}>Add Gym</Text>
-          </TouchableOpacity>
+          </ScalePressable>
         </View>
 
         <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: colors.card, borderRadius: radius.md, paddingHorizontal: space.md, borderWidth: 1, borderColor: colors.border, marginBottom: space.xl }}>
@@ -75,52 +77,40 @@ export default function ExploreScreen() {
         <Text style={[type.label, { color: colors.textMuted, marginBottom: space.md }]}>YOUR GYMS</Text>
 
         {filteredGyms.length === 0 ? (
-          <View style={{ alignItems: 'center', paddingVertical: space['2xl'] }}>
-            <MapPin size={32} color={colors.border} style={{ marginBottom: space.md }} />
-            <Text style={[type.body, { color: colors.textMuted, marginBottom: space.md, textAlign: 'center' }]}>
-              {search.trim() ? `No gyms matching "${search}".` : 'No gyms saved yet.'}
-            </Text>
-            <TouchableOpacity
-              onPress={() => {
-                triggerHaptic('light');
-                if (search.trim()) {
-                  setNewGymName(search.trim());
-                }
-                setIsAddModalOpen(true);
-              }}
-              style={{
-                backgroundColor: colors.cardMuted,
-                paddingVertical: space.sm,
-                paddingHorizontal: space.lg,
-                borderRadius: radius.pill,
-                borderWidth: 1,
-                borderColor: colors.border,
-              }}
-            >
-              <Text style={[type.heading, { color: colors.accent, fontSize: 14 }]}>
-                {search.trim() ? `+ Add "${search.trim()}"` : '+ Add your first gym'}
-              </Text>
-            </TouchableOpacity>
-          </View>
+          <EmptyState
+            asCard
+            icon={<MapPin size={26} color={colors.accent} />}
+            title={search.trim() ? "No gyms matching search" : "No gyms saved yet"}
+            body={search.trim() ? `We couldn't find "${search.trim()}". You can add it now.` : "Add your home gym or explore places you climb."}
+            cta={
+              <SecondaryButton
+                label={search.trim() ? `+ Add "${search.trim()}"` : '+ Add your first gym'}
+                onPress={() => {
+                  if (search.trim()) setNewGymName(search.trim());
+                  setIsAddModalOpen(true);
+                }}
+              />
+            }
+          />
         ) : (
           <View style={{ gap: space.sm }}>
             {filteredGyms.map(gym => (
               <Card
                 key={gym}
                 onPress={() => {
-                  triggerHaptic('light');
                   router.push(`/gym/${encodeURIComponent(gym)}?from=explore` as any);
                 }}
                 style={{
                   flexDirection: 'row',
                   alignItems: 'center',
+                  minHeight: 64,
                 }}
               >
                 <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: colors.accentSoft, alignItems: 'center', justifyContent: 'center', marginRight: space.md }}>
                   <MapPin size={20} color={colors.accent} />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={[type.heading, { color: colors.text, marginBottom: 2 }]}>{gym}</Text>
+                  <Text style={[type.heading, { color: colors.text, marginBottom: 2, fontWeight: '600' }]}>{gym}</Text>
                   <Text style={[type.caption, { color: colors.textMuted }]}>View projects & sessions</Text>
                 </View>
                 <ChevronRight size={20} color={colors.textMuted} />
@@ -131,17 +121,23 @@ export default function ExploreScreen() {
       </ScrollView>
 
       {/* Add Gym Modal */}
-      <Modal visible={isAddModalOpen} animationType="slide" transparent>
+      <Modal visible={isAddModalOpen} animationType="slide" transparent onRequestClose={() => setIsAddModalOpen(false)}>
         <KeyboardAvoidingView 
           behavior={Platform.OS === 'ios' ? 'padding' : undefined} 
           style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.6)' }}
         >
           <View style={{ backgroundColor: colors.materialBase, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl, padding: space.xl, paddingBottom: Math.max(insets.bottom, space.xl) }}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: space.lg }}>
-              <Text style={[type.heading, { color: colors.text, fontSize: 18 }]}>Add New Gym</Text>
-              <TouchableOpacity onPress={() => setIsAddModalOpen(false)} style={{ padding: space.xs }}>
+              <Text style={[type.title, { color: colors.text, fontSize: 18, fontWeight: '700' }]}>Add New Gym</Text>
+              <ScalePressable
+                onPress={() => setIsAddModalOpen(false)}
+                hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                minTouchTarget
+                accessibilityRole="button"
+                accessibilityLabel="Close"
+              >
                 <X size={20} color={colors.textMuted} />
-              </TouchableOpacity>
+              </ScalePressable>
             </View>
 
             <Text style={[type.label, { color: colors.textMuted, marginBottom: space.xs }]}>GYM NAME</Text>
@@ -166,21 +162,17 @@ export default function ExploreScreen() {
               ]}
             />
 
-            <TouchableOpacity
+            <PrimaryButton
               disabled={!newGymName.trim()}
+              label="Save & Open Gym"
               onPress={handleAddGym}
-              style={{
-                backgroundColor: newGymName.trim() ? colors.accent : colors.cardMuted,
-                paddingVertical: 14,
-                borderRadius: radius.pill,
-                alignItems: 'center',
-                opacity: newGymName.trim() ? 1 : 0.5,
-              }}
-            >
-              <Text style={[type.heading, { color: newGymName.trim() ? colors.textOnAccent : colors.textMuted, fontSize: 16 }]}>
-                Save & Open Gym
-              </Text>
-            </TouchableOpacity>
+              style={{ marginBottom: space.sm }}
+            />
+            <SecondaryButton
+              label="Cancel"
+              variant="muted"
+              onPress={() => setIsAddModalOpen(false)}
+            />
           </View>
         </KeyboardAvoidingView>
       </Modal>

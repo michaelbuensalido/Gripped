@@ -100,7 +100,13 @@ function writeMoves(betaId: string, moves: BetaDraft['moves'], fresh: boolean): 
   const cleaned = stripEmptyMoves(moves.map((m, i) => ({ ...m, order: i })));
   const idMap = new Map<string, string>();
   cleaned.forEach((m, i) => {
-    const id = fresh ? uuid() : m.id;
+    let id = m.id || uuid();
+    if (fresh) {
+      const existing = db.getFirstSync<any>(`SELECT 1 FROM beta_moves WHERE id = ?`, [id]);
+      if (existing) {
+        id = uuid();
+      }
+    }
     idMap.set(m.id, id);
     db.runSync(`INSERT INTO beta_moves (id, beta_id, ord, text, limb) VALUES (?, ?, ?, ?, ?)`, [
       id,

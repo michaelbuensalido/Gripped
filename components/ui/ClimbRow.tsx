@@ -5,6 +5,7 @@ import { Swipeable } from 'react-native-gesture-handler';
 import Reanimated, { FadeInDown, useSharedValue, useAnimatedStyle, withRepeat, withTiming, Easing, withDelay } from 'react-native-reanimated';
 import { GradePill } from './GradePill';
 import { ResultChip, ResultType } from './ResultChip';
+import { ScalePressable } from './ScalePressable';
 import { useTheme } from '../../theme/useTheme';
 import { triggerHaptic } from '../../utils/haptics';
 import { listLayout } from '../../theme/layout';
@@ -89,12 +90,10 @@ export function ClimbRow({ climb, onEdit, onDelete, animateEntry, isNewFlash }: 
 
   const content = (
     <Swipeable ref={swipeableRef} renderRightActions={renderRightActions} overshootRight={false}>
-      <TouchableOpacity
-        activeOpacity={0.7}
-        onPress={() => {
-          triggerHaptic('light');
-          onEdit(climb);
-        }}
+      <ScalePressable
+        onPress={() => onEdit(climb)}
+        haptic="light"
+        activeScale={0.98}
         accessibilityRole="button"
         accessibilityLabel={`Edit climb ${climb.grade_raw} ${climb.result}`}
         style={{
@@ -159,14 +158,14 @@ export function ClimbRow({ climb, onEdit, onDelete, animateEntry, isNewFlash }: 
             </Text>
           )}
         </View>
-      </TouchableOpacity>
+      </ScalePressable>
     </Swipeable>
   );
 
   return (
     <Reanimated.View
       layout={listLayout}
-      entering={animateEntry ? FadeInDown.duration(400).springify() : undefined}
+      entering={animateEntry ? FadeInDown.duration(220).springify().damping(18) : undefined}
     >
       {content}
     </Reanimated.View>

@@ -19,17 +19,17 @@ export const colors = {
   textOnAccent: "#FFFFFF",
 
   // Accent: Primary Neon Violet / Lavender
-  accent: "#9A85FF",
-  accentPressed: "#846DE6",
-  accentSoft: "rgba(154, 133, 255, 0.20)", // selected chip, active tab capsule
+  accent: "#8E7CFF",
+  accentPressed: "#7A67F5",
+  accentSoft: "rgba(142, 124, 255, 0.20)", // selected chip, active tab capsule
   accentText: "#D4CCFF",
 
   // Results: Secondary Neon Green & Reference Palette
-  flash: "#72FF9B",
-  flashSoft: "rgba(114, 255, 155, 0.18)",
-  flashText: "#72FF9B",
-  top: "#9A85FF",
-  topSoft: "rgba(154, 133, 255, 0.18)",
+  flash: "#6EE756",
+  flashSoft: "rgba(110, 231, 86, 0.18)",
+  flashText: "#6EE756",
+  top: "#8E7CFF",
+  topSoft: "rgba(142, 124, 255, 0.18)",
   topText: "#D4CCFF",
   attempt: "#E2DCBA",
   attemptSoft: "rgba(226, 220, 186, 0.18)",
@@ -56,7 +56,7 @@ export const colors = {
   danger: "#FF4D4D",
   dangerSoft: "rgba(255, 77, 77, 0.15)",
   dangerText: "#FF9999",
-  success: "#72FF9B",
+  success: "#6EE756",
 
   // Overlay
   scrim: "rgba(0, 0, 0, 0.75)",
@@ -66,7 +66,7 @@ export const colors = {
   bevelHighlight: "rgba(255, 255, 255, 0.08)",
   bevelShadow: "rgba(0, 0, 0, 0.6)",
   glassBorder: "rgba(255, 255, 255, 0.08)",
-  glow: "rgba(154, 133, 255, 0.25)",
+  glow: "rgba(142, 124, 255, 0.25)",
 
   // Translucent Materials (v4.0 Spatial Editorial)
   materialBase: "rgba(22, 22, 30, 0.92)",
@@ -137,16 +137,22 @@ export const type = {
 };
 
 export const motion = {
-  duration: { fast: 120, base: 200, slow: 320, celebrate: 900 }, // ms
+  duration: {
+    instant: 80,
+    fast: 140,
+    base: 220,
+    slow: 280,
+    celebrate: 280,
+  }, // ms - all UI motions kept under 300ms
   easing: {
-    standard: [0.2, 0, 0, 1],
-    enter: [0, 0, 0, 1],
-    exit: [0.4, 0, 1, 1],
-  }, // cubic-bezier
-  spring: { damping: 18, stiffness: 220 },
-  // v3.0 fluid physics
-  layoutSpring: { damping: 14, stiffness: 100 }, // list/grid items sliding into place
-  pressSpring: { damping: 15, stiffness: 300, scale: 0.96 }, // PrimaryButton press-in
+    standard: [0.2, 0, 0, 1] as const,
+    enter: [0.23, 1, 0.32, 1] as const, // fluid cubic ease-out
+    exit: [0.4, 0, 1, 1] as const,
+  },
+  spring: { damping: 20, stiffness: 240, mass: 0.8 },
+  layoutSpring: { damping: 18, stiffness: 200 },
+  pressSpring: { damping: 18, stiffness: 350, scale: 0.97 },
+  sheetSpring: { damping: 24, stiffness: 260 },
 };
 
 export const gradeBands = [

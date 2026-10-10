@@ -68,7 +68,7 @@
     "typescript": "~6.0.3"
   },
   "scripts": {
-    "test": "jest",
+    "test": "jest --runInBand",
     "start": "expo start",
     "android": "expo run:android",
     "ios": "expo run:ios",

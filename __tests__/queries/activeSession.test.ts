@@ -2,8 +2,8 @@ import { jest, describe, it, expect, beforeEach } from '@jest/globals';
 import { getDatabase } from '../../db/schema';
 import { insertSession, softDeleteBoulderLog, undoDeleteBoulderLog, deleteSession, getClimbsForSession } from '../../db/queries';
 
-let idCounter = 0;
-jest.mock('uuid', () => ({ v4: () => `test-uuid-${idCounter++}` }));
+let mockIdCounter = 0;
+jest.mock('uuid', () => ({ v4: () => `test-uuid-${mockIdCounter++}` }));
 
 describe('Active Session queries', () => {
   let db: any;

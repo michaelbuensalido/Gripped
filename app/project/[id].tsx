@@ -17,12 +17,15 @@ import {
   Hand,
   Edit2,
   CheckCircle2,
+  Archive,
+  RotateCcw,
 } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "../../theme/useTheme";
 import { Chip } from "../../components/ui/Chip";
 import { PrimaryButton } from "../../components/ui/PrimaryButton";
 import { SecondaryButton } from "../../components/ui/SecondaryButton";
+import { ScalePressable } from "../../components/ui/ScalePressable";
 import { BetaSection } from "../../components/project/BetaSection";
 import { useProject, useProjectHistory, useActiveSession } from "../../db/hooks";
 import {
@@ -129,6 +132,15 @@ export default function ProjectDetailScreen() {
     router.back();
   };
 
+  const handleRestore = () => {
+    triggerHaptic("success");
+    if (project) {
+      updateProjectStatus(project.id, "in_progress");
+      setToastMessage("Project restored to active");
+    }
+    setShowMenu(false);
+  };
+
   const handleDelete = () => {
     setShowMenu(false);
     Alert.alert("Delete Project", "Are you sure? This cannot be undone.", [
@@ -179,8 +191,10 @@ export default function ProjectDetailScreen() {
               }}
             >
               {/* Back Button Circle */}
-              <TouchableOpacity
+              <ScalePressable
                 onPress={() => router.back()}
+                haptic="light"
+                activeScale={0.92}
                 accessibilityRole="button"
                 accessibilityLabel="Back"
                 style={{
@@ -195,7 +209,7 @@ export default function ProjectDetailScreen() {
                 }}
               >
                 <ChevronLeft size={22} color={colors.text} />
-              </TouchableOpacity>
+              </ScalePressable>
 
               {/* Title & Subtitle in Center */}
               <View style={{ alignItems: "center" }}>
@@ -222,8 +236,10 @@ export default function ProjectDetailScreen() {
               </View>
 
               {/* More Menu Circle */}
-              <TouchableOpacity
+              <ScalePressable
                 onPress={() => setShowMenu(!showMenu)}
+                haptic="light"
+                activeScale={0.92}
                 accessibilityRole="button"
                 accessibilityLabel="More options"
                 style={{
@@ -238,7 +254,7 @@ export default function ProjectDetailScreen() {
                 }}
               >
                 <MoreHorizontal size={22} color={colors.text} />
-              </TouchableOpacity>
+              </ScalePressable>
             </View>
 
             {/* Menu Popup */}
@@ -277,18 +293,33 @@ export default function ProjectDetailScreen() {
                     </Text>
                   </TouchableOpacity>
                 )}
-                <TouchableOpacity
-                  onPress={handleArchive}
-                  style={{
-                    padding: 14,
-                    borderBottomWidth: 1,
-                    borderBottomColor: "rgba(255, 255, 255, 0.08)",
-                  }}
-                >
-                  <Text style={{ color: colors.text, fontSize: 14 }}>
-                    Archive
-                  </Text>
-                </TouchableOpacity>
+                {project?.status === "abandoned" ? (
+                  <TouchableOpacity
+                    onPress={handleRestore}
+                    style={{
+                      padding: 14,
+                      borderBottomWidth: 1,
+                      borderBottomColor: "rgba(255, 255, 255, 0.08)",
+                    }}
+                  >
+                    <Text style={{ color: colors.text, fontSize: 14, fontWeight: "600" }}>
+                      Restore to active
+                    </Text>
+                  </TouchableOpacity>
+                ) : (
+                  <TouchableOpacity
+                    onPress={handleArchive}
+                    style={{
+                      padding: 14,
+                      borderBottomWidth: 1,
+                      borderBottomColor: "rgba(255, 255, 255, 0.08)",
+                    }}
+                  >
+                    <Text style={{ color: colors.text, fontSize: 14 }}>
+                      Archive
+                    </Text>
+                  </TouchableOpacity>
+                )}
                 <TouchableOpacity
                   onPress={handleDelete}
                   style={{ padding: 14 }}
@@ -301,8 +332,58 @@ export default function ProjectDetailScreen() {
           </ImageBackground>
         </View>
 
+        {/* Archived Banner if abandoned */}
+        {project?.status === "abandoned" && (
+          <View
+            style={{
+              marginHorizontal: 20,
+              marginTop: 16,
+              padding: 16,
+              borderRadius: radius.md,
+              backgroundColor: "rgba(255, 255, 255, 0.06)",
+              borderWidth: 1,
+              borderColor: "rgba(255, 255, 255, 0.12)",
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: 12,
+            }}
+          >
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 10, flex: 1 }}>
+              <Archive size={20} color={colors.textMuted} />
+              <View style={{ flex: 1 }}>
+                <Text style={[type.heading, { color: colors.text, fontSize: 14 }]}>
+                  Archived Project
+                </Text>
+                <Text style={[type.caption, { color: colors.textMuted, marginTop: 2 }]}>
+                  This project is archived and hidden from your active hit-list.
+                </Text>
+              </View>
+            </View>
+            <ScalePressable
+              onPress={handleRestore}
+              haptic="medium"
+              style={{
+                paddingHorizontal: 16,
+                paddingVertical: 10,
+                minHeight: 44,
+                backgroundColor: colors.accent,
+                borderRadius: radius.pill,
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+              accessibilityRole="button"
+              accessibilityLabel="Restore project"
+            >
+              <Text style={[type.control, { color: colors.textOnAccent, fontWeight: "600" }]}>
+                Restore
+              </Text>
+            </ScalePressable>
+          </View>
+        )}
+
         {/* 2. Telemetry Bento Strip & All Original Sections below wall */}
-        <View style={{ paddingHorizontal: 20, paddingTop: 20 }}>
+        <View style={{ paddingHorizontal: 20, paddingTop: project?.status === "abandoned" ? 14 : 20 }}>
           {/* Wall Angle & Hold Type Tags */}
           {(project?.wallAngle || project?.holdType || project?.gymName) && (
             <View
@@ -554,7 +635,7 @@ export default function ProjectDetailScreen() {
                     {h.bestResult === "send" && (
                       <Text
                         style={{
-                          color: "#72FF9B",
+                          color: colors.flash,
                           fontSize: 12,
                           fontWeight: "700",
                           marginTop: 2,
@@ -587,12 +668,10 @@ export default function ProjectDetailScreen() {
 
           {/* Active Session Info Banner if running */}
           {activeSession && (
-            <TouchableOpacity
-              activeOpacity={0.8}
-              onPress={() => {
-                triggerHaptic("light");
-                router.push("/session/active");
-              }}
+            <ScalePressable
+              haptic="light"
+              activeScale={0.98}
+              onPress={() => router.push("/session/active")}
               style={{
                 flexDirection: "row",
                 alignItems: "center",
@@ -604,6 +683,7 @@ export default function ProjectDetailScreen() {
                 borderWidth: 1,
                 borderColor: colors.border,
                 marginBottom: space.sm,
+                minHeight: 44,
               }}
             >
               <View style={{ flexDirection: "row", alignItems: "center", gap: space.sm }}>
@@ -615,72 +695,32 @@ export default function ProjectDetailScreen() {
               <Text style={[type.caption, { color: colors.accentText, fontWeight: "600" }]}>
                 View session →
               </Text>
-            </TouchableOpacity>
+            </ScalePressable>
           )}
 
           {/* Action Buttons */}
           <View style={{ gap: 12 }}>
-            {project?.status !== "sent" && (
+            {project?.status === "abandoned" ? (
+              <PrimaryButton
+                label="RESTORE PROJECT TO ACTIVE"
+                icon={<RotateCcw size={20} color={colors.textOnAccent} />}
+                onPress={handleRestore}
+              />
+            ) : project?.status !== "sent" ? (
               <>
-                <TouchableOpacity
-                  activeOpacity={0.85}
+                <PrimaryButton
+                  label="LOG ATTEMPT"
+                  icon={<Sparkles size={20} color={colors.textOnAccent} />}
                   onPress={handleLogAttempt}
-                  style={{
-                    backgroundColor: colors.accent,
-                    height: 56,
-                    borderRadius: radius.pill,
-                    alignItems: "center",
-                    justifyContent: "center",
-                    flexDirection: "row",
-                    gap: 8,
-                    shadowColor: colors.accent,
-                    shadowOpacity: 0.5,
-                    shadowRadius: 16,
-                    elevation: 6,
-                  }}
-                >
-                  <Sparkles size={20} color={colors.textOnAccent} />
-                  <Text
-                    style={{
-                      color: colors.textOnAccent,
-                      fontSize: 16,
-                      fontWeight: "700",
-                      letterSpacing: 0.5,
-                    }}
-                  >
-                    LOG ATTEMPT
-                  </Text>
-                </TouchableOpacity>
+                />
 
-                <TouchableOpacity
-                  activeOpacity={0.85}
+                <SecondaryButton
+                  label="MARK AS SENT"
+                  variant="muted"
                   onPress={handleMarkSent}
-                  style={{
-                    backgroundColor: colors.card,
-                    borderColor: colors.border,
-                    borderWidth: 1,
-                    height: 56,
-                    borderRadius: radius.pill,
-                    alignItems: "center",
-                    justifyContent: "center",
-                    flexDirection: "row",
-                    gap: 8,
-                  }}
-                >
-                  <CheckCircle2 size={20} color={colors.text} />
-                  <Text
-                    style={{
-                      color: colors.text,
-                      fontSize: 16,
-                      fontWeight: "700",
-                      letterSpacing: 0.5,
-                    }}
-                  >
-                    MARK AS SENT
-                  </Text>
-                </TouchableOpacity>
+                />
               </>
-            )}
+            ) : null}
           </View>
         </View>
       </ScrollView>

@@ -4,12 +4,13 @@ import Reanimated from 'react-native-reanimated';
 import { listLayout } from '../theme/layout';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { X, Filter, ChevronDown, Plus, Flag, ArrowUpDown } from 'lucide-react-native';
+import { X, Filter, ChevronDown, Plus, Flag, ArrowUpDown, Archive } from 'lucide-react-native';
 import { useTheme } from '../theme/useTheme';
 import { ProjectCard } from '../components/ui/ProjectCard';
 import { EmptyState } from '../components/ui/EmptyState';
 import { Chip } from '../components/ui/Chip';
 import { PrimaryButton } from '../components/ui/PrimaryButton';
+import { UndoToast } from '../components/ui/UndoToast';
 import { useRichProjects, useRecentGyms } from '../db/hooks';
 import { triggerHaptic } from '../utils/haptics';
 import * as Q from '../db/queries';
@@ -42,8 +43,10 @@ export default function ProjectsScreen() {
   
   const allProjects = useRichProjects();
 
-  const [activeTab, setActiveTab] = useState<'in_progress' | 'sent'>('in_progress');
+  const [activeTab, setActiveTab] = useState<'in_progress' | 'sent' | 'archived'>('in_progress');
   const [sortOption, setSortOption] = useState<SortOption>('Recently tried');
+  const [archivedProjectId, setArchivedProjectId] = useState<string | null>(null);
+  const [isUndoVisible, setIsUndoVisible] = useState(false);
   
   // Filters
   const [wallAngleFilter, setWallAngleFilter] = useState<string | null>(null);
@@ -62,10 +65,11 @@ export default function ProjectsScreen() {
 
   const activeProjects = useMemo(() => allProjects.filter(p => p.status === 'in_progress'), [allProjects]);
   const sentProjects = useMemo(() => allProjects.filter(p => p.status === 'sent'), [allProjects]);
+  const archivedProjects = useMemo(() => allProjects.filter(p => p.status === 'abandoned'), [allProjects]);
   const totalBurns = useMemo(() => allProjects.reduce((sum, p) => sum + (p.attempts || 0), 0), [allProjects]);
 
   const displayedProjects = useMemo(() => {
-    let base = activeTab === 'in_progress' ? activeProjects : sentProjects;
+    let base = activeTab === 'in_progress' ? activeProjects : activeTab === 'sent' ? sentProjects : archivedProjects;
     
     if (wallAngleFilter) base = base.filter(p => p.wallAngle === wallAngleFilter);
     if (holdTypeFilter) base = base.filter(p => p.holdType === holdTypeFilter);
@@ -86,12 +90,20 @@ export default function ProjectsScreen() {
       // Recently tried (default)
       return (b.lastTriedAt || 0) - (a.lastTriedAt || 0);
     });
-  }, [activeTab, activeProjects, sentProjects, sortOption, wallAngleFilter, holdTypeFilter, gymFilter]);
+  }, [activeTab, activeProjects, sentProjects, archivedProjects, sortOption, wallAngleFilter, holdTypeFilter, gymFilter]);
 
   const hasActiveFilters = wallAngleFilter !== null || holdTypeFilter !== null || gymFilter !== null;
 
   const handleArchive = (id: string) => {
+    triggerHaptic('medium');
     Q.updateProjectStatus(id, 'abandoned');
+    setArchivedProjectId(id);
+    setIsUndoVisible(true);
+  };
+
+  const handleRestore = (id: string) => {
+    triggerHaptic('success');
+    Q.updateProjectStatus(id, 'in_progress');
   };
 
 
@@ -155,15 +167,19 @@ export default function ProjectsScreen() {
         {/* Bento Telemetry Metric Strip */}
         <View style={{ flexDirection: 'row', gap: space.sm, marginBottom: space.md }}>
           <View style={{ flex: 1, backgroundColor: colors.materialBase, borderWidth: 0, borderColor: colors.border, borderRadius: radius.md, padding: space.sm, minHeight: 64, alignItems: 'center', justifyContent: 'center' }}>
-            <Text style={[type.stat, { fontSize: 22, color: colors.text, fontVariant: ['tabular-nums'] }]}>{activeProjects.length}</Text>
+            <Text style={[type.stat, { fontSize: 20, color: colors.text, fontVariant: ['tabular-nums'] }]}>{activeProjects.length}</Text>
             <Text style={[type.label, { color: colors.textMuted, fontSize: 10, marginTop: 2 }]}>ACTIVE</Text>
           </View>
           <View style={{ flex: 1, backgroundColor: colors.materialBase, borderWidth: 0, borderColor: colors.border, borderRadius: radius.md, padding: space.sm, minHeight: 64, alignItems: 'center', justifyContent: 'center' }}>
-            <Text style={[type.stat, { fontSize: 22, color: colors.flashText, fontVariant: ['tabular-nums'] }]}>{sentProjects.length}</Text>
+            <Text style={[type.stat, { fontSize: 20, color: colors.flashText, fontVariant: ['tabular-nums'] }]}>{sentProjects.length}</Text>
             <Text style={[type.label, { color: colors.textMuted, fontSize: 10, marginTop: 2 }]}>SENT</Text>
           </View>
           <View style={{ flex: 1, backgroundColor: colors.materialBase, borderWidth: 0, borderColor: colors.border, borderRadius: radius.md, padding: space.sm, minHeight: 64, alignItems: 'center', justifyContent: 'center' }}>
-            <Text style={[type.stat, { fontSize: 22, color: colors.text, fontVariant: ['tabular-nums'] }]}>{totalBurns}</Text>
+            <Text style={[type.stat, { fontSize: 20, color: colors.textMuted, fontVariant: ['tabular-nums'] }]}>{archivedProjects.length}</Text>
+            <Text style={[type.label, { color: colors.textMuted, fontSize: 10, marginTop: 2 }]}>ARCHIVED</Text>
+          </View>
+          <View style={{ flex: 1, backgroundColor: colors.materialBase, borderWidth: 0, borderColor: colors.border, borderRadius: radius.md, padding: space.sm, minHeight: 64, alignItems: 'center', justifyContent: 'center' }}>
+            <Text style={[type.stat, { fontSize: 20, color: colors.text, fontVariant: ['tabular-nums'] }]}>{totalBurns}</Text>
             <Text style={[type.label, { color: colors.textMuted, fontSize: 10, marginTop: 2 }]}>BURNS</Text>
           </View>
         </View>
@@ -184,7 +200,7 @@ export default function ProjectsScreen() {
                 onPress={() => { triggerHaptic('light'); setActiveTab('in_progress'); }}
                 accessibilityRole="button"
                 accessibilityState={{ selected: activeTab === 'in_progress' }}
-                accessibilityLabel="In progress projects"
+                accessibilityLabel="Active projects"
                 style={{
                   flex: 1,
                   alignItems: 'center',
@@ -193,8 +209,8 @@ export default function ProjectsScreen() {
                   backgroundColor: activeTab === 'in_progress' ? colors.accent : 'transparent',
                 }}
               >
-                <Text style={[type.heading, { color: activeTab === 'in_progress' ? colors.textWhitePrimary : colors.textWhiteSecondary, fontSize: 13, fontWeight: '400' }]}>
-                  In progress ({activeProjects.length})
+                <Text style={[type.heading, { color: activeTab === 'in_progress' ? colors.textWhitePrimary : colors.textWhiteSecondary, fontSize: 12, fontWeight: '400' }]}>
+                  Active ({activeProjects.length})
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity
@@ -210,8 +226,25 @@ export default function ProjectsScreen() {
                   backgroundColor: activeTab === 'sent' ? colors.accent : 'transparent',
                 }}
               >
-                <Text style={[type.heading, { color: activeTab === 'sent' ? colors.textWhitePrimary : colors.textWhiteSecondary, fontSize: 13, fontWeight: '400' }]}>
+                <Text style={[type.heading, { color: activeTab === 'sent' ? colors.textWhitePrimary : colors.textWhiteSecondary, fontSize: 12, fontWeight: '400' }]}>
                   Sent ({sentProjects.length})
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => { triggerHaptic('light'); setActiveTab('archived'); }}
+                accessibilityRole="button"
+                accessibilityState={{ selected: activeTab === 'archived' }}
+                accessibilityLabel="Archived projects"
+                style={{
+                  flex: 1,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  borderRadius: radius.pill,
+                  backgroundColor: activeTab === 'archived' ? colors.accent : 'transparent',
+                }}
+              >
+                <Text style={[type.heading, { color: activeTab === 'archived' ? colors.textWhitePrimary : colors.textWhiteSecondary, fontSize: 12, fontWeight: '400' }]}>
+                  Archived ({archivedProjects.length})
                 </Text>
               </TouchableOpacity>
             </View>
@@ -300,11 +333,17 @@ export default function ProjectsScreen() {
               title="No active projects" 
               body="Add something to work on next." 
             />
-          ) : (
+          ) : activeTab === 'sent' ? (
             <EmptyState 
               icon={<Flag size={24} color={colors.textMuted} />} 
               title="No sent projects" 
               body="Your first send will show up here." 
+            />
+          ) : (
+            <EmptyState 
+              icon={<Archive size={24} color={colors.textMuted} />} 
+              title="No archived projects" 
+              body="Projects you archive will appear here." 
             />
           )
         ) : (
@@ -314,6 +353,7 @@ export default function ProjectsScreen() {
                 project={p}
                 onLogAttempt={activeTab === 'in_progress' ? () => setLoggingProject(p) : undefined}
                 onArchive={activeTab === 'in_progress' ? () => handleArchive(p.id) : undefined}
+                onRestore={activeTab === 'archived' ? () => handleRestore(p.id) : undefined}
               />
             </Reanimated.View>
           ))
@@ -399,6 +439,23 @@ export default function ProjectsScreen() {
         lockGrade={true}
         disableFlash={(loggingProject?.attempts || 0) > 0 || (loggingProject?.burns || 0) > 0}
         title={loggingProject ? `Log Attempt • ${loggingProject.title}` : 'Log Attempt'}
+      />
+
+      <UndoToast
+        visible={isUndoVisible}
+        message="Project archived"
+        onUndo={() => {
+          if (archivedProjectId) {
+            triggerHaptic('light');
+            Q.updateProjectStatus(archivedProjectId, 'in_progress');
+            setIsUndoVisible(false);
+            setArchivedProjectId(null);
+          }
+        }}
+        onDismiss={() => {
+          setIsUndoVisible(false);
+          setArchivedProjectId(null);
+        }}
       />
     </>
   );

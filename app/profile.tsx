@@ -8,6 +8,7 @@ import { Screen } from '../components/ui/Screen';
 import { Chip } from '../components/ui/Chip';
 import { EmptyState } from '../components/ui/EmptyState';
 import { PrimaryButton } from '../components/ui/PrimaryButton';
+import { ScalePressable } from '../components/ui/ScalePressable';
 import { SessionCard } from '../components/ui/SessionCard';
 import { LogbookCalendar } from '../components/ui/LogbookCalendar';
 import { UndoToast } from '../components/ui/UndoToast';
@@ -149,20 +150,24 @@ export default function LogbookScreen() {
           <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 4 }}>
             <View>
               <Text style={[type.display, { color: colors.text, fontSize: 28 }]}>Logbook</Text>
-              <TouchableOpacity 
-                activeOpacity={0.7}
-                onPress={() => { triggerHaptic('light'); setIsPeriodSheetOpen(true); }}
-                style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4, marginBottom: 8 }}
+              <ScalePressable
+                haptic="light"
+                activeScale={0.96}
+                onPress={() => setIsPeriodSheetOpen(true)}
+                hitSlop={{ top: 8, bottom: 8, left: 4, right: 8 }}
+                style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4, marginBottom: 8, minHeight: 44 }}
               >
                 <Text style={{ color: colors.accent, fontSize: 14, fontWeight: '600', fontFamily: type.heading.fontFamily }}>
                   {PERIOD_LABELS[filters.period]}
                 </Text>
                 <ChevronDown size={16} color={colors.accent} strokeWidth={2.5} />
-              </TouchableOpacity>
+              </ScalePressable>
             </View>
             
             <View style={{ flexDirection: 'row', gap: space.xs, alignItems: 'center', marginTop: 4 }}>
-              <TouchableOpacity
+              <ScalePressable
+                haptic="light"
+                activeScale={0.92}
                 onPress={() => setIsSearchActive(true)}
                 accessibilityRole="button"
                 accessibilityLabel="Search"
@@ -178,7 +183,7 @@ export default function LogbookScreen() {
                 }}
               >
                 <Search size={20} color={colors.text} />
-              </TouchableOpacity>
+              </ScalePressable>
               
               <View
                 style={{
@@ -192,7 +197,9 @@ export default function LogbookScreen() {
                   alignItems: 'center',
                 }}
               >
-                <TouchableOpacity
+                <ScalePressable
+                  haptic="selection"
+                  activeScale={0.92}
                   onPress={() => setFilters(f => ({ ...f, viewMode: 'list' }))}
                   accessibilityRole="button"
                   accessibilityLabel="List view"
@@ -206,8 +213,10 @@ export default function LogbookScreen() {
                   }}
                 >
                   <List size={18} color={filters.viewMode === 'list' ? colors.accentText : colors.textMuted} />
-                </TouchableOpacity>
-                <TouchableOpacity
+                </ScalePressable>
+                <ScalePressable
+                  haptic="selection"
+                  activeScale={0.92}
                   onPress={() => setFilters(f => ({ ...f, viewMode: 'calendar' }))}
                   accessibilityRole="button"
                   accessibilityLabel="Calendar view"
@@ -221,10 +230,12 @@ export default function LogbookScreen() {
                   }}
                 >
                   <Calendar size={18} color={filters.viewMode === 'calendar' ? colors.accentText : colors.textMuted} />
-                </TouchableOpacity>
+                </ScalePressable>
               </View>
 
-              <TouchableOpacity
+              <ScalePressable
+                haptic="light"
+                activeScale={0.92}
                 onPress={() => router.push('/settings')}
                 accessibilityRole="button"
                 accessibilityLabel="Settings"
@@ -240,7 +251,7 @@ export default function LogbookScreen() {
                 }}
               >
                 <SettingsIcon size={20} color={colors.text} />
-              </TouchableOpacity>
+              </ScalePressable>
             </View>
           </View>
         ) : (
@@ -448,11 +459,11 @@ export default function LogbookScreen() {
               {PERIOD_OPTIONS.map((opt) => {
                 const isActive = filters.period === opt.key;
                 return (
-                  <TouchableOpacity
+                  <ScalePressable
                     key={opt.key}
-                    activeOpacity={0.7}
+                    haptic="selection"
+                    activeScale={0.97}
                     onPress={() => {
-                      triggerHaptic('selection');
                       setFilters(f => ({ ...f, period: opt.key }));
                       setIsPeriodSheetOpen(false);
                     }}
@@ -462,15 +473,16 @@ export default function LogbookScreen() {
                       justifyContent: 'space-between',
                       paddingVertical: space.md,
                       paddingHorizontal: space.sm,
-                      backgroundColor: isActive ? 'rgba(154, 133, 255, 0.12)' : 'transparent',
+                      backgroundColor: isActive ? colors.accentSoft : 'transparent',
                       borderRadius: radius.md,
+                      minHeight: 48,
                     }}
                   >
-                    <Text style={[type.heading, { color: isActive ? colors.accent : '#FFFFFF', fontSize: 16 }]}>
+                    <Text style={[type.heading, { color: isActive ? colors.accent : '#FFFFFF', fontSize: 16, fontWeight: isActive ? '700' : '400' }]}>
                       {opt.label}
                     </Text>
                     {isActive && <Check size={20} color={colors.accent} strokeWidth={2.5} />}
-                  </TouchableOpacity>
+                  </ScalePressable>
                 );
               })}
             </View>

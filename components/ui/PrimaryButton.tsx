@@ -1,15 +1,7 @@
 import React from 'react';
-import { Pressable, Text, View, ActivityIndicator, StyleProp, ViewStyle } from 'react-native';
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withSpring,
-  useReducedMotion,
-} from 'react-native-reanimated';
-import { triggerHaptic } from '../../utils/haptics';
+import { Text, View, ActivityIndicator, StyleProp, ViewStyle } from 'react-native';
+import { ScalePressable } from './ScalePressable';
 import { useTheme } from '../../theme/useTheme';
-
-const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 interface PrimaryButtonProps {
   testID?: string;
@@ -30,44 +22,16 @@ export function PrimaryButton({
   disabled,
   onPress,
 }: PrimaryButtonProps) {
-  const { colors, radius, type, motion } = useTheme();
+  const { colors, radius, type } = useTheme();
   const isDisabled = disabled || loading;
-  const reduceMotion = useReducedMotion();
-
-  // Spring scale-down on press (v3.0 fluid physics). Skipped under reduce-motion.
-  const scale = useSharedValue(1);
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }],
-  }));
-
-  const handlePressIn = () => {
-    if (isDisabled || reduceMotion) return;
-    scale.value = withSpring(motion.pressSpring.scale, {
-      damping: motion.pressSpring.damping,
-      stiffness: motion.pressSpring.stiffness,
-    });
-  };
-
-  const handlePressOut = () => {
-    scale.value = withSpring(1, {
-      damping: motion.pressSpring.damping,
-      stiffness: motion.pressSpring.stiffness,
-    });
-  };
-
-  const handlePress = () => {
-    if (isDisabled) return;
-    triggerHaptic('medium');
-    onPress();
-  };
 
   return (
-    <AnimatedPressable
+    <ScalePressable
       testID={testID}
-      onPress={handlePress}
-      onPressIn={handlePressIn}
-      onPressOut={handlePressOut}
+      onPress={onPress}
       disabled={isDisabled}
+      haptic="medium"
+      activeScale={0.97}
       accessibilityRole="button"
       accessibilityState={{ disabled: isDisabled, busy: loading }}
       style={[
@@ -85,14 +49,13 @@ export function PrimaryButton({
           opacity: isDisabled ? 0.45 : 1,
           ...(isDisabled ? {} : {
             shadowColor: colors.accent,
-            shadowOffset: { width: 0, height: 0 },
-            shadowOpacity: 0.6,
-            shadowRadius: 12,
+            shadowOffset: { width: 0, height: 4 },
+            shadowOpacity: 0.4,
+            shadowRadius: 14,
             elevation: 4,
           }),
         },
         style,
-        animatedStyle,
       ]}
     >
       {loading ? (
@@ -107,6 +70,7 @@ export function PrimaryButton({
                 color: colors.textOnAccent,
                 fontSize: 16,
                 letterSpacing: 0.3,
+                fontWeight: '700',
               },
             ]}
           >
@@ -114,6 +78,6 @@ export function PrimaryButton({
           </Text>
         </>
       )}
-    </AnimatedPressable>
+    </ScalePressable>
   );
 }
