@@ -50,6 +50,7 @@ export function Chip({
         activeScale={0.96}
         hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}
         accessibilityRole="button"
+        accessibilityLabel={label}
         accessibilityState={{ selected: active }}
       >
         {content}

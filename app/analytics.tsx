@@ -102,8 +102,11 @@ export default function ProgressScreen() {
           <ScalePressable
             haptic="light"
             activeScale={0.92}
+            accessibilityRole="button"
+            accessibilityLabel="Open settings"
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             style={{ width: 44, height: 44, borderRadius: 12, backgroundColor: colors.cardMuted, alignItems: 'center', justifyContent: 'center' }}
-            onPress={() => {}}
+            onPress={() => router.push('/settings')}
           >
             <Menu size={22} color={colors.text} strokeWidth={2} />
           </ScalePressable>
@@ -111,9 +114,16 @@ export default function ProgressScreen() {
 
         {stats.sessionStats.sessions === 0 ? (
           <EmptyState
-            icon={<Target size={32} color={colors.textMuted} />}
+            asCard
+            icon={<Target size={32} color={colors.accent} />}
             title="No data for this period"
             body="Log some sessions or change your time filter to see your progress charts."
+            cta={
+              <PrimaryButton
+                label="+ START A SESSION"
+                onPress={() => router.push('/session/active')}
+              />
+            }
           />
         ) : (
           <View>

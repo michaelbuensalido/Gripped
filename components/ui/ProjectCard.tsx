@@ -121,6 +121,8 @@ export function ProjectCard({
     <ScalePressable
       haptic="light"
       activeScale={0.98}
+      accessibilityRole="button"
+      accessibilityLabel={`Project ${project.title}, grade ${project.gradeRaw ?? project.grade_raw ?? 'unknown'}`}
       onPress={() => router.push(`/project/${project.id}` as any)}
       style={[{ 
         backgroundColor: colors.materialBase, 

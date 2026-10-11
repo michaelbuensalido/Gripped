@@ -33,6 +33,7 @@ export function PrimaryButton({
       haptic="medium"
       activeScale={0.97}
       accessibilityRole="button"
+      accessibilityLabel={label}
       accessibilityState={{ disabled: isDisabled, busy: loading }}
       style={[
         {

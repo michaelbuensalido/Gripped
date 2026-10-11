@@ -20,6 +20,8 @@ import {
   Trophy,
   CheckCircle,
   X,
+  AlertCircle,
+  Zap,
 } from 'lucide-react-native';
 import { Screen } from '../../../components/ui/Screen';
 import { ClimbRow } from '../../../components/ui/ClimbRow';
@@ -29,6 +31,7 @@ import { ProjectCard } from '../../../components/ui/ProjectCard';
 import { SectionHeader } from '../../../components/ui/SectionHeader';
 import { Card } from '../../../components/ui/Card';
 import { PrimaryButton } from '../../../components/ui/PrimaryButton';
+import { EmptyState } from '../../../components/ui/EmptyState';
 import { LogSheet } from '../../../components/session/LogSheet';
 import { useTheme } from '../../../theme/useTheme';
 import {
@@ -333,9 +336,52 @@ export default function SessionDetailScreen({
     setEditingClimb(null);
   };
 
-  const subtitleText = session
-    ? formatSessionSubtitle(session.startTime, session.endTime)
-    : '';
+  if (!session) {
+    return (
+      <View
+        style={{
+          flex: 1,
+          backgroundColor: colors.bg,
+          paddingTop: Math.max(insets.top, space.lg),
+          paddingHorizontal: space.lg,
+        }}
+      >
+        <TouchableOpacity
+          onPress={() => router.back()}
+          accessibilityRole="button"
+          accessibilityLabel="Back"
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          style={{
+            width: 48,
+            height: 48,
+            borderRadius: radius.md,
+            backgroundColor: colors.card,
+            borderWidth: 1,
+            borderColor: colors.border,
+            alignItems: 'center',
+            justifyContent: 'center',
+            marginBottom: space.lg,
+          }}
+        >
+          <ChevronLeft size={24} color={colors.text} />
+        </TouchableOpacity>
+        <EmptyState
+          asCard
+          icon={<AlertCircle size={28} color={colors.textMuted} />}
+          title="Session Not Found"
+          body="This session may have been deleted or does not exist."
+          cta={
+            <PrimaryButton
+              label="BACK TO HOME"
+              onPress={() => router.replace('/')}
+            />
+          }
+        />
+      </View>
+    );
+  }
+
+  const subtitleText = formatSessionSubtitle(session.startTime, session.endTime);
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
@@ -603,11 +649,12 @@ export default function SessionDetailScreen({
             ))}
 
             {activeClimbs.length === 0 && (
-              <View style={{ alignItems: 'center', paddingVertical: space.xl }}>
-                <Text style={[type.body, { color: colors.textMuted }]}>
-                  No climbs in this session.
-                </Text>
-              </View>
+              <EmptyState
+                asCard
+                icon={<Zap size={24} color={colors.accent} />}
+                title="No climbs recorded"
+                body="You haven't logged any climbs in this session yet."
+              />
             )}
 
             {/* "+ Add climb" Button */}

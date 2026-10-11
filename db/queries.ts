@@ -31,7 +31,7 @@ export function insertSession(session: Omit<Session, 'endTime'>): void {
   runMutation('sessions', session.id, 'INSERT', 
     `INSERT INTO sessions (id, gym_name, started_at, notes, created_at, updated_at)
      VALUES (?, ?, ?, ?, ?, ?)`,
-    [session.id, session.gymName, session.startTime, session.notes, now, now]
+    [session.id, session.gymName, session.startTime, session.notes || '', now, now]
   );
 }
 
@@ -272,6 +272,9 @@ export function updateProjectBeta(id: string, microBeta: string | null, mediaUri
   runMutation('projects', id, 'UPDATE', `UPDATE projects SET micro_beta = ?, photo_url = COALESCE(?, photo_url), updated_at = ? WHERE id = ?`, [microBeta, mediaUri ?? null, Date.now(), id]);
 }
 export function deleteProject(id: string): void {
+  const db = getDatabase();
+  // Ensure climbs associated with this project have project_id set to NULL so climb history is preserved
+  db.runSync(`UPDATE climbs SET project_id = NULL WHERE project_id = ?`, [id]);
   cascadeDeleteProjectBeta(id, () =>
     runMutation('projects', id, 'DELETE', `DELETE FROM projects WHERE id = ?`, [id]),
   );
@@ -514,7 +517,7 @@ export function insertProject(project: any): void {
   runMutation('projects', project.id, 'INSERT', 
     `INSERT INTO projects (id, title, grade_raw, grade_index, wall_angle, hold_type, status, high_water_mark_moves, total_moves, micro_beta, photo_url, created_at, updated_at)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    [project.id, project.title, project.gradeRaw, project.normalizedDifficulty, project.wallAngle, project.holdType, project.status, project.highWaterMarkMoves, project.totalMoves ?? null, (project.microBeta ?? null), (project.mediaUri ?? null), now, now]
+    [project.id, project.title, project.gradeRaw, project.normalizedDifficulty ?? project.gradeIndex ?? gradeToNumeric(project.gradeRaw), project.wallAngle, project.holdType, project.status, project.highWaterMarkMoves ?? 0, project.totalMoves ?? null, (project.microBeta ?? null), (project.mediaUri ?? null), now, now]
   );
 }
 
@@ -1775,4 +1778,105 @@ export async function exportDataToJSON(): Promise<string> {
     }
   }
   return JSON.stringify(data, null, 2);
+}
+
+function runInTransaction(task: () => void) {
+  const db = getDatabase();
+  if (typeof (db as any).withTransactionSync === 'function') {
+    (db as any).withTransactionSync(task);
+  } else {
+    db.runSync('BEGIN');
+    try {
+      task();
+      db.runSync('COMMIT');
+    } catch (e) {
+      try { db.runSync('ROLLBACK'); } catch {}
+      throw e;
+    }
+  }
+}
+
+export function clearAllData(): void {
+  const db = getDatabase();
+  runInTransaction(() => {
+    db.runSync(`DELETE FROM climbs`);
+    db.runSync(`DELETE FROM sessions`);
+    db.runSync(`DELETE FROM projects`);
+    db.runSync(`DELETE FROM betas`);
+    db.runSync(`DELETE FROM beta_moves`);
+    db.runSync(`DELETE FROM beta_videos`);
+    db.runSync(`DELETE FROM video_notes`);
+    db.runSync(`DELETE FROM outbox`);
+  });
+  dbEvents.emit();
+}
+
+export async function importDataFromJSON(jsonStr: string): Promise<{ success: boolean; importedCount: number; tables: string[] }> {
+  const db = getDatabase();
+  let parsed: any;
+  try {
+    parsed = JSON.parse(jsonStr);
+  } catch (err: any) {
+    throw new Error('Invalid JSON format: ' + (err?.message || 'Parse error'));
+  }
+
+  if (!parsed || typeof parsed !== 'object') {
+    throw new Error('Invalid backup file: Root must be a JSON object');
+  }
+
+  const validTables = ['gyms', 'walls', 'sessions', 'projects', 'climbs', 'betas', 'beta_moves', 'beta_videos', 'video_notes'];
+  const tablesPresent = Object.keys(parsed).filter(t => validTables.includes(t) && Array.isArray(parsed[t]));
+
+  if (tablesPresent.length === 0) {
+    throw new Error('No valid CruxLog data tables found in backup');
+  }
+
+  let importedCount = 0;
+  runInTransaction(() => {
+    for (const table of tablesPresent) {
+      const rows = parsed[table];
+      for (const row of rows) {
+        if (!row || typeof row !== 'object') continue;
+        const keys = Object.keys(row);
+        if (keys.length === 0) continue;
+        const cols = keys.map(k => `"${k}"`).join(', ');
+        const placeholders = keys.map(() => '?').join(', ');
+        const values = keys.map(k => (row as any)[k]);
+        db.runSync(
+          `INSERT OR REPLACE INTO "${table}" (${cols}) VALUES (${placeholders})`,
+          values
+        );
+        importedCount++;
+      }
+    }
+  });
+
+  dbEvents.emit();
+  return { success: true, importedCount, tables: tablesPresent };
+}
+
+export function getStorageUsage(mediaBytes = 0): { dbBytes: number; mediaBytes: number; totalBytes: number; formatted: string } {
+  const db = getDatabase();
+  let dbBytes = 0;
+  try {
+    const pageCountRow = db.getFirstSync<{ page_count: number }>('PRAGMA page_count');
+    const pageSizeRow = db.getFirstSync<{ page_size: number }>('PRAGMA page_size');
+    const pageCount = pageCountRow?.page_count ?? 0;
+    const pageSize = pageSizeRow?.page_size ?? 4096;
+    dbBytes = pageCount * pageSize;
+  } catch (e) {
+    dbBytes = 0;
+  }
+
+  const totalBytes = dbBytes + mediaBytes;
+  let formatted = '0 KB';
+  if (totalBytes >= 1024 * 1024) {
+    formatted = `${(totalBytes / (1024 * 1024)).toFixed(1)} MB`;
+  } else if (totalBytes >= 1024) {
+    formatted = `${Math.round(totalBytes / 1024)} KB`;
+  } else if (totalBytes > 0) {
+    formatted = `${totalBytes} B`;
+  }
+
+  return { dbBytes, mediaBytes, totalBytes, formatted };
 }

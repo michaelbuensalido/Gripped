@@ -32,6 +32,7 @@ export function SecondaryButton({
       haptic="medium"
       activeScale={0.97}
       accessibilityRole="button"
+      accessibilityLabel={label}
       accessibilityState={{ disabled }}
       style={[
         {

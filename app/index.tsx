@@ -28,7 +28,9 @@ import { SectionHeader } from '../components/ui/SectionHeader';
 import { SessionCard } from '../components/ui/SessionCard';
 import { StatTile } from '../components/ui/StatTile';
 import { PrimaryButton } from '../components/ui/PrimaryButton';
+import { SecondaryButton } from '../components/ui/SecondaryButton';
 import { ScalePressable } from '../components/ui/ScalePressable';
+import { EmptyState } from '../components/ui/EmptyState';
 import * as Q from '../db/queries';
 import { WeekStrip } from '../components/ui/WeekStrip';
 import { VolumeChart } from '../components/ui/VolumeChart';
@@ -452,9 +454,9 @@ export default function HomeScreen() {
         )}
 
         {/* 9. Recent Sessions List */}
-        {data.recentSessions.length > 0 && (
-          <View style={{ marginBottom: 28 }}>
-            <SectionHeader title="Recent sessions" />
+        <View style={{ marginBottom: 28 }}>
+          <SectionHeader title="Recent sessions" />
+          {data.recentSessions.length > 0 ? (
             <View style={{ gap: 12 }}>
               {data.recentSessions.map((s: any) => (
                 <Animated.View key={s.id} layout={listLayout}>
@@ -462,8 +464,21 @@ export default function HomeScreen() {
                 </Animated.View>
               ))}
             </View>
-          </View>
-        )}
+          ) : (
+            <EmptyState
+              asCard
+              icon={<Clock size={24} color={colors.accent} />}
+              title="No sessions logged yet"
+              body="Start your first climbing session to track your telemetry and sends."
+              cta={
+                <SecondaryButton
+                  label="+ START FIRST SESSION"
+                  onPress={handleStartSession}
+                />
+              }
+            />
+          )}
+        </View>
       </Animated.ScrollView>
 
       {/* StartSessionSheet */}

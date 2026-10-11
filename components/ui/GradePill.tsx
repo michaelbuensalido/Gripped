@@ -2,6 +2,8 @@ import React from 'react';
 import { View, Text, ViewStyle, StyleProp } from 'react-native';
 import { useTheme } from '../../theme/useTheme';
 
+import { usePreferences } from '../../utils/preferences';
+
 // Keep getGradeBandColors for backward-compat (used in some files)
 export function getGradeBandColors(gradeIndex: number, colors: any) {
   const { bg, text } = gradeBandStatic(gradeIndex);
@@ -23,11 +25,14 @@ interface GradePillProps {
 
 export function GradePill({ gradeIndex, label, style }: GradePillProps) {
   const { type, gradeBand, radius } = useTheme();
+  const { formatGrade } = usePreferences();
   const band = gradeBand(gradeIndex);
-  const displayLabel = label || (gradeIndex !== undefined && gradeIndex !== null ? `V${gradeIndex}` : '—');
+  const displayLabel = label || formatGrade(gradeIndex, '—');
 
   return (
     <View
+      accessible={true}
+      accessibilityLabel={`Grade ${displayLabel}`}
       style={[
         {
           backgroundColor: band.bg,

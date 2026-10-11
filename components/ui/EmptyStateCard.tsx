@@ -2,14 +2,14 @@ import React from 'react';
 import {
   View,
   Text,
-  StyleSheet,
-  Pressable,
-  type StyleProp,
-  type ViewStyle,
+  StyleProp,
+  ViewStyle,
 } from 'react-native';
 import * as LucideIcons from 'lucide-react-native';
 import type { LucideIcon } from 'lucide-react-native';
 import { triggerHaptic } from '../../utils/haptics';
+import { useTheme } from '../../theme/useTheme';
+import { ScalePressable } from './ScalePressable';
 
 export interface EmptyStateCardProps {
   icon?: LucideIcon;
@@ -41,6 +41,8 @@ export function EmptyStateCard({
   containerStyle,
   asCard = true,
 }: EmptyStateCardProps) {
+  const { colors, radius, space, type, shadow } = useTheme();
+
   // Resolve icon component from either prop
   let IconComponent: LucideIcon = LucideIcons.HelpCircle;
   if (icon) {
@@ -50,157 +52,150 @@ export function EmptyStateCard({
   }
 
   const isLime = buttonVariant === 'lime';
-  const buttonBg = isLime ? '#6EE756' : '#8E7CFF';
-  const buttonTextColor = isLime ? '#111115' : '#FFFFFF';
+  const buttonBg = isLime ? colors.flash : colors.accent;
+  const buttonTextColor = isLime ? '#000000' : colors.textOnAccent;
 
   return (
     <View
       style={[
-        asCard ? styles.cardContainer : styles.rawContainer,
+        asCard
+          ? {
+              backgroundColor: colors.card,
+              borderWidth: 1,
+              borderColor: colors.border,
+              borderRadius: radius.xl,
+              paddingHorizontal: space.xl,
+              paddingVertical: 36,
+              alignItems: 'center',
+              justifyContent: 'center',
+              overflow: 'hidden',
+            }
+          : {
+              paddingHorizontal: space.xl,
+              paddingVertical: 48,
+              alignItems: 'center',
+              justifyContent: 'center',
+            },
         containerStyle,
       ]}
     >
-      <View style={[styles.innerContent, style]}>
+      <View style={[{ alignItems: 'center', justifyContent: 'center', width: '100%' }, style]}>
         {/* Minimalist Geometric Icon Badge Frame */}
-        <View style={styles.badgeFrame}>
-          <IconComponent size={28} color="#9090A0" strokeWidth={1.8} />
+        <View
+          style={{
+            width: 64,
+            height: 64,
+            borderRadius: radius.lg,
+            backgroundColor: colors.cardMuted,
+            borderWidth: 1,
+            borderColor: colors.border,
+            alignItems: 'center',
+            justifyContent: 'center',
+            marginBottom: space.md,
+            ...shadow.floating,
+          }}
+        >
+          <IconComponent size={28} color={colors.textMuted} strokeWidth={1.8} />
         </View>
 
         {/* Title */}
-        <Text style={styles.title}>{title}</Text>
+        <Text
+          style={[
+            type.heading,
+            {
+              color: colors.text,
+              textAlign: 'center',
+              marginBottom: space.xs,
+              fontSize: 18,
+            },
+          ]}
+        >
+          {title}
+        </Text>
 
         {/* Body / Description */}
-        <Text style={styles.description}>{description}</Text>
+        <Text
+          style={[
+            type.body,
+            {
+              color: colors.textMuted,
+              textAlign: 'center',
+              maxWidth: 280,
+              lineHeight: 20,
+              fontSize: 14,
+              marginBottom: space.xl,
+            },
+          ]}
+        >
+          {description}
+        </Text>
 
         {/* Primary CTA Button */}
-        <Pressable
+        <ScalePressable
           onPress={() => {
             triggerHaptic('light');
             onPress();
           }}
-          style={({ pressed }) => [
-            styles.primaryButton,
-            {
-              backgroundColor: buttonBg,
-              transform: [{ scale: pressed ? 0.95 : 1 }],
-              opacity: pressed ? 0.92 : 1,
-            },
-          ]}
+          accessibilityRole="button"
+          accessibilityLabel={buttonLabel}
+          style={{
+            height: 48,
+            minHeight: 48,
+            borderRadius: radius.pill,
+            paddingHorizontal: 24,
+            alignItems: 'center',
+            justifyContent: 'center',
+            backgroundColor: buttonBg,
+          }}
         >
-          <Text style={[styles.primaryButtonText, { color: buttonTextColor }]}>
+          <Text
+            style={[
+              type.heading,
+              {
+                color: buttonTextColor,
+                fontSize: 14,
+                fontWeight: '700',
+                letterSpacing: 0.2,
+              },
+            ]}
+          >
             {buttonLabel}
           </Text>
-        </Pressable>
+        </ScalePressable>
 
-        {/* Optional Secondary Action */}
+        {/* Optional Secondary Action Link */}
         {secondaryAction && (
-          <Pressable
+          <ScalePressable
             onPress={() => {
               triggerHaptic('light');
               secondaryAction.onPress();
             }}
-            style={({ pressed }) => [
-              styles.secondaryButton,
-              {
-                opacity: pressed ? 0.7 : 1,
-              },
-            ]}
+            accessibilityRole="button"
+            accessibilityLabel={secondaryAction.label}
+            style={{
+              marginTop: space.md,
+              minHeight: 44,
+              paddingVertical: 6,
+              paddingHorizontal: 12,
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
           >
-            <Text style={styles.secondaryButtonText}>
+            <Text
+              style={[
+                type.caption,
+                {
+                  color: colors.textMuted,
+                  fontSize: 13,
+                  fontWeight: '500',
+                },
+              ]}
+            >
               {secondaryAction.label}
             </Text>
-          </Pressable>
+          </ScalePressable>
         )}
       </View>
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  cardContainer: {
-    backgroundColor: '#19191D',
-    borderWidth: 1,
-    borderColor: '#27272F',
-    borderRadius: 24,
-    paddingHorizontal: 24,
-    paddingVertical: 36,
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'hidden',
-  },
-  rawContainer: {
-    paddingHorizontal: 24,
-    paddingVertical: 48,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  innerContent: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    width: '100%',
-  },
-  badgeFrame: {
-    width: 64,
-    height: 64,
-    borderRadius: 20,
-    backgroundColor: '#19191D',
-    borderWidth: 1,
-    borderColor: '#27272F',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 16,
-    // Subtle tactile shadow
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.35,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  title: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#FFFFFF',
-    letterSpacing: -0.3,
-    textAlign: 'center',
-    marginBottom: 8,
-  },
-  description: {
-    fontSize: 14,
-    fontWeight: '400',
-    color: '#9090A0',
-    textAlign: 'center',
-    maxWidth: 280,
-    lineHeight: 20,
-    marginBottom: 24,
-  },
-  primaryButton: {
-    height: 48,
-    borderRadius: 24,
-    paddingHorizontal: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
-    // Tactile glow/shadow
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  primaryButtonText: {
-    color: '#111115',
-    fontSize: 14,
-    fontWeight: '600',
-    letterSpacing: 0.2,
-  },
-  secondaryButton: {
-    marginTop: 14,
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-  },
-  secondaryButtonText: {
-    color: '#9090A0',
-    fontSize: 13,
-    fontWeight: '500',
-    textAlign: 'center',
-  },
-});

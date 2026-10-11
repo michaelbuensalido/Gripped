@@ -18,6 +18,9 @@ class SQLiteDatabase {
   getFirstSync(sql, args = []) {
     return this.db.prepare(sql).get(...args);
   }
+  withTransactionSync(task) {
+    return this.db.transaction(task)();
+  }
 }
 
 module.exports = {
