@@ -1,5 +1,7 @@
 import { create } from 'zustand';
 import * as Q from '../db/queries';
+import { getDatabase } from '../db/schema';
+import { notificationEngine } from '../services/notificationEngine';
 
 interface SessionState {
   lastTab: string;
@@ -21,6 +23,7 @@ interface SessionState {
 
   restTimerEndTime: number | null;
   isRestTimerRunning: boolean;
+  restNotificationId: string | null;
   setRestTimer: (endTime: number | null, isRunning: boolean) => void;
   addRestTimerSeconds: (seconds: number) => void;
 
@@ -56,11 +59,34 @@ export const useSessionStore = create<SessionState>((set, get) => ({
 
   restTimerEndTime: null,
   isRestTimerRunning: false,
-  setRestTimer: (endTime, isRunning) => set({ restTimerEndTime: endTime, isRestTimerRunning: isRunning }),
-  addRestTimerSeconds: (seconds) => set((state) => {
-    if (!state.restTimerEndTime) return state;
-    return { restTimerEndTime: state.restTimerEndTime + seconds * 1000 };
-  }),
+  restNotificationId: null,
+  setRestTimer: (endTime, isRunning) => {
+    const prevNotifId = get().restNotificationId;
+    if (prevNotifId) {
+      notificationEngine.cancelRestNotification(prevNotifId).catch(() => {});
+    }
+
+    if (isRunning && endTime && endTime > Date.now()) {
+      const seconds = Math.max(1, Math.round((endTime - Date.now()) / 1000));
+      notificationEngine.scheduleRestNotification(seconds)
+        .then((notifId) => {
+          if (notifId) set({ restNotificationId: notifId });
+        })
+        .catch(() => {});
+    }
+
+    set({
+      restTimerEndTime: endTime,
+      isRestTimerRunning: isRunning,
+      restNotificationId: null,
+    });
+  },
+  addRestTimerSeconds: (seconds) => {
+    const current = get();
+    if (!current.restTimerEndTime) return;
+    const newEndTime = current.restTimerEndTime + seconds * 1000;
+    current.setRestTimer(newEndTime, current.isRestTimerRunning);
+  },
 
   startQuickSession: (gymName = 'Local Gym') => {
     const id = `session_${Date.now()}`;
@@ -102,10 +128,10 @@ export const useSessionStore = create<SessionState>((set, get) => ({
   undoLastClimb: () => {
     const activeSession = Q.getActiveSession();
     if (!activeSession) return;
-    const db = require('../db/schema').getDatabase();
+    const db = getDatabase();
     
     // Find the most recent climb for this session
-    const lastClimb = db.getFirstSync("SELECT id, project_id FROM climbs WHERE session_id = ? AND deleted_at IS NULL ORDER BY created_at DESC LIMIT 1", [activeSession.id]);
+    const lastClimb = db.getFirstSync<any>("SELECT id, project_id FROM climbs WHERE session_id = ? AND deleted_at IS NULL ORDER BY created_at DESC LIMIT 1", [activeSession.id]);
     
     if (lastClimb) {
       db.runSync("UPDATE climbs SET deleted_at = ? WHERE id = ?", [Date.now(), lastClimb.id]);
@@ -119,8 +145,27 @@ export const useSessionStore = create<SessionState>((set, get) => ({
     const activeSession = Q.getActiveSession();
     const activeId = activeSession ? activeSession.id : null;
     if (!activeId) return ''; // should not happen
-    const attemptId = `att_${Date.now()}`;
+    const attemptId = `att_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
     const difficulty = Q.gradeToNumeric(payload.gradeRaw);
+
+    let outcome = payload.outcome;
+    const movesLinked = payload.movesLinked ?? 0;
+    // Flash rule: flash is strictly allowed only on attempt #1
+    if (outcome === 'flash' && movesLinked > 1) {
+      outcome = 'send';
+    }
+    // In-project logging: if project has prior attempts, flash is impossible
+    if (payload.projectId && outcome === 'flash') {
+      const db = getDatabase();
+      const priorRow = db.getFirstSync<any>(
+        `SELECT COUNT(*) as c FROM climbs WHERE project_id = ? AND deleted_at IS NULL`,
+        [payload.projectId]
+      );
+      const priorCount = priorRow?.c ?? 0;
+      if (priorCount > 0) {
+        outcome = 'send';
+      }
+    }
 
     Q.insertAttempt({
       id: attemptId,
@@ -130,14 +175,14 @@ export const useSessionStore = create<SessionState>((set, get) => ({
       normalizedDifficulty: difficulty,
       wallAngle: payload.wallAngle,
       holdType: payload.holdType,
-      outcome: payload.outcome,
+      outcome,
       failureReason: payload.failureReason ?? null,
-      attemptNumber: payload.movesLinked ?? 0,
+      attemptNumber: movesLinked,
       timestamp: Date.now(),
     });
 
     if (payload.projectId) {
-      if (payload.outcome === 'send' || payload.outcome === 'flash') {
+      if (outcome === 'send' || outcome === 'flash') {
         Q.updateProjectStatus(payload.projectId, 'sent');
       } else if (payload.movesLinked) {
         Q.updateProjectHighWaterMark(payload.projectId, payload.movesLinked);

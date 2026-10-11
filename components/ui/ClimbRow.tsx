@@ -1,8 +1,8 @@
 import React, { useRef, useEffect } from 'react';
 import { View, Text, TouchableOpacity, Animated, StyleSheet } from 'react-native';
-import { Trash2 } from 'lucide-react-native';
+import { Trash2, Zap } from 'lucide-react-native';
 import { Swipeable } from 'react-native-gesture-handler';
-import Reanimated, { FadeInDown, useSharedValue, useAnimatedStyle, withRepeat, withTiming, Easing, withDelay } from 'react-native-reanimated';
+import Reanimated, { FadeInDown, useSharedValue, useAnimatedStyle, withRepeat, withTiming, Easing, withDelay, useReducedMotion } from 'react-native-reanimated';
 import { GradePill } from './GradePill';
 import { ResultChip, ResultType } from './ResultChip';
 import { ScalePressable } from './ScalePressable';
@@ -30,11 +30,11 @@ function formatTime(timestamp: number) {
 export function ClimbRow({ climb, onEdit, onDelete, animateEntry, isNewFlash }: ClimbRowProps) {
   const { colors, space, type, radius, gradeBand } = useTheme();
   const swipeableRef = useRef<Swipeable>(null);
-
+  const reduceMotion = useReducedMotion();
   const shimmerProgress = useSharedValue(-1);
 
   useEffect(() => {
-    if (isNewFlash) {
+    if (isNewFlash && !reduceMotion) {
       shimmerProgress.value = -0.5;
       shimmerProgress.value = withDelay(
         400,
@@ -45,7 +45,7 @@ export function ClimbRow({ climb, onEdit, onDelete, animateEntry, isNewFlash }: 
         )
       );
     }
-  }, [isNewFlash]);
+  }, [isNewFlash, reduceMotion]);
 
   const shimmerStyle = useAnimatedStyle(() => {
     return {
@@ -139,7 +139,8 @@ export function ClimbRow({ climb, onEdit, onDelete, animateEntry, isNewFlash }: 
         <View style={{ flex: 1 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm, marginBottom: climb.projectTitle ? 2 : 0 }}>
             {climb.result === 'flash' ? (
-              <View style={{ backgroundColor: colors.flash, paddingHorizontal: 8, paddingVertical: 2, borderRadius: radius.pill }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: colors.flash, paddingHorizontal: 8, paddingVertical: 2, borderRadius: radius.pill }}>
+                <Zap size={11} color="#000000" strokeWidth={2.5} style={{ marginRight: 3 }} />
                 <Text style={[type.caption, { color: '#000000', fontWeight: '800' }]}>FLASH</Text>
               </View>
             ) : (

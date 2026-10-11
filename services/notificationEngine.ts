@@ -1,7 +1,7 @@
-import { Platform } from 'react-native';
-
+let Platform: any = null;
 let Notifications: any = null;
 try {
+  Platform = require('react-native').Platform;
   Notifications = require('expo-notifications');
   if (Notifications?.setNotificationHandler) {
     Notifications.setNotificationHandler({
@@ -15,7 +15,7 @@ try {
     });
   }
 } catch (e) {
-  console.warn("expo-notifications not available in this environment", e);
+  // Available in React Native environment
 }
 
 export const notificationEngine = {
@@ -56,7 +56,7 @@ export const notificationEngine = {
           sound: true,
         },
         trigger: {
-          type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
+          type: Notifications.SchedulableTriggerInputTypes?.TIME_INTERVAL || 'timeInterval',
           seconds: Math.max(1, seconds),
         },
       });

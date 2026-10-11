@@ -19,6 +19,7 @@ import {
   CheckCircle2,
   Archive,
   RotateCcw,
+  AlertCircle,
 } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "../../theme/useTheme";
@@ -26,6 +27,7 @@ import { Chip } from "../../components/ui/Chip";
 import { PrimaryButton } from "../../components/ui/PrimaryButton";
 import { SecondaryButton } from "../../components/ui/SecondaryButton";
 import { ScalePressable } from "../../components/ui/ScalePressable";
+import { EmptyState } from "../../components/ui/EmptyState";
 import { BetaSection } from "../../components/project/BetaSection";
 import { useProject, useProjectHistory, useActiveSession } from "../../db/hooks";
 import {
@@ -58,8 +60,53 @@ export default function ProjectDetailScreen() {
   const [isLogModalOpen, setIsLogModalOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  const displayTitle = project?.title || "Ripple Effect";
-  const displayGrade = project?.gradeRaw || "V6";
+  if (!project) {
+    return (
+      <View
+        style={{
+          flex: 1,
+          backgroundColor: colors.bg,
+          paddingTop: Math.max(insets.top, space.lg),
+          paddingHorizontal: space.lg,
+        }}
+      >
+        <ScalePressable
+          onPress={() => router.back()}
+          accessibilityRole="button"
+          accessibilityLabel="Back to projects"
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          style={{
+            width: 48,
+            height: 48,
+            borderRadius: radius.md,
+            backgroundColor: colors.card,
+            borderWidth: 1,
+            borderColor: colors.border,
+            alignItems: 'center',
+            justifyContent: 'center',
+            marginBottom: space.lg,
+          }}
+        >
+          <ChevronLeft size={24} color={colors.text} />
+        </ScalePressable>
+        <EmptyState
+          asCard
+          icon={<AlertCircle size={28} color={colors.textMuted} />}
+          title="Project Not Found"
+          body="This project may have been deleted or does not exist."
+          cta={
+            <PrimaryButton
+              label="BACK TO PROJECTS"
+              onPress={() => router.replace('/projects')}
+            />
+          }
+        />
+      </View>
+    );
+  }
+
+  const displayTitle = project.title;
+  const displayGrade = project.gradeRaw || "V6";
   const displayStyle =
     project?.wallAngle && project?.holdType
       ? `${project.wallAngle.charAt(0).toUpperCase() + project.wallAngle.slice(1)} • ${project.holdType.charAt(0).toUpperCase() + project.holdType.slice(1)}`
@@ -87,9 +134,14 @@ export default function ProjectDetailScreen() {
       state.startQuickSession(project.gymName || "Local Gym");
     }
 
+    let finalOutcome = result === "top" ? "send" : result;
+    if (finalOutcome === "flash" && (hasPriorAttempts || attempts > 1)) {
+      finalOutcome = "send";
+    }
+
     state.logGenericAscent({
       gradeRaw: project.gradeRaw,
-      outcome: result === "top" ? "send" : result,
+      outcome: finalOutcome,
       movesLinked: attempts,
       notes,
       projectId: project.id,

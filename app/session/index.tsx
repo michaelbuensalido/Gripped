@@ -44,6 +44,7 @@ import {
   deleteSession,
   softDeleteBoulderLog,
   undoDeleteBoulderLog,
+  updateClimb,
 } from '../../db/queries';
 import { triggerHaptic } from '../../utils/haptics';
 import { useCelebration } from '../../components/celebration/CelebrationProvider';
@@ -321,7 +322,8 @@ export default function ActiveSessionScreen() {
 
   const [isLogSheetOpen, setLogSheetOpen] = useState(climbs.filter((c: any) => c.deleted_at === null).length === 0);
   const [editingClimb, setEditingClimb] = useState<any>(null);
-  const [deletedClimbId, setDeletedClimbId] = useState<string | null>(null);
+  const [selectedQuickGrade, setSelectedQuickGrade] = useState<string | null>(null);
+  const [lastAction, setLastAction] = useState<{ type: 'logged' | 'deleted'; climbId: string } | null>(null);
   const [showMenu, setShowMenu] = useState(false);
 
   const [restRemaining, setRestRemaining] = useState(0);
@@ -494,8 +496,47 @@ export default function ActiveSessionScreen() {
 
   if (!session) {
     return (
-      <View style={{ flex: 1, backgroundColor: colors.bg, justifyContent: 'center', alignItems: 'center' }}>
-        <Text style={[type.body, { color: colors.textMuted }]}>No active session.</Text>
+      <View
+        style={{
+          flex: 1,
+          backgroundColor: colors.bg,
+          paddingTop: Math.max(insets.top, space.lg),
+          paddingHorizontal: space.lg,
+        }}
+      >
+        <ScalePressable
+          onPress={() => router.back()}
+          accessibilityRole="button"
+          accessibilityLabel="Back"
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          style={{
+            width: 48,
+            height: 48,
+            borderRadius: radius.md,
+            backgroundColor: colors.card,
+            borderWidth: 1,
+            borderColor: colors.border,
+            alignItems: 'center',
+            justifyContent: 'center',
+            marginBottom: space.lg,
+          }}
+        >
+          <ChevronLeft size={24} color={colors.text} />
+        </ScalePressable>
+        <EmptyState
+          asCard
+          icon={<Zap size={28} color={colors.accent} />}
+          title="No Active Session"
+          body="You don't have an ongoing climbing session right now. Start a new session to record your climbs and telemetry."
+          cta={
+            <PrimaryButton
+              label="+ START SESSION"
+              onPress={() => {
+                useSessionStore.getState().startQuickSession('Local Gym');
+              }}
+            />
+          }
+        />
       </View>
     );
   }
@@ -507,6 +548,19 @@ export default function ActiveSessionScreen() {
     notes: string
   ) => {
     triggerHaptic('medium');
+    if (editingClimb) {
+      updateClimb(editingClimb.id, {
+        gradeRaw: grade,
+        result: result === 'top' ? 'send' : result,
+        attempts,
+        notes,
+      });
+      setLogSheetOpen(false);
+      setEditingClimb(null);
+      setSelectedQuickGrade(null);
+      return;
+    }
+
     const newId = logGenericAscent({
       gradeRaw: grade,
       outcome: result === 'top' ? 'send' : result,
@@ -516,9 +570,10 @@ export default function ActiveSessionScreen() {
       wallAngle: activeProjectTarget ? activeProjectTarget.wallAngle : undefined,
       holdType: activeProjectTarget ? activeProjectTarget.holdType : undefined,
     });
-    setDeletedClimbId(newId);
+    setLastAction({ type: 'logged', climbId: newId });
     setLogSheetOpen(false);
     setEditingClimb(null);
+    setSelectedQuickGrade(null);
     if (activeProjectTarget) {
       setActiveProjectTarget(null);
     }
@@ -530,14 +585,18 @@ export default function ActiveSessionScreen() {
   const handleDeleteClimb = (id: string) => {
     triggerHaptic('light');
     softDeleteBoulderLog(id);
-    setDeletedClimbId(id);
+    setLastAction({ type: 'deleted', climbId: id });
   };
 
-  const handleUndoDelete = () => {
-    if (deletedClimbId) {
+  const handleUndoAction = () => {
+    if (lastAction) {
       triggerHaptic('light');
-      undoDeleteBoulderLog(deletedClimbId);
-      setDeletedClimbId(null);
+      if (lastAction.type === 'logged') {
+        softDeleteBoulderLog(lastAction.climbId);
+      } else {
+        undoDeleteBoulderLog(lastAction.climbId);
+      }
+      setLastAction(null);
     }
   };
 
@@ -563,14 +622,45 @@ export default function ActiveSessionScreen() {
   };
 
   const handleEditClimb = (climb: any) => {
-    softDeleteBoulderLog(climb.id);
+    triggerHaptic('light');
     setEditingClimb({
+      id: climb.id,
       grade: climb.grade_raw,
       result: (climb.result === 'send' ? 'top' : climb.result) as ResultType,
       attempts: climb.attempts ?? 1,
       notes: climb.notes || '',
+      projectId: climb.project_id,
     });
     setLogSheetOpen(true);
+  };
+
+  const handleEndPress = () => {
+    triggerHaptic('medium');
+    if (activeClimbs.length === 0) {
+      Alert.alert(
+        'End Session',
+        'No climbs were logged in this session. What would you like to do?',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Discard Session',
+            style: 'destructive',
+            onPress: () => {
+              triggerHaptic('heavy');
+              deleteSession(session.id);
+              setActiveSessionId(null);
+              router.replace('/');
+            },
+          },
+          {
+            text: 'Save Empty Session',
+            onPress: () => router.push('/session/end'),
+          },
+        ]
+      );
+    } else {
+      router.push('/session/end');
+    }
   };
 
   return (
@@ -640,7 +730,7 @@ export default function ActiveSessionScreen() {
             <MoreHorizontal size={20} color={colors.text} />
           </ScalePressable>
           <ScalePressable
-            onPress={() => router.push('/session/end')}
+            onPress={handleEndPress}
             haptic="medium"
             activeScale={0.94}
             accessibilityRole="button"
@@ -760,7 +850,50 @@ export default function ActiveSessionScreen() {
           />
         </View>
 
-        {/* 3. Fast Repeat / +1 Attempt Quick Action */}
+        {/* 3. Quick Grade Strip for 1-Tap Grade Pre-Selection */}
+        <View style={{ gap: space.xs }}>
+          <Text style={[type.caption, { color: colors.textMuted, letterSpacing: 1.2, textTransform: 'uppercase', fontSize: 10, fontWeight: '600' }]}>
+            QUICK GRADE LOG
+          </Text>
+          <Reanimated.ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={{ gap: space.xs, paddingVertical: 2 }}
+          >
+            {(recentGrades.length > 0
+              ? recentGrades.map((rg: any) => rg.gradeRaw)
+              : ['V1', 'V2', 'V3', 'V4', 'V5', 'V6', 'V7']
+            ).map((g: string) => (
+              <ScalePressable
+                key={g}
+                onPress={() => {
+                  triggerHaptic('light');
+                  setSelectedQuickGrade(g);
+                  setEditingClimb(null);
+                  setLogSheetOpen(true);
+                }}
+                haptic="light"
+                activeScale={0.92}
+                style={{
+                  height: 38,
+                  paddingHorizontal: space.md,
+                  borderRadius: radius.pill,
+                  backgroundColor: colors.card,
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <Text style={[type.heading, { color: colors.text, fontSize: 13, fontWeight: '600' }]}>
+                  {g}
+                </Text>
+              </ScalePressable>
+            ))}
+          </Reanimated.ScrollView>
+        </View>
+
+        {/* 4. Fast Repeat / +1 Attempt Quick Action */}
         {activeClimbs.length > 0 && (
           <ScalePressable
             onPress={() => {
@@ -775,7 +908,7 @@ export default function ActiveSessionScreen() {
                 movesLinked: 1,
                 notes: '',
               });
-              setDeletedClimbId(attemptId);
+              setLastAction({ type: 'logged', climbId: attemptId });
               setRestTimer(Date.now() + 3 * 60 * 1000, true);
             }}
             haptic="medium"
@@ -803,7 +936,7 @@ export default function ActiveSessionScreen() {
           </ScalePressable>
         )}
 
-        {/* 4. Active Projects Strip */}
+        {/* 5. Active Projects Strip */}
         {activeProjects.length > 0 && (
           <View>
             <SectionHeader title="Active Gym Projects" />
@@ -828,7 +961,7 @@ export default function ActiveSessionScreen() {
                           movesLinked: 1,
                           notes: '',
                         });
-                        setDeletedClimbId(attemptId);
+                        setLastAction({ type: 'logged', climbId: attemptId });
                         setRestTimer(Date.now() + 3 * 60 * 1000, true);
                       }}
                     />
@@ -889,27 +1022,27 @@ export default function ActiveSessionScreen() {
         onClose={() => {
           setLogSheetOpen(false);
           setEditingClimb(null);
+          setSelectedQuickGrade(null);
         }}
         onSave={handleSaveLog}
-        initialGrade={editingClimb?.grade || activeProjectTarget?.gradeRaw || recentGrades[0]?.gradeRaw || 'V4'}
+        initialGrade={editingClimb?.grade || selectedQuickGrade || activeProjectTarget?.gradeRaw || recentGrades[0]?.gradeRaw || 'V4'}
         initialResult={editingClimb?.result || (activeProjectTarget ? 'attempt' : 'top')}
         initialAttempts={editingClimb?.attempts || 1}
         initialNotes={editingClimb?.notes || ''}
-        lockGrade={Boolean(activeProjectTarget && !editingClimb)}
-        disableFlash={Boolean(activeProjectTarget && ((activeProjectTarget.attempts || 0) > 0 || (activeProjectTarget.burns || 0) > 0))}
+        lockGrade={Boolean(activeProjectTarget || (editingClimb && editingClimb.projectId))}
+        disableFlash={Boolean(
+          (activeProjectTarget && ((activeProjectTarget.attempts || 0) > 0 || (activeProjectTarget.burns || 0) > 0)) ||
+          (editingClimb && (editingClimb.attempts || 1) > 1)
+        )}
         title={activeProjectTarget ? `Log Attempt • ${activeProjectTarget.title}` : editingClimb ? 'Edit Climb' : 'Log Climb'}
       />
 
       {/* Undo Toast */}
       <UndoToast
-        visible={!!deletedClimbId}
-        message={
-          climbs.find((c: any) => c.id === deletedClimbId)?.deleted_at === null
-            ? 'Climb logged'
-            : 'Climb deleted'
-        }
-        onUndo={handleUndoDelete}
-        onDismiss={() => setDeletedClimbId(null)}
+        visible={!!lastAction}
+        message={lastAction?.type === 'logged' ? 'Climb logged' : 'Climb deleted'}
+        onUndo={handleUndoAction}
+        onDismiss={() => setLastAction(null)}
       />
     </View>
   );

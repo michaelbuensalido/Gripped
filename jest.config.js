@@ -20,4 +20,7 @@ module.exports = {
     'App\\.test\\.tsx',
     '/components/',
   ],
+  globals: {
+    __DEV__: true,
+  },
 };
