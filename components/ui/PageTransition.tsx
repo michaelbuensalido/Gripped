@@ -1,5 +1,5 @@
 import React from 'react';
-import { ViewStyle, StyleSheet, ViewProps } from 'react-native';
+import { ViewProps } from 'react-native';
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 
 export function PageTransition({ children, style, ...props }: ViewProps & { children: React.ReactNode }) {

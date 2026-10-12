@@ -7,6 +7,7 @@ import {
   Alert,
   StyleSheet,
   Animated,
+  Pressable,
 } from 'react-native';
 import Reanimated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -87,6 +88,7 @@ const LiveTimer = React.memo(({ startTime, textStyle }: { startTime: number; tex
 
   return <Text style={textStyle}>{formatActiveDuration(elapsed)}</Text>;
 });
+LiveTimer.displayName = 'LiveTimer';
 
 // Telemetry Bento Stat Tile
 function TelemetryBentoTile({
@@ -441,7 +443,7 @@ export default function ActiveSessionScreen() {
       );
       setTotalSessionsCount(sessionRow?.c ?? 0);
     } catch (e) {
-      console.log('Error fetching global stats', e);
+      console.warn('Error fetching global stats', e);
     }
   }, [session?.id]);
 
@@ -665,6 +667,12 @@ export default function ActiveSessionScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
+      {showMenu && (
+        <Pressable
+          style={[StyleSheet.absoluteFill, { zIndex: 5 }]}
+          onPress={() => setShowMenu(false)}
+        />
+      )}
       {/* Top Header Bar */}
       <View
         style={{
@@ -765,6 +773,8 @@ export default function ActiveSessionScreen() {
             ]}
           >
             <TouchableOpacity
+              accessibilityRole="button"
+              accessibilityLabel="Change gym"
               style={{
                 padding: space.md,
                 borderBottomWidth: 1,
@@ -777,7 +787,12 @@ export default function ActiveSessionScreen() {
             >
               <Text style={[type.body, { color: colors.text }]}>Change gym</Text>
             </TouchableOpacity>
-            <TouchableOpacity onPress={handleDiscardSession} style={{ padding: space.md }}>
+            <TouchableOpacity
+              accessibilityRole="button"
+              accessibilityLabel="Discard session"
+              onPress={handleDiscardSession}
+              style={{ padding: space.md }}
+            >
               <Text style={[type.body, { color: colors.dangerText }]}>Discard session</Text>
             </TouchableOpacity>
           </View>
@@ -860,9 +875,8 @@ export default function ActiveSessionScreen() {
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={{ gap: space.xs, paddingVertical: 2 }}
           >
-            {(recentGrades.length > 0
-              ? recentGrades.map((rg: any) => rg.gradeRaw)
-              : ['V1', 'V2', 'V3', 'V4', 'V5', 'V6', 'V7']
+            {Array.from(
+              new Set(['V2', 'V3', 'V4', 'V5', 'V6', ...recentGrades.map((rg: any) => rg.gradeRaw)])
             ).map((g: string) => (
               <ScalePressable
                 key={g}
@@ -897,7 +911,7 @@ export default function ActiveSessionScreen() {
         {activeClimbs.length > 0 && (
           <ScalePressable
             onPress={() => {
-              const lastClimb = activeClimbs[0];
+              const lastClimb = activeClimbs[activeClimbs.length - 1];
               const gradeToUse = {
                 gradeRaw: lastClimb.grade_raw,
                 gradeIndex: lastClimb.grade_index,
@@ -931,7 +945,7 @@ export default function ActiveSessionScreen() {
           >
             <Plus size={20} color={colors.attemptText} />
             <Text style={[type.heading, { color: colors.text, fontSize: 15, fontWeight: '600' }]}>
-              +1 Attempt on {activeClimbs[0]?.grade_raw}
+              +1 Attempt on {activeClimbs[activeClimbs.length - 1]?.grade_raw}
             </Text>
           </ScalePressable>
         )}

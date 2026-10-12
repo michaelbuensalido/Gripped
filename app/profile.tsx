@@ -203,6 +203,7 @@ export default function LogbookScreen() {
                   onPress={() => setFilters(f => ({ ...f, viewMode: 'list' }))}
                   accessibilityRole="button"
                   accessibilityLabel="List view"
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 4 }}
                   style={{
                     width: 36,
                     height: 36,
@@ -220,6 +221,7 @@ export default function LogbookScreen() {
                   onPress={() => setFilters(f => ({ ...f, viewMode: 'calendar' }))}
                   accessibilityRole="button"
                   accessibilityLabel="Calendar view"
+                  hitSlop={{ top: 8, bottom: 8, left: 4, right: 8 }}
                   style={{
                     width: 36,
                     height: 36,
@@ -385,6 +387,7 @@ export default function LogbookScreen() {
                 onPress={() => setIsFilterModalOpen(false)}
                 accessibilityRole="button"
                 accessibilityLabel="Close filters"
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                 style={{
                   width: 36,
                   height: 36,

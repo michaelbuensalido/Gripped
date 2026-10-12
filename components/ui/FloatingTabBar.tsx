@@ -105,6 +105,7 @@ function CenterSessionButton({ activeSession, startOrResume, onOpenStartSheet }:
       <Text 
         numberOfLines={1}
         adjustsFontSizeToFit
+        maxFontSizeMultiplier={1.25}
         style={{ 
           color: colors.textMuted, 
           fontFamily: type.heading.fontFamily, 
@@ -145,7 +146,15 @@ export function FloatingTabBar({ state, descriptors, navigation }: any) {
     return () => { showSub.remove(); hideSub.remove(); };
   }, []);
 
-  if (keyboardVisible || state.routes[state.index].name.startsWith('session')) return null;
+  const currentRouteName = state.routes[state.index]?.name;
+  const currentOptions = descriptors[state.routes[state.index]?.key]?.options;
+  if (
+    keyboardVisible ||
+    !visibleTabs.includes(currentRouteName) ||
+    currentOptions?.tabBarStyle?.display === 'none'
+  ) {
+    return null;
+  }
 
   const routes = state.routes.filter((r: any) => visibleTabs.includes(r.name));
 
@@ -212,6 +221,7 @@ export function FloatingTabBar({ state, descriptors, navigation }: any) {
                   <Text
                     numberOfLines={1}
                     adjustsFontSizeToFit
+                    maxFontSizeMultiplier={1.25}
                     style={{
                       color: isFocused ? colors.accentText : colors.textMuted,
                       fontFamily: type.heading.fontFamily,

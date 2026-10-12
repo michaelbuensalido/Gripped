@@ -119,7 +119,7 @@ export default function GymDetailScreen() {
 
         {sentProjects.length > 0 && (
           <>
-            <Text style={[type.label, { color: colors.textMuted, marginBottom: space.md, marginTop: space['2xl'] }]}>COMPLETED</Text>
+            <Text style={[type.label, { color: colors.textMuted, marginBottom: space.md, marginTop: space.xxl }]}>COMPLETED</Text>
             <View style={{ gap: space.md }}>
               {sentProjects.map(p => (
                 <ProjectCard 

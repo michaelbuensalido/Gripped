@@ -429,7 +429,7 @@ export default function HomeScreen() {
                     Add a project
                   </Text>
                   <Text style={{ color: colors.textMuted, fontSize: 13 }}>
-                    Track a climb you're working on
+                    Track a climb you&apos;re working on
                   </Text>
                 </ScalePressable>
               ) : (

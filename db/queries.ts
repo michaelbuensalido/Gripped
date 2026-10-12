@@ -1,5 +1,6 @@
 import { getDerivedProjectStatus } from '../utils/projectStatus';
 import { isSend } from '../utils/isSend';
+import { calculateWeeklyStreak } from '../utils/analyticsLogic';
 import { getDatabase } from './schema';
 
 import type { Session, BoulderGroup, BoulderLog, FailureReason, Project, ProjectStatus, Outcome, Sector, Route, Attempt, HoldType, WallAngle, RouteStatus } from '../types';
@@ -522,7 +523,7 @@ export function insertProject(project: any): void {
 }
 
 export function gradeToNumeric(gradeRaw: string): number {
-  return parseInt(gradeRaw.replace('V', '')) || 0;
+  return parseInt(gradeRaw.replace(/^[vV]/, '')) || 0;
 }
 
 export function getClimbsForSession(sessionId: string): any[] {
@@ -737,63 +738,125 @@ export function getHardestSendTrend(period: ProgressPeriod, nowMs: number = Date
   return rows;
 }
 
-// 7. Streak (consecutive Mon-Sun weeks with at least one session)
-export function getStreak(nowMs: number = Date.now()) {
+/** Peak grade index sent in the period. */
+export function getHardestSend(period: ProgressPeriod, nowMs: number = Date.now()): number | null {
+  const since = getSince(period, nowMs);
   const db = getDatabase();
-  // Group sessions by year-week (Mon-Sun).
-  // strftime('%Y-%W') gives week number.
-  // Note: %W treats Monday as start of week.
-  const rows = db.getAllSync<{ week: string }>(`
-    SELECT DISTINCT strftime('%Y-%W', datetime(started_at / 1000, 'unixepoch', 'localtime')) as week
+  const row = db.getFirstSync<{ max_grade: number | null }>(`
+    SELECT MAX(grade_index) as max_grade
+    FROM climbs
+    WHERE logged_at >= ? AND logged_at <= ? AND deleted_at IS NULL AND (result = 'send' OR result = 'top' OR result = 'flash')
+  `, [since, nowMs]);
+  return row?.max_grade ?? null;
+}
+
+// 7. Streak (consecutive Mon-Sun weeks with at least one session)
+export function getStreak(nowMs: number = Date.now()): number {
+  const db = getDatabase();
+  const rows = db.getAllSync<{ started_at: number }>(`
+    SELECT started_at
     FROM sessions
     WHERE deleted_at IS NULL
-    ORDER BY week DESC
+    ORDER BY started_at DESC
   `);
-  
   if (rows.length === 0) return 0;
-  
-  // Calculate current week
-  const currentWeek = new Date(nowMs);
-  // Manual formatting to match SQLite '%Y-%W' can be tricky, 
-  // so let's rely on parsing SQLite's response and just walking backwards.
-  // Wait, if they missed this week, streak is 0?
-  // Usually streak allows missing current week until Sunday.
-  // Let's just count consecutive strings of weeks in the result array.
-  
-  let streak = 0;
-  
-  // To do this reliably, we can convert strings to actual week indices.
-  const parseWeek = (yW: string) => {
-    const [y, w] = yW.split('-');
-    return parseInt(y) * 52 + parseInt(w);
-  };
-  
-  if (rows.length > 0) {
-    const lastWeekVal = parseWeek(rows[0].week);
-    // Find expected current week val using SQLite (we can just ask sqlite)
-    const currentRow = db.getFirstSync<{ week: string }>(`SELECT strftime('%Y-%W', datetime(?, 'unixepoch', 'localtime')) as week`, [Math.floor(nowMs/1000)]);
-    const currentWeekVal = currentRow ? parseWeek(currentRow.week) : 0;
-    
-    // If the most recent session is older than last week, streak is 0.
-    if (currentWeekVal - lastWeekVal > 1) {
-      return 0;
-    }
-    
-    streak = 1;
-    let prevVal = lastWeekVal;
-    
-    for (let i = 1; i < rows.length; i++) {
-      const val = parseWeek(rows[i].week);
-      if (prevVal - val === 1) {
-        streak++;
-        prevVal = val;
-      } else {
-        break;
-      }
-    }
+  return calculateWeeklyStreak(rows.map(r => r.started_at), nowMs);
+}
+
+export interface FilteredClimbItem {
+  id: string;
+  sessionId: string;
+  gymName: string;
+  gradeRaw: string;
+  gradeIndex: number;
+  result: string;
+  attempts: number;
+  wallAngle: string | null;
+  holdType: string | null;
+  notes: string | null;
+  loggedAt: number;
+}
+
+/** Climbs filtered by specific grade index and timeframe (e.g. from pyramid tap). */
+export function getClimbsForGrade(
+  period: ProgressPeriod,
+  gradeIndex: number,
+  nowMs: number = Date.now()
+): FilteredClimbItem[] {
+  const since = getSince(period, nowMs);
+  const db = getDatabase();
+  return db.getAllSync<FilteredClimbItem>(`
+    SELECT c.id, c.session_id as sessionId, IFNULL(s.gym_name, 'Session') as gymName,
+           c.grade_raw as gradeRaw, c.grade_index as gradeIndex,
+           c.result, c.attempts, c.wall_angle as wallAngle,
+           c.hold_type as holdType, c.notes, c.logged_at as loggedAt
+    FROM climbs c
+    LEFT JOIN sessions s ON s.id = c.session_id
+    WHERE c.logged_at >= ? AND c.deleted_at IS NULL AND c.grade_index = ?
+    ORDER BY c.logged_at DESC
+  `, [since, gradeIndex]);
+}
+
+/** Climbs filtered by metric (volume, flash, hardest) and optional week. */
+export function getClimbsForStat(
+  stat: 'volume' | 'flash' | 'hardest' | 'all',
+  period: ProgressPeriod,
+  week?: string,
+  nowMs: number = Date.now()
+): FilteredClimbItem[] {
+  const since = getSince(period, nowMs);
+  const db = getDatabase();
+  let whereClause = `c.logged_at >= ? AND c.deleted_at IS NULL`;
+  const params: any[] = [since];
+
+  if (stat === 'flash') {
+    whereClause += ` AND c.result = 'flash'`;
+  } else if (stat === 'hardest') {
+    whereClause += ` AND (c.result = 'send' OR c.result = 'top' OR c.result = 'flash')`;
   }
-  
-  return streak;
+
+  if (week) {
+    whereClause += ` AND strftime('%Y-%W', datetime(c.logged_at / 1000, 'unixepoch', 'localtime')) = ?`;
+    params.push(week);
+  }
+
+  return db.getAllSync<FilteredClimbItem>(`
+    SELECT c.id, c.session_id as sessionId, IFNULL(s.gym_name, 'Session') as gymName,
+           c.grade_raw as gradeRaw, c.grade_index as gradeIndex,
+           c.result, c.attempts, c.wall_angle as wallAngle,
+           c.hold_type as holdType, c.notes, c.logged_at as loggedAt
+    FROM climbs c
+    LEFT JOIN sessions s ON s.id = c.session_id
+    WHERE ${whereClause}
+    ORDER BY c.logged_at DESC
+  `, params);
+}
+
+/** Sessions filtered by period and optional week. */
+export function getSessionsForPeriod(
+  period: ProgressPeriod,
+  week?: string,
+  nowMs: number = Date.now()
+): any[] {
+  const since = getSince(period, nowMs);
+  const db = getDatabase();
+  let whereClause = `s.started_at >= ? AND s.deleted_at IS NULL`;
+  const params: any[] = [since];
+
+  if (week) {
+    whereClause += ` AND strftime('%Y-%W', datetime(s.started_at / 1000, 'unixepoch', 'localtime')) = ?`;
+    params.push(week);
+  }
+
+  return db.getAllSync<any>(`
+    SELECT s.*,
+           (SELECT COUNT(*) FROM climbs c WHERE c.session_id = s.id AND c.deleted_at IS NULL) as climb_count,
+           (SELECT COUNT(*) FROM climbs c WHERE c.session_id = s.id AND c.deleted_at IS NULL AND (c.result = 'send' OR c.result = 'top' OR c.result = 'flash')) as send_count,
+           (SELECT MAX(c.grade_index) FROM climbs c WHERE c.session_id = s.id AND c.deleted_at IS NULL AND (c.result = 'send' OR c.result = 'top' OR c.result = 'flash')) as max_grade
+    FROM sessions s
+    WHERE ${whereClause}
+    ORDER BY s.started_at DESC
+  `, params);
 }
 
 export interface HomeSummary {

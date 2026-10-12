@@ -35,11 +35,12 @@ export function PrimaryButton({
       accessibilityRole="button"
       accessibilityLabel={label}
       accessibilityState={{ disabled: isDisabled, busy: loading }}
+      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
       style={[
         {
           backgroundColor: isDisabled ? colors.cardMuted : colors.accent,
-          height: 56,
           minHeight: 56,
+          paddingVertical: 12,
           borderRadius: radius.pill,
           flexDirection: 'row',
           alignItems: 'center',
@@ -65,6 +66,7 @@ export function PrimaryButton({
         <>
           {icon && <View style={{ marginRight: 8 }}>{icon}</View>}
           <Text
+            maxFontSizeMultiplier={1.35}
             style={[
               type.heading,
               {
@@ -72,6 +74,7 @@ export function PrimaryButton({
                 fontSize: 16,
                 letterSpacing: 0.3,
                 fontWeight: '700',
+                textAlign: 'center',
               },
             ]}
           >

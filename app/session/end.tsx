@@ -9,6 +9,7 @@ import {
   Platform,
   Image,
   ScrollView,
+  Keyboard,
 } from 'react-native';
 import Reanimated from 'react-native-reanimated';
 import { useRouter, Redirect } from 'expo-router';
@@ -84,42 +85,28 @@ export default function EndSessionScreen() {
     setPhotos((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const doFinish = () => {
-    if (isSubmitting.current) return;
-    isSubmitting.current = true;
-    triggerHaptic('medium');
-
-    useSessionStore.getState().setRestTimer(null, false);
-    completeSessionWrapUp(
-      session.id,
-      Date.now(),
-      session.title || 'Session',
-      notes.trim(),
-      session.gymName,
-      effort,
-      photos,
-      skinState,
-      fingerFatigue
-    );
-    setActiveSessionId(null);
-    router.replace('/session/summary');
-  };
-
   const handleFinish = () => {
-    if (isSubmitting.current) return;
-    Alert.alert(
-      'Finish Session',
-      activeClimbs.length === 0
-        ? 'No climbs were logged in this session. Save empty session?'
-        : 'Ready to wrap up and save your climbing session?',
-      [
-        { text: 'Keep Editing', style: 'cancel' },
-        {
-          text: 'Save & Finish',
-          onPress: doFinish,
-        },
-      ]
-    );
+    try {
+      Keyboard.dismiss();
+      triggerHaptic('medium');
+
+      useSessionStore.getState().setRestTimer(null, false);
+      completeSessionWrapUp(
+        session.id,
+        Date.now(),
+        session.title || 'Session',
+        notes.trim(),
+        session.gymName || '',
+        effort ?? null,
+        photos ?? [],
+        skinState ?? null,
+        fingerFatigue ?? null
+      );
+      setActiveSessionId(null);
+      router.replace('/session/summary');
+    } catch (err) {
+      console.error('Error completing session wrap up:', err);
+    }
   };
 
   const handleDiscard = () => {
@@ -156,7 +143,11 @@ export default function EndSessionScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={{ flex: 1, marginTop: space.lg }}
       >
-        <Reanimated.ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ gap: space.xl, paddingBottom: 140 }}>
+        <Reanimated.ScrollView
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ gap: space.xl, paddingBottom: 140 }}
+        >
 
           {/* Empty session warning banner if 0 climbs */}
           {activeClimbs.length === 0 && (
@@ -358,6 +349,9 @@ export default function EndSessionScreen() {
               value={notes}
               onChangeText={setNotes}
               multiline
+              blurOnSubmit={true}
+              returnKeyType="done"
+              onSubmitEditing={() => Keyboard.dismiss()}
               placeholder="How did you feel? What clicked today?"
               placeholderTextColor={colors.textWhiteMuted}
               style={[

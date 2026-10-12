@@ -12,6 +12,8 @@ import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withSpring,
+  withSequence,
+  withDelay,
   useReducedMotion,
 } from 'react-native-reanimated';
 import { triggerHaptic } from '../../utils/haptics';
@@ -62,11 +64,21 @@ export function ScalePressable({
 
   const handlePressIn = () => {
     if (disabled || reduceMotion) return;
-    scale.value = withSpring(activeScale, {
-      damping: motion.pressSpring?.damping ?? 18,
-      stiffness: motion.pressSpring?.stiffness ?? 350,
-      mass: 0.8,
-    });
+    scale.value = withSequence(
+      withSpring(activeScale, {
+        damping: motion.pressSpring?.damping ?? 18,
+        stiffness: motion.pressSpring?.stiffness ?? 350,
+        mass: 0.8,
+      }),
+      withDelay(
+        150,
+        withSpring(1, {
+          damping: motion.pressSpring?.damping ?? 18,
+          stiffness: motion.pressSpring?.stiffness ?? 350,
+          mass: 0.8,
+        })
+      )
+    );
   };
 
   const handlePressOut = () => {
@@ -80,6 +92,13 @@ export function ScalePressable({
 
   const handlePress = (e: GestureResponderEvent) => {
     if (disabled) return;
+    if (!reduceMotion) {
+      scale.value = withSpring(1, {
+        damping: motion.pressSpring?.damping ?? 18,
+        stiffness: motion.pressSpring?.stiffness ?? 350,
+        mass: 0.8,
+      });
+    }
     if (haptic !== 'none') {
       triggerHaptic(haptic);
     }

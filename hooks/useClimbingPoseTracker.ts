@@ -277,16 +277,6 @@ function useClimbingPoseTrackerNative({
       const now = Date.now();
       if (now - lastDiagnosticLogRef.current >= DIAGNOSTIC_LOG_INTERVAL_MS) {
         lastDiagnosticLogRef.current = now;
-        console.log(
-          '[PoseTracker] Tracked joints count:',
-          Object.keys(rawLandmarks).length,
-          '| Confident joints:',
-          validLandmarksCount,
-          '| HasClimber:',
-          verifiedClimber,
-          '| HandOnHold:',
-          verifiedClimber ? isHandOnHold : false
-        );
       }
 
       setPoseState({
@@ -366,8 +356,6 @@ function useClimbingPoseTrackerNative({
         'Auto-enabling kinematic simulation fallback.',
         'To enable real AI detection, install a VisionCamera Frame Processor Plugin with ML Kit Pose Detection.'
       );
-    } else {
-      console.log('[PoseTracker] ✅ Native ML pose plugin loaded successfully.');
     }
   }, []);
 
@@ -456,16 +444,6 @@ function useClimbingPoseTrackerExpoGo({
       const now = Date.now();
       if (now - lastDiagnosticLogRef.current >= DIAGNOSTIC_LOG_INTERVAL_MS) {
         lastDiagnosticLogRef.current = now;
-        console.log(
-          '[PoseTracker] Tracked joints count:',
-          Object.keys(rawLandmarks).length,
-          '| Confident joints:',
-          validLandmarksCount,
-          '| HasClimber:',
-          verifiedClimber,
-          '| HandOnHold:',
-          verifiedClimber ? isHandOnHold : false
-        );
       }
 
       setPoseState({

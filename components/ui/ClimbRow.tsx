@@ -1,7 +1,7 @@
 import React, { useRef, useEffect } from 'react';
 import { View, Text, TouchableOpacity, Animated, StyleSheet } from 'react-native';
 import { Trash2, Zap } from 'lucide-react-native';
-import { Swipeable } from 'react-native-gesture-handler';
+import { Swipeable, RectButton } from 'react-native-gesture-handler';
 import Reanimated, { FadeInDown, useSharedValue, useAnimatedStyle, withRepeat, withTiming, Easing, withDelay, useReducedMotion } from 'react-native-reanimated';
 import { GradePill } from './GradePill';
 import { ResultChip, ResultType } from './ResultChip';
@@ -27,7 +27,7 @@ function formatTime(timestamp: number) {
   return `${hour}:${m} ${ampm}`;
 }
 
-export function ClimbRow({ climb, onEdit, onDelete, animateEntry, isNewFlash }: ClimbRowProps) {
+export const ClimbRow = React.memo(function ClimbRow({ climb, onEdit, onDelete, animateEntry, isNewFlash }: ClimbRowProps) {
   const { colors, space, type, radius, gradeBand } = useTheme();
   const swipeableRef = useRef<Swipeable>(null);
   const reduceMotion = useReducedMotion();
@@ -62,7 +62,7 @@ export function ClimbRow({ climb, onEdit, onDelete, animateEntry, isNewFlash }: 
     });
 
     return (
-      <TouchableOpacity
+      <RectButton
         style={{
           width: 80,
           backgroundColor: colors.danger,
@@ -82,7 +82,7 @@ export function ClimbRow({ climb, onEdit, onDelete, animateEntry, isNewFlash }: 
         <Animated.View style={{ opacity }}>
           <Trash2 size={24} color={colors.textOnAccent} />
         </Animated.View>
-      </TouchableOpacity>
+      </RectButton>
     );
   };
 
@@ -171,4 +171,5 @@ export function ClimbRow({ climb, onEdit, onDelete, animateEntry, isNewFlash }: 
       {content}
     </Reanimated.View>
   );
-}
+});
+ClimbRow.displayName = 'ClimbRow';

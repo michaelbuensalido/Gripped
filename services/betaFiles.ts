@@ -46,3 +46,14 @@ export function deleteProjectClipDir(projectId: string): void {
     // ignore
   }
 }
+
+/** Checks whether a clip file exists on disk. Returns false if error or missing. */
+export function checkClipFileExists(uri: string): boolean {
+  try {
+    const { File } = fs();
+    const f = new File(uri);
+    return Boolean(f.exists);
+  } catch {
+    return false;
+  }
+}

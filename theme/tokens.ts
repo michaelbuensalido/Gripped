@@ -15,7 +15,7 @@ export const colors = {
 
   // Text
   text: "#FFFFFF",
-  textMuted: "rgba(255, 255, 255, 0.45)",
+  textMuted: "rgba(255, 255, 255, 0.60)",
   textOnAccent: "#FFFFFF",
 
   // Accent: Primary Neon Violet / Lavender

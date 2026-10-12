@@ -23,7 +23,6 @@ class LiveActivityManager {
     if (Platform.OS === 'ios' && LiveActivities) {
       const eventEmitter = new NativeEventEmitter(LiveActivities);
       eventEmitter.addListener('onLiveActivityStateChanged', (event: any) => {
-        console.log('[LiveActivity] Received action from native widget:', event);
         const store = useSessionStore.getState();
 
         if (event.action === 'AdjustRest') {
@@ -57,14 +56,11 @@ class LiveActivityManager {
 
       AppState.addEventListener('change', async (nextAppState) => {
         if (nextAppState === 'active') {
-          console.log(`[DIAGNOSTIC TRACE] App Foregrounded at: ${Date.now()}ms`);
-
           try {
             // 1. Process Offline Queue via App Groups (User specified)
             if (LiveActivities.getPendingOfflineAscents) {
               const pendingStr = await LiveActivities.getPendingOfflineAscents();
               if (pendingStr && pendingStr.trim() !== '') {
-                console.log(`[LiveActivity] Found pending offline ascents: ${pendingStr}`);
                 const events = pendingStr.split(',');
                 const store = useSessionStore.getState();
                 for (const event of events) {
@@ -72,7 +68,6 @@ class LiveActivityManager {
                   if (parts.length === 2) {
                     const status = parts[1];
                     if (status === 'SEND' || status === 'ATTEMPT') {
-                      console.log(`[LiveActivity] Dispatching queued offline ascent: ${status}`);
                       store.logGenericAscent({ gradeRaw: 'V?', outcome: status as 'SEND' | 'ATTEMPT' === 'SEND' ? 'send' : 'attempt' });
                     }
                   }
@@ -88,7 +83,6 @@ class LiveActivityManager {
             if (LiveActivities.getPendingWidgetAction) {
               const result = await LiveActivities.getPendingWidgetAction();
               const action: string = result?.action ?? '';
-              console.log(`[DIAGNOSTIC TRACE] getPendingWidgetAction → action="${action}"`);
 
               const store = useSessionStore.getState();
 
@@ -104,7 +98,6 @@ class LiveActivityManager {
               }
 
               if (action === 'SEND' || action === 'ATTEMPT') {
-                console.log(`[DIAGNOSTIC TRACE] Applying widget action: ${action}`);
                 if (LiveActivities.clearActiveRestAction) await LiveActivities.clearActiveRestAction();
                 // Since we already process PendingOfflineAscents above which covers SEND and ATTEMPT,
                 // we probably don't need to do it again here. But if the queue failed, this acts as a fallback.
@@ -163,7 +156,6 @@ class LiveActivityManager {
         this.currentSessionStartTime / 1000,
         0
       );
-      console.log('[LiveActivity] ✅ startActivity called');
     } catch (e) {
       console.warn('[LiveActivity] startActivity failed', e);
     }
@@ -226,7 +218,6 @@ class LiveActivityManager {
         this.totalSets,
         this.isComplete
       );
-      console.log('[LiveActivity] ✅ updateActivity called — sends:', this.currentSends, 'rest:', restTarget, 'zone:', this.currentZoneName, 'isComplete:', this.isComplete);
     } catch (e) {
       console.warn('[LiveActivity] updateActivity failed', e);
     }
@@ -237,7 +228,6 @@ class LiveActivityManager {
 
     try {
       LiveActivities.endActivity();
-      console.log('[LiveActivity] ✅ endActivity called');
     } catch (e) {
       console.warn('[LiveActivity] endActivity failed', e);
     }

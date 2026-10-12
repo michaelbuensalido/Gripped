@@ -34,7 +34,7 @@ export default function OnboardingScreen() {
         {step === 1 && (
           <View>
             <Text style={[type.display, { color: colors.text, marginBottom: space.sm }]}>Grade System</Text>
-            <Text style={[type.body, { color: colors.textMuted, marginBottom: space['2xl'] }]}>Which grading system does your home gym use?</Text>
+            <Text style={[type.body, { color: colors.textMuted, marginBottom: space.xxl }]}>Which grading system does your home gym use?</Text>
             
             {['V-Scale', 'Fontainebleau'].map((sys) => (
               <TouchableOpacity 
@@ -58,7 +58,7 @@ export default function OnboardingScreen() {
         {step === 2 && (
           <View>
             <Text style={[type.display, { color: colors.text, marginBottom: space.sm }]}>Experience Level</Text>
-            <Text style={[type.body, { color: colors.textMuted, marginBottom: space['2xl'] }]}>This helps us tailor your insights.</Text>
+            <Text style={[type.body, { color: colors.textMuted, marginBottom: space.xxl }]}>This helps us tailor your insights.</Text>
             
             {['Beginner (V0 - V2)', 'Intermediate (V3 - V5)', 'Advanced (V6 - V8)', 'Expert (V9+)'].map((lvl) => (
               <TouchableOpacity 
@@ -81,8 +81,8 @@ export default function OnboardingScreen() {
 
         {step === 3 && (
           <View>
-            <Text style={[type.display, { color: colors.text, marginBottom: space.sm }]}>You're all set.</Text>
-            <Text style={[type.body, { color: colors.textMuted, marginBottom: space['2xl'] }]}>Ready to log your first session.</Text>
+            <Text style={[type.display, { color: colors.text, marginBottom: space.sm }]}>You&apos;re all set.</Text>
+            <Text style={[type.body, { color: colors.textMuted, marginBottom: space.xxl }]}>Ready to log your first session.</Text>
           </View>
         )}
       </ScrollView>
