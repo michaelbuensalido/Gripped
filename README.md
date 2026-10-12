@@ -1,6 +1,6 @@
-# CruxLog 🧗
+# Gripped 
 
-CruxLog is an offline-first, tactile bouldering and climbing tracking app built with React Native and Expo. It delivers a fast, dark-glassmorphic ledger for logging attempts in under 10 seconds, managing multi-session projects, breaking down fall diagnostics, and visualizing progression pyramids.
+Gripped is a mat-ready, tactile climbing and bouldering ledger. It is designed to track sessions, hangboard routines, grade pyramids, and volume stats with precision and focus.
 
 ---
 
