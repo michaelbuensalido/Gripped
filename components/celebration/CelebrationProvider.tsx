@@ -53,7 +53,7 @@ export const CelebrationProvider: React.FC<{ children: React.ReactNode }> = ({ c
     bigTimer.current = setTimeout(() => {
       setBigData(null);
       setConfetti(false);
-    }, 5000);
+    }, 15000);
   }, []);
 
   const triggerStreak = useCallback((weeks: number) => {

@@ -17,20 +17,6 @@ function getRelativeTime(timestamp: number | null) {
   return `${days} days ago`;
 }
 
-function HoldPlaceholder({ color, bg }: { color: string; bg: string }) {
-  return (
-    <View style={{ width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center', backgroundColor: bg }}>
-      <Svg width={80} height={80} viewBox="0 0 100 100">
-        <Path
-          d="M80 30 C90 20, 100 40, 95 60 C90 80, 70 90, 50 85 C30 80, 20 60, 25 40 C30 20, 70 40, 80 30Z"
-          fill={color}
-          opacity={0.15}
-        />
-      </Svg>
-    </View>
-  );
-}
-
 export function ProjectCard({ 
   project, 
   onLogAttempt,
@@ -170,7 +156,7 @@ export function ProjectCard({
         </View>
       )}
 
-      <View style={{ zIndex: 5, paddingLeft: space.xs, maxWidth: '75%' }}>
+      <View style={{ zIndex: 5, paddingLeft: space.xs, maxWidth: '90%' }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: space.sm }}>
           <GradePill gradeIndex={project.normalizedDifficulty ?? project.grade_index ?? 0} label={project.gradeRaw ?? project.grade_raw ?? '—'} />
           {isArchived && (
@@ -188,7 +174,7 @@ export function ProjectCard({
           {project.attempts > 0 ? (
             <Text style={[type.caption, { color: colors.textWhiteMuted, flex: 1 }]} numberOfLines={1}>
               {`${project.attempts} burns`}
-              {project.highWaterMarkMoves ? ` · ${project.highWaterMarkMoves} moves linked` : ''}
+              {project.highWaterMarkMoves ? ` · ${project.highWaterMarkMoves} moves` : ''}
               {project.lastTriedAt ? ` · ${getRelativeTime(project.lastTriedAt)}` : ''}
             </Text>
           ) : (

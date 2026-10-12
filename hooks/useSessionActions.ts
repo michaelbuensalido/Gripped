@@ -1,10 +1,9 @@
 import { useRef, useCallback } from 'react';
 import { useRouter } from 'expo-router';
-import { getActiveSession, insertSession, gradeToNumeric, insertAttempt } from '../db/queries';
+import { getActiveSession, insertSession } from '../db/queries';
 import { useActiveSession } from '../db/hooks';
 import { v4 as uuid } from 'uuid';
 import { triggerHaptic } from '../utils/haptics';
-import { useSessionStore } from '../store/sessionStore';
 
 export function useSessionActions() {
   const router = useRouter();

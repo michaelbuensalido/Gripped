@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, Alert, ScrollView } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, Alert, ScrollView, Keyboard } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ChevronLeft, GripVertical, Plus, Trash2, CheckCircle2 } from 'lucide-react-native';
@@ -49,6 +49,12 @@ export default function BetaEditorScreen() {
   const handleSave = () => {
     // Filter out completely empty moves
     const finalMoves = moves.filter(m => m.text.trim().length > 0 || m.limb !== null);
+
+    if (finalMoves.length === 0 && !keyTip.trim()) {
+      triggerHaptic('warning');
+      Alert.alert('Empty Beta', 'Add at least one move or key tip before saving.');
+      return;
+    }
     
     // If the crux move was deleted or filtered out, clear it
     const finalCrux = finalMoves.some(m => m.id === cruxMoveId) ? cruxMoveId : null;
@@ -138,7 +144,9 @@ export default function BetaEditorScreen() {
                 placeholder="Move description..."
                 placeholderTextColor={colors.textMuted}
                 style={[type.body, { color: colors.text, flex: 1, padding: 0 }]}
-                multiline
+                returnKeyType="done"
+                blurOnSubmit={true}
+                onSubmitEditing={() => Keyboard.dismiss()}
               />
               <TouchableOpacity onPress={() => deleteMove(item.id)} style={{ padding: 4 }}>
                 <Trash2 size={16} color={colors.dangerText} />
@@ -167,12 +175,15 @@ export default function BetaEditorScreen() {
 
               <TouchableOpacity
                 onPress={() => toggleCrux(item.id)}
+                accessibilityRole="button"
+                accessibilityLabel={isCrux ? `Remove crux marker from move ${(index ?? 0) + 1}` : `Mark move ${(index ?? 0) + 1} as crux`}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                 style={{
                   flexDirection: 'row',
                   alignItems: 'center',
                   gap: 4,
                   paddingHorizontal: 8,
-                  paddingVertical: 4,
+                  paddingVertical: 6,
                   borderRadius: radius.sm,
                   backgroundColor: isCrux ? 'rgba(255, 69, 58, 0.15)' : 'transparent',
                 }}
@@ -187,15 +198,45 @@ export default function BetaEditorScreen() {
     );
   };
 
+  const handleDeleteVersion = () => {
+    if (!betaId) return;
+    Alert.alert(
+      'Delete Beta Version',
+      'Are you sure you want to delete this beta version and all its moves? This action cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: () => {
+            triggerHaptic('medium');
+            B.deleteBeta(betaId);
+            router.back();
+          },
+        },
+      ]
+    );
+  };
+
   return (
     <KeyboardAvoidingView style={{ flex: 1, backgroundColor: colors.bg }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <View style={{ paddingTop: Math.max(insets.top, 20), paddingHorizontal: space.lg, paddingBottom: space.md, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: colors.card, borderBottomWidth: 1, borderBottomColor: colors.border }}>
-        <TouchableOpacity onPress={() => router.back()} style={{ width: 40, height: 40, alignItems: 'center', justifyContent: 'center' }}>
+        <TouchableOpacity
+          onPress={() => router.back()}
+          style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }}
+          accessibilityRole="button"
+          accessibilityLabel="Back to project"
+        >
           <ChevronLeft size={24} color={colors.text} />
         </TouchableOpacity>
         <Text style={[type.heading, { color: colors.text, fontSize: 16 }]}>{betaId ? 'Edit Beta' : 'New Beta'}</Text>
-        <TouchableOpacity onPress={handleSave} style={{ paddingHorizontal: 12, paddingVertical: 6, backgroundColor: colors.accent, borderRadius: radius.pill }}>
-          <Text style={[type.control, { color: colors.textOnAccent }]}>Save</Text>
+        <TouchableOpacity
+          onPress={handleSave}
+          style={{ paddingHorizontal: 16, paddingVertical: 8, backgroundColor: colors.accent, borderRadius: radius.pill, minHeight: 44, justifyContent: 'center' }}
+          accessibilityRole="button"
+          accessibilityLabel="Save beta version"
+        >
+          <Text style={[type.control, { color: colors.textOnAccent, fontWeight: '700' }]}>Save</Text>
         </TouchableOpacity>
       </View>
 
@@ -204,6 +245,8 @@ export default function BetaEditorScreen() {
         onDragEnd={({ data }) => setMoves(data)}
         keyExtractor={(item) => item.id}
         renderItem={renderItem}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
         contentContainerStyle={{ padding: space.lg, paddingBottom: 100 }}
         ListHeaderComponent={
           <View style={{ marginBottom: space.xl, gap: space.md }}>
@@ -232,25 +275,54 @@ export default function BetaEditorScreen() {
           </View>
         }
         ListFooterComponent={
-          <TouchableOpacity 
-            onPress={addMove}
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 8,
-              padding: space.md,
-              backgroundColor: 'transparent',
-              borderWidth: 1,
-              borderColor: colors.border,
-              borderStyle: 'dashed',
-              borderRadius: radius.md,
-              marginTop: space.sm,
-            }}
-          >
-            <Plus size={20} color={colors.textMuted} />
-            <Text style={[type.heading, { color: colors.textMuted }]}>Add Move</Text>
-          </TouchableOpacity>
+          <View style={{ gap: space.sm }}>
+            <TouchableOpacity 
+              onPress={addMove}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 8,
+                padding: space.md,
+                backgroundColor: 'transparent',
+                borderWidth: 1,
+                borderColor: colors.border,
+                borderStyle: 'dashed',
+                borderRadius: radius.md,
+                marginTop: space.sm,
+                minHeight: 48,
+              }}
+              accessibilityRole="button"
+              accessibilityLabel="Add move"
+            >
+              <Plus size={20} color={colors.textMuted} />
+              <Text style={[type.heading, { color: colors.textMuted }]}>Add Move</Text>
+            </TouchableOpacity>
+
+            {betaId && (
+              <TouchableOpacity
+                onPress={handleDeleteVersion}
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 8,
+                  padding: space.md,
+                  backgroundColor: 'rgba(255, 69, 58, 0.1)',
+                  borderWidth: 1,
+                  borderColor: 'rgba(255, 69, 58, 0.3)',
+                  borderRadius: radius.md,
+                  marginTop: space.sm,
+                  minHeight: 48,
+                }}
+                accessibilityRole="button"
+                accessibilityLabel="Delete this beta version"
+              >
+                <Trash2 size={18} color={colors.dangerText} />
+                <Text style={[type.heading, { color: colors.dangerText, fontSize: 14 }]}>Delete Version</Text>
+              </TouchableOpacity>
+            )}
+          </View>
         }
       />
     </KeyboardAvoidingView>

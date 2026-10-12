@@ -385,6 +385,12 @@ export default function SessionDetailScreen({
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
+      {showMenu && (
+        <Pressable
+          style={[StyleSheet.absoluteFill, { zIndex: 5 }]}
+          onPress={() => setShowMenu(false)}
+        />
+      )}
       {/* Header */}
       <View
         style={{
@@ -397,20 +403,22 @@ export default function SessionDetailScreen({
           zIndex: 10,
         }}
       >
-        {/* Left Side: Back chevron (only when not summary variant) */}
-        {!isSummary ? (
-          <TouchableOpacity
-            testID="session-detail-back-btn"
-            onPress={() => router.back()}
-            accessibilityRole="button"
-            accessibilityLabel="Back"
-            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-          >
-            <ChevronLeft size={24} color={colors.text} />
-          </TouchableOpacity>
-        ) : (
-          <View style={{ width: 24 }} />
-        )}
+        {/* Left Side: Back chevron */}
+        <TouchableOpacity
+          testID="session-detail-back-btn"
+          onPress={() => {
+            if (router.canGoBack()) {
+              router.back();
+            } else {
+              router.replace('/');
+            }
+          }}
+          accessibilityRole="button"
+          accessibilityLabel="Back"
+          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+        >
+          <ChevronLeft size={24} color={colors.text} />
+        </TouchableOpacity>
 
         {/* Center / Title Block */}
         <View style={{ flex: 1, paddingHorizontal: space.sm }}>

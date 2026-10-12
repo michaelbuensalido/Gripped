@@ -24,7 +24,7 @@ export function FailureBreakdownWidget({ data }: FailureBreakdownWidgetProps) {
           FALL DIAGNOSTICS
         </Text>
         <Text className="text-[#5A5A65] text-[12px] font-medium mt-1">
-          Why attempts didn't send
+          Why attempts didn&apos;t send
         </Text>
       </View>
 

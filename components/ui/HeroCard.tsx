@@ -1,10 +1,7 @@
 import React from 'react';
-import { View, Text, ViewProps } from 'react-native';
-import Svg, { Path } from 'react-native-svg';
+import { View, Text, Image, ViewProps } from 'react-native';
 import { useTheme } from '../../theme/useTheme';
 import { Card } from './Card';
-
-import { Image } from 'react-native';
 
 export interface HeroCardProps extends ViewProps {
   title: string;

@@ -31,7 +31,11 @@ import "../global.css";
 
 import { FloatingTabBar } from "../components/ui/FloatingTabBar";
 import { CelebrationProvider } from "../components/celebration/CelebrationProvider";
+import { BrandedLaunchSequence } from "../components/ui/BrandedLaunchSequence";
+import { GlobalErrorBoundary } from "../components/ui/GlobalErrorBoundary";
 import { colors } from "../theme/tokens";
+
+export { GlobalErrorBoundary as ErrorBoundary } from "../components/ui/GlobalErrorBoundary";
 
 // Prevent the splash screen from hiding until fonts + DB are ready
 SplashScreen.preventAutoHideAsync();
@@ -157,20 +161,23 @@ export default function RootLayout() {
   const isReady = (fontsLoaded || fontError) && isDbReady && hasOnboarded !== null;
 
   return (
-    <GestureHandlerRootView style={{ flex: 1, backgroundColor: colors.bgTexture }}>
-      <ImageBackground
-        source={require("../assets/speckled_mat_bg.jpg")}
-        style={StyleSheet.absoluteFill}
-        imageStyle={{ opacity: colors.backdropImageOpacity }}
-        resizeMode="cover"
-      />
-      <View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: colors.backdropScrimBottom, opacity: 0.8 }]} />
-      <SafeAreaProvider>
-        <StatusBar style="light" />
-        <CelebrationProvider>
-          {isReady ? <TabLayout /> : null}
-        </CelebrationProvider>
-      </SafeAreaProvider>
-    </GestureHandlerRootView>
+    <GlobalErrorBoundary>
+      <GestureHandlerRootView style={{ flex: 1, backgroundColor: colors.bgTexture }}>
+        <ImageBackground
+          source={require("../assets/speckled_mat_bg.jpg")}
+          style={StyleSheet.absoluteFill}
+          imageStyle={{ opacity: colors.backdropImageOpacity }}
+          resizeMode="cover"
+        />
+        <View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: colors.backdropScrimBottom, opacity: 0.8 }]} />
+        <SafeAreaProvider>
+          <StatusBar style="light" />
+          <CelebrationProvider>
+            {isReady ? <TabLayout /> : null}
+          </CelebrationProvider>
+        </SafeAreaProvider>
+        {isReady ? <BrandedLaunchSequence /> : null}
+      </GestureHandlerRootView>
+    </GlobalErrorBoundary>
   );
 }

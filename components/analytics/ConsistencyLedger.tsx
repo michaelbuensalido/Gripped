@@ -75,8 +75,6 @@ export function ConsistencyLedger() {
   const handlePress = (day: DayData) => {
     if (day.volume > 0) {
       Haptics.selectionAsync();
-      // Tooltip or alert (for now just console log, could use an alert or a tooltip state)
-      console.log('Tapped:', day.label);
     }
   };
 

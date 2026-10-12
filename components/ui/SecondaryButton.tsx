@@ -37,8 +37,8 @@ export function SecondaryButton({
       style={[
         {
           backgroundColor: isAccent ? colors.accentSoft : colors.cardMuted,
-          height: 56,
           minHeight: 56,
+          paddingVertical: 12,
           borderRadius: radius.md,
           alignItems: 'center',
           justifyContent: 'center',
@@ -51,6 +51,7 @@ export function SecondaryButton({
       ]}
     >
       <Text
+        maxFontSizeMultiplier={1.35}
         style={[
           type.heading,
           {
@@ -58,6 +59,7 @@ export function SecondaryButton({
             fontSize: 16,
             letterSpacing: 0.3,
             fontWeight: '600',
+            textAlign: 'center',
           },
         ]}
       >

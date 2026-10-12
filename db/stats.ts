@@ -166,7 +166,6 @@ export function getStreak(nowMs: number = Date.now()) {
   if (rows.length === 0) return 0;
   
   // Calculate current week
-  const currentWeek = new Date(nowMs);
   // Manual formatting to match SQLite '%Y-%W' can be tricky, 
   // so let's rely on parsing SQLite's response and just walking backwards.
   // Wait, if they missed this week, streak is 0?

@@ -16,7 +16,7 @@ export interface SessionRowProps {
   isLast?: boolean;
 }
 
-export function SessionRow({ id, gymName, startedAt, durationMs, climbs, sends, hardestGrade, isLast }: SessionRowProps) {
+export const SessionRow = React.memo(function SessionRow({ id, gymName, startedAt, durationMs, climbs, sends, hardestGrade, isLast }: SessionRowProps) {
   const router = useRouter();
   const { colors, type, space } = useTheme();
 
@@ -62,4 +62,5 @@ export function SessionRow({ id, gymName, startedAt, durationMs, climbs, sends, 
       </View>
     </TouchableOpacity>
   );
-}
+});
+SessionRow.displayName = 'SessionRow';

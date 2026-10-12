@@ -1,5 +1,4 @@
 import * as VideoThumbnails from 'expo-video-thumbnails';
-import * as FileSystem from 'expo-file-system/legacy';
 import { Asset } from 'expo-asset';
 
 export type ValidationFailureReason =

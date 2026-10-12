@@ -28,8 +28,8 @@ export default function WelcomeScreen() {
         imageStyle={{ opacity: colors.backdropImageOpacity }}
         resizeMode="cover"
       />
-      <View style={{ flex: 1, paddingHorizontal: space.xl, paddingBottom: Math.max(insets.bottom, space.xl), paddingTop: insets.top + space['2xl'], justifyContent: 'space-between' }}>
-        <View style={{ marginTop: space['2xl'] }}>
+      <View style={{ flex: 1, paddingHorizontal: space.xl, paddingBottom: Math.max(insets.bottom, space.xl), paddingTop: insets.top + space.xxl, justifyContent: 'space-between' }}>
+        <View style={{ marginTop: space.xxl }}>
           <Text style={[type.display, { color: colors.text, fontSize: 40, marginBottom: space.sm }]}>
             CruxLog
           </Text>

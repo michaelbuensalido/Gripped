@@ -4,7 +4,7 @@ import Reanimated from 'react-native-reanimated';
 import { listLayout } from '../theme/layout';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { X, Filter, ChevronDown, Plus, Flag, ArrowUpDown, Archive } from 'lucide-react-native';
+import { X, Filter, ChevronDown, ChevronLeft, Plus, Flag, ArrowUpDown, Archive } from 'lucide-react-native';
 import { useTheme } from '../theme/useTheme';
 import { ProjectCard } from '../components/ui/ProjectCard';
 import { EmptyState } from '../components/ui/EmptyState';
@@ -39,11 +39,11 @@ export default function ProjectsScreen() {
   const { colors, space, radius, type } = useTheme();
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const params = useLocalSearchParams<{ create?: string; gym?: string }>();
+  const params = useLocalSearchParams<{ create?: string; gym?: string; tab?: string }>();
   
   const allProjects = useRichProjects();
 
-  const [activeTab, setActiveTab] = useState<'in_progress' | 'sent' | 'archived'>('in_progress');
+  const [activeTab, setActiveTab] = useState<'in_progress' | 'sent' | 'archived'>((params.tab as any) || 'in_progress');
   const [sortOption, setSortOption] = useState<SortOption>('Recently tried');
   const [archivedProjectId, setArchivedProjectId] = useState<string | null>(null);
   const [isUndoVisible, setIsUndoVisible] = useState(false);
@@ -56,6 +56,12 @@ export default function ProjectsScreen() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
   const [loggingProject, setLoggingProject] = useState<any>(null);
+
+  React.useEffect(() => {
+    if (params.tab === 'sent' || params.tab === 'in_progress' || params.tab === 'archived') {
+      setActiveTab(params.tab as any);
+    }
+  }, [params.tab]);
 
   React.useEffect(() => {
     if (params.create === 'true') {
@@ -142,7 +148,33 @@ export default function ProjectsScreen() {
       <View style={{ paddingHorizontal: 20, paddingTop: Math.max(insets.top, 16) + 8 }}>
         {/* Header */}
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: space.md }}>
-          <Text style={[type.display, { color: colors.text }]}>Projects</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm }}>
+            <TouchableOpacity
+              onPress={() => {
+                if (router.canGoBack()) {
+                  router.back();
+                } else {
+                  router.replace('/');
+                }
+              }}
+              accessibilityRole="button"
+              accessibilityLabel="Back"
+              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+              style={{
+                width: 44,
+                height: 44,
+                borderRadius: radius.md,
+                backgroundColor: colors.card,
+                borderWidth: 1,
+                borderColor: colors.border,
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <ChevronLeft size={22} color={colors.text} />
+            </TouchableOpacity>
+            <Text style={[type.display, { color: colors.text }]}>Projects</Text>
+          </View>
           <TouchableOpacity
             onPress={() => { triggerHaptic('light'); setIsAddModalOpen(true); }}
             style={{
@@ -166,21 +198,21 @@ export default function ProjectsScreen() {
         
         {/* Bento Telemetry Metric Strip */}
         <View style={{ flexDirection: 'row', gap: space.sm, marginBottom: space.md }}>
-          <View style={{ flex: 1, backgroundColor: colors.materialBase, borderWidth: 0, borderColor: colors.border, borderRadius: radius.md, padding: space.sm, minHeight: 64, alignItems: 'center', justifyContent: 'center' }}>
+          <View style={{ flex: 1, backgroundColor: colors.materialBase, borderWidth: 0, borderColor: colors.border, borderRadius: radius.md, padding: space.xs, minHeight: 64, alignItems: 'center', justifyContent: 'center' }}>
             <Text style={[type.stat, { fontSize: 20, color: colors.text, fontVariant: ['tabular-nums'] }]}>{activeProjects.length}</Text>
-            <Text style={[type.label, { color: colors.textMuted, fontSize: 10, marginTop: 2 }]}>ACTIVE</Text>
+            <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75} style={[type.label, { color: colors.textMuted, fontSize: 10, marginTop: 2 }]}>ACTIVE</Text>
           </View>
-          <View style={{ flex: 1, backgroundColor: colors.materialBase, borderWidth: 0, borderColor: colors.border, borderRadius: radius.md, padding: space.sm, minHeight: 64, alignItems: 'center', justifyContent: 'center' }}>
+          <View style={{ flex: 1, backgroundColor: colors.materialBase, borderWidth: 0, borderColor: colors.border, borderRadius: radius.md, padding: space.xs, minHeight: 64, alignItems: 'center', justifyContent: 'center' }}>
             <Text style={[type.stat, { fontSize: 20, color: colors.flashText, fontVariant: ['tabular-nums'] }]}>{sentProjects.length}</Text>
-            <Text style={[type.label, { color: colors.textMuted, fontSize: 10, marginTop: 2 }]}>SENT</Text>
+            <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75} style={[type.label, { color: colors.textMuted, fontSize: 10, marginTop: 2 }]}>SENT</Text>
           </View>
-          <View style={{ flex: 1, backgroundColor: colors.materialBase, borderWidth: 0, borderColor: colors.border, borderRadius: radius.md, padding: space.sm, minHeight: 64, alignItems: 'center', justifyContent: 'center' }}>
+          <View style={{ flex: 1, backgroundColor: colors.materialBase, borderWidth: 0, borderColor: colors.border, borderRadius: radius.md, padding: space.xs, minHeight: 64, alignItems: 'center', justifyContent: 'center' }}>
             <Text style={[type.stat, { fontSize: 20, color: colors.textMuted, fontVariant: ['tabular-nums'] }]}>{archivedProjects.length}</Text>
-            <Text style={[type.label, { color: colors.textMuted, fontSize: 10, marginTop: 2 }]}>ARCHIVED</Text>
+            <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75} style={[type.label, { color: colors.textMuted, fontSize: 10, marginTop: 2 }]}>ARCHIVED</Text>
           </View>
-          <View style={{ flex: 1, backgroundColor: colors.materialBase, borderWidth: 0, borderColor: colors.border, borderRadius: radius.md, padding: space.sm, minHeight: 64, alignItems: 'center', justifyContent: 'center' }}>
+          <View style={{ flex: 1, backgroundColor: colors.materialBase, borderWidth: 0, borderColor: colors.border, borderRadius: radius.md, padding: space.xs, minHeight: 64, alignItems: 'center', justifyContent: 'center' }}>
             <Text style={[type.stat, { fontSize: 20, color: colors.text, fontVariant: ['tabular-nums'] }]}>{totalBurns}</Text>
-            <Text style={[type.label, { color: colors.textMuted, fontSize: 10, marginTop: 2 }]}>BURNS</Text>
+            <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75} style={[type.label, { color: colors.textMuted, fontSize: 10, marginTop: 2 }]}>BURNS</Text>
           </View>
         </View>
 

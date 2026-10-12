@@ -6,6 +6,7 @@ import { Trash2 } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../../theme/useTheme';
 import { GradePill } from './GradePill';
+import { ScalePressable } from './ScalePressable';
 
 export interface SessionCardProps {
   session: any;
@@ -43,11 +44,11 @@ function formatDuration(start: number, end?: number | null) {
 }
 
 export function SessionCard({ session, onDelete }: SessionCardProps) {
-  const { colors, space, radius, type, shadow } = useTheme();
+  const { colors, space, radius, type } = useTheme();
   const router = useRouter();
   const swipeableRef = useRef<Swipeable>(null);
 
-  const { weekday, day, month } = formatSessionDate(session.startTime);
+  const { day, month } = formatSessionDate(session.startTime);
   const timeRange = formatSessionTime(session.startTime, session.endTime);
   const duration = formatDuration(session.startTime, session.endTime);
   const totalMix = session.resultMix.flash + session.resultMix.top + session.resultMix.attempt;
@@ -95,8 +96,11 @@ export function SessionCard({ session, onDelete }: SessionCardProps) {
 
   return (
     <Swipeable ref={swipeableRef} renderRightActions={renderRightActions} overshootRight={false} containerStyle={{ overflow: 'visible', paddingBottom: 4 }}>
-      <TouchableOpacity
-        activeOpacity={0.7}
+      <ScalePressable
+        haptic="light"
+        activeScale={0.98}
+        accessibilityRole="button"
+        accessibilityLabel={`Session at ${session.gymName || 'Gym'}, ${day} ${month}, ${session.climbsCount} climbs`}
         onPress={() => router.push(`/session/detail/${session.id}?variant=summary`)}
         style={[
           {
@@ -163,7 +167,7 @@ export function SessionCard({ session, onDelete }: SessionCardProps) {
             </View>
           </View>
         )}
-      </TouchableOpacity>
+      </ScalePressable>
     </Swipeable>
   );
 }

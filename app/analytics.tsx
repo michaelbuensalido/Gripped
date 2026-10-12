@@ -63,12 +63,14 @@ export default function ProgressScreen() {
 
   const stats = useProgressStats(period);
   const recentSessions = useRecentSessions().slice(0, 5);
-  const { resultCounts, avgGradeLast20, weeklyVolume, rates, hardestSend, gradePyramid } = stats;
+  const { resultCounts, avgGradeLast20, weeklyVolume, rates, hardestSendGrade, gradePyramid } = stats;
 
   const weeklyVolVal = weeklyVolume.length > 0 ? weeklyVolume[weeklyVolume.length - 1].count : 0;
   const flashRateVal = rates?.flashRate ? `${rates.flashRate}%` : '0%';
   const avgGradeVal = avgGradeLast20 ? formatGrade(avgGradeLast20) : '-';
-  const hardestSendVal = hardestSend.length > 0 ? formatGrade(hardestSend[hardestSend.length - 1].max_grade) : '-';
+  const hardestSendVal = hardestSendGrade != null ? formatGrade(hardestSendGrade) : '-';
+
+  const hasData = stats.sessionStats.sessions > 0 || stats.sessionStats.totalClimbs > 0 || (resultCounts.flash + resultCounts.top + resultCounts.attempt > 0);
 
   return (
     <View style={{ flex: 1 }}>
@@ -112,7 +114,7 @@ export default function ProgressScreen() {
           </ScalePressable>
         </View>
 
-        {stats.sessionStats.sessions === 0 ? (
+        {!hasData ? (
           <EmptyState
             asCard
             icon={<Target size={32} color={colors.accent} />}
@@ -274,7 +276,13 @@ export default function ProgressScreen() {
         {/* 5. Sends by Grade (Grade Pyramid) */}
         <SectionHeader title="Sends by Grade" />
         <Card style={{ marginBottom: 28, backgroundColor: colors.card, borderRadius: 22, borderWidth: 1, borderColor: colors.border }}>
-          <GradePyramid data={gradePyramid} formatGrade={formatGrade} />
+          <GradePyramid
+            data={gradePyramid}
+            formatGrade={formatGrade}
+            onPressGrade={(grade) => {
+              router.push(`/analytics/stat-detail?stat=grade&grade=${grade}&period=${period}` as any);
+            }}
+          />
         </Card>
 
         {/* 6. Wall Angle Proficiency */}

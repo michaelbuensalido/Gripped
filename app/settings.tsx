@@ -41,7 +41,7 @@ import { ScalePressable } from '../components/ui/ScalePressable';
 import { getHapticsEnabled, setHapticsEnabled, HAPTICS_STORAGE_KEY, triggerHaptic } from '../utils/haptics';
 import { useCelebrationStore } from '../store/celebrationStore';
 import { usePreferences, GradeSystem, UnitSystem } from '../utils/preferences';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 
 const REST_TIMER_KEY = '@cruxlog/rest_timer_seconds';
@@ -187,19 +187,33 @@ export default function SettingsScreen() {
     try {
       triggerHaptic('medium');
       const jsonStr = await exportDataToJSON();
+      const parsed = JSON.parse(jsonStr);
+      const sessionCount = Array.isArray(parsed.sessions) ? parsed.sessions.length : 0;
+      const climbCount = Array.isArray(parsed.climbs) ? parsed.climbs.length : 0;
       const fileName = `cruxlog-export-${new Date().toISOString().split('T')[0]}.json`;
       const fileUri = `${(FileSystem as any).documentDirectory}${fileName}`;
       await FileSystem.writeAsStringAsync(fileUri, jsonStr, { encoding: FileSystem.EncodingType.UTF8 });
       refreshStorage();
       loadLocalBackups();
 
-      if (await Sharing.isAvailableAsync()) {
-        await Sharing.shareAsync(fileUri, { dialogTitle: 'Export CruxLog Data' });
-      } else {
-        Alert.alert('Export Complete', `Data saved locally as ${fileName}.`);
-      }
-    } catch (e) {
-      Alert.alert('Export Failed', 'An error occurred while exporting your data.');
+      Alert.alert(
+        'Export Summary',
+        `Exported ${sessionCount} sessions and ${climbCount} climbs.`,
+        [
+          {
+            text: 'Share / Save File',
+            onPress: async () => {
+              if (await Sharing.isAvailableAsync()) {
+                await Sharing.shareAsync(fileUri, { dialogTitle: 'Export CruxLog Data' });
+              }
+            },
+          },
+          { text: 'Done', style: 'cancel' },
+        ]
+      );
+    } catch (e: any) {
+      console.error('Export error:', e);
+      Alert.alert('Export Failed', e?.message || String(e));
     }
   };
 

@@ -29,7 +29,8 @@ import { SecondaryButton } from "../../components/ui/SecondaryButton";
 import { ScalePressable } from "../../components/ui/ScalePressable";
 import { EmptyState } from "../../components/ui/EmptyState";
 import { BetaSection } from "../../components/project/BetaSection";
-import { useProject, useProjectHistory, useActiveSession } from "../../db/hooks";
+import { ProjectShareCardModal } from "../../components/project/ProjectShareCardModal";
+import { useProject, useProjectHistory, useActiveSession, useProjectBetas, useBetaMoves } from "../../db/hooks";
 import {
   updateProjectStatus,
   deleteProject,
@@ -53,11 +54,15 @@ export default function ProjectDetailScreen() {
   const project = useProject(id as string);
   const history = useProjectHistory(id as string);
   const activeSession = useActiveSession();
+  const betas = useProjectBetas((id as string) || "");
+  const currentBeta = betas.find(b => b.isCurrent) || betas[0] || null;
+  const moves = useBetaMoves(currentBeta?.id || null);
 
   const [showMenu, setShowMenu] = useState(false);
   const [isEditingNotes, setIsEditingNotes] = useState(false);
   const [notesDraft, setNotesDraft] = useState("");
   const [isLogModalOpen, setIsLogModalOpen] = useState(false);
+  const [isShareOpen, setIsShareOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   if (!project) {
@@ -345,6 +350,21 @@ export default function ProjectDetailScreen() {
                     </Text>
                   </TouchableOpacity>
                 )}
+                <TouchableOpacity
+                  onPress={() => {
+                    setShowMenu(false);
+                    setIsShareOpen(true);
+                  }}
+                  style={{
+                    padding: 14,
+                    borderBottomWidth: 1,
+                    borderBottomColor: "rgba(255, 255, 255, 0.08)",
+                  }}
+                >
+                  <Text style={{ color: colors.text, fontSize: 14, fontWeight: "600" }}>
+                    Share card
+                  </Text>
+                </TouchableOpacity>
                 {project?.status === "abandoned" ? (
                   <TouchableOpacity
                     onPress={handleRestore}
@@ -465,8 +485,12 @@ export default function ProjectDetailScreen() {
               }}
             >
               <Text
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.75}
+                maxFontSizeMultiplier={1.3}
                 style={{
-                  color: "rgba(255, 255, 255, 0.45)",
+                  color: "rgba(255, 255, 255, 0.60)",
                   fontSize: 10,
                   letterSpacing: 1.2,
                   textTransform: "uppercase",
@@ -476,6 +500,7 @@ export default function ProjectDetailScreen() {
                 TOTAL BURNS
               </Text>
               <Text
+                maxFontSizeMultiplier={1.3}
                 style={{
                   color: colors.text,
                   fontSize: 26,
@@ -499,8 +524,12 @@ export default function ProjectDetailScreen() {
               }}
             >
               <Text
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.75}
+                maxFontSizeMultiplier={1.3}
                 style={{
-                  color: "rgba(255, 255, 255, 0.45)",
+                  color: "rgba(255, 255, 255, 0.60)",
                   fontSize: 10,
                   letterSpacing: 1.2,
                   textTransform: "uppercase",
@@ -510,6 +539,7 @@ export default function ProjectDetailScreen() {
                 HIGH-WATER MARK
               </Text>
               <Text
+                maxFontSizeMultiplier={1.3}
                 style={{
                   color: colors.text,
                   fontSize: 26,
@@ -670,8 +700,9 @@ export default function ProjectDetailScreen() {
                     borderBottomColor: "rgba(255, 255, 255, 0.06)",
                   }}
                 >
-                  <View>
+                  <View style={{ flex: 1 }}>
                     <Text
+                      maxFontSizeMultiplier={1.3}
                       style={{
                         color: colors.text,
                         fontSize: 14,
@@ -686,6 +717,7 @@ export default function ProjectDetailScreen() {
                     </Text>
                     {h.bestResult === "send" && (
                       <Text
+                        maxFontSizeMultiplier={1.3}
                         style={{
                           color: colors.flash,
                           fontSize: 12,
@@ -698,7 +730,8 @@ export default function ProjectDetailScreen() {
                     )}
                   </View>
                   <Text
-                    style={{ color: "rgba(255, 255, 255, 0.5)", fontSize: 13 }}
+                    maxFontSizeMultiplier={1.3}
+                    style={{ color: "rgba(255, 255, 255, 0.60)", fontSize: 13 }}
                   >
                     {h.burns} burn{h.burns > 1 ? "s" : ""}
                   </Text>
@@ -798,6 +831,17 @@ export default function ProjectDetailScreen() {
         onUndo={handleUndo}
         onDismiss={() => setToastMessage(null)}
       />
+
+      {/* Share Card Modal */}
+      {project && (
+        <ProjectShareCardModal
+          visible={isShareOpen}
+          project={project}
+          beta={currentBeta}
+          moves={moves}
+          onClose={() => setIsShareOpen(false)}
+        />
+      )}
     </View>
   );
 }

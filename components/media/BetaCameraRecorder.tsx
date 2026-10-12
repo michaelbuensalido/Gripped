@@ -64,10 +64,14 @@ export function BetaCameraRecorder({
   onClose,
   onBetaRecorded,
   setId,
+  onAttach,
 }: BetaCameraRecorderProps) {
   const [isRecording, setIsRecording] = useState(false);
+  const [recordedSeconds, setRecordedSeconds] = useState(0);
   const [gradingResult, setGradingResult] = useState<GradingEvaluationResult | null>(null);
   const samplesRef = useRef<FramePoseSample[]>([]);
+  const cameraRef = useRef<any>(null);
+  const recordPromiseRef = useRef<Promise<any> | null>(null);
 
   const [expoCameraPerm, requestExpoCameraPerm] = useExpoCameraPermissions();
   const [expoMicroPerm, requestExpoMicroPerm] = useExpoMicrophonePermissions();
@@ -78,8 +82,6 @@ export function BetaCameraRecorder({
   const hasMicrophonePermission = !!expoMicroPerm?.granted || !!visionMicPerm?.hasPermission;
   
   const device = useCameraDevice('back');
-  
-
 
   const { poseState, frameProcessor } = useClimbingPoseTracker({});
 
@@ -92,9 +94,22 @@ export function BetaCameraRecorder({
 
   const recordingStartTimeRef = useRef<number>(0);
 
+  // 60-second cap timer & pose sample tracker
   useEffect(() => {
-    if (!isRecording) return;
+    if (!isRecording) {
+      setRecordedSeconds(0);
+      return;
+    }
     const interval = setInterval(() => {
+      const elapsedSec = Math.floor((Date.now() - recordingStartTimeRef.current) / 1000);
+      setRecordedSeconds(elapsedSec);
+
+      // Auto-stop at 60 seconds
+      if (elapsedSec >= 60) {
+        handleStopRecording();
+        return;
+      }
+
       if (poseState.landmarks && Object.keys(poseState.landmarks).length > 0) {
         const keypoints = Object.entries(poseState.landmarks).map(([name, pt]) => ({
           name,
@@ -107,29 +122,57 @@ export function BetaCameraRecorder({
           keypoints,
         });
       }
-    }, 100);
+    }, 200);
     return () => clearInterval(interval);
   }, [isRecording, poseState.landmarks]);
 
-  const startRecording = () => {
+  const startRecording = async () => {
     samplesRef.current = [];
     recordingStartTimeRef.current = Date.now();
+    setRecordedSeconds(0);
     setIsRecording(true);
     triggerHaptic('success');
+
+    if (cameraRef.current?.recordAsync) {
+      try {
+        recordPromiseRef.current = cameraRef.current.recordAsync({ maxDuration: 60 });
+      } catch (e) {
+        console.warn('Camera recordAsync error:', e);
+      }
+    }
   };
 
-  const handleStopRecording = () => {
+  const handleStopRecording = async () => {
     const elapsedDurationMs = Date.now() - recordingStartTimeRef.current;
     setIsRecording(false);
     triggerHaptic('selection');
+
+    let outputUri = 'file://mock-video.mp4';
+    if (cameraRef.current?.stopRecording) {
+      try {
+        cameraRef.current.stopRecording();
+      } catch {}
+    }
+
+    if (recordPromiseRef.current) {
+      try {
+        const result = await recordPromiseRef.current;
+        if (result?.uri) {
+          outputUri = result.uri;
+        }
+      } catch {}
+    }
     
     setTimeout(() => {
       const result = VideoGradingService.evaluateClimbValidity(samplesRef.current, elapsedDurationMs);
       setGradingResult(result);
       
-      if (result.isValidClimb && onBetaRecorded && setId) {
+      if (onAttach) {
         triggerHaptic('success');
-        onBetaRecorded('file://mock-video.mp4', result);
+        onAttach(outputUri, 'video');
+      } else if (result.isValidClimb && onBetaRecorded && setId) {
+        triggerHaptic('success');
+        onBetaRecorded(outputUri, result);
       } else if (!result.isValidClimb) {
         triggerHaptic('error');
       }
@@ -161,11 +204,13 @@ export function BetaCameraRecorder({
           {/* Center: status text (monospaced, no pill background) */}
           <View style={styles.statusGroup}>
             {isRecording ? (
-              <Text style={styles.statusRec}>● REC</Text>
+              <Text style={styles.statusRec}>
+                ● REC {Math.floor(recordedSeconds / 60)}:{(recordedSeconds % 60).toString().padStart(2, '0')} / 1:00
+              </Text>
             ) : isClimberLocked ? (
               <Text style={styles.statusLocked}>◉ LOCKED</Text>
             ) : (
-              <Text style={styles.statusIdle}>◎ STANDBY</Text>
+              <Text style={styles.statusIdle}>◎ STANDBY (MAX 60s)</Text>
             )}
             <Text style={styles.statusSub}>
               {nativePoseAvailable ? 'ML KIT' : 'SIM'}
@@ -193,6 +238,7 @@ export function BetaCameraRecorder({
               />
             ) : (
               <CameraView
+                ref={cameraRef}
                 style={StyleSheet.absoluteFill}
                 facing="back"
                 mode="video"

@@ -1,5 +1,5 @@
 import { getDatabase } from './schema';
-import { clearAllSessionData, insertSession, finishSession, createProject, logClimbForSession, updateSessionNotesAndEffort } from './queries';
+import { insertSession, finishSession, createProject, logClimbForSession, updateSessionNotesAndEffort } from './queries';
 import { ProjectStatus } from '../types';
 
 export function seedDemoData() {

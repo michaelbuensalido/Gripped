@@ -64,12 +64,25 @@ export function useProgressStats(period: '7d'|'30d'|'90d'|'1y'|'all') {
       weeklyVolume: Q.getWeeklyVolume(period, now),
       rates: Q.getRates(period, now),
       hardestSend: Q.getHardestSendTrend(period, now),
+      hardestSendGrade: Q.getHardestSend(period, now),
       streak: Q.getStreak(now),
       wallAngleRates: Q.getWallAngleSendRates(period, now),
       failureReasons: Q.getFailureReasonCounts(period, now),
       sessionStats: Q.getSessionPeriodStats(period, now),
     };
   }, [period]);
+}
+
+export function useClimbsForGrade(period: '7d'|'30d'|'90d'|'1y'|'all', gradeIndex: number | null) {
+  return useLiveQuery(() => (gradeIndex !== null ? Q.getClimbsForGrade(period, gradeIndex) : []), [period, gradeIndex]);
+}
+
+export function useClimbsForStat(stat: 'volume' | 'flash' | 'hardest' | 'all', period: '7d'|'30d'|'90d'|'1y'|'all', week?: string) {
+  return useLiveQuery(() => Q.getClimbsForStat(stat, period, week), [stat, period, week]);
+}
+
+export function useSessionsForPeriod(period: '7d'|'30d'|'90d'|'1y'|'all', week?: string) {
+  return useLiveQuery(() => Q.getSessionsForPeriod(period, week), [period, week]);
 }
 
 export function useHomeSummary() {

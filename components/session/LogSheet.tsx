@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -19,6 +19,7 @@ import Animated, {
   Easing,
 } from 'react-native-reanimated';
 import { Plus, X, Minus, ChevronLeft, ChevronRight, Lock } from 'lucide-react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { SectionHeader } from '../ui/SectionHeader';
 import { PrimaryButton } from '../ui/PrimaryButton';
 import { ResultType } from '../ui/ResultChip';
@@ -73,6 +74,9 @@ function GradePicker({ value, onChange }: { value: string; onChange: (g: string)
         </ScalePressable>
 
         <View
+          accessibilityRole="adjustable"
+          accessibilityLabel={`Grade ${value}`}
+          accessibilityValue={{ text: value }}
           style={{
             flex: 1,
             height: 56,
@@ -179,8 +183,8 @@ function ResultSelector({
 }) {
   const { colors, space, radius, type } = useTheme();
   const allOptions: { result: ResultType; label: string; color: string; bg: string; border: string; testID?: string }[] = [
-    { result: 'flash', label: 'Flash', color: colors.flashText, bg: colors.flashSoft, border: colors.flash },
-    { result: 'top',   label: 'Top',   color: colors.topText,   bg: colors.topSoft,   border: colors.top },
+    { result: 'flash', label: 'Flash', color: colors.flashText, bg: colors.flashSoft, border: colors.flash, testID: 'log-flash-chip' },
+    { result: 'top',   label: 'Top',   color: colors.topText,   bg: colors.topSoft,   border: colors.top, testID: 'log-top-chip' },
     { result: 'attempt', label: 'Attempt', color: colors.attemptText, bg: colors.attemptSoft, border: colors.attempt, testID: 'log-attempt-chip' },
   ];
 
@@ -198,6 +202,7 @@ function ResultSelector({
             haptic="medium"
             activeScale={0.96}
             accessibilityRole="button"
+            accessibilityLabel={o.label}
             accessibilityState={{ selected }}
             style={{
               flex: 1,
@@ -258,6 +263,9 @@ function AttemptsStepper({ value, onChange }: { value: number; onChange: (n: num
       </ScalePressable>
 
       <View
+        accessibilityRole="adjustable"
+        accessibilityLabel={`${value} attempts`}
+        accessibilityValue={{ text: `${value} attempts`, min: 1, now: value }}
         style={{
           flex: 1,
           height: 56,
@@ -317,6 +325,7 @@ export function LogSheet({
   title?: string;
 }) {
   const { colors, space, type, radius, shadow, motion } = useTheme();
+  const insets = useSafeAreaInsets();
   const reduceMotion = useReducedMotion();
 
   const [grade, setGrade] = useState(initialGrade ?? 'V4');
@@ -326,8 +335,8 @@ export function LogSheet({
   const [notes, setNotes] = useState(initialNotes ?? '');
   const [isRendered, setIsRendered] = useState(visible);
 
-  const backdropOpacity = useSharedValue(0);
-  const sheetTranslateY = useSharedValue(420);
+  const backdropOpacity = useSharedValue(1);
+  const sheetTranslateY = useSharedValue(0);
 
   useEffect(() => {
     if (visible) {
@@ -342,23 +351,14 @@ export function LogSheet({
       setNotes(initialNotes ?? '');
       setFailureReason(null);
 
-      if (reduceMotion) {
-        backdropOpacity.value = 1;
-        sheetTranslateY.value = 0;
-      } else {
-        backdropOpacity.value = withTiming(1, {
-          duration: motion.duration.fast,
-          easing: Easing.bezier(0.23, 1, 0.32, 1),
-        });
-        sheetTranslateY.value = withSpring(0, {
-          damping: motion.sheetSpring.damping,
-          stiffness: motion.sheetSpring.stiffness,
-        });
-      }
-    } else if (isRendered) {
-      handleCloseAnimation();
+      backdropOpacity.value = 1;
+      sheetTranslateY.value = 0;
+    } else {
+      setIsRendered(false);
+      backdropOpacity.value = 0;
+      sheetTranslateY.value = 0;
     }
-  }, [visible, initialGrade, initialResult, initialAttempts, initialNotes, disableFlash]);
+  }, [visible]);
 
   useEffect(() => {
     if (result === 'flash') setAttempts(1);
@@ -371,27 +371,7 @@ export function LogSheet({
   }, [attempts, result]);
 
   const handleCloseAnimation = () => {
-    if (reduceMotion) {
-      backdropOpacity.value = 0;
-      sheetTranslateY.value = 420;
-      setIsRendered(false);
-      onClose();
-      return;
-    }
-
-    backdropOpacity.value = withTiming(0, {
-      duration: motion.duration.fast,
-      easing: Easing.in(Easing.cubic),
-    });
-    sheetTranslateY.value = withTiming(400, {
-      duration: motion.duration.fast,
-      easing: Easing.in(Easing.cubic),
-    }, (finished) => {
-      if (finished) {
-        runOnJS(setIsRendered)(false);
-        runOnJS(onClose)();
-      }
-    });
+    onClose();
   };
 
   const handleSave = () => {
@@ -414,14 +394,14 @@ export function LogSheet({
   if (!visible && !isRendered) return null;
 
   return (
-    <Modal visible={isRendered} transparent onRequestClose={handleCloseAnimation}>
+    <Modal visible={visible || isRendered} transparent onRequestClose={handleCloseAnimation}>
       <View style={styles.modalRoot}>
         {/* Animated backdrop */}
         <Animated.View style={[StyleSheet.absoluteFill, { backgroundColor: colors.scrim }, backdropStyle]}>
           <Pressable style={StyleSheet.absoluteFill} onPress={handleCloseAnimation} />
         </Animated.View>
 
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <View style={{ width: '100%' }}>
           <Animated.View
             style={[
               {
@@ -432,8 +412,8 @@ export function LogSheet({
                 borderColor: colors.border,
                 paddingHorizontal: space.lg,
                 paddingTop: space.md,
-                paddingBottom: space.xxl + 24,
-                maxHeight: '92%',
+                paddingBottom: Math.max(insets.bottom, space.md),
+                maxHeight: '90%',
                 ...shadow.floating,
               },
               sheetStyle,
@@ -474,7 +454,12 @@ export function LogSheet({
               </ScalePressable>
             </View>
 
-            <Animated.ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ gap: space.lg }}>
+            <Animated.ScrollView
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+              style={{ flexShrink: 1 }}
+              contentContainerStyle={{ gap: space.lg, paddingBottom: space.md }}
+            >
               {/* Result Section */}
               <View>
                 <SectionHeader title="Outcome" />
@@ -564,16 +549,18 @@ export function LogSheet({
                   ]}
                 />
               </View>
+            </Animated.ScrollView>
 
-              {/* Pinned Save Button */}
+            {/* Save Button */}
+            <View style={{ paddingTop: space.md }}>
               <PrimaryButton
                 testID="save-climb-btn"
                 label="SAVE CLIMB"
                 onPress={handleSave}
               />
-            </Animated.ScrollView>
+            </View>
           </Animated.View>
-        </KeyboardAvoidingView>
+        </View>
       </View>
     </Modal>
   );

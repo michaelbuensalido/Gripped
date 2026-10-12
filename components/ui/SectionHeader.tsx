@@ -19,7 +19,13 @@ export function SectionHeader({ title, action, style }: SectionHeaderProps) {
     <View style={[{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: space.md }, style]}>
       <Text style={[{ color: colors.textMuted }, type.label]}>{title}</Text>
       {action && (
-        <TouchableOpacity onPress={action.onPress} style={{ flexDirection: 'row', alignItems: 'center' }}>
+        <TouchableOpacity
+          onPress={action.onPress}
+          accessibilityRole="button"
+          accessibilityLabel={action.label}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          style={{ flexDirection: 'row', alignItems: 'center' }}
+        >
           <Text style={[{ color: colors.accent }, type.caption, { fontWeight: '600' }]}>{action.label}</Text>
           <ChevronRight size={16} color={colors.accent} style={{ marginLeft: 2, marginTop: 1 }} />
         </TouchableOpacity>
