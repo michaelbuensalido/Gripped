@@ -3,7 +3,8 @@ import { View, Text, TouchableOpacity, TextInput, SectionList, ActionSheetIOS, P
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { plural } from '../utils/string';
-import { Filter, Calendar, List, Settings as SettingsIcon, Search, X, ChevronDown, Check } from 'lucide-react-native';
+import { Filter, Calendar, List, Settings as SettingsIcon, Search, X, ChevronDown, Check, Plus } from 'lucide-react-native';
+import { PastSessionModal } from '../components/logbook/PastSessionModal';
 import { Screen } from '../components/ui/Screen';
 import { Chip } from '../components/ui/Chip';
 import { EmptyState } from '../components/ui/EmptyState';
@@ -39,6 +40,7 @@ export default function LogbookScreen() {
   const { colors, space, radius, type } = useTheme();
   const insets = useSafeAreaInsets();
   const [isPeriodSheetOpen, setIsPeriodSheetOpen] = useState(false);
+  const [isPastSessionOpen, setIsPastSessionOpen] = useState(false);
 
   // Filters State
   const [filters, setFilters] = useState<LogbookFilters>({
@@ -165,6 +167,25 @@ export default function LogbookScreen() {
             </View>
             
             <View style={{ flexDirection: 'row', gap: space.xs, alignItems: 'center', marginTop: 4 }}>
+              <ScalePressable
+                haptic="light"
+                activeScale={0.92}
+                onPress={() => setIsPastSessionOpen(true)}
+                accessibilityRole="button"
+                accessibilityLabel="Log past session"
+                style={{
+                  width: 44,
+                  height: 44,
+                  backgroundColor: colors.card,
+                  borderRadius: radius.md,
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <Plus size={20} color={colors.text} />
+              </ScalePressable>
               <ScalePressable
                 haptic="light"
                 activeScale={0.92}
@@ -498,6 +519,12 @@ export default function LogbookScreen() {
         message="Session deleted"
         onUndo={handleUndo} 
         onDismiss={() => setDeletedSessionId(null)} 
+      />
+
+      <PastSessionModal
+        visible={isPastSessionOpen}
+        gyms={uniqueGyms}
+        onClose={() => setIsPastSessionOpen(false)}
       />
     </View>
   );

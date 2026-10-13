@@ -25,6 +25,8 @@ export interface BetaMove {
   limb: Limb | null;
 }
 
+export type VideoSourceType = 'local' | 'instagram' | 'tiktok' | 'other';
+
 export interface BetaVideo {
   id: string;
   projectId: string;
@@ -33,6 +35,19 @@ export interface BetaVideo {
   localUri: string;
   durationSec: number;
   sizeBytes: number;
+  createdAt: number;
+  sourceType?: VideoSourceType;
+  videoUrl?: string | null;
+  caption?: string | null;
+  thumbnailUrl?: string | null;
+}
+
+export interface VideoInboxItem {
+  id: string;
+  sourceType: VideoSourceType;
+  videoUrl: string;
+  caption?: string | null;
+  thumbnailUrl?: string | null;
   createdAt: number;
 }
 
@@ -45,3 +60,4 @@ export interface VideoNote {
 
 /** Maximum length of a recorded or picked clip. */
 export const MAX_VIDEO_SECONDS = 60;
+

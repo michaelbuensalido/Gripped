@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useCallback, useRef } from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
-import Animated, { FadeInDown, FadeOutDown, SlideInDown, SlideOutDown } from 'react-native-reanimated';
+import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 import { X } from 'lucide-react-native';
 import { ConfettiOverlay } from './ConfettiOverlay';
 import { triggerHaptic } from '../../utils/haptics';
@@ -82,8 +82,8 @@ export const CelebrationProvider: React.FC<{ children: React.ReactNode }> = ({ c
       
       {toast && (
         <Animated.View
-          entering={FadeInDown}
-          exiting={FadeOutDown}
+          entering={FadeIn.duration(200)}
+          exiting={FadeOut.duration(150)}
           accessibilityLiveRegion="polite"
           className="absolute bottom-24 self-center bg-surface border border-border px-4 py-2 rounded-full"
           pointerEvents="none"
@@ -94,8 +94,8 @@ export const CelebrationProvider: React.FC<{ children: React.ReactNode }> = ({ c
 
       {streakToast !== null && (
         <Animated.View
-          entering={FadeInDown}
-          exiting={FadeOutDown}
+          entering={FadeIn.duration(200)}
+          exiting={FadeOut.duration(150)}
           accessibilityLiveRegion="polite"
           className="absolute bottom-32 self-center bg-send px-4 py-2 rounded-full"
           pointerEvents="none"
@@ -106,8 +106,8 @@ export const CelebrationProvider: React.FC<{ children: React.ReactNode }> = ({ c
 
       {bigData && (
         <Animated.View
-          entering={SlideInDown}
-          exiting={SlideOutDown}
+          entering={FadeIn.duration(240)}
+          exiting={FadeOut.duration(160)}
           className="absolute inset-0 justify-center items-center p-6"
           pointerEvents="box-none"
         >

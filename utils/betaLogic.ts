@@ -64,8 +64,11 @@ export function stripEmptyMoves<T extends Pick<BetaMove, 'text' | 'order'>>(move
 }
 
 /** Local file URIs that must be deleted along with a project (cascade delete). */
-export function videoFilesToDelete(videos: Pick<BetaVideo, 'localUri'>[]): string[] {
-  return videos.map((v) => v.localUri).filter((u) => u.length > 0);
+export function videoFilesToDelete(videos: (Pick<BetaVideo, 'localUri'> & { sourceType?: string })[]): string[] {
+  return videos
+    .filter((v) => !v.sourceType || v.sourceType === 'local')
+    .map((v) => v.localUri)
+    .filter((u) => u.length > 0 && !u.startsWith('http://') && !u.startsWith('https://'));
 }
 
 export function totalStorageBytes(videos: Pick<BetaVideo, 'sizeBytes'>[]): number {
@@ -87,3 +90,76 @@ export function formatBytes(bytes: number): string {
   if (mb >= 1024) return `${(mb / 1024).toFixed(1)} GB`;
   return `${mb < 10 ? mb.toFixed(1) : Math.round(mb)} MB`;
 }
+
+/** Detects platform from URL string */
+export function detectVideoPlatform(url: string): 'instagram' | 'tiktok' | 'other' {
+  const lower = url.toLowerCase().trim();
+  if (lower.includes('instagram.com') || lower.includes('instagr.am')) {
+    return 'instagram';
+  }
+  if (lower.includes('tiktok.com')) {
+    return 'tiktok';
+  }
+  return 'other';
+}
+
+/**
+ * Parses a share-sheet payload from Instagram/TikTok. Those apps often share
+ * "caption text https://..." rather than a bare URL, so pull the first http(s)
+ * link out and use the remaining text as the caption.
+ */
+export function extractSharedVideoLink(
+  webUrl?: string | null,
+  text?: string | null,
+): { url: string; caption: string | null } | null {
+  const raw = (text ?? '').trim();
+  const match = (webUrl ?? '').trim() || raw.match(/https?:\/\/[^\s]+/i)?.[0] || '';
+  if (!/^https?:\/\//i.test(match)) return null;
+  const url = match.replace(/[)\].,;]+$/, '');
+  const caption = raw.replace(match, '').replace(/\s+/g, ' ').trim();
+  return { url, caption: caption ? caption.slice(0, 140) : null };
+}
+
+/** Compiles a clean, shareable plain-text beta summary per PRD spec */
+export function formatBetaSummaryText(
+  project: { title: string; gradeRaw: string; gymName?: string | null; wallAngle?: string | null; holdType?: string | null },
+  beta?: Pick<Beta, 'version' | 'label' | 'keyTip' | 'cruxMoveId'> | null,
+  moves: BetaMove[] = [],
+  videos: (Pick<BetaVideo, 'videoUrl' | 'caption'> & { sourceType?: string })[] = [],
+): string {
+  const lines: string[] = [];
+  lines.push(`Gripped Beta: ${project.title} (${project.gradeRaw})`);
+
+  const specParts: string[] = [];
+  if (project.gymName) specParts.push(`Gym: ${project.gymName}`);
+  if (project.wallAngle) specParts.push(`Wall: ${project.wallAngle.charAt(0).toUpperCase() + project.wallAngle.slice(1)}`);
+  if (project.holdType) specParts.push(`Holds: ${project.holdType.charAt(0).toUpperCase() + project.holdType.slice(1)}`);
+  if (specParts.length > 0) lines.push(specParts.join(' • '));
+
+  if (beta?.keyTip) {
+    lines.push(`Key Tip: ${beta.keyTip}`);
+  }
+
+  if (beta && moves.length > 0) {
+    lines.push(`\nSequence (v${beta.version}${beta.label ? ` - ${beta.label}` : ''}):`);
+    const sortedMoves = [...moves].sort((a, b) => a.order - b.order);
+    sortedMoves.forEach((m, idx) => {
+      const cruxTag = m.id === beta.cruxMoveId ? ' [CRUX]' : '';
+      const limbTag = m.limb ? `[${m.limb}] ` : '';
+      lines.push(`${idx + 1}. ${limbTag}${m.text}${cruxTag}`);
+    });
+  }
+
+  const socialOrExternalVideos = videos.filter((v) => v.videoUrl || (v.sourceType && v.sourceType !== 'local'));
+  if (socialOrExternalVideos.length > 0) {
+    lines.push('\nVideos:');
+    socialOrExternalVideos.forEach((v) => {
+      if (v.videoUrl) {
+        lines.push(`- ${v.videoUrl}${v.caption ? ` (${v.caption})` : ''}`);
+      }
+    });
+  }
+
+  return lines.join('\n');
+}
+

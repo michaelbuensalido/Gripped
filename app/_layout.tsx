@@ -34,6 +34,8 @@ import { CelebrationProvider } from "../components/celebration/CelebrationProvid
 import { BrandedLaunchSequence } from "../components/ui/BrandedLaunchSequence";
 import { GlobalErrorBoundary } from "../components/ui/GlobalErrorBoundary";
 import { colors } from "../theme/tokens";
+import { ShareIntentProvider } from "expo-share-intent";
+import { ShareIntentBridge } from "../components/ShareIntentBridge";
 
 export { GlobalErrorBoundary as ErrorBoundary } from "../components/ui/GlobalErrorBoundary";
 
@@ -161,6 +163,7 @@ export default function RootLayout() {
   const isReady = (fontsLoaded || fontError) && isDbReady && hasOnboarded !== null;
 
   return (
+    <ShareIntentProvider>
     <GlobalErrorBoundary>
       <GestureHandlerRootView style={{ flex: 1, backgroundColor: colors.bgTexture }}>
         <ImageBackground
@@ -174,10 +177,12 @@ export default function RootLayout() {
           <StatusBar style="light" />
           <CelebrationProvider>
             {isReady ? <TabLayout /> : null}
+            {isReady ? <ShareIntentBridge /> : null}
           </CelebrationProvider>
         </SafeAreaProvider>
         {isReady ? <BrandedLaunchSequence /> : null}
       </GestureHandlerRootView>
     </GlobalErrorBoundary>
+    </ShareIntentProvider>
   );
 }

@@ -3,20 +3,23 @@
 **Version:** 1.0 (Production Release Specification)  
 **Status:** Final Draft  
 **Target Platform:** iOS (Offline-First React Native / Expo)  
-**Author / Team:** Gripped Core Engineering & Product  
+**Author / Team:** Gripped Core Engineering & Product
 
 ---
 
 ## 1. Executive Summary & Product Vision
 
 ### 1.1 Vision
-**Gripped** (formerly *CruxLog*) is an iOS-first, offline-first bouldering companion designed for climbers who want to log sessions with zero friction and methodically solve multi-session projects.
+
+**Gripped** (formerly _CruxLog_) is an iOS-first, offline-first bouldering companion designed for climbers who want to log sessions with zero friction and methodically solve multi-session projects.
 
 Unlike generic fitness trackers, notes apps, or cloud-heavy platforms, Gripped operates with **100% offline autonomy**. Local SQLite is the sole source of truth; zero network calls are required to log, analyze, or organize climbs. The app combines two complementary modes of climbing:
+
 1. **Frictionless Session Logging**: Rapidly captures grades, sends, flashes, and attempts in seconds—even deep in concrete climbing gyms with zero cell service.
 2. **Dedicated Project Hub with Versioned Beta**: Provides a structured workbench for multi-week projects, complete with move-by-move beta sequences, crux markers, and a hybrid video library combining local technique clips and social media inspiration.
 
 ### 1.2 Core Product Tenets
+
 - **Speed Over Data Entry**: Logging a climb must never disrupt climbing rhythm or chalked hands. Quick +1 attempt taps, presets, and intelligent defaults make logging instant.
 - **Local-First & Zero Accounts**: No email, no password, no subscriptions, no cloud sync failure modes. All user data stays on device in private SQLite storage, portable via standard JSON export/import.
 - **Versioned Beta Architecture**: Climbing beta evolves across attempts. Gripped preserves previous versions of a problem's beta while letting climbers fork and refine new sequences.
@@ -26,11 +29,11 @@ Unlike generic fitness trackers, notes apps, or cloud-heavy platforms, Gripped o
 
 ## 2. Target Personas & Climbing Modes
 
-| Persona | Climbing Profile | Primary Problem Solved in Gripped |
-| :--- | :--- | :--- |
-| **The Casual Gym Boulderer** | Climbs 2–4 times a week, logs 10–25 problems per session across various walls, rarely works the same boulder twice. | Fast session start, 1-tap logging, rest timer intervals, session summary telemetry, and long-term grade pyramid analytics without tedious project setup. |
-| **The Project Grinder** | Dedicates multiple sessions over weeks or months to sending limit boulders (V5–V14+). | Persistent project cards with wall angles, hold types, estimated moves, versioned step-by-step beta sequences, crux flags, burn counters, and attached video proof. |
-| **The Visual Beta Hunter** | Discovers alternative sequences and micro-beta on Instagram and TikTok or records friends' attempts on their phone. | 1-tap social share-sheet link saving and 60-second video clip capture, pinned directly to specific beta moves for review right before pulling onto the wall. |
+| Persona                      | Climbing Profile                                                                                                    | Primary Problem Solved in Gripped                                                                                                                                   |
+| :--------------------------- | :------------------------------------------------------------------------------------------------------------------ | :------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **The Casual Gym Boulderer** | Climbs 2–4 times a week, logs 10–25 problems per session across various walls, rarely works the same boulder twice. | Fast session start, 1-tap logging, rest timer intervals, session summary telemetry, and long-term grade pyramid analytics without tedious project setup.            |
+| **The Project Grinder**      | Dedicates multiple sessions over weeks or months to sending limit boulders (V5–V14+).                               | Persistent project cards with wall angles, hold types, estimated moves, versioned step-by-step beta sequences, crux flags, burn counters, and attached video proof. |
+| **The Visual Beta Hunter**   | Discovers alternative sequences and micro-beta on Instagram and TikTok or records friends' attempts on their phone. | 1-tap social share-sheet link saving and 60-second video clip capture, pinned directly to specific beta moves for review right before pulling onto the wall.        |
 
 ---
 
@@ -52,6 +55,7 @@ Unlike generic fitness trackers, notes apps, or cloud-heavy platforms, Gripped o
 ```
 
 ### Pillar 1: Lightning Fast Offline Session Telemetry
+
 - Start session with optional gym selection (defaults to last used gym).
 - Live telemetry bar: total volume, send rate %, flash count, hardest send, and active session duration.
 - Grade chips (V-scale / Fontainebleau) with single-tap outcome recording (`Flash`, `Top`, `Attempt`).
@@ -60,6 +64,7 @@ Unlike generic fitness trackers, notes apps, or cloud-heavy platforms, Gripped o
 - Session wrap-up: perceived exertion (RPE 1–5), skin state (`Good`, `Thin`, `Split`, `Sweaty`), and finger fatigue (`Fresh`, `Tired`, `Sore`, `Tweaked`).
 
 ### Pillar 2: Project Hub & Versioned Beta Sequencing
+
 - Projects persist independently across sessions and belong to a specific gym (or Outdoor / Other).
 - Projects hold technical specifications: target grade, wall angle (Slab, Vertical, Overhang, Roof), hold types (Crimps, Slopers, Pinches, Jugs, Pockets, Edges), total moves, and high-water mark.
 - **Versioned Beta Sequences**:
@@ -70,6 +75,7 @@ Unlike generic fitness trackers, notes apps, or cloud-heavy platforms, Gripped o
   - Sending a project triggers an immersive celebration modal (confetti, haptics, send recap) and updates peak grade analytics. Reopening or reactivating is supported.
 
 ### Pillar 3: Hybrid Beta Video Library
+
 - **Local Video Clips**:
   - Record natively (up to 60 seconds) or import from camera roll.
   - Trimmed and compressed locally to conserve device storage.
@@ -107,27 +113,28 @@ The app uses a 4-tab floating glassmorphic navigation bar centered around an ele
 
 ### Screen Inventory & Roles
 
-| Screen | Route | Entry Point | Key Functionality |
-| :--- | :--- | :--- | :--- |
-| **Home** | `app/index.tsx` | Tab 1 | User avatar with Settings trigger, bento stats (sessions/climbs/sends this week), active session resume banner or next objective project card, 4-week streak strip, recent sessions preview. |
-| **Explore** | `app/explore.tsx` | Tab 2 | Gyms list, Add Gym modal, Gyms / Video Inbox switcher, unsorted social link library, quick attach sheet. |
-| **Gym Detail** | `app/gym/[id].tsx` | Explore | Gym projects grouped by status (`Active`, `Sent`, `Archived`), Gym session history, Add Project button. |
-| **Start / Active** | `app/session/active.tsx` | Tab Center | Live session telemetry, grade chips, `+1 Attempt` button, rest timer capsule, session pyramid and curve, dual-linking to projects. |
-| **Log Sheet** | Modal / Sheet | Active Session | Detailed climb entry modal: grade selection, outcome chips (`Flash`, `Top`, `Attempt`), burn counter, notes, project association. |
-| **Session Wrap-Up**| `app/session/end.tsx` | Active Session | End session summary, perceived exertion (RPE 1–5), skin and finger condition tags, optional photos, session notes. |
-| **Session Summary**| `app/session/summary.tsx`| Wrap-Up | Post-session celebratory recap card showing climbs, sends, hardest grade, and personal best milestones. |
-| **Projects** | `app/projects.tsx` | Home link / Gym | Project management hub: Active, Sent, and Archived lists, high-water mark badges, sort & filter controls. |
-| **Project Detail** | `app/project/[id].tsx` | Projects / Home | Project specifications, high-water mark, versioned beta builder, crux indicator, attached local video clips, linked social posts, burn history. |
-| **Progress** | `app/analytics.tsx` | Tab 3 | Grade pyramid bars (interactive drill-down to matching climbs), 7d / 30d / 90d / 1y / All-Time filters, flash efficiency %, hardest send, wall angle proficiency radar. |
-| **Logbook** | `app/profile.tsx` | Tab 4 | Chronological session list grouped by month, search and filter modal, session cards showing volume, sends, gym, and duration. |
-| **Session Detail** | `app/session/detail/[id].tsx`| Logbook | Retrospective view of all climbs in a past session, edit/delete climb actions, promote climb to project, edit session notes. |
-| **Settings** | `app/settings.tsx` | Home Header | Grade scale preference, rest presets, haptic switches, storage usage breakdown, JSON backup export and import. |
+| Screen              | Route                         | Entry Point     | Key Functionality                                                                                                                                                                            |
+| :------------------ | :---------------------------- | :-------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Home**            | `app/index.tsx`               | Tab 1           | User avatar with Settings trigger, bento stats (sessions/climbs/sends this week), active session resume banner or next objective project card, 4-week streak strip, recent sessions preview. |
+| **Explore**         | `app/explore.tsx`             | Tab 2           | Gyms list, Add Gym modal, Gyms / Video Inbox switcher, unsorted social link library, quick attach sheet.                                                                                     |
+| **Gym Detail**      | `app/gym/[id].tsx`            | Explore         | Gym projects grouped by status (`Active`, `Sent`, `Archived`), Gym session history, Add Project button.                                                                                      |
+| **Start / Active**  | `app/session/active.tsx`      | Tab Center      | Live session telemetry, grade chips, `+1 Attempt` button, rest timer capsule, session pyramid and curve, dual-linking to projects.                                                           |
+| **Log Sheet**       | Modal / Sheet                 | Active Session  | Detailed climb entry modal: grade selection, outcome chips (`Flash`, `Top`, `Attempt`), burn counter, notes, project association.                                                            |
+| **Session Wrap-Up** | `app/session/end.tsx`         | Active Session  | End session summary, perceived exertion (RPE 1–5), skin and finger condition tags, optional photos, session notes.                                                                           |
+| **Session Summary** | `app/session/summary.tsx`     | Wrap-Up         | Post-session celebratory recap card showing climbs, sends, hardest grade, and personal best milestones.                                                                                      |
+| **Projects**        | `app/projects.tsx`            | Home link / Gym | Project management hub: Active, Sent, and Archived lists, high-water mark badges, sort & filter controls.                                                                                    |
+| **Project Detail**  | `app/project/[id].tsx`        | Projects / Home | Project specifications, high-water mark, versioned beta builder, crux indicator, attached local video clips, linked social posts, burn history.                                              |
+| **Progress**        | `app/analytics.tsx`           | Tab 3           | Grade pyramid bars (interactive drill-down to matching climbs), 7d / 30d / 90d / 1y / All-Time filters, flash efficiency %, hardest send, wall angle proficiency radar.                      |
+| **Logbook**         | `app/profile.tsx`             | Tab 4           | Chronological session list grouped by month, search and filter modal, session cards showing volume, sends, gym, and duration.                                                                |
+| **Session Detail**  | `app/session/detail/[id].tsx` | Logbook         | Retrospective view of all climbs in a past session, edit/delete climb actions, promote climb to project, edit session notes.                                                                 |
+| **Settings**        | `app/settings.tsx`            | Home Header     | Grade scale preference, rest presets, haptic switches, storage usage breakdown, JSON backup export and import.                                                                               |
 
 ---
 
 ## 5. End-to-End User Flows & System Connections
 
 ### Flow 1: Live Session Logging & Background Resume
+
 ```mermaid
 flowchart TD
     A["Tap Start Button (Tab Center)"] --> B{"Active Session Exists?"}
@@ -149,6 +156,7 @@ flowchart TD
 ```
 
 ### Flow 2: Project Dual-Linking & Promotion
+
 - **Promoting a climb to a project**:
   1. From an active session or a past session in the Logbook, climber taps **"Make Project"** on a climb card.
   2. Project creation sheet opens pre-populated with:
@@ -162,10 +170,11 @@ flowchart TD
   3. Every burn logged against a project writes a standard climb row linked to the current `session_id` AND increments the project's `total_burns`.
   4. If the climb is marked as `Top`:
      - If burns == 1 and no prior attempts exist, user can claim `Flash`.
-     - App prompts: *"Mark project as Sent?"*.
+     - App prompts: _"Mark project as Sent?"_.
      - Confirming transitions project status to `sent`, records `completed_at`, fires the celebration engine, and recalculates peak grade.
 
 ### Flow 3: Move-by-Move Versioned Beta Sequencing
+
 ```mermaid
 flowchart LR
     A["Project Detail Screen"] --> B["Tap Beta Section (Default Hidden)"]
@@ -177,12 +186,14 @@ flowchart LR
     G --> H["Save Version 2"]
     H --> I["Version Switcher Pills (v1 | v2) allow seamless switching"]
 ```
+
 - Moves are ordered incrementally (`move_order: 1, 2, 3...`).
 - Crux toggle sets `is_crux = 1` for a single move in that sequence.
 - Crux marker is displayed prominently with accent styling and a `CRUX` badge.
 - When sharing a beta via iOS share sheet, Gripped compiles a human-readable text card containing key tips, move sequences, crux flags, and external video URLs.
 
 ### Flow 4: Hybrid Video Library (Local Clips & Social Links)
+
 ```mermaid
 flowchart TD
     subgraph Local Clips
@@ -206,6 +217,7 @@ flowchart TD
 All data resides in local SQLite (`cruxlog_v2.db`). The schema enforces foreign key integrity while preserving historical climbing logs through cascade protections.
 
 ### Entity Relationship Diagram
+
 ```mermaid
 erDiagram
     GYMS ||--o{ SESSIONS : "hosts"
@@ -221,6 +233,7 @@ erDiagram
 ### Table Definitions
 
 #### `sessions`
+
 ```sql
 CREATE TABLE IF NOT EXISTS sessions (
   id TEXT PRIMARY KEY,
@@ -245,6 +258,7 @@ CREATE TABLE IF NOT EXISTS sessions (
 ```
 
 #### `climbs`
+
 ```sql
 CREATE TABLE IF NOT EXISTS climbs (
   id TEXT PRIMARY KEY,
@@ -267,6 +281,7 @@ CREATE TABLE IF NOT EXISTS climbs (
 ```
 
 #### `projects`
+
 ```sql
 CREATE TABLE IF NOT EXISTS projects (
   id TEXT PRIMARY KEY,
@@ -294,6 +309,7 @@ CREATE TABLE IF NOT EXISTS projects (
 ```
 
 #### `betas` & `beta_moves`
+
 ```sql
 CREATE TABLE IF NOT EXISTS betas (
   id TEXT PRIMARY KEY,
@@ -320,6 +336,7 @@ CREATE TABLE IF NOT EXISTS beta_moves (
 ```
 
 #### `beta_videos` & `video_notes`
+
 ```sql
 CREATE TABLE IF NOT EXISTS beta_videos (
   id TEXT PRIMARY KEY,
@@ -349,26 +366,28 @@ CREATE TABLE IF NOT EXISTS video_notes (
 
 ## 7. Pressure-Tested Caveats & Resolution Matrix
 
-| # | Caveat / Edge Case | Risk to Production | Agreed Resolution |
-| :--- | :--- | :--- | :--- |
-| **1** | **Social Link Scraping & Offline State** | Instagram/TikTok frequently challenge unauthenticated thumbnail scraping; users may share posts while offline in a gym. | **Dual input mechanism**: Support native iOS Share Extension for 1-tap capture, PLUS an in-app "Paste URL / Clipboard" button. Store platform placeholder thumbnail when offline and fetch preview on subsequent connection. Posts open via native deep link on playback. |
-| **2** | **Local Video Storage & Backup Size** | Copying multi-megabyte video files into JSON backup files will crash mobile memory or produce unshareable multi-gigabyte JSON files. | **Separation of concerns**: JSON backup exports 100% of SQLite database records, telemetry, move steps, and URL links. Local `.mp4` video files reside in `documentDirectory` and rely on iOS standard encrypted device / iCloud backup. Settings provides a storage meter and cache cleaner. |
-| **3** | **Bi-Directional Grade Conversion** | Fontainebleau to V-Scale has many-to-one overlaps (both Font 6A and 6A+ map to V3), causing irreversible data loss on round trips. | **Dual storage model**: Always preserve the exact `grade_raw` string and original `grade_system` as logged. Compute a normalized `grade_index` for sorting and analytics. UI converts dynamically on display based on user preference without modifying underlying data. |
-| **4** | **Cascade Deletion Integrity** | Deleting a project could inadvertently wipe historical climbs from completed sessions, destroying telemetry graphs. | **Safe unlinking (`ON DELETE SET NULL`)**: Deleting a project unlinks climbs (`project_id = NULL`), leaving session history and volume 100% intact. Project beta versions and local video records are cleaned up. Deleting a session deletes its climb attempts, leaving any promoted project intact. |
-| **5** | **The Flash Rule Enforcement** | A climber cannot claim a "Flash" on a project if they have previously attempted it in earlier sessions. | **Attempt-gated outcome**: The `Flash` chip is enabled on the very first climb of a project. Once `total_attempts >= 1` or previous burns exist, the `Flash` chip is locked and replaced with a `LOCKED` badge, permitting only `Top` or `Attempt`. |
-| **6** | **Session Interruption & App Kill** | iOS suspends apps in the background, freezing JavaScript intervals and resetting timers. | **Timestamp-derived clocks**: All timers compute `Date.now() - session.started_at` dynamically. App launch detects unclosed sessions (`ended_at IS NULL`) and renders a persistent Home resume banner with exact elapsed time. |
-| **7** | **Backup Collision & Overwrite Protection** | Restoring an older backup could overwrite recent progress or duplicate records. | **Atomic `INSERT OR REPLACE` with UUID primary keys**: Every record across all 9 tables uses a stable UUID. Backup import restores missing records while overwriting matching UUIDs idempotently within a single SQLite transaction. |
+| #     | Caveat / Edge Case                          | Risk to Production                                                                                                                   | Agreed Resolution                                                                                                                                                                                                                                                                                     |
+| :---- | :------------------------------------------ | :----------------------------------------------------------------------------------------------------------------------------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **1** | **Social Link Scraping & Offline State**    | Instagram/TikTok frequently challenge unauthenticated thumbnail scraping; users may share posts while offline in a gym.              | **Dual input mechanism**: Support native iOS Share Extension for 1-tap capture, PLUS an in-app "Paste URL / Clipboard" button. Store platform placeholder thumbnail when offline and fetch preview on subsequent connection. Posts open via native deep link on playback.                             |
+| **2** | **Local Video Storage & Backup Size**       | Copying multi-megabyte video files into JSON backup files will crash mobile memory or produce unshareable multi-gigabyte JSON files. | **Separation of concerns**: JSON backup exports 100% of SQLite database records, telemetry, move steps, and URL links. Local `.mp4` video files reside in `documentDirectory` and rely on iOS standard encrypted device / iCloud backup. Settings provides a storage meter and cache cleaner.         |
+| **3** | **Bi-Directional Grade Conversion**         | Fontainebleau to V-Scale has many-to-one overlaps (both Font 6A and 6A+ map to V3), causing irreversible data loss on round trips.   | **Dual storage model**: Always preserve the exact `grade_raw` string and original `grade_system` as logged. Compute a normalized `grade_index` for sorting and analytics. UI converts dynamically on display based on user preference without modifying underlying data.                              |
+| **4** | **Cascade Deletion Integrity**              | Deleting a project could inadvertently wipe historical climbs from completed sessions, destroying telemetry graphs.                  | **Safe unlinking (`ON DELETE SET NULL`)**: Deleting a project unlinks climbs (`project_id = NULL`), leaving session history and volume 100% intact. Project beta versions and local video records are cleaned up. Deleting a session deletes its climb attempts, leaving any promoted project intact. |
+| **5** | **The Flash Rule Enforcement**              | A climber cannot claim a "Flash" on a project if they have previously attempted it in earlier sessions.                              | **Attempt-gated outcome**: The `Flash` chip is enabled on the very first climb of a project. Once `total_attempts >= 1` or previous burns exist, the `Flash` chip is locked and replaced with a `LOCKED` badge, permitting only `Top` or `Attempt`.                                                   |
+| **6** | **Session Interruption & App Kill**         | iOS suspends apps in the background, freezing JavaScript intervals and resetting timers.                                             | **Timestamp-derived clocks**: All timers compute `Date.now() - session.started_at` dynamically. App launch detects unclosed sessions (`ended_at IS NULL`) and renders a persistent Home resume banner with exact elapsed time.                                                                        |
+| **7** | **Backup Collision & Overwrite Protection** | Restoring an older backup could overwrite recent progress or duplicate records.                                                      | **Atomic `INSERT OR REPLACE` with UUID primary keys**: Every record across all 9 tables uses a stable UUID. Backup import restores missing records while overwriting matching UUIDs idempotently within a single SQLite transaction.                                                                  |
 
 ---
 
 ## 8. Non-Functional & Technical Specifications
 
 ### 8.1 Performance Benchmarks
+
 - **Cold App Launch**: < 800ms to interactive screen.
 - **Query Performance**: Full analytics query suite over 2,500 historical climbs must complete in under **10ms** (verified benchmark: 3.91ms on device).
 - **Offline Reliability**: 100% of screens, logging flows, analytics charts, and backup actions function with Wi-Fi and Cellular radios disconnected.
 
 ### 8.2 Visual Design System
+
 - **Theme**: Dark glassmorphism (`#000000` base, translucent cards `rgba(22, 22, 30, 0.92)`).
 - **Core Accents**:
   - **Violet Primary**: `#8E7CFF` (Primary actions, top sends, active capsules).
@@ -393,6 +412,7 @@ Legend:
 ```
 
 ### 9.1 Session Management & Telemetry
+
 - [x] Live session with timestamp-based clock (`app/session/active.tsx`)
 - [x] Rest timer between climbs with customizable seconds (`app/settings.tsx`)
 - [x] Quick `+1 Attempt` button for rapid repetition logging
@@ -401,9 +421,10 @@ Legend:
 - [x] Background resume banner on Home screen after app termination
 - [x] Session wrap-up screen with RPE, skin, and finger fatigue states (`app/session/end.tsx`)
 - [x] Session summary card and historical Logbook (`app/profile.tsx`)
-- [ ] Manual post-dated session entry in Logbook
+- [x] Manual post-dated session entry in Logbook (`components/logbook/PastSessionModal.tsx`)
 
 ### 9.2 Projects & Beta Hub
+
 - [x] Dedicated project creation with wall angles and hold types (`app/projects.tsx`)
 - [x] Dual-linking active session climbs with project burn counters
 - [x] High-water mark tracking and total burns telemetry
@@ -412,23 +433,25 @@ Legend:
 - [x] Multi-version beta switcher (`v1`, `v2`, etc.) with independent move sets
 - [x] Project lifecycle states (`Active`, `Sent`, `Archived`)
 - [x] Sent project celebration modal with confetti and haptic feedback
-- [ ] Text-based "Share Beta" summary via iOS share sheet
+- [x] Text-based "Share Beta" summary via iOS share sheet (`components/project/BetaSection.tsx`)
 
 ### 9.3 Video Library & Media
+
 - [x] In-app storage manager with SQLite vs Media Cache breakdown (`app/settings.tsx`)
 - [x] Native local video recording & camera roll import with 60s cap
 - [~] Native iOS Share Sheet extension configuration for TikTok/Instagram import
-- [~] In-app "Paste URL / Clipboard" fallback for social video links
-- [~] Pinned video playback within versioned beta sequence
+- [x] In-app "Paste URL / Clipboard" fallback for social video links (`app/explore.tsx`)
+- [x] Pinned video playback & post viewing within versioned beta sequence (`components/project/BetaSection.tsx`)
 
 ### 9.4 Analytics & Data Management
+
 - [x] Grade pyramid with interactive bar filtering to matching climbs (`app/analytics.tsx`)
 - [x] Timeframe filter switching (`7d`, `30d`, `90d`, `1y`, `All-Time`)
 - [x] Wall angle proficiency mastery chart
 - [x] Single-scale normalization preserving original raw grade string
 - [x] JSON database export with session and climb counts (`app/settings.tsx`)
 - [x] JSON backup import with atomic SQLite transaction restore
-- [x] Complete test suite passing (29 test suites, 160 unit and query tests)
+- [x] Complete test suite passing (30 test suites, 164 unit and query tests)
 
 ---
 

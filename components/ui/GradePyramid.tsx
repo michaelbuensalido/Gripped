@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text } from 'react-native';
 import { ChevronRight } from 'lucide-react-native';
-import Animated, { FadeInRight, useReducedMotion } from 'react-native-reanimated';
+import Animated, { FadeIn, useReducedMotion } from 'react-native-reanimated';
 import { useTheme } from '../../theme/useTheme';
 import { ScalePressable } from './ScalePressable';
 
@@ -21,20 +21,17 @@ export const GradePyramid = React.memo(function GradePyramid({ data, formatGrade
   const { colors, type, space, radius, gradeBand } = useTheme();
   const reduceMotion = useReducedMotion();
 
-  if (!data || data.length === 0) {
-    return (
-      <View style={{ alignItems: 'center', padding: space.xl }}>
-        <Text style={[type.body, { color: colors.textMuted }]}>No sends yet for this period.</Text>
-      </View>
-    );
-  }
+  const isEmpty = !data || data.length === 0;
+  const rows: GradePyramidRowData[] = isEmpty
+    ? [5, 4, 3, 2, 1, 0].map((grade) => ({ grade, flashes: 0, sends: 0 }))
+    : data;
 
   // Find max volume to scale bars
-  const maxVolume = Math.max(...data.map(d => d.flashes + d.sends), 1);
+  const maxVolume = Math.max(...rows.map(d => d.flashes + d.sends), 1);
 
   return (
     <View style={{ gap: space.xs }}>
-      {data.map((row, idx) => {
+      {rows.map((row, idx) => {
         const flashPercent = (row.flashes / maxVolume) * 100;
         const sendPercent = (row.sends / maxVolume) * 100;
         const total = row.flashes + row.sends;
@@ -90,7 +87,7 @@ export const GradePyramid = React.memo(function GradePyramid({ data, formatGrade
               <Text style={[type.caption, { color: colors.textMuted, fontVariant: ['tabular-nums'] }]}>
                 {total}
               </Text>
-              {onPressGrade && (
+              {onPressGrade && !isEmpty && (
                 <ChevronRight size={14} color={colors.textMuted} strokeWidth={2} />
               )}
             </View>
@@ -100,9 +97,9 @@ export const GradePyramid = React.memo(function GradePyramid({ data, formatGrade
         return (
           <Animated.View
             key={row.grade}
-            entering={reduceMotion ? undefined : FadeInRight.delay(idx * 30).duration(220)}
+            entering={reduceMotion ? undefined : FadeIn.delay(Math.min(idx, 6) * 25).duration(220)}
           >
-            {onPressGrade ? (
+            {onPressGrade && !isEmpty ? (
               <ScalePressable
                 haptic="light"
                 activeScale={0.98}
@@ -129,6 +126,11 @@ export const GradePyramid = React.memo(function GradePyramid({ data, formatGrade
           <Text style={[type.caption, { color: colors.textMuted }]}>Send</Text>
         </View>
       </View>
+      {isEmpty && (
+        <Text style={[type.caption, { color: colors.textMuted, textAlign: 'center', marginTop: space.xs }]}>
+          No sends yet for this period.
+        </Text>
+      )}
     </View>
   );
 });

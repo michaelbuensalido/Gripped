@@ -161,9 +161,22 @@ export function getDatabase(): SQLite.SQLiteDatabase {
         local_uri TEXT NOT NULL,
         duration_sec REAL NOT NULL DEFAULT 0,
         size_bytes INTEGER NOT NULL DEFAULT 0,
+        source_type TEXT NOT NULL DEFAULT 'local',
+        video_url TEXT,
+        caption TEXT,
+        thumbnail_url TEXT,
         created_at INTEGER NOT NULL
       );
       CREATE INDEX IF NOT EXISTS idx_beta_videos_project ON beta_videos(project_id);
+
+      CREATE TABLE IF NOT EXISTS video_inbox (
+        id TEXT PRIMARY KEY,
+        source_type TEXT NOT NULL DEFAULT 'instagram',
+        video_url TEXT NOT NULL,
+        caption TEXT,
+        thumbnail_url TEXT,
+        created_at INTEGER NOT NULL
+      );
 
       CREATE TABLE IF NOT EXISTS video_notes (
         id TEXT PRIMARY KEY,
@@ -171,7 +184,6 @@ export function getDatabase(): SQLite.SQLiteDatabase {
         timestamp_sec REAL NOT NULL DEFAULT 0,
         text TEXT NOT NULL DEFAULT ''
       );
-      CREATE INDEX IF NOT EXISTS idx_video_notes_video ON video_notes(video_id);
       CREATE INDEX IF NOT EXISTS idx_video_notes_video ON video_notes(video_id);
     `);
 
@@ -188,6 +200,10 @@ export function getDatabase(): SQLite.SQLiteDatabase {
       "ALTER TABLE projects ADD COLUMN gym_name TEXT;",
       "ALTER TABLE projects ADD COLUMN zone TEXT;",
       "ALTER TABLE projects ADD COLUMN set_date TEXT;",
+      "ALTER TABLE beta_videos ADD COLUMN source_type TEXT NOT NULL DEFAULT 'local';",
+      "ALTER TABLE beta_videos ADD COLUMN video_url TEXT;",
+      "ALTER TABLE beta_videos ADD COLUMN caption TEXT;",
+      "ALTER TABLE beta_videos ADD COLUMN thumbnail_url TEXT;",
     ];
     for (const sql of columnsToAdd) {
       try {

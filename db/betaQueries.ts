@@ -8,7 +8,7 @@ import {
   stripEmptyMoves,
   videoFilesToDelete,
 } from '../utils/betaLogic';
-import type { Beta, BetaMove, BetaVideo, Limb, VideoNote } from '../types/beta';
+import type { Beta, BetaMove, BetaVideo, Limb, VideoNote, VideoInboxItem, VideoSourceType } from '../types/beta';
 
 // Beta is local-only: no outbox rows. Mutations still emit dbEvents so live hooks re-render.
 
@@ -54,6 +54,10 @@ function mapVideo(r: any): BetaVideo {
     durationSec: r.duration_sec,
     sizeBytes: r.size_bytes,
     createdAt: r.created_at,
+    sourceType: (r.source_type as VideoSourceType) ?? 'local',
+    videoUrl: r.video_url ?? null,
+    caption: r.caption ?? null,
+    thumbnailUrl: r.thumbnail_url ?? null,
   };
 }
 
@@ -207,21 +211,111 @@ export function getProjectStorageBytes(projectId: string): number {
   return r?.total ?? 0;
 }
 
-export function insertVideo(v: Omit<BetaVideo, 'createdAt' | 'attemptId'> & { attemptId?: string | null }): void {
+export function insertVideo(v: Omit<BetaVideo, 'createdAt' | 'attemptId'> & {
+  attemptId?: string | null;
+  sourceType?: VideoSourceType;
+  videoUrl?: string | null;
+  caption?: string | null;
+  thumbnailUrl?: string | null;
+}): void {
   getDatabase().runSync(
-    `INSERT INTO beta_videos (id, project_id, attempt_id, local_uri, duration_sec, size_bytes, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?)`,
-    [v.id, v.projectId, v.attemptId ?? null, v.localUri, v.durationSec, v.sizeBytes, Date.now()],
+    `INSERT INTO beta_videos (id, project_id, attempt_id, local_uri, duration_sec, size_bytes, source_type, video_url, caption, thumbnail_url, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      v.id,
+      v.projectId,
+      v.attemptId ?? null,
+      v.localUri,
+      v.durationSec,
+      v.sizeBytes,
+      v.sourceType ?? 'local',
+      v.videoUrl ?? null,
+      v.caption ?? null,
+      v.thumbnailUrl ?? null,
+      Date.now(),
+    ],
   );
   dbEvents.emit();
 }
 
-/** Deletes the clip row (notes cascade) and its file. */
+/** Deletes the clip row (notes cascade) and its file if local. */
 export function deleteVideo(videoId: string): void {
   const video = getVideo(videoId);
   if (!video) return;
   getDatabase().runSync(`DELETE FROM beta_videos WHERE id = ?`, [videoId]);
-  deleteClipFile(video.localUri);
+  if (!video.videoUrl && !video.localUri.startsWith('http://') && !video.localUri.startsWith('https://')) {
+    deleteClipFile(video.localUri);
+  }
+  dbEvents.emit();
+}
+
+// ─── Video Inbox (Unsorted Social Links) ────────────────────────────────────
+
+function mapInboxItem(r: any): VideoInboxItem {
+  return {
+    id: r.id,
+    sourceType: (r.source_type as VideoSourceType) ?? 'instagram',
+    videoUrl: r.video_url,
+    caption: r.caption ?? null,
+    thumbnailUrl: r.thumbnail_url ?? null,
+    createdAt: r.created_at,
+  };
+}
+
+export function getVideoInbox(): VideoInboxItem[] {
+  return getDatabase()
+    .getAllSync<any>(`SELECT * FROM video_inbox ORDER BY created_at DESC`)
+    .map(mapInboxItem);
+}
+
+export function insertVideoInboxItem(item: {
+  id?: string;
+  sourceType?: VideoSourceType;
+  videoUrl: string;
+  caption?: string | null;
+  thumbnailUrl?: string | null;
+}): string {
+  const id = item.id || uuid();
+  getDatabase().runSync(
+    `INSERT INTO video_inbox (id, source_type, video_url, caption, thumbnail_url, created_at)
+     VALUES (?, ?, ?, ?, ?, ?)`,
+    [
+      id,
+      item.sourceType ?? 'instagram',
+      item.videoUrl.trim(),
+      item.caption?.trim() ?? null,
+      item.thumbnailUrl ?? null,
+      Date.now(),
+    ],
+  );
+  dbEvents.emit();
+  return id;
+}
+
+export function deleteVideoInboxItem(id: string): void {
+  getDatabase().runSync(`DELETE FROM video_inbox WHERE id = ?`, [id]);
+  dbEvents.emit();
+}
+
+export function attachVideoInboxItemToProject(inboxItemId: string, projectId: string): void {
+  const r = getDatabase().getFirstSync<any>(`SELECT * FROM video_inbox WHERE id = ?`, [inboxItemId]);
+  if (!r) return;
+  const videoId = uuid();
+  getDatabase().runSync(
+    `INSERT INTO beta_videos (id, project_id, attempt_id, local_uri, duration_sec, size_bytes, source_type, video_url, caption, thumbnail_url, created_at)
+     VALUES (?, ?, NULL, ?, 0, 0, ?, ?, ?, ?, ?)`,
+    [
+      videoId,
+      projectId,
+      r.video_url,
+      r.source_type ?? 'instagram',
+      r.video_url,
+      r.caption ?? null,
+      r.thumbnail_url ?? null,
+      Date.now(),
+    ],
+  );
+  getDatabase().runSync(`DELETE FROM video_inbox WHERE id = ?`, [inboxItemId]);
   dbEvents.emit();
 }
 
