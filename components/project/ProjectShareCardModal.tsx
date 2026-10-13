@@ -4,19 +4,22 @@ import {
   Text,
   Modal,
   StyleSheet,
-  TouchableOpacity,
   ScrollView,
   Platform,
   Alert,
   Switch,
   ActivityIndicator,
+  Share,
 } from 'react-native';
+import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
+import { ScalePressable } from '../ui/ScalePressable';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { captureRef } from 'react-native-view-shot';
 import * as Sharing from 'expo-sharing';
-import { X, Share2, Flame, Trophy, Sparkles, Check, AlertCircle } from 'lucide-react-native';
+import { X, Share2, Flame, Trophy, Sparkles, Check, AlertCircle, FileText } from 'lucide-react-native';
 import { useTheme } from '../../theme/useTheme';
 import { triggerHaptic } from '../../utils/haptics';
+import { formatBetaSummaryText } from '../../utils/betaLogic';
 import type { Beta, BetaMove } from '../../types/beta';
 import type { Project } from '../../types';
 
@@ -76,6 +79,25 @@ export function ProjectShareCardModal({
     }
   };
 
+  const handleShareText = async () => {
+    try {
+      triggerHaptic('medium');
+      const summary = formatBetaSummaryText(
+        project,
+        includeBeta ? beta : null,
+        includeBeta ? moves : [],
+        [],
+      );
+      await Share.share({
+        message: summary,
+        title: `Gripped Beta: ${project.title}`,
+      });
+      triggerHaptic('success');
+    } catch (e) {
+      console.error('Share text failed:', e);
+    }
+  };
+
   const hasBetaContent = Boolean(beta && (beta.keyTip || moves.length > 0));
 
   return (
@@ -97,15 +119,17 @@ export function ProjectShareCardModal({
         >
           {/* Top Bar */}
           <View style={styles.topBar}>
-            <TouchableOpacity
+            <ScalePressable
               onPress={onClose}
+              haptic="light"
+              activeScale={0.92}
               style={styles.closeBtn}
               accessibilityRole="button"
               accessibilityLabel="Close share card"
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             >
               <X size={20} color={colors.text} />
-            </TouchableOpacity>
+            </ScalePressable>
             <Text style={[type.heading, { color: colors.text, fontSize: 16 }]}>
               Export Share Card
             </Text>
@@ -226,7 +250,11 @@ export function ProjectShareCardModal({
 
               {/* Optional Beta Details (Included strictly only when sender opted in) */}
               {includeBeta && hasBetaContent && (
-                <View style={styles.cardBetaSection}>
+                <Animated.View
+                  entering={FadeIn.duration(200)}
+                  exiting={FadeOut.duration(150)}
+                  style={styles.cardBetaSection}
+                >
                   <View style={styles.cardBetaHeader}>
                     <Sparkles size={13} color="#8E7CFF" />
                     <Text style={styles.cardBetaTitle}>
@@ -276,7 +304,7 @@ export function ProjectShareCardModal({
                       })}
                     </View>
                   )}
-                </View>
+                </Animated.View>
               )}
 
               {/* Card Footer */}
@@ -290,8 +318,9 @@ export function ProjectShareCardModal({
 
           {/* Action Button: Share Card via system share sheet */}
           <View style={{ paddingHorizontal: space.lg, marginTop: space.sm }}>
-            <TouchableOpacity
+            <ScalePressable
               onPress={handleShare}
+              haptic="none"
               disabled={isExporting}
               style={[
                 styles.shareActionBtn,
@@ -313,7 +342,29 @@ export function ProjectShareCardModal({
                   </Text>
                 </>
               )}
-            </TouchableOpacity>
+            </ScalePressable>
+
+            <ScalePressable
+              onPress={handleShareText}
+              haptic="none"
+              style={[
+                styles.shareActionBtn,
+                {
+                  backgroundColor: colors.card,
+                  borderColor: colors.border,
+                  borderWidth: 1,
+                  borderRadius: radius.pill,
+                  marginTop: space.xs,
+                },
+              ]}
+              accessibilityRole="button"
+              accessibilityLabel="Share beta as text summary"
+            >
+              <FileText size={18} color={colors.text} />
+              <Text style={[type.control, { color: colors.text, fontWeight: '600' }]}>
+                SHARE AS TEXT
+              </Text>
+            </ScalePressable>
           </View>
         </View>
       </View>

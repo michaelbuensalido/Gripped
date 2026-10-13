@@ -11,15 +11,16 @@ import {
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
-  withSpring,
-  withSequence,
-  withDelay,
+  withTiming,
+  Easing,
   useReducedMotion,
 } from 'react-native-reanimated';
 import { triggerHaptic } from '../../utils/haptics';
-import { useTheme } from '../../theme/useTheme';
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
+
+const MIN_PRESS_SCALE = 0.97;
+const PRESS_EASING = Easing.bezier(0.23, 1, 0.32, 1);
 
 export interface ScalePressableProps {
   children?: React.ReactNode;
@@ -54,9 +55,12 @@ export function ScalePressable({
   hitSlop,
   minTouchTarget = false,
 }: ScalePressableProps) {
-  const { motion } = useTheme();
   const reduceMotion = useReducedMotion();
   const scale = useSharedValue(1);
+
+  // Premium press feedback: a barely-there dip (never below 0.97) with a
+  // quick ease-out, and a slightly slower release. No spring overshoot.
+  const pressedScale = Math.max(activeScale, MIN_PRESS_SCALE);
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
@@ -64,41 +68,19 @@ export function ScalePressable({
 
   const handlePressIn = () => {
     if (disabled || reduceMotion) return;
-    scale.value = withSequence(
-      withSpring(activeScale, {
-        damping: motion.pressSpring?.damping ?? 18,
-        stiffness: motion.pressSpring?.stiffness ?? 350,
-        mass: 0.8,
-      }),
-      withDelay(
-        150,
-        withSpring(1, {
-          damping: motion.pressSpring?.damping ?? 18,
-          stiffness: motion.pressSpring?.stiffness ?? 350,
-          mass: 0.8,
-        })
-      )
-    );
+    scale.value = withTiming(pressedScale, { duration: 90, easing: PRESS_EASING });
   };
 
-  const handlePressOut = () => {
+  const release = () => {
     if (reduceMotion) return;
-    scale.value = withSpring(1, {
-      damping: motion.pressSpring?.damping ?? 18,
-      stiffness: motion.pressSpring?.stiffness ?? 350,
-      mass: 0.8,
-    });
+    scale.value = withTiming(1, { duration: 180, easing: PRESS_EASING });
   };
+
+  const handlePressOut = release;
 
   const handlePress = (e: GestureResponderEvent) => {
     if (disabled) return;
-    if (!reduceMotion) {
-      scale.value = withSpring(1, {
-        damping: motion.pressSpring?.damping ?? 18,
-        stiffness: motion.pressSpring?.stiffness ?? 350,
-        mass: 0.8,
-      });
-    }
+    release();
     if (haptic !== 'none') {
       triggerHaptic(haptic);
     }

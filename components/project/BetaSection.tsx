@@ -1,16 +1,17 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, Alert, Platform } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, Alert, Platform, Share, Linking, Modal, TextInput, KeyboardAvoidingView } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Eye, EyeOff, Edit2, Plus, Share2, Video, Upload, Trash2, Play } from 'lucide-react-native';
+import { Eye, EyeOff, Edit2, Plus, Share2, Video, Upload, Trash2, Play, Link2, ExternalLink, FileText, X } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { v4 as uuid } from 'uuid';
 import { useTheme } from '../../theme/useTheme';
 import { useProjectBetas, useBetaMoves, useProjectVideos, useProject } from '../../db/hooks';
 import * as B from '../../db/betaQueries';
 import { storeClip } from '../../services/betaFiles';
-import { formatBytes, formatTimestamp } from '../../utils/betaLogic';
+import { formatBytes, formatTimestamp, formatBetaSummaryText, detectVideoPlatform } from '../../utils/betaLogic';
 import { triggerHaptic } from '../../utils/haptics';
 import { SecondaryButton } from '../ui/SecondaryButton';
+import { PrimaryButton } from '../ui/PrimaryButton';
 import { BetaVideoPlayerModal } from '../media/BetaVideoPlayerModal';
 import { BetaCameraRecorder } from '../media/BetaCameraRecorder';
 import { ProjectShareCardModal } from './ProjectShareCardModal';
@@ -29,6 +30,9 @@ export function BetaSection({ projectId }: { projectId: string }) {
   const [selectedVideo, setSelectedVideo] = useState<{ id: string; uri: string } | null>(null);
   const [isRecorderOpen, setIsRecorderOpen] = useState(false);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [isAddLinkModalOpen, setIsAddLinkModalOpen] = useState(false);
+  const [videoUrlInput, setVideoUrlInput] = useState('');
+  const [videoCaptionInput, setVideoCaptionInput] = useState('');
 
   // Compute total project video storage in bytes
   const storageBytes = videos.reduce((acc, v) => acc + (v.sizeBytes || 0), 0);
@@ -110,6 +114,45 @@ export function BetaSection({ projectId }: { projectId: string }) {
         },
       },
     ]);
+  };
+
+  const handleShareBetaText = async () => {
+    if (!project) return;
+    try {
+      triggerHaptic('medium');
+      const summary = formatBetaSummaryText(project, currentBeta, moves, videos);
+      await Share.share({
+        message: summary,
+        title: `Gripped Beta: ${project.title}`,
+      });
+      triggerHaptic('success');
+    } catch (e) {
+      console.warn('Share beta error:', e);
+    }
+  };
+
+  const handleSaveLink = () => {
+    const trimmed = videoUrlInput.trim();
+    if (!trimmed) {
+      Alert.alert('Invalid URL', 'Please enter or paste a valid video URL.');
+      return;
+    }
+    const platform = detectVideoPlatform(trimmed);
+    const fileId = uuid();
+    B.insertVideo({
+      id: fileId,
+      projectId,
+      localUri: trimmed,
+      videoUrl: trimmed,
+      sourceType: platform,
+      caption: videoCaptionInput.trim() || null,
+      durationSec: 0,
+      sizeBytes: 0,
+    });
+    setVideoUrlInput('');
+    setVideoCaptionInput('');
+    setIsAddLinkModalOpen(false);
+    triggerHaptic('success');
   };
 
   if (betas.length === 0) {
@@ -239,50 +282,83 @@ export function BetaSection({ projectId }: { projectId: string }) {
               </Text>
             ) : (
               <View style={{ gap: 8, marginBottom: space.md }}>
-                {videos.map((v, idx) => (
-                  <View
-                    key={v.id}
-                    style={{
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      backgroundColor: colors.cardMuted,
-                      padding: 10,
-                      borderRadius: radius.md,
-                      borderWidth: 1,
-                      borderColor: colors.border,
-                    }}
-                  >
-                    <TouchableOpacity
-                      onPress={() => setSelectedVideo({ id: v.id, uri: v.localUri })}
-                      style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1, minHeight: 40 }}
-                      accessibilityRole="button"
-                      accessibilityLabel={`Watch clip ${idx + 1}`}
+                {videos.map((v, idx) => {
+                  const isSocial = Boolean(v.videoUrl || (v.sourceType && v.sourceType !== 'local'));
+                  const platformLabel = v.sourceType === 'instagram' ? 'Instagram' : v.sourceType === 'tiktok' ? 'TikTok' : 'Web Link';
+                  
+                  return (
+                    <View
+                      key={v.id}
+                      style={{
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        backgroundColor: colors.cardMuted,
+                        padding: 10,
+                        borderRadius: radius.md,
+                        borderWidth: 1,
+                        borderColor: colors.border,
+                      }}
                     >
-                      <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: colors.accent, alignItems: 'center', justifyContent: 'center' }}>
-                        <Play size={14} color={colors.textOnAccent} fill={colors.textOnAccent} style={{ marginLeft: 2 }} />
-                      </View>
-                      <View>
-                        <Text style={[type.caption, { color: colors.text, fontWeight: '600' }]}>
-                          Clip #{idx + 1} {v.durationSec ? `• ${formatTimestamp(v.durationSec)}` : ''}
-                        </Text>
-                        <Text style={[type.caption, { color: colors.textMuted, fontSize: 11 }]}>
-                          {formatBytes(v.sizeBytes)} • Offline Ready
-                        </Text>
-                      </View>
-                    </TouchableOpacity>
+                      {isSocial ? (
+                        <TouchableOpacity
+                          onPress={() => {
+                            triggerHaptic('light');
+                            const url = v.videoUrl || v.localUri;
+                            Linking.openURL(url).catch((err) => {
+                              console.warn('Cannot open video URL', err);
+                              Alert.alert('Unable to Open', `Cannot open link: ${url}`);
+                            });
+                          }}
+                          style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1, minHeight: 40 }}
+                          accessibilityRole="button"
+                          accessibilityLabel={`Open ${platformLabel} clip ${idx + 1}`}
+                        >
+                          <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: colors.accentSoft, alignItems: 'center', justifyContent: 'center' }}>
+                            <Link2 size={16} color={colors.accent} />
+                          </View>
+                          <View style={{ flex: 1 }}>
+                            <Text style={[type.caption, { color: colors.text, fontWeight: '600' }]} numberOfLines={1}>
+                              {v.caption || `${platformLabel} Beta Clip`}
+                            </Text>
+                            <Text style={[type.caption, { color: colors.textMuted, fontSize: 11 }]} numberOfLines={1}>
+                              {platformLabel} • Tap to view post
+                            </Text>
+                          </View>
+                        </TouchableOpacity>
+                      ) : (
+                        <TouchableOpacity
+                          onPress={() => setSelectedVideo({ id: v.id, uri: v.localUri })}
+                          style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1, minHeight: 40 }}
+                          accessibilityRole="button"
+                          accessibilityLabel={`Watch clip ${idx + 1}`}
+                        >
+                          <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: colors.accent, alignItems: 'center', justifyContent: 'center' }}>
+                            <Play size={14} color={colors.textOnAccent} fill={colors.textOnAccent} style={{ marginLeft: 2 }} />
+                          </View>
+                          <View>
+                            <Text style={[type.caption, { color: colors.text, fontWeight: '600' }]}>
+                              Clip #{idx + 1} {v.durationSec ? `• ${formatTimestamp(v.durationSec)}` : ''}
+                            </Text>
+                            <Text style={[type.caption, { color: colors.textMuted, fontSize: 11 }]}>
+                              {formatBytes(v.sizeBytes)} • Offline Ready
+                            </Text>
+                          </View>
+                        </TouchableOpacity>
+                      )}
 
-                    <TouchableOpacity
-                      onPress={() => handleDeleteVideo(v.id)}
-                      style={{ padding: 8, minHeight: 44, justifyContent: 'center' }}
-                      accessibilityRole="button"
-                      accessibilityLabel={`Delete clip ${idx + 1}`}
-                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                    >
-                      <Trash2 size={16} color={colors.dangerText} />
-                    </TouchableOpacity>
-                  </View>
-                ))}
+                      <TouchableOpacity
+                        onPress={() => handleDeleteVideo(v.id)}
+                        style={{ padding: 8, minHeight: 44, justifyContent: 'center' }}
+                        accessibilityRole="button"
+                        accessibilityLabel={`Delete clip ${idx + 1}`}
+                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                      >
+                        <Trash2 size={16} color={colors.dangerText} />
+                      </TouchableOpacity>
+                    </View>
+                  );
+                })}
               </View>
             )}
           </View>
@@ -329,6 +405,28 @@ export function BetaSection({ projectId }: { projectId: string }) {
               <Text style={[type.control, { color: colors.text }]}>Import Clip</Text>
             </TouchableOpacity>
 
+            <TouchableOpacity 
+              onPress={() => setIsAddLinkModalOpen(true)}
+              style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: colors.cardMuted, paddingHorizontal: 14, paddingVertical: 10, borderRadius: radius.pill, minHeight: 44 }}
+              accessibilityRole="button"
+              accessibilityLabel="Paste video link"
+            >
+              <Link2 size={16} color={colors.text} />
+              <Text style={[type.control, { color: colors.text }]}>Paste Link</Text>
+            </TouchableOpacity>
+
+            {project && (
+              <TouchableOpacity 
+                onPress={handleShareBetaText}
+                style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: colors.cardMuted, paddingHorizontal: 14, paddingVertical: 10, borderRadius: radius.pill, minHeight: 44 }}
+                accessibilityRole="button"
+                accessibilityLabel="Share beta as text"
+              >
+                <FileText size={16} color={colors.text} />
+                <Text style={[type.control, { color: colors.text }]}>Share Beta</Text>
+              </TouchableOpacity>
+            )}
+
             {project && (
               <TouchableOpacity 
                 onPress={() => setIsShareModalOpen(true)}
@@ -371,6 +469,95 @@ export function BetaSection({ projectId }: { projectId: string }) {
           onClose={() => setIsShareModalOpen(false)}
         />
       )}
+
+      {/* Paste Social Video Link Modal */}
+      <Modal
+        visible={isAddLinkModalOpen}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setIsAddLinkModalOpen(false)}
+      >
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'flex-end' }}
+        >
+          <View
+            style={{
+              backgroundColor: colors.card,
+              borderTopLeftRadius: radius.lg,
+              borderTopRightRadius: radius.lg,
+              borderWidth: 1,
+              borderColor: colors.border,
+              padding: space.lg,
+              paddingBottom: Platform.OS === 'ios' ? 40 : space.lg,
+            }}
+          >
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: space.md }}>
+              <Text style={[type.heading, { color: colors.text, fontSize: 18 }]}>Add Video Link</Text>
+              <TouchableOpacity
+                onPress={() => setIsAddLinkModalOpen(false)}
+                style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }}
+                accessibilityRole="button"
+                accessibilityLabel="Close paste link modal"
+              >
+                <X size={20} color={colors.textMuted} />
+              </TouchableOpacity>
+            </View>
+
+            <Text style={[type.caption, { color: colors.textMuted, marginBottom: space.md }]}>
+              Paste a link from Instagram Reels, TikTok, or the web to keep your beta inspiration attached to this project.
+            </Text>
+
+            <Text style={[type.label, { color: colors.textMuted, marginBottom: 4 }]}>VIDEO URL</Text>
+            <TextInput
+              style={{
+                backgroundColor: colors.cardMuted,
+                borderRadius: radius.md,
+                borderWidth: 1,
+                borderColor: colors.border,
+                padding: space.md,
+                color: colors.text,
+                fontSize: 14,
+                marginBottom: space.md,
+              }}
+              placeholder="https://www.instagram.com/reel/... or tiktok.com"
+              placeholderTextColor={colors.textMuted}
+              value={videoUrlInput}
+              onChangeText={setVideoUrlInput}
+              autoCapitalize="none"
+              autoCorrect={false}
+              keyboardType="url"
+            />
+
+            <Text style={[type.label, { color: colors.textMuted, marginBottom: 4 }]}>CAPTION / NOTES (OPTIONAL)</Text>
+            <TextInput
+              style={{
+                backgroundColor: colors.cardMuted,
+                borderRadius: radius.md,
+                borderWidth: 1,
+                borderColor: colors.border,
+                padding: space.md,
+                color: colors.text,
+                fontSize: 14,
+                marginBottom: space.lg,
+              }}
+              placeholder="e.g. Foot smear beta for move 3"
+              placeholderTextColor={colors.textMuted}
+              value={videoCaptionInput}
+              onChangeText={setVideoCaptionInput}
+            />
+
+            <View style={{ flexDirection: 'row', gap: space.sm }}>
+              <View style={{ flex: 1 }}>
+                <SecondaryButton label="Cancel" onPress={() => setIsAddLinkModalOpen(false)} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <PrimaryButton label="Save Link" onPress={handleSaveLink} />
+              </View>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </View>
   );
 }

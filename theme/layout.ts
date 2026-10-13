@@ -1,4 +1,4 @@
-import { LinearTransition } from 'react-native-reanimated';
+import { LinearTransition, Easing } from 'react-native-reanimated';
 import { motion } from './tokens';
 
 /**
@@ -6,6 +6,6 @@ import { motion } from './tokens';
  * Pass as `layout` to a Reanimated view, or as `itemLayoutAnimation` to Animated.FlatList,
  * so items slide into place when added, removed or expanded.
  */
-export const listLayout = LinearTransition.springify()
-  .damping(motion.layoutSpring.damping)
-  .stiffness(motion.layoutSpring.stiffness);
+export const listLayout = LinearTransition.duration(motion.duration.base).easing(
+  Easing.bezier(0.23, 1, 0.32, 1)
+);

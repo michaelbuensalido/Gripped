@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { View, Text, TouchableOpacity, } from 'react-native';
-import Reanimated, { FadeInDown, FadeOutDown, SlideInDown, SlideOutDown } from 'react-native-reanimated';
+import Reanimated, { FadeIn, FadeOut } from 'react-native-reanimated';
 import { useSessionActions } from '../../hooks/useSessionActions';
 import { Target, Zap, Check, AlertTriangle, Layers } from 'lucide-react-native';
 import { useSessionStore } from '../../store/sessionStore';
@@ -238,8 +238,8 @@ export function ChalkSafeLogger() {
 
       {showToast && (
         <Reanimated.View 
-          entering={SlideInDown.springify().damping(15)} 
-          exiting={SlideOutDown.duration(200)}
+          entering={FadeIn.duration(200)} 
+          exiting={FadeOut.duration(150)}
           style={{ position: 'absolute', bottom: -60, left: 0, right: 0, alignItems: 'center', zIndex: 999 }}
         >
           <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#27272F', paddingHorizontal: 16, paddingVertical: 12, borderRadius: 24, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 5 }}>

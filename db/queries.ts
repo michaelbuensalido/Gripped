@@ -62,6 +62,78 @@ export function completeSessionWrapUp(
   );
 }
 
+export interface PastSessionClimbInput {
+  gradeRaw: string;
+  outcome: 'flash' | 'top' | 'send' | 'attempt';
+  attempts: number;
+  notes?: string;
+}
+
+export interface PastSessionInput {
+  id?: string;
+  startTime: number;
+  endTime: number;
+  gymName: string;
+  title?: string;
+  notes?: string;
+  effort?: number | null;
+  rpe?: number | null;
+  skinState?: string | null;
+  fingerFatigue?: string | null;
+  climbs?: PastSessionClimbInput[];
+}
+
+export function insertPastSession(data: PastSessionInput): string {
+  const db = getDatabase();
+  const sessionId = data.id || uuid();
+  const now = Date.now();
+  const title = data.title || 'Session';
+  const notes = data.notes || '';
+  const gymName = data.gymName || '';
+  const effort = data.effort ?? data.rpe ?? null;
+  const skinState = data.skinState ?? null;
+  const fingerFatigue = data.fingerFatigue ?? null;
+
+  db.execSync('BEGIN');
+  try {
+    db.runSync(
+      `INSERT INTO sessions (id, gym_name, started_at, ended_at, title, notes, rpe, effort, skin_state, finger_fatigue, created_at, updated_at, sync_status)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')`,
+      [sessionId, gymName, data.startTime, data.endTime, title, notes, effort, effort, skinState, fingerFatigue, now, now]
+    );
+
+    db.runSync(
+      `INSERT INTO outbox (op_id, table_name, record_id, op_type, payload, created_at) VALUES (?, ?, ?, ?, ?, ?)`,
+      [uuid(), 'sessions', sessionId, 'INSERT', '{}', now]
+    );
+
+    if (data.climbs && data.climbs.length > 0) {
+      for (const c of data.climbs) {
+        const climbId = `climb_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+        const gradeIndex = gradeToNumeric(c.gradeRaw);
+        const outcome = c.outcome === 'top' ? 'send' : c.outcome;
+        db.runSync(
+          `INSERT INTO climbs (id, session_id, grade_raw, grade_index, result, attempts, notes, logged_at, created_at, updated_at, sync_status)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')`,
+          [climbId, sessionId, c.gradeRaw, gradeIndex, outcome, c.attempts || 1, c.notes || null, data.startTime, now, now]
+        );
+        db.runSync(
+          `INSERT INTO outbox (op_id, table_name, record_id, op_type, payload, created_at) VALUES (?, ?, ?, ?, ?, ?)`,
+          [uuid(), 'climbs', climbId, 'INSERT', '{}', now]
+        );
+      }
+    }
+
+    db.execSync('COMMIT');
+  } catch (e) {
+    db.execSync('ROLLBACK');
+    throw e;
+  }
+
+  dbEvents.emit();
+  return sessionId;
+}
+
 export function getAllSessions(): Session[] {
   const db = getDatabase();
   const rows = db.getAllSync<any>(`SELECT * FROM sessions ORDER BY started_at DESC`);

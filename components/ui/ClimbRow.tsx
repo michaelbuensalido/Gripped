@@ -2,7 +2,7 @@ import React, { useRef, useEffect } from 'react';
 import { View, Text, TouchableOpacity, Animated, StyleSheet } from 'react-native';
 import { Trash2, Zap } from 'lucide-react-native';
 import { Swipeable, RectButton } from 'react-native-gesture-handler';
-import Reanimated, { FadeInDown, useSharedValue, useAnimatedStyle, withRepeat, withTiming, Easing, withDelay, useReducedMotion } from 'react-native-reanimated';
+import Reanimated, { FadeIn, useSharedValue, useAnimatedStyle, withRepeat, withTiming, Easing, withDelay, useReducedMotion } from 'react-native-reanimated';
 import { GradePill } from './GradePill';
 import { ResultChip, ResultType } from './ResultChip';
 import { ScalePressable } from './ScalePressable';
@@ -166,7 +166,7 @@ export const ClimbRow = React.memo(function ClimbRow({ climb, onEdit, onDelete, 
   return (
     <Reanimated.View
       layout={listLayout}
-      entering={animateEntry ? FadeInDown.duration(220).springify().damping(18) : undefined}
+      entering={animateEntry ? FadeIn.duration(200) : undefined}
     >
       {content}
     </Reanimated.View>

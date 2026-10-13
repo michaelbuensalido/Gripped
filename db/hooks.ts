@@ -136,3 +136,8 @@ export function useProjectStorageBytes(projectId: string) {
 export function useRecentGyms() {
   return useLiveQuery(() => Q.getRecentGyms(), []);
 }
+
+export function useVideoInbox() {
+  return useLiveQuery(() => B.getVideoInbox(), []);
+}
+

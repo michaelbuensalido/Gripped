@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, Image, ImageSourcePropType, StyleProp, ViewStyle } from 'react-native';
-import Animated, { FadeInDown, useReducedMotion } from 'react-native-reanimated';
+import Animated, { FadeIn, useReducedMotion } from 'react-native-reanimated';
 import { useTheme } from '../../theme/useTheme';
 
 interface EmptyStateProps {
@@ -43,7 +43,7 @@ export function EmptyState({
 
   return (
     <Animated.View
-      entering={reduceMotion ? undefined : FadeInDown.duration(220).springify().damping(18)}
+      entering={reduceMotion ? undefined : FadeIn.duration(240)}
       style={[
         {
           alignItems: 'center',

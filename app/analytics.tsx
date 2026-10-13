@@ -1,14 +1,12 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, Modal, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Menu, ChevronDown, Check, Target } from 'lucide-react-native';
+import { Menu, ChevronDown, Check } from 'lucide-react-native';
 import Svg, { Path } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Card } from '../components/ui/Card';
 import { SectionHeader } from '../components/ui/SectionHeader';
-import { EmptyState } from '../components/ui/EmptyState';
 import { ScalePressable } from '../components/ui/ScalePressable';
-import { PrimaryButton } from '../components/ui/PrimaryButton';
 import { ResultDonut } from '../components/ui/ResultDonut';
 import { SessionRow } from '../components/ui/SessionRow';
 import { GradePyramid } from '../components/ui/GradePyramid';
@@ -70,8 +68,6 @@ export default function ProgressScreen() {
   const avgGradeVal = avgGradeLast20 ? formatGrade(avgGradeLast20) : '-';
   const hardestSendVal = hardestSendGrade != null ? formatGrade(hardestSendGrade) : '-';
 
-  const hasData = stats.sessionStats.sessions > 0 || stats.sessionStats.totalClimbs > 0 || (resultCounts.flash + resultCounts.top + resultCounts.attempt > 0);
-
   return (
     <View style={{ flex: 1 }}>
       <ScrollView
@@ -114,21 +110,7 @@ export default function ProgressScreen() {
           </ScalePressable>
         </View>
 
-        {!hasData ? (
-          <EmptyState
-            asCard
-            icon={<Target size={32} color={colors.accent} />}
-            title="No data for this period"
-            body="Log some sessions or change your time filter to see your progress charts."
-            cta={
-              <PrimaryButton
-                label="+ START A SESSION"
-                onPress={() => router.push('/session/active')}
-              />
-            }
-          />
-        ) : (
-          <View>
+        <View>
         {/* 3. Result Donut Hero Card */}
         <View
           style={{
@@ -317,7 +299,7 @@ export default function ProgressScreen() {
             })
           )}
         </Card>
-      </View>)}</ScrollView>
+      </View></ScrollView>
           {/* Custom Spatial Action Sheet for Period Selection */}
       <Modal visible={isPeriodSheetOpen} animationType="slide" transparent>
         <View style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: colors.scrim }}>
