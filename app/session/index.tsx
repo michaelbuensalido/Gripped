@@ -707,12 +707,11 @@ export default function ActiveSessionScreen() {
           <ChevronLeft size={22} color={colors.text} />
         </ScalePressable>
 
-        {/* Center: Gym Name & Sync */}
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.xs }}>
+        {/* Center: Gym Name */}
+        <View style={{ alignItems: 'center' }}>
           <Text style={[type.heading, { color: colors.text, fontSize: 16 }]} numberOfLines={1}>
             {session.gymName || 'Session'}
           </Text>
-          <SyncChip state="synced" />
         </View>
 
         {/* Right: Menu & End */}
