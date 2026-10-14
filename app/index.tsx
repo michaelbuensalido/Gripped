@@ -12,14 +12,14 @@ import Animated, {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, useFocusEffect } from 'expo-router';
 import {
-  Bell,
-  ChevronDown,
   Clock,
   Mountain,
   Plus,
   PlayCircle,
+  Settings,
   Trophy,
 } from 'lucide-react-native';
+import { usePreferences, formatGradeWithSystem } from '../utils/preferences';
 import { Card } from '../components/ui/Card';
 import { GlowBackdrop } from '../components/ui/GlowBackdrop';
 import { listLayout } from '../theme/layout';
@@ -108,7 +108,10 @@ export default function HomeScreen() {
     }
   };
 
-  const highWatermark = data.hardest30d ? data.hardest30d.gradeRaw : '7A';
+  const { gradeSystem } = usePreferences();
+  const highWatermark = data.hardest30d 
+    ? formatGradeWithSystem(data.hardest30d.gradeIndex, gradeSystem, data.hardest30d.gradeRaw)
+    : formatGradeWithSystem(0, gradeSystem, 'V0');
 
   return (
     <View style={{ flex: 1 }}>
@@ -122,86 +125,67 @@ export default function HomeScreen() {
           paddingHorizontal: 20,
         }}
       >
-        {/* 1. Header Bar: Avatar Pill on Left, Notification Bell on Right */}
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
-          {/* User profile dropdown pill */}
-          <ScalePressable
-            haptic="light"
-            activeScale={0.96}
-            onPress={() => router.push('/settings')}
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              backgroundColor: colors.bevelHighlight,
-              paddingHorizontal: 12,
-              paddingVertical: 6,
-              borderRadius: radius.pill,
-              borderWidth: 1,
-              borderColor: colors.border,
-              gap: 8,
-              minHeight: 44,
-            }}
-          >
-            <Image
-              source={require('../assets/maya_avatar.jpg')}
-              style={{ width: 34, height: 34, borderRadius: 17 }}
-              resizeMode="cover"
-            />
-            <Text style={{ color: colors.text, fontSize: 14, fontWeight: '600', fontFamily: type.heading.fontFamily }}>
-              Maya Vong
+        {/* 1. Header Bar: Brand Logo & Date on Left, Settings on Right */}
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+          <View>
+            <Text style={{ color: colors.text, fontSize: 22, fontWeight: '800', fontFamily: type.display.fontFamily, letterSpacing: 0.5 }}>
+              CRUXLOG
             </Text>
-            <ChevronDown size={16} color="rgba(255, 255, 255, 0.6)" />
-          </ScalePressable>
+            <Text style={{ color: colors.textMuted, fontSize: 11, fontWeight: '600', letterSpacing: 0.8, textTransform: 'uppercase', marginTop: 2 }}>
+              {new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+            </Text>
+          </View>
 
-          {/* Notification Bell Button with Neon Purple Dot */}
+          {/* Clean Settings Gear Button */}
           <ScalePressable
             haptic="light"
             activeScale={0.92}
             onPress={() => router.push('/settings')}
+            accessibilityRole="button"
+            accessibilityLabel="Settings"
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             style={{
               width: 44,
               height: 44,
-              borderRadius: 22,
-              backgroundColor: colors.bevelHighlight,
+              borderRadius: radius.md,
+              backgroundColor: colors.card,
               borderWidth: 1,
               borderColor: colors.border,
               alignItems: 'center',
               justifyContent: 'center',
-              position: 'relative',
             }}
           >
-            <Bell size={20} color={colors.text} strokeWidth={1.8} />
-            <View
-              style={{
-                position: 'absolute',
-                top: 10,
-                right: 10,
-                width: 9,
-                height: 9,
-                borderRadius: 4.5,
-                backgroundColor: colors.accent,
-              }}
-            />
+            <Settings size={20} color={colors.text} />
           </ScalePressable>
         </View>
 
         {/* 2. Main Title & Grade Pill */}
         <Text style={{ color: colors.text, fontSize: 32, fontWeight: '700', fontFamily: type.display.fontFamily, marginBottom: 8, letterSpacing: -0.5 }}>
-          Keep climbing, Maya
+          Keep climbing
         </Text>
         <View
           style={{
-            backgroundColor: colors.flashSoft,
-            paddingHorizontal: 14,
-            paddingVertical: 5,
-            borderRadius: 12,
-            alignSelf: 'flex-start',
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 8,
             marginBottom: 20,
           }}
         >
-          <Text style={{ color: colors.flash, fontSize: 15, fontWeight: '700', fontFamily: type.heading.fontFamily }}>
-            {highWatermark}
+          <View
+            style={{
+              backgroundColor: colors.flashSoft,
+              paddingHorizontal: 12,
+              paddingVertical: 5,
+              borderRadius: 12,
+              alignSelf: 'flex-start',
+            }}
+          >
+            <Text style={{ color: colors.flash, fontSize: 14, fontWeight: '700', fontFamily: type.heading.fontFamily }}>
+              {highWatermark}
+            </Text>
+          </View>
+          <Text style={{ color: colors.textMuted, fontSize: 11, fontWeight: '600', letterSpacing: 0.6, textTransform: 'uppercase' }}>
+            {data.hardest30d ? 'Peak Send (30d)' : 'Target Grade'}
           </Text>
         </View>
 

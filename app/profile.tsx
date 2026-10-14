@@ -383,12 +383,12 @@ export default function LogbookScreen() {
         ListEmptyComponent={
           <EmptyState 
             icon={<Search size={24} />} 
-            title={allSessionsRaw.length === 0 ? "Log your first session" : "No sessions match"} 
-            body={allSessionsRaw.length === 0 ? "Head to the gym and start climbing." : "Try clearing your filters."}
+            title={hasActiveFilters || filters.searchQuery ? "No sessions match" : "No sessions logged yet"} 
+            body={hasActiveFilters || filters.searchQuery ? "Try clearing your filters or search." : "Start a live session or log a past session from your workout."}
             cta={
-              allSessionsRaw.length === 0 
-                ? <PrimaryButton label="Start a Session" onPress={() => router.push('/')} />
-                : <PrimaryButton label="Clear filters" onPress={() => setFilters(f => ({ ...f, gym: null, minGradeIndex: null, searchQuery: null, sort: 'newest', showEmpty: false, selectedDate: null }))} />
+              hasActiveFilters || filters.searchQuery 
+                ? <PrimaryButton label="Clear filters" onPress={() => setFilters(f => ({ ...f, gym: null, minGradeIndex: null, searchQuery: null, sort: 'newest', showEmpty: false, selectedDate: null }))} />
+                : <PrimaryButton label="+ Log a Session" onPress={() => setIsPastSessionOpen(true)} />
             } 
           />
         }

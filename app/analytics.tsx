@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, Modal, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Menu, ChevronDown, Check } from 'lucide-react-native';
+import { Settings, ChevronDown, Check } from 'lucide-react-native';
 import Svg, { Path } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Card } from '../components/ui/Card';
@@ -103,10 +103,10 @@ export default function ProgressScreen() {
             accessibilityRole="button"
             accessibilityLabel="Open settings"
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-            style={{ width: 44, height: 44, borderRadius: 12, backgroundColor: colors.cardMuted, alignItems: 'center', justifyContent: 'center' }}
+            style={{ width: 44, height: 44, borderRadius: radius.md, backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border, alignItems: 'center', justifyContent: 'center' }}
             onPress={() => router.push('/settings')}
           >
-            <Menu size={22} color={colors.text} strokeWidth={2} />
+            <Settings size={20} color={colors.text} />
           </ScalePressable>
         </View>
 
