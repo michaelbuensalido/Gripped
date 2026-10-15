@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react';
 import {
   View,
   Text,
+  Image,
   Modal,
   StyleSheet,
   ScrollView,
@@ -188,11 +189,16 @@ export function ProjectShareCardModal({
                 },
               ]}
             >
-              {/* Card Header: CruxLog Branding */}
+              {/* Card Header: Gripped Branding */}
               <View style={styles.cardHeader}>
                 <View style={styles.brandBadge}>
-                  <Flame size={14} color="#8E7CFF" />
-                  <Text style={styles.brandTitle}>CRUXLOG</Text>
+                  <Image
+                    source={require('../../assets/icon.png')}
+                    style={{ width: 14, height: 14, borderRadius: 3 }}
+                    resizeMode="cover"
+                    accessibilityLabel="Gripped Logo"
+                  />
+                  <Text style={styles.brandTitle}>GRIPPED</Text>
                 </View>
                 <View style={styles.projectStatusPill}>
                   <Text style={styles.projectStatusText}>
@@ -310,7 +316,7 @@ export function ProjectShareCardModal({
               {/* Card Footer */}
               <View style={styles.cardFooter}>
                 <Text style={styles.cardFooterDate}>
-                  CruxLog • Track every burn offline
+                  Gripped • Track every burn offline
                 </Text>
               </View>
             </View>

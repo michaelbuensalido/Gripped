@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ImageBackground } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ImageBackground, Image } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../theme/useTheme';
@@ -30,8 +30,14 @@ export default function WelcomeScreen() {
       />
       <View style={{ flex: 1, paddingHorizontal: space.xl, paddingBottom: Math.max(insets.bottom, space.xl), paddingTop: insets.top + space.xxl, justifyContent: 'space-between' }}>
         <View style={{ marginTop: space.xxl }}>
+          <Image
+            source={require('../assets/icon.png')}
+            style={{ width: 68, height: 68, borderRadius: radius.lg, marginBottom: space.md }}
+            resizeMode="cover"
+            accessibilityLabel="Gripped Logo"
+          />
           <Text style={[type.display, { color: colors.text, fontSize: 40, marginBottom: space.sm }]}>
-            CruxLog
+            Gripped
           </Text>
           <Text style={[type.heading, { color: colors.textMuted, fontSize: 18 }]}>
             Your premium bouldering ledger.

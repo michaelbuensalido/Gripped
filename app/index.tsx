@@ -127,13 +127,25 @@ export default function HomeScreen() {
       >
         {/* 1. Header Bar: Brand Logo & Date on Left, Settings on Right */}
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-          <View>
-            <Text style={{ color: colors.text, fontSize: 22, fontWeight: '800', fontFamily: type.display.fontFamily, letterSpacing: 0.5 }}>
-              CRUXLOG
-            </Text>
-            <Text style={{ color: colors.textMuted, fontSize: 11, fontWeight: '600', letterSpacing: 0.8, textTransform: 'uppercase', marginTop: 2 }}>
-              {new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
-            </Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+            <Image
+              source={require('../assets/icon.png')}
+              style={{
+                width: 36,
+                height: 36,
+                borderRadius: radius.md,
+              }}
+              resizeMode="cover"
+              accessibilityLabel="Gripped Logo"
+            />
+            <View>
+              <Text style={{ color: colors.text, fontSize: 20, fontWeight: '800', fontFamily: type.display.fontFamily, letterSpacing: 0.5 }}>
+                GRIPPED
+              </Text>
+              <Text style={{ color: colors.textMuted, fontSize: 11, fontWeight: '600', letterSpacing: 0.8, textTransform: 'uppercase', marginTop: 1 }}>
+                {new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+              </Text>
+            </View>
           </View>
 
           {/* Clean Settings Gear Button */}

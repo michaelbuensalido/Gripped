@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "CruxLog",
+    "name": "Gripped",
     "slug": "cruxlog",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -23,10 +23,10 @@
       "buildNumber": "1",
       "icon": "./assets/icon.png",
       "infoPlist": {
-        "NSCameraUsageDescription": "CruxLog uses the camera to record beta videos of your climbing attempts.",
-        "NSMicrophoneUsageDescription": "CruxLog records audio alongside your beta videos so you can narrate your sequences.",
-        "NSPhotoLibraryUsageDescription": "CruxLog saves your beta recordings to your photo library for easy access and sharing.",
-        "NSPhotoLibraryAddUsageDescription": "CruxLog saves your beta recordings to your photo library.",
+        "NSCameraUsageDescription": "Gripped uses the camera to record beta videos of your climbing attempts.",
+        "NSMicrophoneUsageDescription": "Gripped records audio alongside your beta videos so you can narrate your sequences.",
+        "NSPhotoLibraryUsageDescription": "Gripped saves your beta recordings to your photo library for easy access and sharing.",
+        "NSPhotoLibraryAddUsageDescription": "Gripped saves your beta recordings to your photo library.",
         "ITSAppUsesNonExemptEncryption": false,
         "NSSupportsLiveActivities": true,
         "NSSupportsLiveActivitiesFrequentUpdates": true
@@ -71,16 +71,16 @@
       [
         "react-native-vision-camera",
         {
-          "cameraPermissionText": "CruxLog uses the camera to record beta videos of your climbing attempts.",
+          "cameraPermissionText": "Gripped uses the camera to record beta videos of your climbing attempts.",
           "enableMicrophonePermission": true,
-          "microphonePermissionText": "CruxLog records audio alongside your beta videos."
+          "microphonePermissionText": "Gripped records audio alongside your beta videos."
         }
       ],
       [
         "expo-camera",
         {
-          "cameraPermission": "CruxLog uses the camera to record beta videos of your climbing attempts.",
-          "microphonePermission": "CruxLog records audio alongside your beta videos.",
+          "cameraPermission": "Gripped uses the camera to record beta videos of your climbing attempts.",
+          "microphonePermission": "Gripped records audio alongside your beta videos.",
           "recordAudioAndroid": true
         }
       ],
@@ -94,14 +94,14 @@
             "NSExtensionActivationSupportsWebPageWithMaxCount": 1,
             "NSExtensionActivationSupportsText": true
           },
-          "iosShareExtensionName": "Save to CruxLog",
+          "iosShareExtensionName": "Save to Gripped",
           "androidIntentFilters": ["text/*"]
         }
       ],
       [
         "expo-image-picker",
         {
-          "photosPermission": "CruxLog needs access to your photos so you can attach images to your projects."
+          "photosPermission": "Gripped needs access to your photos so you can attach images to your projects."
         }
       ]
     ],

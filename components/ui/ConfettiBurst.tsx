@@ -9,7 +9,7 @@ import Animated, {
   type SharedValue,
 } from 'react-native-reanimated';
 
-// Confetti palette drawn from CruxLog design tokens
+// Confetti palette drawn from Gripped design tokens
 const CONFETTI_COLORS = [
   '#8E7CFF', // Lavender
   '#6EE756', // Flash Green
