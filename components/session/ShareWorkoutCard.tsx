@@ -1,5 +1,5 @@
 import React, { forwardRef } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, Image, StyleSheet } from 'react-native';
 import { Zap, Clock, Target, Flame, Trophy } from 'lucide-react-native';
 import type { SessionDetailData } from '../../db/queries';
 
@@ -64,12 +64,17 @@ export const ShareWorkoutCard = forwardRef<View, ShareWorkoutCardProps>(
           <View style={styles.matGridLineH3} />
         </View>
 
-        {/* ── Top Header: CruxLog Branding ─────────────────────── */}
+        {/* ── Top Header: Gripped Branding ─────────────────────── */}
         <View style={styles.header}>
           <View style={styles.brandRow}>
             <View style={styles.logoPill}>
-              <Flame size={14} color="#8E7CFF" />
-              <Text style={styles.brandText}>CRUXLOG</Text>
+              <Image
+                source={require('../../assets/icon.png')}
+                style={{ width: 14, height: 14, borderRadius: 3 }}
+                resizeMode="cover"
+                accessibilityLabel="Gripped Logo"
+              />
+              <Text style={styles.brandText}>GRIPPED</Text>
             </View>
             <View style={styles.badgePill}>
               <Text style={styles.badgeText}>WORKOUT BETA</Text>
@@ -227,7 +232,7 @@ export const ShareWorkoutCard = forwardRef<View, ShareWorkoutCardProps>(
         {/* ── Footer Branding ──────────────────────────────────── */}
         <View style={styles.footer}>
           <Text style={styles.footerText}>CLIMB HARDER • LOG SMARTER</Text>
-          <Text style={styles.footerSub}>cruxlog.app</Text>
+          <Text style={styles.footerSub}>gripped.app</Text>
         </View>
       </View>
     );

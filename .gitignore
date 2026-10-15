@@ -40,3 +40,17 @@ yarn-error.*
 /ios
 /android
 DerivedData/
+
+# build and scratch logs
+build_log*.txt
+scratch/
+
+# sqlite local databases
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+
+# backups and patches
+*.backup
+*.orig

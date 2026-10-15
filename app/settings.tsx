@@ -2,6 +2,7 @@ import React, { useState, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
+  Image,
   TouchableOpacity,
   Switch,
   TextInput,
@@ -138,7 +139,7 @@ export default function SettingsScreen() {
       const docDir = (FileSystem as any)?.documentDirectory;
       if (docDir) {
         const files = await FileSystem.readDirectoryAsync(docDir);
-        const backups = files.filter(f => f.startsWith('cruxlog-export-') && f.endsWith('.json'));
+        const backups = files.filter(f => (f.startsWith('gripped-export-') || f.startsWith('cruxlog-export-')) && f.endsWith('.json'));
         setDetectedBackups(backups);
       }
     } catch {}
@@ -190,7 +191,7 @@ export default function SettingsScreen() {
       const parsed = JSON.parse(jsonStr);
       const sessionCount = Array.isArray(parsed.sessions) ? parsed.sessions.length : 0;
       const climbCount = Array.isArray(parsed.climbs) ? parsed.climbs.length : 0;
-      const fileName = `cruxlog-export-${new Date().toISOString().split('T')[0]}.json`;
+      const fileName = `gripped-export-${new Date().toISOString().split('T')[0]}.json`;
       const fileUri = `${(FileSystem as any).documentDirectory}${fileName}`;
       await FileSystem.writeAsStringAsync(fileUri, jsonStr, { encoding: FileSystem.EncodingType.UTF8 });
       refreshStorage();
@@ -204,7 +205,7 @@ export default function SettingsScreen() {
             text: 'Share / Save File',
             onPress: async () => {
               if (await Sharing.isAvailableAsync()) {
-                await Sharing.shareAsync(fileUri, { dialogTitle: 'Export CruxLog Data' });
+                await Sharing.shareAsync(fileUri, { dialogTitle: 'Export Gripped Data' });
               }
             },
           },
@@ -808,8 +809,36 @@ export default function SettingsScreen() {
 
         {/* About & Privacy */}
         <View>
-          <SectionHeader title="About CruxLog" />
+          <SectionHeader title="About Gripped" />
           <Card>
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: space.md,
+                paddingVertical: space.sm,
+                paddingBottom: space.md,
+                borderBottomWidth: 1,
+                borderBottomColor: colors.border,
+              }}
+            >
+              <Image
+                source={require('../assets/icon.png')}
+                style={{
+                  width: 44,
+                  height: 44,
+                  borderRadius: radius.md,
+                }}
+                resizeMode="cover"
+                accessibilityLabel="Gripped Logo"
+              />
+              <View style={{ flex: 1 }}>
+                <Text style={[type.heading, { color: colors.text, fontSize: 17 }]}>Gripped</Text>
+                <Text style={[type.caption, { color: colors.textMuted, marginTop: 2 }]}>
+                  Offline-first Bouldering Ledger
+                </Text>
+              </View>
+            </View>
             <SettingsRow
               label="Version"
               sublabel="1.0.0 (Build 42)"
@@ -871,7 +900,7 @@ export default function SettingsScreen() {
             {/* Header */}
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: space.md }}>
               <View>
-                <Text style={[type.title, { color: colors.text }]}>Import CruxLog Data</Text>
+                <Text style={[type.title, { color: colors.text }]}>Import Gripped Data</Text>
                 <Text style={[type.caption, { color: colors.textMuted, marginTop: 2 }]}>
                   Restore your climbing logs from a JSON backup
                 </Text>

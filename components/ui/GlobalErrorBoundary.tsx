@@ -89,7 +89,7 @@ export class GlobalErrorBoundary extends Component<Props, State> {
               <Text style={[type.title, styles.title]}>Something went wrong</Text>
               
               <Text style={[type.body, styles.description]}>
-                CruxLog encountered an unexpected issue. Your climbing data and session history are safely stored in your local SQLite database.
+                Gripped encountered an unexpected issue. Your climbing data and session history are safely stored in your local SQLite database.
               </Text>
 
               {__DEV__ && activeError && (
@@ -107,7 +107,7 @@ export class GlobalErrorBoundary extends Component<Props, State> {
                   activeOpacity={0.8}
                 >
                   <RotateCcw size={18} color={colors.textOnAccent} style={{ marginRight: space.sm }} />
-                  <Text style={styles.primaryButtonText}>Restart CruxLog</Text>
+                  <Text style={styles.primaryButtonText}>Restart Gripped</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity

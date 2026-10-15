@@ -47,7 +47,7 @@ export function BetaSection({ projectId }: { projectId: string }) {
       triggerHaptic('light');
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert('Permission Denied', 'CruxLog needs media library access to import beta clips.');
+        Alert.alert('Permission Denied', 'Gripped needs media library access to import beta clips.');
         return;
       }
 

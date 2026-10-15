@@ -12,7 +12,7 @@ interface ScreenContainerProps {
 
 /**
  * ScreenContainer renders the seamless dark charcoal speckled mat textured
- * background behind safe-area content across all CruxLog screens.
+ * background behind safe-area content across all Gripped screens.
  */
 export function ScreenContainer({
   children,

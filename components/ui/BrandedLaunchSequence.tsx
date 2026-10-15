@@ -190,7 +190,7 @@ export function BrandedLaunchSequence({
         source={require("../../assets/splash-icon.png")}
         style={[styles.logo, iconAnimatedStyle]}
         resizeMode="contain"
-        accessibilityLabel="CruxLog Logo"
+        accessibilityLabel="Gripped Logo"
       />
     </Animated.View>
   );
