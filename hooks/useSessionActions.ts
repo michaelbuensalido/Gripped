@@ -14,6 +14,9 @@ export function useSessionActions() {
     triggerHaptic('medium');
     const active = getActiveSession();
     if (active) {
+      try {
+        require('../services/liveActivity').liveActivityManager.syncFromDatabase();
+      } catch {}
       router.push('/session/active');
       return;
     }
@@ -23,10 +26,12 @@ export function useSessionActions() {
 
     try {
       const sessionId = uuid();
+      const startTime = Date.now();
+      const resolvedGym = gymName || 'Local Gym';
       insertSession({
         id: sessionId,
-        gymName: gymName || 'Local Gym',
-        startTime: Date.now(),
+        gymName: resolvedGym,
+        startTime,
         notes: '',
         title: 'Quick Session',
         rpe: null,
@@ -34,6 +39,16 @@ export function useSessionActions() {
         skinState: null,
         fingerFatigue: null,
       });
+      try {
+        require('../services/liveActivity').liveActivityManager.startSession(
+          sessionId,
+          resolvedGym,
+          startTime,
+          0,
+          0,
+          'V0'
+        );
+      } catch {}
       router.push('/session/active');
     } finally {
       setTimeout(() => { isCreating.current = false; }, 500); // debounce

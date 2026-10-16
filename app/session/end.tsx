@@ -103,6 +103,9 @@ export default function EndSessionScreen() {
         fingerFatigue ?? null
       );
       setActiveSessionId(null);
+      try {
+        require('../../services/liveActivity').liveActivityManager.endSession();
+      } catch {}
       router.replace('/session/summary');
     } catch (err) {
       console.error('Error completing session wrap up:', err);
@@ -123,6 +126,9 @@ export default function EndSessionScreen() {
             useSessionStore.getState().setRestTimer(null, false);
             deleteSession(session.id);
             setActiveSessionId(null);
+            try {
+              require('../../services/liveActivity').liveActivityManager.endSession();
+            } catch {}
             router.replace('/');
           }
         }

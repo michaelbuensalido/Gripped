@@ -1,182 +1,414 @@
-import { Platform, NativeModules, NativeEventEmitter, AppState } from 'react-native';
 import { useSessionStore } from '../store/sessionStore';
+import { getDatabase } from '../db/schema';
+import { getActiveSession, completeSessionWrapUp } from '../db/queries';
+import { dbEvents } from '../db/events';
+import { isSend } from '../utils/isSend';
 
-// Defensive wrapper around react-native-live-activities native module.
-// The module registers itself as NativeModules.LiveActivities via Obj-C bridge.
+let _mockNativeModule: any = undefined;
+let _mockPlatformOS: string | undefined = undefined;
 
-const LiveActivities = NativeModules.LiveActivities;
+export function setLiveActivityTestingOverrides(nativeModule?: any, platformOS?: string) {
+  _mockNativeModule = nativeModule;
+  _mockPlatformOS = platformOS;
+}
 
-class LiveActivityManager {
+function getPlatformOS(): string {
+  if (_mockPlatformOS !== undefined) return _mockPlatformOS;
+  try {
+    const { Platform } = require('react-native');
+    return Platform?.OS ?? 'ios';
+  } catch {
+    return 'ios';
+  }
+}
+
+function getNativeLiveActivities(): any {
+  if (_mockNativeModule !== undefined) return _mockNativeModule;
+  try {
+    const { NativeModules } = require('react-native');
+    return NativeModules?.LiveActivities ?? null;
+  } catch {
+    return null;
+  }
+}
+
+export function resolveQuickLogGrade(): string {
+  try {
+    const store = useSessionStore.getState();
+    const targetGrade = store.activeProjectTarget?.grade || store.activeProjectTarget?.gradeRaw;
+    if (targetGrade && typeof targetGrade === 'string' && targetGrade !== 'V?') {
+      return targetGrade;
+    }
+
+    const activeSession = getActiveSession();
+    if (activeSession) {
+      const db = getDatabase();
+      const row = db.getFirstSync<{ grade_raw: string }>(
+        `SELECT grade_raw FROM climbs WHERE session_id = ? AND deleted_at IS NULL ORDER BY logged_at DESC, created_at DESC, rowid DESC LIMIT 1`,
+        [activeSession.id]
+      );
+      if (row?.grade_raw && row.grade_raw !== 'V?') {
+        return row.grade_raw;
+      }
+    }
+  } catch (e) {
+    console.warn('[LiveActivity] resolveQuickLogGrade fallback to V0:', e);
+  }
+  return 'V0';
+}
+
+export function getSessionLiveTelemetry(sessionId: string): {
+  sendCount: number;
+  climbCount: number;
+  latestGrade: string | null;
+} {
+  try {
+    const db = getDatabase();
+    const rows = db.getAllSync<{ result: string; grade_raw: string }>(
+      `SELECT result, grade_raw FROM climbs WHERE session_id = ? AND deleted_at IS NULL ORDER BY logged_at DESC, created_at DESC, rowid DESC`,
+      [sessionId]
+    );
+    const climbCount = rows.length;
+    const sendCount = rows.filter((r) => isSend(r.result)).length;
+    const latestGrade =
+      rows.length > 0 && rows[0].grade_raw && rows[0].grade_raw !== 'V?'
+        ? rows[0].grade_raw
+        : null;
+    return { sendCount, climbCount, latestGrade };
+  } catch {
+    return { sendCount: 0, climbCount: 0, latestGrade: null };
+  }
+}
+
+export class LiveActivityManager {
   private isActive = false;
   private currentSessionId: string | null = null;
   private currentSessionStartTime: number | null = null;
 
   private currentSends = 0;
+  private currentClimbs = 0;
   private currentRestTarget: number | null = null;
   private currentZoneName: string | null = null;
   private currentGrade: string | null = null;
-  private currentSet: number = 0;
-  private totalSets: number = 0;
-  private isComplete: boolean = false;
+  private currentSet = 0;
+  private totalSets = 0;
+  private isComplete = false;
+
+  private updateTimeout: ReturnType<typeof setTimeout> | null = null;
+  private suspendUntil = 0;
+  private isSyncingQueue = false;
+  private processedEventKeys = new Set<string>();
 
   constructor() {
-    if (Platform.OS === 'ios' && LiveActivities) {
-      const eventEmitter = new NativeEventEmitter(LiveActivities);
-      eventEmitter.addListener('onLiveActivityStateChanged', (event: any) => {
-        const store = useSessionStore.getState();
+    this.setupListeners();
+  }
 
-        if (event.action === 'AdjustRest') {
-           const targetMs = event.restEndDate > 0 ? event.restEndDate * 1000 : null;
-           if (false) {
-             
-           }
-        } else if (event.action === 'SkipRest') {
-           // Suspend updates for 1.5s so the SwiftUI SKIPPED animation can finish
-           liveActivityManager.suspendUpdates(1500);
-           
-        } else if (event.action === 'SEND' || event.action === 'ATTEMPT') {
-           // Suspend updates for 1.5s so the SwiftUI Checkmark/Flame animation can finish
-           liveActivityManager.suspendUpdates(1500);
-           store.logGenericAscent({ gradeRaw: 'V?', outcome: event.action as 'SEND' | 'ATTEMPT' === 'SEND' ? 'send' : 'attempt' });
-           
-           // Clear the offline queue so AppState foreground doesn't double-count this
-           if (LiveActivities.clearPendingOfflineAscents) {
-             LiveActivities.clearPendingOfflineAscents().catch(() => {});
-           }
-        } else if (event.action === 'FINISH_SESSION') {
-           // If the user tapped FINISH on the widget, end the session in JS too
-           // This will natively end the activity automatically because store.clearAscents calls endSession
-           if (store.activeSessionId) { require('../db/queries').completeSessionWrapUp(store.activeSessionId, Date.now(), 'Session', '', '', null, []); store.setActiveSessionId(null); }
-           // Also clear queue just in case
-           if (LiveActivities.clearPendingOfflineAscents) {
-             LiveActivities.clearPendingOfflineAscents().catch(() => {});
-           }
-        }
-      });
+  private setupListeners() {
+    const LiveActivities = getNativeLiveActivities();
+    if (getPlatformOS() === 'ios' && LiveActivities) {
+      try {
+        const { NativeEventEmitter, AppState } = require('react-native');
+        const eventEmitter = new NativeEventEmitter(LiveActivities);
+        eventEmitter.addListener('onLiveActivityStateChanged', (event: any) => {
+          this.handleWidgetEvent(event);
+        });
 
-      AppState.addEventListener('change', async (nextAppState) => {
-        if (nextAppState === 'active') {
-          try {
-            // 1. Process Offline Queue via App Groups (User specified)
-            if (LiveActivities.getPendingOfflineAscents) {
-              const pendingStr = await LiveActivities.getPendingOfflineAscents();
-              if (pendingStr && pendingStr.trim() !== '') {
-                const events = pendingStr.split(',');
-                const store = useSessionStore.getState();
-                for (const event of events) {
-                  const parts = event.split('|');
-                  if (parts.length === 2) {
-                    const status = parts[1];
-                    if (status === 'SEND' || status === 'ATTEMPT') {
-                      store.logGenericAscent({ gradeRaw: 'V?', outcome: status as 'SEND' | 'ATTEMPT' === 'SEND' ? 'send' : 'attempt' });
-                    }
-                  }
-                }
-                // CRITICAL: Clear the queue so we don't double count
-                if (LiveActivities.clearPendingOfflineAscents) {
-                  await LiveActivities.clearPendingOfflineAscents();
-                }
-              }
-            }
-
-            // 2. Read single pending action directly from ActivityKit
-            if (LiveActivities.getPendingWidgetAction) {
-              const result = await LiveActivities.getPendingWidgetAction();
-              const action: string = result?.action ?? '';
-
-              const store = useSessionStore.getState();
-
-              if (action === 'SkipRest') {
-                if (LiveActivities.clearActiveRestAction) await LiveActivities.clearActiveRestAction();
-                
-                return;
-              }
-
-              if (action === 'AdjustRest') {
-                if (LiveActivities.clearActiveRestAction) await LiveActivities.clearActiveRestAction();
-                // Fall through to timestamp path below for the actual target
-              }
-
-              if (action === 'SEND' || action === 'ATTEMPT') {
-                if (LiveActivities.clearActiveRestAction) await LiveActivities.clearActiveRestAction();
-                // Since we already process PendingOfflineAscents above which covers SEND and ATTEMPT,
-                // we probably don't need to do it again here. But if the queue failed, this acts as a fallback.
-                // The widget only sets the queue now, but it also sets the state action. We should be careful of double counting.
-                // If we processed from the queue, we shouldn't process here.
-              }
-            }
-
-            // 3. Secondary path: rest timer drift correction via timestamp
-            if (LiveActivities.getActiveRestEndTimestamp) {
-              const timestampSeconds = await LiveActivities.getActiveRestEndTimestamp();
-              if (timestampSeconds && timestampSeconds > 0) {
-                const targetMs = timestampSeconds * 1000;
-                const remaining = Math.max(0, Math.round((targetMs - Date.now()) / 1000));
-                const store = useSessionStore.getState();
-                if (false) {
-                  
-                }
-              }
-            }
-          } catch (e) {
-            console.warn('[LiveActivity] AppState foreground handler failed:', e);
+        AppState.addEventListener('change', (nextAppState: string) => {
+          if (nextAppState === 'active') {
+            this.handleForegroundSync();
           }
-        }
-      });
+        });
+      } catch (e) {
+        console.warn('[LiveActivity] Failed to attach native listeners:', e);
+      }
+    }
+
+    dbEvents.subscribe(() => {
+      this.syncFromDatabase();
+    });
+  }
+
+  public async handleWidgetEvent(event: any) {
+    if (!event || !event.action) return;
+    const LiveActivities = getNativeLiveActivities();
+    const store = useSessionStore.getState();
+
+    if (event.action === 'AdjustRest') {
+      const targetMs = event.restEndDate && event.restEndDate > 0 ? Math.round(event.restEndDate * 1000) : null;
+      const isRunning = targetMs !== null && targetMs > Date.now();
+      this.currentRestTarget = isRunning ? targetMs : null;
+      store.setRestTimer(isRunning ? targetMs : null, isRunning, { fromLiveActivity: true });
+      if (LiveActivities?.clearActiveRestAction) {
+        LiveActivities.clearActiveRestAction().catch(() => {});
+      }
+    } else if (event.action === 'SkipRest') {
+      this.suspendUpdates(1200);
+      this.currentRestTarget = null;
+      store.setRestTimer(null, false, { fromLiveActivity: true });
+      if (LiveActivities?.clearActiveRestAction) {
+        LiveActivities.clearActiveRestAction().catch(() => {});
+      }
+    } else if (event.action === 'SEND' || event.action === 'ATTEMPT') {
+      this.suspendUpdates(1200);
+      const consumedFromQueue = await this.consumePendingOfflineAscents();
+      if (!consumedFromQueue) {
+        this.logQuickAscentFromWidget(event.action);
+      }
+      if (LiveActivities?.clearActiveRestAction) {
+        LiveActivities.clearActiveRestAction().catch(() => {});
+      }
+    } else if (event.action === 'FINISH_SESSION') {
+      const activeSession = getActiveSession();
+      const sessionId = store.activeSessionId || activeSession?.id;
+      if (sessionId) {
+        completeSessionWrapUp(
+          sessionId,
+          Date.now(),
+          activeSession?.title || 'Session',
+          activeSession?.notes || '',
+          activeSession?.gymName || 'Local Gym',
+          null,
+          []
+        );
+        store.setActiveSessionId(null);
+      }
+      if (LiveActivities?.clearPendingOfflineAscents) {
+        LiveActivities.clearPendingOfflineAscents().catch(() => {});
+      }
     }
   }
 
-  public startSession(sessionId: string, sessionName: string) {
-    if (Platform.OS !== 'ios') return;
+  private logQuickAscentFromWidget(status: 'SEND' | 'ATTEMPT') {
+    const store = useSessionStore.getState();
+    const gradeRaw = resolveQuickLogGrade();
+    const targetProj = store.activeProjectTarget;
+
+    store.logGenericAscent({
+      gradeRaw,
+      outcome: status === 'SEND' ? 'send' : 'attempt',
+      movesLinked: 1,
+      projectId: targetProj ? targetProj.id : undefined,
+      wallAngle: targetProj ? targetProj.wallAngle : undefined,
+      holdType: targetProj ? targetProj.holdType : undefined,
+    });
+  }
+
+  public async consumePendingOfflineAscents(): Promise<boolean> {
+    const LiveActivities = getNativeLiveActivities();
+    if (!LiveActivities?.getPendingOfflineAscents) return false;
+    if (this.isSyncingQueue) return true;
+
+    this.isSyncingQueue = true;
+    let loggedAny = false;
+
+    try {
+      const pendingStr = await LiveActivities.getPendingOfflineAscents();
+      if (pendingStr && pendingStr.trim() !== '') {
+        if (LiveActivities.clearPendingOfflineAscents) {
+          await LiveActivities.clearPendingOfflineAscents();
+        }
+        const events = pendingStr.split(',');
+        for (const rawEvent of events) {
+          const trimmed = rawEvent.trim();
+          if (!trimmed || this.processedEventKeys.has(trimmed)) continue;
+          const parts = trimmed.split('|');
+          if (parts.length === 2) {
+            const status = parts[1];
+            if (status === 'SEND' || status === 'ATTEMPT') {
+              this.processedEventKeys.add(trimmed);
+              this.logQuickAscentFromWidget(status);
+              loggedAny = true;
+            }
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('[LiveActivity] consumePendingOfflineAscents failed:', e);
+    } finally {
+      this.isSyncingQueue = false;
+    }
+
+    return loggedAny;
+  }
+
+  public async handleForegroundSync() {
+    const LiveActivities = getNativeLiveActivities();
+    if (getPlatformOS() !== 'ios' || !LiveActivities) return;
+
+    try {
+      await this.consumePendingOfflineAscents();
+
+      if (LiveActivities.getPendingWidgetAction) {
+        const result = await LiveActivities.getPendingWidgetAction();
+        const action: string = result?.action ?? '';
+        const store = useSessionStore.getState();
+
+        if (action === 'SkipRest') {
+          this.currentRestTarget = null;
+          store.setRestTimer(null, false, { fromLiveActivity: true });
+          if (LiveActivities.clearActiveRestAction) {
+            await LiveActivities.clearActiveRestAction();
+          }
+          return;
+        }
+
+        if (action === 'AdjustRest') {
+          if (LiveActivities.clearActiveRestAction) {
+            await LiveActivities.clearActiveRestAction();
+          }
+        }
+      }
+
+      if (LiveActivities.getActiveRestEndTimestamp) {
+        const timestampSeconds = await LiveActivities.getActiveRestEndTimestamp();
+        const store = useSessionStore.getState();
+        if (timestampSeconds && timestampSeconds > 0) {
+          const targetMs = Math.round(timestampSeconds * 1000);
+          if (targetMs > Date.now()) {
+            this.currentRestTarget = targetMs;
+            if (
+              !store.isRestTimerRunning ||
+              Math.abs((store.restTimerEndTime ?? 0) - targetMs) > 1500
+            ) {
+              store.setRestTimer(targetMs, true, { fromLiveActivity: true });
+            }
+          } else if (store.isRestTimerRunning) {
+            this.currentRestTarget = null;
+            store.setRestTimer(null, false, { fromLiveActivity: true });
+          }
+        }
+      }
+
+      this.syncFromDatabase();
+    } catch (e) {
+      console.warn('[LiveActivity] AppState foreground handler failed:', e);
+    }
+  }
+
+  public syncFromDatabase() {
+    const LiveActivities = getNativeLiveActivities();
+    if (getPlatformOS() !== 'ios' || !LiveActivities) return;
+
+    try {
+      const activeSession = getActiveSession();
+      if (!activeSession) {
+        if (this.isActive) {
+          this.endSession();
+        }
+        return;
+      }
+
+      const { sendCount, climbCount, latestGrade } = getSessionLiveTelemetry(activeSession.id);
+      const store = useSessionStore.getState();
+      const targetGrade =
+        store.activeProjectTarget?.grade ||
+        store.activeProjectTarget?.gradeRaw ||
+        latestGrade ||
+        'V0';
+
+      if (!this.isActive || this.currentSessionId !== activeSession.id) {
+        this.startSession(
+          activeSession.id,
+          activeSession.gymName || 'Local Gym',
+          activeSession.startTime,
+          sendCount,
+          climbCount,
+          targetGrade
+        );
+      } else {
+        this.updateCounts(sendCount, climbCount, targetGrade);
+      }
+    } catch (e) {
+      console.warn('[LiveActivity] syncFromDatabase failed:', e);
+    }
+  }
+
+  public startSession(
+    sessionId: string,
+    sessionName: string,
+    startTimeMs?: number,
+    initialSends = 0,
+    initialClimbs = 0,
+    initialGrade: string | null = 'V0'
+  ) {
+    if (getPlatformOS() !== 'ios') return;
+    const LiveActivities = getNativeLiveActivities();
     if (!LiveActivities) {
-      console.warn('[LiveActivity] NativeModules.LiveActivities not found — was the app rebuilt after pod install?');
       return;
     }
 
     if (this.isActive && this.currentSessionId === sessionId) {
+      this.currentSends = initialSends;
+      this.currentClimbs = initialClimbs;
+      if (initialGrade !== undefined) this.currentGrade = initialGrade;
       this.pushState();
       return;
     }
 
     this.isActive = true;
     this.currentSessionId = sessionId;
-    this.currentSessionStartTime = Date.now();
-    this.currentSends = 0;
+    this.currentSessionStartTime = startTimeMs ?? Date.now();
+    this.currentSends = initialSends;
+    this.currentClimbs = initialClimbs;
     this.currentRestTarget = null;
     this.currentZoneName = null;
-    this.currentGrade = null;
+    this.currentGrade = initialGrade;
     this.currentSet = 0;
     this.totalSets = 0;
     this.isComplete = false;
 
     try {
       LiveActivities.startActivity(
-        sessionName,
+        sessionName || 'Local Gym',
         sessionId,
         this.currentSessionStartTime / 1000,
-        0
+        initialSends,
+        initialClimbs
       );
+      if (initialGrade || initialSends > 0 || initialClimbs > 0) {
+        this.pushState();
+      }
     } catch (e) {
       console.warn('[LiveActivity] startActivity failed', e);
     }
   }
 
-  public updateSends(sendCount: number) {
-    if (Platform.OS !== 'ios' || !LiveActivities) return;
-    this.isActive = true; // Recover state
+  public updateCounts(sendCount: number, climbCount: number, grade?: string | null) {
+    if (getPlatformOS() !== 'ios' || !getNativeLiveActivities()) return;
+    this.isActive = true;
     this.currentSends = sendCount;
+    this.currentClimbs = climbCount;
+    if (grade !== undefined) {
+      this.currentGrade = grade;
+    }
+    this.pushState();
+  }
+
+  public updateSends(sendCount: number, climbCount?: number) {
+    if (getPlatformOS() !== 'ios' || !getNativeLiveActivities()) return;
+    this.isActive = true;
+    this.currentSends = sendCount;
+    if (typeof climbCount === 'number') {
+      this.currentClimbs = climbCount;
+    }
     this.pushState();
   }
 
   public updateRest(targetTimestampMs: number | null) {
-    if (Platform.OS !== 'ios' || !LiveActivities) return;
-    this.isActive = true; // Recover state
+    if (getPlatformOS() !== 'ios' || !getNativeLiveActivities()) return;
+    this.isActive = true;
     this.currentRestTarget = targetTimestampMs;
     this.pushState();
   }
 
-  public updateZoneContext(zoneName: string | null, grade: string | null, currentSet: number, totalSets: number, isComplete: boolean) {
-    if (Platform.OS !== 'ios' || !LiveActivities) return;
+  public updateZoneContext(
+    zoneName: string | null,
+    grade: string | null,
+    currentSet: number,
+    totalSets: number,
+    isComplete: boolean
+  ) {
+    if (getPlatformOS() !== 'ios' || !getNativeLiveActivities()) return;
     this.isActive = true;
     this.currentZoneName = zoneName;
     this.currentGrade = grade;
@@ -185,9 +417,6 @@ class LiveActivityManager {
     this.isComplete = isComplete;
     this.pushState();
   }
-
-  private updateTimeout: ReturnType<typeof setTimeout> | null = null;
-  private suspendUntil: number = 0;
 
   public suspendUpdates(ms: number) {
     this.suspendUntil = Date.now() + ms;
@@ -207,13 +436,19 @@ class LiveActivityManager {
   }
 
   private executeNativeUpdate() {
+    const LiveActivities = getNativeLiveActivities();
+    if (!LiveActivities) return;
     try {
-      const restTarget = this.currentRestTarget ? this.currentRestTarget / 1000 : 0;
+      const restTarget =
+        this.currentRestTarget && this.currentRestTarget > Date.now()
+          ? this.currentRestTarget / 1000
+          : 0;
       LiveActivities.updateActivity(
-        this.currentSends, 
+        this.currentSends,
+        this.currentClimbs,
         restTarget,
-        this.currentZoneName || "",
-        this.currentGrade || "",
+        this.currentZoneName || '',
+        this.currentGrade || '',
         this.currentSet,
         this.totalSets,
         this.isComplete
@@ -224,7 +459,18 @@ class LiveActivityManager {
   }
 
   public endSession() {
-    if (Platform.OS !== 'ios' || !LiveActivities || !this.isActive) return;
+    const LiveActivities = getNativeLiveActivities();
+    if (getPlatformOS() !== 'ios' || !LiveActivities || !this.isActive) {
+      this.isActive = false;
+      this.currentSessionId = null;
+      this.currentSessionStartTime = null;
+      return;
+    }
+
+    if (this.updateTimeout) {
+      clearTimeout(this.updateTimeout);
+      this.updateTimeout = null;
+    }
 
     try {
       LiveActivities.endActivity();
@@ -234,8 +480,8 @@ class LiveActivityManager {
     this.isActive = false;
     this.currentSessionId = null;
     this.currentSessionStartTime = null;
+    this.currentRestTarget = null;
   }
 }
 
 export const liveActivityManager = new LiveActivityManager();
-

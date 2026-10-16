@@ -4,5 +4,8 @@
  */
 export function redirectSystemPath({ path }: { path: string; initial: boolean }) {
   if (path.includes('dataUrl=')) return '/';
+  if (path.includes('session/') && !path.includes('session/detail/') && !path.includes('session/end') && !path.includes('session/summary')) {
+    return '/session/active';
+  }
   return path;
 }

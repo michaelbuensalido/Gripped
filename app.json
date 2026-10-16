@@ -85,6 +85,7 @@
         }
       ],
       "./plugins/withStripPushNotifications",
+      "./plugins/withLiveActivityWidget",
       "expo-asset",
       [
         "expo-share-intent",

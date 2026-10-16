@@ -144,6 +144,11 @@ export default function RootLayout() {
         setHasOnboarded(onboarded === 'true');
         setIsDbReady(true);
         notificationEngine.requestPermissions();
+        try {
+          const { liveActivityManager } = require('../services/liveActivity');
+          liveActivityManager.syncFromDatabase();
+          liveActivityManager.handleForegroundSync();
+        } catch {}
       } catch (e) {
         console.error(e);
       }

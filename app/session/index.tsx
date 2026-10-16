@@ -373,6 +373,14 @@ export default function ActiveSessionScreen() {
     }
   }, [activeProjectTarget]);
 
+  // Keep iOS Live Activity (Dynamic Island + Lock Screen) synced with session telemetry
+  useEffect(() => {
+    try {
+      const { liveActivityManager } = require('../../services/liveActivity');
+      liveActivityManager.syncFromDatabase();
+    } catch {}
+  }, [session?.id, session?.gymName, activeClimbs.length, sends.length]);
+
   // Rest Timer calculation
   useEffect(() => {
     if (!restTimerEndTime || !isRestTimerRunning) {
@@ -614,8 +622,12 @@ export default function ActiveSessionScreen() {
           style: 'destructive',
           onPress: () => {
             triggerHaptic('heavy');
+            setRestTimer(null, false);
             deleteSession(session.id);
             setActiveSessionId(null);
+            try {
+              require('../../services/liveActivity').liveActivityManager.endSession();
+            } catch {}
             router.replace('/');
           },
         },
@@ -649,8 +661,12 @@ export default function ActiveSessionScreen() {
             style: 'destructive',
             onPress: () => {
               triggerHaptic('heavy');
+              setRestTimer(null, false);
               deleteSession(session.id);
               setActiveSessionId(null);
+              try {
+                require('../../services/liveActivity').liveActivityManager.endSession();
+              } catch {}
               router.replace('/');
             },
           },

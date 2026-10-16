@@ -24,7 +24,11 @@ interface SessionState {
   restTimerEndTime: number | null;
   isRestTimerRunning: boolean;
   restNotificationId: string | null;
-  setRestTimer: (endTime: number | null, isRunning: boolean) => void;
+  setRestTimer: (
+    endTime: number | null,
+    isRunning: boolean,
+    options?: { fromLiveActivity?: boolean }
+  ) => void;
   addRestTimerSeconds: (seconds: number) => void;
 
   // Actions
@@ -55,12 +59,17 @@ export const useSessionStore = create<SessionState>((set, get) => ({
   setPendingAttemptId: (id) => set({ pendingAttemptId: id }),
 
   activeProjectTarget: null,
-  setActiveProjectTarget: (project) => set({ activeProjectTarget: project }),
+  setActiveProjectTarget: (project) => {
+    set({ activeProjectTarget: project });
+    try {
+      require('../services/liveActivity').liveActivityManager.syncFromDatabase();
+    } catch {}
+  },
 
   restTimerEndTime: null,
   isRestTimerRunning: false,
   restNotificationId: null,
-  setRestTimer: (endTime, isRunning) => {
+  setRestTimer: (endTime, isRunning, options) => {
     const prevNotifId = get().restNotificationId;
     if (prevNotifId) {
       notificationEngine.cancelRestNotification(prevNotifId).catch(() => {});
@@ -80,6 +89,15 @@ export const useSessionStore = create<SessionState>((set, get) => ({
       isRestTimerRunning: isRunning,
       restNotificationId: null,
     });
+
+    if (!options?.fromLiveActivity) {
+      try {
+        const { liveActivityManager } = require('../services/liveActivity');
+        liveActivityManager.updateRest(
+          isRunning && endTime && endTime > Date.now() ? endTime : null
+        );
+      } catch {}
+    }
   },
   addRestTimerSeconds: (seconds) => {
     const current = get();
@@ -90,10 +108,11 @@ export const useSessionStore = create<SessionState>((set, get) => ({
 
   startQuickSession: (gymName = 'Local Gym') => {
     const id = `session_${Date.now()}`;
+    const startTime = Date.now();
     Q.insertSession({
       id,
       gymName,
-      startTime: Date.now(),
+      startTime,
       notes: '',
       title: 'Quick Session',
       rpe: null,
@@ -102,6 +121,10 @@ export const useSessionStore = create<SessionState>((set, get) => ({
       fingerFatigue: null,
     });
     set({ activeSessionId: id });
+    try {
+      const { liveActivityManager } = require('../services/liveActivity');
+      liveActivityManager.startSession(id, gymName, startTime, 0, 0, 'V0');
+    } catch {}
     return id;
   },
 
