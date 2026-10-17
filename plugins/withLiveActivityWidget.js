@@ -160,7 +160,7 @@ function applyWidgetTargetToPbxProject(pbxProject, { appIdentifier, currentProje
       bs.CODE_SIGN_STYLE = 'Automatic';
       bs.CURRENT_PROJECT_VERSION = `"${currentProjectVersion}"`;
       bs.GENERATE_INFOPLIST_FILE = 'YES';
-      bs.IPHONEOS_DEPLOYMENT_TARGET = '16.4';
+      bs.IPHONEOS_DEPLOYMENT_TARGET = '17.0';
       bs.MARKETING_VERSION = `"${marketingVersion}"`;
       bs.PRODUCT_BUNDLE_IDENTIFIER = `"${widgetBundleId}"`;
       bs.SKIP_INSTALL = 'YES';

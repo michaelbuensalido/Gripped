@@ -31,6 +31,7 @@ import { PrimaryButton } from '../components/ui/PrimaryButton';
 import { SecondaryButton } from '../components/ui/SecondaryButton';
 import { ScalePressable } from '../components/ui/ScalePressable';
 import { EmptyState } from '../components/ui/EmptyState';
+import { UndoToast } from '../components/ui/UndoToast';
 import * as Q from '../db/queries';
 import { WeekStrip } from '../components/ui/WeekStrip';
 import { VolumeChart } from '../components/ui/VolumeChart';
@@ -62,6 +63,8 @@ export default function HomeScreen() {
   const [isStartSheetOpen, setIsStartSheetOpen] = useState(false);
   const [elapsed, setElapsed] = useState(0);
   const [heroIndex, setHeroIndex] = useState(0);
+  const [dismissedStaleId, setDismissedStaleId] = useState<string | null>(null);
+  const [deletedSessionId, setDeletedSessionId] = useState<string | null>(null);
   const insets = useSafeAreaInsets();
   const { triggerStreak } = useCelebration();
   const { hasStreakCelebrated, markStreakCelebrated } = useCelebrationStore();
@@ -99,12 +102,32 @@ export default function HomeScreen() {
     return () => clearInterval(interval);
   }, [data.activeSession?.id, data.activeSession?.startTime]);
 
+  const isStaleSession = Boolean(
+    data.activeSession &&
+    elapsed > 6 * 3600 * 1000 &&
+    dismissedStaleId !== data.activeSession.id
+  );
+
   const handleStartSession = () => {
     triggerHaptic('medium');
     if (data.activeSession) {
       startOrResume();
     } else {
       setIsStartSheetOpen(true);
+    }
+  };
+
+  const handleDeleteSession = (id: string) => {
+    triggerHaptic('light');
+    Q.softDeleteSession(id);
+    setDeletedSessionId(id);
+  };
+
+  const handleUndoDeleteSession = () => {
+    if (deletedSessionId) {
+      triggerHaptic('light');
+      Q.undoDeleteSession(deletedSessionId);
+      setDeletedSessionId(null);
     }
   };
 
@@ -215,7 +238,7 @@ export default function HomeScreen() {
             borderRadius: 26,
             padding: 20,
             borderWidth: 1,
-            borderColor: colors.border,
+            borderColor: data.activeSession ? colors.accent : colors.border,
             marginBottom: 24,
             ...shadow.floating,
           }}
@@ -224,7 +247,7 @@ export default function HomeScreen() {
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
             <Text style={{ color: colors.accent, fontSize: 11, fontWeight: '700', letterSpacing: 1.5, textTransform: 'uppercase' }}>
               {data.activeSession 
-                ? "TODAY'S SESSION" 
+                ? `ACTIVE SESSION • ${(data.activeSession.gymName || 'GYM').toUpperCase()}`
                 : (data.projects && data.projects.length > 0 
                     ? "NEXT OBJECTIVE" 
                     : (data.lastSession ? "LATEST SESSION" : "WELCOME"))}
@@ -280,6 +303,71 @@ export default function HomeScreen() {
                     : (data.hardest30d ? `Hardest recent: ${data.hardest30d.gradeRaw}` : 'Fresh Start')}
                 </Text>
               </View>
+
+              {/* Stale Session Prompt (>6 hours open) */}
+              {isStaleSession && (
+                <View
+                  style={{
+                    backgroundColor: colors.cardMuted,
+                    borderRadius: radius.md,
+                    borderWidth: 1,
+                    borderColor: colors.border,
+                    padding: space.md,
+                    marginBottom: 16,
+                    gap: space.sm,
+                  }}
+                >
+                  <Text style={[type.body, { color: colors.text, fontSize: 13 }]}>
+                    Still climbing? This session has been open for over 6 hours.
+                  </Text>
+                  <View style={{ flexDirection: 'row', gap: space.sm }}>
+                    <ScalePressable
+                      onPress={() => {
+                        triggerHaptic('medium');
+                        router.push('/session/end');
+                      }}
+                      haptic="medium"
+                      activeScale={0.95}
+                      style={{
+                        flex: 1,
+                        height: 38,
+                        borderRadius: radius.pill,
+                        backgroundColor: colors.accentSoft,
+                        borderWidth: 1,
+                        borderColor: colors.accent,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                    >
+                      <Text style={[type.control, { color: colors.accentText, fontWeight: '700', fontSize: 13 }]}>
+                        End it now
+                      </Text>
+                    </ScalePressable>
+                    <ScalePressable
+                      onPress={() => {
+                        triggerHaptic('light');
+                        if (data.activeSession) setDismissedStaleId(data.activeSession.id);
+                      }}
+                      haptic="light"
+                      activeScale={0.95}
+                      style={{
+                        flex: 1,
+                        height: 38,
+                        borderRadius: radius.pill,
+                        backgroundColor: colors.card,
+                        borderWidth: 1,
+                        borderColor: colors.border,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                    >
+                      <Text style={[type.control, { color: colors.textMuted, fontSize: 13 }]}>
+                        Keep going
+                      </Text>
+                    </ScalePressable>
+                  </View>
+                </View>
+              )}
             </View>
           ) : (
             <ScrollView
@@ -456,7 +544,7 @@ export default function HomeScreen() {
             <View style={{ gap: 12 }}>
               {data.recentSessions.map((s: any) => (
                 <Animated.View key={s.id} layout={listLayout}>
-                  <SessionCard session={s} onDelete={(id) => { Q.deleteSession(id); }} />
+                  <SessionCard session={s} onDelete={handleDeleteSession} />
                 </Animated.View>
               ))}
             </View>
@@ -485,6 +573,15 @@ export default function HomeScreen() {
           setIsStartSheetOpen(false);
           startOrResume(gymName);
         }}
+      />
+
+      {/* Undo Toast for Session Deletion */}
+      <UndoToast
+        visible={!!deletedSessionId}
+        bottomOffset={104}
+        message="Session deleted"
+        onUndo={handleUndoDeleteSession}
+        onDismiss={() => setDeletedSessionId(null)}
       />
     </View>
   );

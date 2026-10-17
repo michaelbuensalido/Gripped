@@ -1,5 +1,15 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, Modal, TextInput, Pressable, ScrollView, StyleSheet } from 'react-native';
+import React, { useState, useEffect, useMemo } from 'react';
+import {
+  View,
+  Text,
+  Modal,
+  TextInput,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  KeyboardAvoidingView,
+  Platform,
+} from 'react-native';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -13,6 +23,7 @@ import { useTheme } from '../../theme/useTheme';
 import { PrimaryButton } from '../ui/PrimaryButton';
 import { SecondaryButton } from '../ui/SecondaryButton';
 import { useRecentGyms } from '../../db/hooks';
+import { getLastUsedGym, insertGym } from '../../db/queries';
 import { Chip } from '../ui/Chip';
 import { triggerHaptic } from '../../utils/haptics';
 
@@ -29,15 +40,29 @@ export function StartSessionSheet({
   onClose,
   onStart,
   title = "Start a session",
-  subtitle = "Start a session to log your climbs."
+  subtitle = "Pick where you're climbing today."
 }: StartSessionSheetProps) {
   const { colors, space, type, radius, shadow, motion } = useTheme();
   const reduceMotion = useReducedMotion();
   
   const recentGyms = useRecentGyms();
-  const lastGym = recentGyms.length > 0 ? recentGyms[0] : 'Local Gym';
+  const gymOptions = useMemo(() => {
+    const base = recentGyms.length > 0 ? [...recentGyms] : ['Local Gym'];
+    if (!base.some((g) => g.toLowerCase() === 'outdoor')) {
+      base.push('Outdoor');
+    }
+    return base;
+  }, [recentGyms]);
+
+  const defaultGym = useMemo(() => {
+    try {
+      const last = getLastUsedGym();
+      if (last) return last;
+    } catch {}
+    return gymOptions[0] || 'Local Gym';
+  }, [gymOptions, visible]);
   
-  const [gymName, setGymName] = useState(lastGym);
+  const [gymName, setGymName] = useState(defaultGym);
   const [isRendered, setIsRendered] = useState(visible);
 
   const backdropOpacity = useSharedValue(0);
@@ -46,7 +71,7 @@ export function StartSessionSheet({
   useEffect(() => {
     if (visible) {
       setIsRendered(true);
-      setGymName(lastGym);
+      setGymName(defaultGym);
       if (reduceMotion) {
         backdropOpacity.value = 1;
         sheetTranslateY.value = 0;
@@ -63,7 +88,7 @@ export function StartSessionSheet({
     } else if (isRendered) {
       handleCloseAnimation();
     }
-  }, [visible, lastGym]);
+  }, [visible, defaultGym]);
 
   const handleCloseAnimation = () => {
     if (reduceMotion) {
@@ -89,6 +114,14 @@ export function StartSessionSheet({
     });
   };
 
+  const handleStart = () => {
+    const trimmed = gymName.trim() || defaultGym || 'Local Gym';
+    try {
+      insertGym(trimmed);
+    } catch {}
+    onStart(trimmed);
+  };
+
   const backdropStyle = useAnimatedStyle(() => ({
     opacity: backdropOpacity.value,
   }));
@@ -101,7 +134,10 @@ export function StartSessionSheet({
 
   return (
     <Modal visible={isRendered} transparent onRequestClose={handleCloseAnimation}>
-      <View style={styles.modalRoot}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        style={styles.modalRoot}
+      >
         {/* Animated backdrop scrim */}
         <Animated.View style={[StyleSheet.absoluteFill, { backgroundColor: colors.scrim }, backdropStyle]}>
           <Pressable style={StyleSheet.absoluteFill} onPress={handleCloseAnimation} />
@@ -147,32 +183,40 @@ export function StartSessionSheet({
           <Text style={[type.label, { color: colors.textMuted, marginBottom: space.xs }]}>
             Gym / Location
           </Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: space.xl }}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+            style={{ marginBottom: space.xl }}
+          >
             <View style={{ flexDirection: 'row', gap: space.sm, alignItems: 'center' }}>
-              {recentGyms.map((gym) => (
+              {gymOptions.map((gym) => (
                 <Chip
                   key={gym}
                   label={gym}
                   active={gymName === gym}
                   onPress={() => {
+                    triggerHaptic('selection');
                     setGymName(gym);
                   }}
                 />
               ))}
               <TextInput
-                value={!recentGyms.includes(gymName) ? gymName : ''}
+                value={!gymOptions.includes(gymName) ? gymName : ''}
                 onChangeText={setGymName}
-                placeholder="+ Add new gym"
+                placeholder="+ Custom gym"
                 placeholderTextColor={colors.textMuted}
+                returnKeyType="go"
+                onSubmitEditing={handleStart}
                 style={[
                   type.body,
                   {
-                    backgroundColor: !recentGyms.includes(gymName) && gymName !== '' ? colors.accent : colors.cardMuted,
-                    color: !recentGyms.includes(gymName) && gymName !== '' ? colors.textOnAccent : colors.text,
+                    backgroundColor: !gymOptions.includes(gymName) && gymName !== '' ? colors.accent : colors.cardMuted,
+                    color: !gymOptions.includes(gymName) && gymName !== '' ? colors.textOnAccent : colors.text,
                     paddingHorizontal: space.md,
                     height: 38,
                     borderRadius: 19,
-                    minWidth: 120,
+                    minWidth: 130,
                     borderWidth: 1,
                     borderColor: colors.border,
                   },
@@ -184,7 +228,7 @@ export function StartSessionSheet({
           <PrimaryButton
             testID="start-session-submit-btn"
             label="Start session"
-            onPress={() => onStart(gymName)}
+            onPress={handleStart}
             style={{ marginBottom: space.md }}
             disabled={!gymName.trim()}
           />
@@ -194,7 +238,7 @@ export function StartSessionSheet({
             onPress={handleCloseAnimation}
           />
         </Animated.View>
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }

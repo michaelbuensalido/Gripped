@@ -199,6 +199,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
       wallAngle: payload.wallAngle,
       holdType: payload.holdType,
       outcome,
+      notes: payload.notes ?? null,
       failureReason: payload.failureReason ?? null,
       attemptNumber: movesLinked,
       timestamp: Date.now(),

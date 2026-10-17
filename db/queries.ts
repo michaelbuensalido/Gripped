@@ -538,8 +538,8 @@ export function insertAttempt(attempt: any): void {
   const now = Date.now();
   runMutation('climbs', attempt.id, 'INSERT', 
     `INSERT INTO climbs (
-      id, session_id, project_id, grade_raw, grade_index, wall_angle, hold_type, result, attempts, logged_at, failure_reason, created_at, updated_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      id, session_id, project_id, grade_raw, grade_index, wall_angle, hold_type, result, attempts, notes, logged_at, failure_reason, created_at, updated_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       attempt.id,
       attempt.sessionId,
@@ -550,11 +550,55 @@ export function insertAttempt(attempt: any): void {
       (attempt.holdType ?? null),
       (attempt.outcome ?? null),
       attempt.attemptNumber,
+      (attempt.notes ?? null),
       attempt.timestamp,
       attempt.failureReason || null,
       now, now
     ]
   );
+}
+
+export function promoteClimbToProject(
+  climbId: string,
+  gymName?: string,
+  customTitle?: string
+): { projectId: string; title: string; gradeRaw: string } | null {
+  const db = getDatabase();
+  const climb = db.getFirstSync<any>(`SELECT * FROM climbs WHERE id = ?`, [climbId]);
+  if (!climb) return null;
+
+  let resolvedGym = gymName || '';
+  if (!resolvedGym && climb.session_id) {
+    const sess = db.getFirstSync<any>(`SELECT gym_name FROM sessions WHERE id = ?`, [climb.session_id]);
+    resolvedGym = sess?.gym_name || '';
+  }
+
+  const gradeRaw = climb.grade_raw || 'V0';
+  const gradeIndex = climb.grade_index ?? gradeToNumeric(gradeRaw);
+  const title = (customTitle && customTitle.trim()) ? customTitle.trim() : `${gradeRaw} Project`;
+
+  const projectId = createProject({
+    title,
+    gradeRaw,
+    normalizedDifficulty: gradeIndex,
+    wallAngle: (climb.wall_angle as WallAngle) || 'vertical',
+    holdType: (climb.hold_type as HoldType) || 'crimps',
+    status: 'in_progress',
+    highWaterMarkMoves: climb.attempts || 1,
+    gymName: resolvedGym || null,
+    microBeta: climb.notes || null,
+  });
+
+  const now = Date.now();
+  runMutation(
+    'climbs',
+    climbId,
+    'UPDATE',
+    `UPDATE climbs SET project_id = ?, updated_at = ? WHERE id = ?`,
+    [projectId, now, climbId]
+  );
+
+  return { projectId, title, gradeRaw };
 }
 
 export function updateAttemptFailureReason(attemptId: string, reason: string | null): void {
@@ -588,9 +632,24 @@ export function insertProject(project: any): void {
   const db = getDatabase();
   const now = Date.now();
   runMutation('projects', project.id, 'INSERT', 
-    `INSERT INTO projects (id, title, grade_raw, grade_index, wall_angle, hold_type, status, high_water_mark_moves, total_moves, micro_beta, photo_url, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    [project.id, project.title, project.gradeRaw, project.normalizedDifficulty ?? project.gradeIndex ?? gradeToNumeric(project.gradeRaw), project.wallAngle, project.holdType, project.status, project.highWaterMarkMoves ?? 0, project.totalMoves ?? null, (project.microBeta ?? null), (project.mediaUri ?? null), now, now]
+    `INSERT INTO projects (id, title, grade_raw, grade_index, wall_angle, hold_type, status, high_water_mark_moves, total_moves, micro_beta, gym_name, photo_url, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      project.id,
+      project.title,
+      project.gradeRaw,
+      project.normalizedDifficulty ?? project.gradeIndex ?? gradeToNumeric(project.gradeRaw),
+      project.wallAngle,
+      project.holdType,
+      project.status,
+      project.highWaterMarkMoves ?? 0,
+      project.totalMoves ?? null,
+      project.microBeta ?? project.notes ?? null,
+      project.gymName ?? null,
+      project.mediaUri ?? null,
+      now,
+      now,
+    ]
   );
 }
 
@@ -601,7 +660,7 @@ export function gradeToNumeric(gradeRaw: string): number {
 export function getClimbsForSession(sessionId: string): any[] {
   const db = getDatabase();
   return db.getAllSync(`
-    SELECT c.*, p.title as projectTitle 
+    SELECT c.*, p.title as projectTitle, p.title as project_title 
     FROM climbs c 
     LEFT JOIN projects p ON c.project_id = p.id 
     WHERE c.session_id = ? AND c.deleted_at IS NULL
@@ -1390,6 +1449,7 @@ export function logClimbForSession(sessionId: string, payload: {
   result: string;
   attempts?: number;
   notes?: string;
+  failureReason?: string | null;
   projectId?: string | null;
   loggedAt?: number;
 }): string {
@@ -1399,10 +1459,10 @@ export function logClimbForSession(sessionId: string, payload: {
   const now = payload.loggedAt || Date.now();
   runMutation('climbs', id, 'INSERT',
     `INSERT INTO climbs (
-      id, session_id, project_id, grade_raw, grade_index, result, attempts, notes, logged_at, created_at, updated_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      id, session_id, project_id, grade_raw, grade_index, result, attempts, notes, failure_reason, logged_at, created_at, updated_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
-      id, sessionId, payload.projectId || null, payload.gradeRaw, gradeIndex, outcome, payload.attempts ?? 1, payload.notes || null, now, now, now
+      id, sessionId, payload.projectId || null, payload.gradeRaw, gradeIndex, outcome, payload.attempts ?? 1, payload.notes || null, payload.failureReason ?? null, now, now, now
     ]
   );
   if (payload.projectId && (outcome === 'send' || outcome === 'flash')) {
@@ -1416,6 +1476,8 @@ export function updateClimb(id: string, updates: {
   result?: string;
   attempts?: number;
   notes?: string;
+  failureReason?: string | null;
+  projectId?: string | null;
 }): void {
   const gradeIndex = updates.gradeRaw ? gradeToNumeric(updates.gradeRaw) : null;
   const outcome = updates.result ? (updates.result === 'top' ? 'send' : updates.result) : null;
@@ -1427,6 +1489,8 @@ export function updateClimb(id: string, updates: {
       result = COALESCE(?, result),
       attempts = COALESCE(?, attempts),
       notes = COALESCE(?, notes),
+      failure_reason = CASE WHEN ? = 1 THEN ? ELSE failure_reason END,
+      project_id = CASE WHEN ? = 1 THEN ? ELSE project_id END,
       updated_at = ?
      WHERE id = ?`,
     [
@@ -1435,6 +1499,10 @@ export function updateClimb(id: string, updates: {
       outcome,
       updates.attempts ?? null,
       updates.notes ?? null,
+      updates.failureReason !== undefined ? 1 : 0,
+      updates.failureReason ?? null,
+      updates.projectId !== undefined ? 1 : 0,
+      updates.projectId ?? null,
       now,
       id
     ]

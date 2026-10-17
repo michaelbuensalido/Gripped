@@ -9,7 +9,8 @@ import {
   Animated,
   Pressable,
 } from 'react-native';
-import Reanimated from 'react-native-reanimated';
+import Reanimated, { FadeInDown, FadeOutUp } from 'react-native-reanimated';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import {
@@ -18,18 +19,18 @@ import {
   MoreHorizontal,
   Clock,
   Pause,
-  Play,
   RotateCcw,
   Zap,
+  Target,
+  X,
+  SlidersHorizontal,
 } from 'lucide-react-native';
 import { PrimaryButton } from '../../components/ui/PrimaryButton';
-import { SecondaryButton } from '../../components/ui/SecondaryButton';
 import { ClimbRow } from '../../components/ui/ClimbRow';
-import { GradePill } from '../../components/ui/GradePill';
-import { SyncChip } from '../../components/ui/SyncChip';
 import { Card } from '../../components/ui/Card';
 import { SectionHeader } from '../../components/ui/SectionHeader';
 import { LogSheet } from '../../components/session/LogSheet';
+import { RestTimerPickerSheet, formatRestDuration } from '../../components/session/RestTimerPickerSheet';
 import { UndoToast } from '../../components/ui/UndoToast';
 import { ScalePressable } from '../../components/ui/ScalePressable';
 import { EmptyState } from '../../components/ui/EmptyState';
@@ -46,6 +47,7 @@ import {
   softDeleteBoulderLog,
   undoDeleteBoulderLog,
   updateClimb,
+  promoteClimbToProject,
 } from '../../db/queries';
 import { triggerHaptic } from '../../utils/haptics';
 import { useCelebration } from '../../components/celebration/CelebrationProvider';
@@ -60,6 +62,10 @@ import { isSend } from '../../utils/isSend';
 import { ResultType } from '../../components/ui/ResultChip';
 import { SessionInsights } from '../../components/session/SessionInsights';
 import { ProjectCard } from '../../components/ui/ProjectCard';
+import type { FailureReason } from '../../types';
+
+const REST_TIMER_KEY = '@cruxlog/rest_timer_seconds';
+const DEFAULT_REST_SECONDS = 180;
 
 function formatActiveDuration(ms: number) {
   const totalSecs = Math.floor(ms / 1000);
@@ -71,7 +77,7 @@ function formatActiveDuration(ms: number) {
 }
 
 function formatRestRemaining(ms: number) {
-  const totalSecs = Math.floor(ms / 1000);
+  const totalSecs = Math.max(0, Math.ceil(ms / 1000));
   const m = Math.floor(totalSecs / 60);
   const s = totalSecs % 60;
   return `${m}:${s.toString().padStart(2, '0')}`;
@@ -175,24 +181,31 @@ function TelemetryBentoTile({
   );
 }
 
-// Heavy Sticky Bottom Action Bar with Rest Toggle + + LOG CLIMB button
+// Heavy Sticky Bottom Action Bar with Rest Toggle + Visible Rest Controls + LOG CLIMB button
 function StickyActionBar({
   onOpenLogSheet,
   restRemaining,
+  defaultRestSeconds,
   isRestRunning,
   isRestComplete,
   onToggleRest,
   onResetRest,
+  onAddRestSeconds,
+  onOpenRestPicker,
 }: {
   onOpenLogSheet: () => void;
   restRemaining: number;
+  defaultRestSeconds: number;
   isRestRunning: boolean;
   isRestComplete: boolean;
   onToggleRest: () => void;
   onResetRest: () => void;
+  onAddRestSeconds: (secs: number) => void;
+  onOpenRestPicker: () => void;
 }) {
   const { colors, radius, type, space, shadow } = useTheme();
   const insets = useSafeAreaInsets();
+  const hasActiveRest = isRestRunning || restRemaining > 0 || isRestComplete;
 
   return (
     <View
@@ -203,100 +216,167 @@ function StickyActionBar({
         right: 0,
         backgroundColor: '#000000',
         paddingHorizontal: space.lg,
-        paddingTop: space.md,
+        paddingTop: space.sm,
         paddingBottom: Math.max(insets.bottom, space.md),
-        flexDirection: 'row',
-        gap: space.md,
-        alignItems: 'center',
+        gap: space.xs,
+        borderTopWidth: 1,
+        borderTopColor: colors.border,
         ...shadow.floating,
       }}
     >
-      {/* Secondary REST Toggle */}
-      <ScalePressable
-        onPress={onToggleRest}
-        onLongPress={onResetRest}
-        haptic="light"
-        activeScale={0.96}
-        accessibilityRole="button"
-        accessibilityLabel="Rest Timer"
-        style={{
-          flex: 0.85,
-          height: 56,
-          minHeight: 56,
-          borderRadius: radius.pill,
-          backgroundColor: isRestComplete
-            ? 'rgba(110, 231, 86, 0.12)'
-            : isRestRunning
-            ? 'rgba(142, 124, 255, 0.15)'
-            : colors.materialBase,
-          flexDirection: 'row',
-          alignItems: 'center',
-          justifyContent: 'center',
-          paddingHorizontal: space.md,
-          gap: space.xs,
-          borderWidth: 1,
-          borderColor: isRestComplete
-            ? colors.flash
-            : isRestRunning
-            ? colors.accent
-            : colors.border,
-        }}
-      >
-        {isRestComplete ? (
-          <Clock size={18} color={colors.flashText} />
-        ) : isRestRunning ? (
-          <Pause size={18} color={colors.accentText} />
-        ) : (
-          <Clock size={18} color={colors.textMuted} />
-        )}
-        <View style={{ alignItems: 'flex-start' }}>
-          <Text
-            style={[
-              type.label,
-              {
-                color: isRestComplete
-                  ? colors.flashText
-                  : isRestRunning
-                  ? colors.accentText
-                  : colors.textMuted,
-                fontSize: 10,
-                letterSpacing: 0.8,
-              },
-            ]}
-          >
-            {isRestComplete ? 'REST DONE' : isRestRunning ? 'RESTING' : 'REST'}
-          </Text>
-          <Text
-            style={[
-              type.heading,
-              {
-                color: isRestComplete
-                  ? colors.flashText
-                  : isRestRunning
-                  ? colors.accentText
-                  : colors.text,
-                fontSize: 14,
-                fontVariant: ['tabular-nums'],
-              },
-            ]}
-          >
+      {/* Visible 1-handed Rest Timer quick actions when resting or complete */}
+      {hasActiveRest && (
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            paddingHorizontal: space.xs,
+            paddingBottom: 2,
+          }}
+        >
+          <Text style={[type.caption, { color: isRestComplete ? colors.flashText : colors.accentText, fontWeight: '600' }]}>
             {isRestComplete
-              ? 'READY'
+              ? 'Rest complete — ready for next burn'
               : isRestRunning
-              ? formatRestRemaining(restRemaining)
-              : '3:00'}
+              ? `Resting · ${formatRestRemaining(restRemaining)} left`
+              : `Rest paused · ${formatRestRemaining(restRemaining)} left`}
           </Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.xs }}>
+            {!isRestComplete && (
+              <ScalePressable
+                onPress={() => onAddRestSeconds(30)}
+                haptic="selection"
+                activeScale={0.94}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                accessibilityRole="button"
+                accessibilityLabel="Add 30 seconds to rest"
+                style={{
+                  paddingHorizontal: 10,
+                  paddingVertical: 4,
+                  borderRadius: radius.pill,
+                  backgroundColor: colors.cardMuted,
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                }}
+              >
+                <Text style={[type.caption, { color: colors.text, fontWeight: '700' }]}>+30s</Text>
+              </ScalePressable>
+            )}
+            <ScalePressable
+              onPress={onResetRest}
+              haptic="light"
+              activeScale={0.94}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              accessibilityRole="button"
+              accessibilityLabel="Reset rest timer"
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 4,
+                paddingHorizontal: 10,
+                paddingVertical: 4,
+                borderRadius: radius.pill,
+                backgroundColor: colors.cardMuted,
+                borderWidth: 1,
+                borderColor: colors.border,
+              }}
+            >
+              <RotateCcw size={12} color={colors.textMuted} />
+              <Text style={[type.caption, { color: colors.textMuted, fontWeight: '600' }]}>Reset</Text>
+            </ScalePressable>
+          </View>
         </View>
-      </ScalePressable>
+      )}
 
-      {/* Massive + LOG CLIMB PrimaryButton */}
-      <View style={{ flex: 1.15 }}>
-        <PrimaryButton
-          testID="log-climb-btn"
-          icon={<Plus color={colors.textOnAccent} size={22} strokeWidth={2.5} />}
-          label="LOG CLIMB"
-          onPress={onOpenLogSheet}
-        />
+      <View style={{ flexDirection: 'row', gap: space.md, alignItems: 'center' }}>
+        {/* Secondary REST Toggle */}
+        <ScalePressable
+          onPress={onToggleRest}
+          onLongPress={onOpenRestPicker}
+          haptic="light"
+          activeScale={0.96}
+          accessibilityRole="button"
+          accessibilityLabel="Rest Timer"
+          style={{
+            flex: 0.85,
+            height: 56,
+            minHeight: 56,
+            borderRadius: radius.pill,
+            backgroundColor: isRestComplete
+              ? 'rgba(110, 231, 86, 0.12)'
+              : isRestRunning
+              ? 'rgba(142, 124, 255, 0.15)'
+              : colors.materialBase,
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'center',
+            paddingHorizontal: space.md,
+            gap: space.xs,
+            borderWidth: 1,
+            borderColor: isRestComplete
+              ? colors.flash
+              : isRestRunning
+              ? colors.accent
+              : colors.border,
+          }}
+        >
+          {isRestComplete ? (
+            <Clock size={18} color={colors.flashText} />
+          ) : isRestRunning ? (
+            <Pause size={18} color={colors.accentText} />
+          ) : (
+            <Clock size={18} color={colors.textMuted} />
+          )}
+          <View style={{ alignItems: 'flex-start' }}>
+            <Text
+              style={[
+                type.label,
+                {
+                  color: isRestComplete
+                    ? colors.flashText
+                    : isRestRunning
+                    ? colors.accentText
+                    : colors.textMuted,
+                  fontSize: 10,
+                  letterSpacing: 0.8,
+                },
+              ]}
+            >
+              {isRestComplete ? 'REST DONE' : isRestRunning ? 'RESTING' : 'REST'}
+            </Text>
+            <Text
+              style={[
+                type.heading,
+                {
+                  color: isRestComplete
+                    ? colors.flashText
+                    : isRestRunning
+                    ? colors.accentText
+                    : colors.text,
+                  fontSize: 14,
+                  fontVariant: ['tabular-nums'],
+                },
+              ]}
+            >
+              {isRestComplete
+                ? 'READY'
+                : isRestRunning || restRemaining > 0
+                ? formatRestRemaining(restRemaining)
+                : formatRestRemaining(defaultRestSeconds * 1000)}
+            </Text>
+          </View>
+        </ScalePressable>
+
+        {/* Massive + LOG CLIMB PrimaryButton */}
+        <View style={{ flex: 1.15 }}>
+          <PrimaryButton
+            testID="log-climb-btn"
+            icon={<Plus color={colors.textOnAccent} size={22} strokeWidth={2.5} />}
+            label="LOG CLIMB"
+            onPress={onOpenLogSheet}
+          />
+        </View>
       </View>
     </View>
   );
@@ -318,18 +398,51 @@ export default function ActiveSessionScreen() {
     restTimerEndTime,
     isRestTimerRunning,
     setRestTimer,
+    addRestTimerSeconds,
     activeProjectTarget,
     setActiveProjectTarget,
   } = useSessionStore();
 
-  const [isLogSheetOpen, setLogSheetOpen] = useState(climbs.filter((c: any) => c.deleted_at === null).length === 0);
+  const [isLogSheetOpen, setLogSheetOpen] = useState(false);
+  const [isRestPickerOpen, setIsRestPickerOpen] = useState(false);
+  const [defaultRestSeconds, setDefaultRestSeconds] = useState(DEFAULT_REST_SECONDS);
   const [editingClimb, setEditingClimb] = useState<any>(null);
   const [selectedQuickGrade, setSelectedQuickGrade] = useState<string | null>(null);
-  const [lastAction, setLastAction] = useState<{ type: 'logged' | 'deleted'; climbId: string } | null>(null);
+  const [lastAction, setLastAction] = useState<{
+    type: 'logged' | 'deleted' | 'project_created';
+    climbId: string;
+    message?: string;
+  } | null>(null);
+  const [projectCandidate, setProjectCandidate] = useState<{
+    climbId: string;
+    gradeRaw: string;
+  } | null>(null);
   const [showMenu, setShowMenu] = useState(false);
 
   const [restRemaining, setRestRemaining] = useState(0);
   const pulseAnim = useRef(new Animated.Value(0)).current;
+
+  // Hydrate user's preferred rest timer length
+  useEffect(() => {
+    AsyncStorage.getItem(REST_TIMER_KEY)
+      .then((val) => {
+        if (val) {
+          const parsed = parseInt(val, 10);
+          if (!isNaN(parsed) && parsed >= 10 && parsed <= 600) {
+            setDefaultRestSeconds(parsed);
+          }
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  const handleSaveDefaultRest = (secs: number) => {
+    setDefaultRestSeconds(secs);
+    AsyncStorage.setItem(REST_TIMER_KEY, String(secs)).catch(() => {});
+    if (isRestTimerRunning) {
+      setRestTimer(Date.now() + secs * 1000, true);
+    }
+  };
 
   // Filter out soft-deleted climbs from UI display
   const activeClimbs = useMemo(
@@ -337,12 +450,12 @@ export default function ActiveSessionScreen() {
     [climbs]
   );
 
-  // Projects strip: in-progress projects at the current gym
+  // Projects strip: in-progress projects at the current gym (or all in-progress if none match gym)
   const activeProjects = useMemo(() => {
-    if (!session?.gymName) return [];
-    return allProjects.filter(
-      (p: any) => p.status === 'in_progress' && p.gymName === session.gymName
-    );
+    const inProg = allProjects.filter((p: any) => p.status === 'in_progress');
+    if (!session?.gymName) return inProg;
+    const atGym = inProg.filter((p: any) => !p.gymName || p.gymName === session.gymName);
+    return atGym.length > 0 ? atGym : inProg;
   }, [allProjects, session?.gymName]);
 
   const sends = useMemo(
@@ -408,11 +521,14 @@ export default function ActiveSessionScreen() {
     return () => clearInterval(interval);
   }, [restTimerEndTime, isRestTimerRunning, setRestTimer]);
 
+  const startFreshRest = () => {
+    setRestTimer(Date.now() + defaultRestSeconds * 1000, true);
+  };
+
   const handleToggleRest = () => {
     triggerHaptic('medium');
     if (!restTimerEndTime || restRemaining === 0) {
-      // Start fresh 3:00 rest
-      setRestTimer(Date.now() + 3 * 60 * 1000, true);
+      startFreshRest();
     } else if (isRestTimerRunning) {
       // Pause
       setRestTimer(Date.now() + restRemaining, false);
@@ -426,6 +542,12 @@ export default function ActiveSessionScreen() {
     triggerHaptic('light');
     setRestTimer(null, false);
     setRestRemaining(0);
+  };
+
+  const handleAddRestSeconds = (secs: number) => {
+    triggerHaptic('selection');
+    addRestTimerSeconds(secs);
+    setRestRemaining((prev) => prev + secs * 1000);
   };
 
   const isRestComplete = restTimerEndTime !== null && restRemaining === 0;
@@ -462,7 +584,6 @@ export default function ActiveSessionScreen() {
       for (const c of activeClimbs) {
         if (hasCelebrated(c.id)) continue;
 
-        let celebrated = false;
         if (shouldFireBigCelebration(c.result, c.project_id)) {
           const proj = allProjects.find((p: any) => p.id === c.project_id);
           triggerBig({
@@ -472,7 +593,6 @@ export default function ActiveSessionScreen() {
             sessions: proj?.sessions || 1,
           });
           markCelebrated(c.id, 'big');
-          celebrated = true;
         } else if (
           shouldFireMediumCelebration(c.grade_index, globalHardest, totalSessionsCount)
         ) {
@@ -483,11 +603,9 @@ export default function ActiveSessionScreen() {
             Animated.timing(pulseAnim, { toValue: 1, duration: 200, useNativeDriver: false }),
             Animated.timing(pulseAnim, { toValue: 0, duration: 400, delay: 600, useNativeDriver: false }),
           ]).start();
-          celebrated = true;
         } else if (shouldFireSmallCelebration(c.result)) {
           triggerSmall();
           markCelebrated(c.id, 'small');
-          celebrated = true;
         }
       }
     }
@@ -555,7 +673,9 @@ export default function ActiveSessionScreen() {
     grade: string,
     result: ResultType,
     attempts: number,
-    notes: string
+    notes: string,
+    failureReason?: FailureReason | null,
+    selectedProj?: any | null
   ) => {
     triggerHaptic('medium');
     if (editingClimb) {
@@ -564,6 +684,8 @@ export default function ActiveSessionScreen() {
         result: result === 'top' ? 'send' : result,
         attempts,
         notes,
+        failureReason: result === 'attempt' ? (failureReason ?? null) : null,
+        projectId: selectedProj ? selectedProj.id : editingClimb.projectId ?? null,
       });
       setLogSheetOpen(false);
       setEditingClimb(null);
@@ -571,16 +693,25 @@ export default function ActiveSessionScreen() {
       return;
     }
 
+    const targetProject = selectedProj || activeProjectTarget;
     const newId = logGenericAscent({
       gradeRaw: grade,
       outcome: result === 'top' ? 'send' : result,
       movesLinked: attempts,
       notes,
-      projectId: activeProjectTarget ? activeProjectTarget.id : undefined,
-      wallAngle: activeProjectTarget ? activeProjectTarget.wallAngle : undefined,
-      holdType: activeProjectTarget ? activeProjectTarget.holdType : undefined,
+      failureReason: result === 'attempt' ? (failureReason ?? null) : null,
+      projectId: targetProject ? targetProject.id : undefined,
+      wallAngle: targetProject ? targetProject.wallAngle : undefined,
+      holdType: targetProject ? targetProject.holdType : undefined,
     });
+
     setLastAction({ type: 'logged', climbId: newId });
+    if (result === 'attempt' && !targetProject) {
+      setProjectCandidate({ climbId: newId, gradeRaw: grade });
+    } else {
+      setProjectCandidate(null);
+    }
+
     setLogSheetOpen(false);
     setEditingClimb(null);
     setSelectedQuickGrade(null);
@@ -588,13 +719,30 @@ export default function ActiveSessionScreen() {
       setActiveProjectTarget(null);
     }
 
-    // Auto-start rest timer
-    setRestTimer(Date.now() + 3 * 60 * 1000, true);
+    // Auto-start rest timer with user's configured duration
+    startFreshRest();
+  };
+
+  const handlePromoteToProject = () => {
+    if (!projectCandidate) return;
+    triggerHaptic('success');
+    const created = promoteClimbToProject(projectCandidate.climbId, session.gymName);
+    setProjectCandidate(null);
+    if (created) {
+      setLastAction({
+        type: 'project_created',
+        climbId: projectCandidate.climbId,
+        message: `Saved ${created.title}`,
+      });
+    }
   };
 
   const handleDeleteClimb = (id: string) => {
     triggerHaptic('light');
     softDeleteBoulderLog(id);
+    if (projectCandidate?.climbId === id) {
+      setProjectCandidate(null);
+    }
     setLastAction({ type: 'deleted', climbId: id });
   };
 
@@ -603,7 +751,10 @@ export default function ActiveSessionScreen() {
       triggerHaptic('light');
       if (lastAction.type === 'logged') {
         softDeleteBoulderLog(lastAction.climbId);
-      } else {
+        if (projectCandidate?.climbId === lastAction.climbId) {
+          setProjectCandidate(null);
+        }
+      } else if (lastAction.type === 'deleted') {
         undoDeleteBoulderLog(lastAction.climbId);
       }
       setLastAction(null);
@@ -643,6 +794,7 @@ export default function ActiveSessionScreen() {
       result: (climb.result === 'send' ? 'top' : climb.result) as ResultType,
       attempts: climb.attempts ?? 1,
       notes: climb.notes || '',
+      failureReason: climb.failure_reason || null,
       projectId: climb.project_id,
     });
     setLogSheetOpen(true);
@@ -680,6 +832,8 @@ export default function ActiveSessionScreen() {
       router.push('/session/end');
     }
   };
+
+  const lastClimb = activeClimbs.length > 0 ? activeClimbs[activeClimbs.length - 1] : null;
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
@@ -724,7 +878,7 @@ export default function ActiveSessionScreen() {
         </ScalePressable>
 
         {/* Center: Gym Name */}
-        <View style={{ alignItems: 'center' }}>
+        <View style={{ alignItems: 'center', flex: 1, paddingHorizontal: space.sm }}>
           <Text style={[type.heading, { color: colors.text, fontSize: 16 }]} numberOfLines={1}>
             {session.gymName || 'Session'}
           </Text>
@@ -753,6 +907,7 @@ export default function ActiveSessionScreen() {
             <MoreHorizontal size={20} color={colors.text} />
           </ScalePressable>
           <ScalePressable
+            testID="end-session-btn"
             onPress={handleEndPress}
             haptic="medium"
             activeScale={0.94}
@@ -789,6 +944,27 @@ export default function ActiveSessionScreen() {
           >
             <TouchableOpacity
               accessibilityRole="button"
+              accessibilityLabel="Rest timer duration"
+              style={{
+                padding: space.md,
+                borderBottomWidth: 1,
+                borderBottomColor: colors.border,
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+              }}
+              onPress={() => {
+                setShowMenu(false);
+                setIsRestPickerOpen(true);
+              }}
+            >
+              <Text style={[type.body, { color: colors.text }]}>Rest timer</Text>
+              <Text style={[type.caption, { color: colors.accentText, fontWeight: '600' }]}>
+                {formatRestDuration(defaultRestSeconds)}
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              accessibilityRole="button"
               accessibilityLabel="Change gym"
               style={{
                 padding: space.md,
@@ -820,7 +996,7 @@ export default function ActiveSessionScreen() {
         contentContainerStyle={{
           paddingHorizontal: space.lg,
           paddingTop: space.sm,
-          paddingBottom: 170, // Generous padding to clear sticky action bar
+          paddingBottom: 190, // Generous padding to clear sticky action bar & toast
           gap: space.lg,
         }}
       >
@@ -882,16 +1058,33 @@ export default function ActiveSessionScreen() {
 
         {/* 3. Quick Grade Strip for 1-Tap Grade Pre-Selection */}
         <View style={{ gap: space.xs }}>
-          <Text style={[type.caption, { color: colors.textMuted, letterSpacing: 1.2, textTransform: 'uppercase', fontSize: 10, fontWeight: '600' }]}>
-            QUICK GRADE LOG
-          </Text>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Text style={[type.caption, { color: colors.textMuted, letterSpacing: 1.2, textTransform: 'uppercase', fontSize: 10, fontWeight: '600' }]}>
+              QUICK GRADE LOG
+            </Text>
+            <ScalePressable
+              onPress={() => {
+                triggerHaptic('light');
+                setIsRestPickerOpen(true);
+              }}
+              haptic="light"
+              activeScale={0.95}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}
+            >
+              <SlidersHorizontal size={12} color={colors.textMuted} />
+              <Text style={[type.caption, { color: colors.textMuted, fontSize: 11 }]}>
+                Rest: {formatRestDuration(defaultRestSeconds)}
+              </Text>
+            </ScalePressable>
+          </View>
           <Reanimated.ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={{ gap: space.xs, paddingVertical: 2 }}
           >
             {Array.from(
-              new Set(['V2', 'V3', 'V4', 'V5', 'V6', ...recentGrades.map((rg: any) => rg.gradeRaw)])
+              new Set(['V0', 'V1', 'V2', 'V3', 'V4', 'V5', 'V6', ...recentGrades.map((rg: any) => rg.gradeRaw)])
             ).map((g: string) => (
               <ScalePressable
                 key={g}
@@ -904,7 +1097,8 @@ export default function ActiveSessionScreen() {
                 haptic="light"
                 activeScale={0.92}
                 style={{
-                  height: 38,
+                  height: 40,
+                  minWidth: 48,
                   paddingHorizontal: space.md,
                   borderRadius: radius.pill,
                   backgroundColor: colors.card,
@@ -922,31 +1116,106 @@ export default function ActiveSessionScreen() {
           </Reanimated.ScrollView>
         </View>
 
-        {/* 4. Fast Repeat / +1 Attempt Quick Action */}
-        {activeClimbs.length > 0 && (
+        {/* 4. Non-blocking "Make this a project?" prompt after logging an Attempt */}
+        {projectCandidate && (
+          <Reanimated.View
+            entering={FadeInDown.duration(180)}
+            exiting={FadeOutUp.duration(150)}
+            style={{
+              backgroundColor: colors.card,
+              borderRadius: radius.lg,
+              borderWidth: 1,
+              borderColor: colors.accent,
+              padding: space.md,
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: space.sm,
+            }}
+          >
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm, flex: 1 }}>
+              <View
+                style={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: 18,
+                  backgroundColor: colors.accentSoft,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <Target size={18} color={colors.accentText} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[type.heading, { color: colors.text, fontSize: 14, fontWeight: '700' }]}>
+                  Working on this {projectCandidate.gradeRaw}?
+                </Text>
+                <Text style={[type.caption, { color: colors.textMuted, marginTop: 1 }]}>
+                  Track attempts across sessions
+                </Text>
+              </View>
+            </View>
+
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.xs }}>
+              <ScalePressable
+                testID="make-project-btn"
+                onPress={handlePromoteToProject}
+                haptic="medium"
+                activeScale={0.95}
+                accessibilityRole="button"
+                accessibilityLabel="Make this a project"
+                style={{
+                  backgroundColor: colors.accent,
+                  paddingHorizontal: space.md,
+                  height: 38,
+                  borderRadius: radius.pill,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <Text style={[type.control, { color: colors.textOnAccent, fontWeight: '700', fontSize: 13 }]}>
+                  Make project
+                </Text>
+              </ScalePressable>
+
+              <ScalePressable
+                onPress={() => setProjectCandidate(null)}
+                haptic="light"
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                accessibilityRole="button"
+                accessibilityLabel="Dismiss project prompt"
+                style={{ padding: 4 }}
+              >
+                <X size={18} color={colors.textMuted} />
+              </ScalePressable>
+            </View>
+          </Reanimated.View>
+        )}
+
+        {/* 5. Fast Repeat / +1 Attempt Quick Action */}
+        {lastClimb && (
           <ScalePressable
             onPress={() => {
-              const lastClimb = activeClimbs[activeClimbs.length - 1];
-              const gradeToUse = {
-                gradeRaw: lastClimb.grade_raw,
-                gradeIndex: lastClimb.grade_index,
-              };
               const attemptId = logGenericAscent({
-                gradeRaw: gradeToUse.gradeRaw,
+                gradeRaw: lastClimb.grade_raw,
                 outcome: 'attempt',
                 movesLinked: 1,
                 notes: '',
+                projectId: lastClimb.project_id || undefined,
               });
               setLastAction({ type: 'logged', climbId: attemptId });
-              setRestTimer(Date.now() + 3 * 60 * 1000, true);
+              if (!lastClimb.project_id) {
+                setProjectCandidate({ climbId: attemptId, gradeRaw: lastClimb.grade_raw });
+              }
+              startFreshRest();
             }}
             haptic="medium"
             activeScale={0.97}
             accessibilityRole="button"
             accessibilityLabel="Quick +1 Attempt"
             style={{
-              height: 56,
-              minHeight: 56,
+              height: 52,
+              minHeight: 52,
               backgroundColor: colors.card,
               borderRadius: radius.md,
               borderWidth: 1,
@@ -958,14 +1227,14 @@ export default function ActiveSessionScreen() {
               gap: space.sm,
             }}
           >
-            <Plus size={20} color={colors.attemptText} />
+            <Plus size={18} color={colors.attemptText} />
             <Text style={[type.heading, { color: colors.text, fontSize: 15, fontWeight: '600' }]}>
-              +1 Attempt on {activeClimbs[activeClimbs.length - 1]?.grade_raw}
+              +1 Attempt on {lastClimb.projectTitle ? `${lastClimb.projectTitle} (${lastClimb.grade_raw})` : lastClimb.grade_raw}
             </Text>
           </ScalePressable>
         )}
 
-        {/* 5. Active Projects Strip */}
+        {/* 6. Active Projects Strip */}
         {activeProjects.length > 0 && (
           <View>
             <SectionHeader title="Active Gym Projects" />
@@ -991,7 +1260,7 @@ export default function ActiveSessionScreen() {
                           notes: '',
                         });
                         setLastAction({ type: 'logged', climbId: attemptId });
-                        setRestTimer(Date.now() + 3 * 60 * 1000, true);
+                        startFreshRest();
                       }}
                     />
                   </View>
@@ -1001,11 +1270,11 @@ export default function ActiveSessionScreen() {
           </View>
         )}
 
-        {/* 5. Session Insights */}
+        {/* 7. Session Insights */}
         {activeClimbs.length > 0 && <SessionInsights climbs={activeClimbs} />}
 
-        {/* 6. Climbs Stream */}
-        <View style={{ gap: space.sm }}>
+        {/* 8. Climbs Stream */}
+        <View testID="climb-list" style={{ gap: space.sm }}>
           <SectionHeader title={activeClimbs.length > 0 ? `Climb Stream (${activeClimbs.length})` : 'Climb Stream'} />
 
           {[...activeClimbs]
@@ -1026,7 +1295,7 @@ export default function ActiveSessionScreen() {
               asCard
               icon={<Zap size={24} color={colors.accent} />}
               title="Ready to send?"
-              body="Tap + LOG CLIMB below to record your first climb of this session."
+              body="Tap a quick grade above or + LOG CLIMB below to record your first climb."
             />
           )}
         </View>
@@ -1039,10 +1308,13 @@ export default function ActiveSessionScreen() {
           setLogSheetOpen(true);
         }}
         restRemaining={restRemaining}
+        defaultRestSeconds={defaultRestSeconds}
         isRestRunning={isRestTimerRunning}
         isRestComplete={isRestComplete}
         onToggleRest={handleToggleRest}
         onResetRest={handleResetRest}
+        onAddRestSeconds={handleAddRestSeconds}
+        onOpenRestPicker={() => setIsRestPickerOpen(true)}
       />
 
       {/* Sliding Bottom-Sheet Modal for Climb Logging */}
@@ -1052,24 +1324,43 @@ export default function ActiveSessionScreen() {
           setLogSheetOpen(false);
           setEditingClimb(null);
           setSelectedQuickGrade(null);
+          if (activeProjectTarget) {
+            setActiveProjectTarget(null);
+          }
         }}
         onSave={handleSaveLog}
-        initialGrade={editingClimb?.grade || selectedQuickGrade || activeProjectTarget?.gradeRaw || recentGrades[0]?.gradeRaw || 'V4'}
+        initialGrade={editingClimb?.grade || selectedQuickGrade || activeProjectTarget?.gradeRaw || lastClimb?.grade_raw || recentGrades[0]?.gradeRaw || 'V4'}
         initialResult={editingClimb?.result || (activeProjectTarget ? 'attempt' : 'top')}
         initialAttempts={editingClimb?.attempts || 1}
         initialNotes={editingClimb?.notes || ''}
-        lockGrade={Boolean(activeProjectTarget || (editingClimb && editingClimb.projectId))}
+        initialFailureReason={editingClimb?.failureReason || null}
+        lockGrade={Boolean(editingClimb && editingClimb.projectId)}
         disableFlash={Boolean(
           (activeProjectTarget && ((activeProjectTarget.attempts || 0) > 0 || (activeProjectTarget.burns || 0) > 0)) ||
           (editingClimb && (editingClimb.attempts || 1) > 1)
         )}
         title={activeProjectTarget ? `Log Attempt • ${activeProjectTarget.title}` : editingClimb ? 'Edit Climb' : 'Log Climb'}
+        projects={editingClimb ? [] : activeProjects}
+        selectedProject={activeProjectTarget}
+        onSelectProject={setActiveProjectTarget}
       />
 
-      {/* Undo Toast */}
+      {/* Rest Timer Duration Picker Sheet */}
+      <RestTimerPickerSheet
+        visible={isRestPickerOpen}
+        initialSeconds={defaultRestSeconds}
+        onClose={() => setIsRestPickerOpen(false)}
+        onSave={handleSaveDefaultRest}
+      />
+
+      {/* Undo Toast — positioned cleanly above the sticky action bar */}
       <UndoToast
         visible={!!lastAction}
-        message={lastAction?.type === 'logged' ? 'Climb logged' : 'Climb deleted'}
+        bottomOffset={Math.max(insets.bottom, space.md) + 84}
+        message={
+          lastAction?.message ||
+          (lastAction?.type === 'logged' ? 'Climb logged' : 'Climb deleted')
+        }
         onUndo={handleUndoAction}
         onDismiss={() => setLastAction(null)}
       />
@@ -1080,7 +1371,7 @@ export default function ActiveSessionScreen() {
 const styles = StyleSheet.create({
   menu: {
     position: 'absolute',
-    width: 200,
+    width: 210,
     borderWidth: 1,
     zIndex: 50,
   },
