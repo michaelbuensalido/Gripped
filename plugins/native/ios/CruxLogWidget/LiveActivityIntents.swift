@@ -60,7 +60,7 @@ private func notifyMainAppViaDarwin() {
 
 // ─── Interactive Buttons (App Intents) ────────────────────────────────────────
 
-@available(iOS 16.2, *)
+@available(iOS 17.0, *)
 struct LogBurnIntent: LiveActivityIntent {
     static var title: LocalizedStringResource = "Log Climb"
     static var openAppWhenRun: Bool = false
@@ -120,7 +120,7 @@ struct LogBurnIntent: LiveActivityIntent {
     }
 }
 
-@available(iOS 16.2, *)
+@available(iOS 17.0, *)
 struct AdjustRestIntent: LiveActivityIntent {
     static var title: LocalizedStringResource = "Adjust Rest Timer"
     static var openAppWhenRun: Bool = false
@@ -170,7 +170,7 @@ struct AdjustRestIntent: LiveActivityIntent {
     }
 }
 
-@available(iOS 16.2, *)
+@available(iOS 17.0, *)
 struct SkipRestIntent: LiveActivityIntent {
     static var title: LocalizedStringResource = "Skip Rest Timer"
     static var openAppWhenRun: Bool = false

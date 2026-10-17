@@ -314,7 +314,8 @@ export default function SessionDetailScreen({
     grade: string,
     result: ResultType,
     attemptsCount: number,
-    notes: string
+    notes: string,
+    failureReason?: any
   ) => {
     triggerHaptic('medium');
     if (editingClimb) {
@@ -323,6 +324,7 @@ export default function SessionDetailScreen({
         result,
         attempts: attemptsCount,
         notes,
+        failureReason: result === 'attempt' ? (failureReason ?? null) : null,
       });
     } else {
       logClimbForSession(activeId, {
@@ -330,6 +332,7 @@ export default function SessionDetailScreen({
         result,
         attempts: attemptsCount,
         notes,
+        failureReason: result === 'attempt' ? (failureReason ?? null) : null,
       });
     }
     setIsLogSheetOpen(false);
@@ -384,7 +387,7 @@ export default function SessionDetailScreen({
   const subtitleText = formatSessionSubtitle(session.startTime, session.endTime);
 
   return (
-    <View style={{ flex: 1, backgroundColor: colors.bg }}>
+    <View testID="session-summary-screen" style={{ flex: 1, backgroundColor: colors.bg }}>
       {showMenu && (
         <Pressable
           style={[StyleSheet.absoluteFill, { zIndex: 5 }]}
@@ -493,7 +496,7 @@ export default function SessionDetailScreen({
         contentContainerStyle={{
           paddingHorizontal: space.lg,
           paddingTop: space.sm,
-          paddingBottom: isSummary ? 140 : 100,
+          paddingBottom: isSummary ? 160 : 100,
         }}
         showsVerticalScrollIndicator={false}
       >
@@ -696,21 +699,55 @@ export default function SessionDetailScreen({
         </View>
       </Reanimated.ScrollView>
 
-      {/* Done Button (Summary Variant only) */}
+      {/* Done & See Progress Exits (Summary Variant only — per USER_FLOW.md Section 2) */}
       {isSummary && (
         <View
           style={{
             position: 'absolute',
-            bottom: Math.max(insets.bottom, 16),
-            left: space.lg,
-            right: space.lg,
+            bottom: 0,
+            left: 0,
+            right: 0,
+            backgroundColor: '#000000',
+            borderTopWidth: 1,
+            borderTopColor: colors.border,
+            paddingHorizontal: space.lg,
+            paddingTop: space.sm,
+            paddingBottom: Math.max(insets.bottom, 16),
+            flexDirection: 'row',
+            gap: space.sm,
+            ...shadow.floating,
           }}
         >
-          <PrimaryButton
-            testID="done-home-btn"
-            label="Done"
-            onPress={() => router.replace(lastTab as any)}
-          />
+          <TouchableOpacity
+            testID="see-progress-btn"
+            onPress={() => {
+              triggerHaptic('light');
+              router.replace('/analytics');
+            }}
+            accessibilityRole="button"
+            accessibilityLabel="See progress"
+            style={{
+              flex: 0.9,
+              height: 52,
+              borderRadius: radius.pill,
+              backgroundColor: colors.accentSoft,
+              borderWidth: 1,
+              borderColor: colors.border,
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <Text style={[type.control, { color: colors.accentText, fontWeight: '700' }]}>
+              See progress
+            </Text>
+          </TouchableOpacity>
+          <View style={{ flex: 1.1 }}>
+            <PrimaryButton
+              testID="done-home-btn"
+              label="Done"
+              onPress={() => router.replace(lastTab as any)}
+            />
+          </View>
         </View>
       )}
 
@@ -726,6 +763,7 @@ export default function SessionDetailScreen({
         initialResult={editingClimb?.result === 'send' ? 'top' : editingClimb?.result}
         initialAttempts={editingClimb?.attempts}
         initialNotes={editingClimb?.notes}
+        initialFailureReason={editingClimb?.failure_reason || null}
       />
 
       {/* Edit Session Modal */}
@@ -851,6 +889,7 @@ export default function SessionDetailScreen({
       {/* Undo Toast for Climb Deletion */}
       <UndoToast
         visible={!!deletedClimbId}
+        bottomOffset={isSummary ? Math.max(insets.bottom, 16) + 76 : 40}
         message="Climb deleted"
         onUndo={handleUndoDeleteClimb}
         onDismiss={() => setDeletedClimbId(null)}
@@ -859,6 +898,7 @@ export default function SessionDetailScreen({
       {/* Undo Toast for Session Deletion */}
       <UndoToast
         visible={isSessionDeleted}
+        bottomOffset={isSummary ? Math.max(insets.bottom, 16) + 76 : 40}
         message="Session deleted"
         onUndo={handleUndoDeleteSession}
         onDismiss={handleDismissSessionDelete}

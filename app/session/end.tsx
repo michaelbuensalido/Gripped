@@ -137,14 +137,16 @@ export default function EndSessionScreen() {
   };
 
   const handleCancel = () => {
-    Alert.alert('Go Back', 'Return to the active session?', [
-      { text: 'Stay here', style: 'cancel' },
-      { text: 'Go back', onPress: () => router.back() },
-    ]);
+    triggerHaptic('light');
+    router.back();
   };
 
   return (
-    <Screen title="Session Wrap-Up" subtitle="Great work today." scroll={false}>
+    <Screen
+      title="End Session"
+      subtitle={`${session.gymName || 'Session'} · ${durationLabel}`}
+      scroll={false}
+    >
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={{ flex: 1, marginTop: space.lg }}
@@ -200,7 +202,10 @@ export default function EndSessionScreen() {
                 return (
                   <ScalePressable
                     key={n}
-                    onPress={() => { triggerHaptic('light'); setEffort(n); }}
+                    onPress={() => {
+                      triggerHaptic('light');
+                      setEffort(selected ? null : n);
+                    }}
                     haptic="light"
                     activeScale={0.94}
                     style={{
@@ -228,9 +233,37 @@ export default function EndSessionScreen() {
             )}
           </View>
 
+          {/* Session notes */}
+          <View>
+            <SectionHeader title="Session Notes (optional)" />
+            <TextInput
+              value={notes}
+              onChangeText={setNotes}
+              multiline
+              blurOnSubmit={true}
+              returnKeyType="done"
+              onSubmitEditing={() => Keyboard.dismiss()}
+              placeholder="How did you feel? What clicked today?"
+              placeholderTextColor={colors.textWhiteMuted}
+              style={[
+                type.body,
+                {
+                  color: colors.textWhitePrimary,
+                  backgroundColor: colors.card,
+                  borderRadius: radius.md,
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                  padding: space.md,
+                  minHeight: 88,
+                  textAlignVertical: 'top',
+                },
+              ]}
+            />
+          </View>
+
           {/* Skin State */}
           <View>
-            <SectionHeader title="Skin State" />
+            <SectionHeader title="Skin State (optional)" />
             <View style={{ flexDirection: 'row', gap: space.sm }}>
               {SKIN_STATES.map((state) => {
                 const selected = skinState === state;
@@ -265,7 +298,7 @@ export default function EndSessionScreen() {
 
           {/* Finger State */}
           <View>
-            <SectionHeader title="Finger State / Fatigue" />
+            <SectionHeader title="Finger State / Fatigue (optional)" />
             <View style={{ flexDirection: 'row', gap: space.sm }}>
               {FINGER_STATES.map((state) => {
                 const selected = fingerFatigue === state;
@@ -300,7 +333,7 @@ export default function EndSessionScreen() {
 
           {/* Session Photos */}
           <View>
-            <SectionHeader title="Session Photos" />
+            <SectionHeader title="Session Photos (optional)" />
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm, flexWrap: 'wrap' }}>
               <ScalePressable
                 onPress={handlePickPhotos}
@@ -347,34 +380,6 @@ export default function EndSessionScreen() {
               ))}
             </View>
           </View>
-
-          {/* Session notes */}
-          <View>
-            <SectionHeader title="Session Notes (optional)" />
-            <TextInput
-              value={notes}
-              onChangeText={setNotes}
-              multiline
-              blurOnSubmit={true}
-              returnKeyType="done"
-              onSubmitEditing={() => Keyboard.dismiss()}
-              placeholder="How did you feel? What clicked today?"
-              placeholderTextColor={colors.textWhiteMuted}
-              style={[
-                type.body,
-                {
-                  color: colors.textWhitePrimary,
-                  backgroundColor: colors.card,
-                  borderRadius: radius.md,
-                  borderWidth: 1,
-                  borderColor: colors.border,
-                  padding: space.md,
-                  minHeight: 100,
-                  textAlignVertical: 'top',
-                },
-              ]}
-            />
-          </View>
           
           {/* Visual Insights */}
           {activeClimbs.length > 0 && (
@@ -386,17 +391,28 @@ export default function EndSessionScreen() {
 
         </Reanimated.ScrollView>
 
-        <View style={{ gap: space.md, paddingBottom: space.xl, backgroundColor: 'transparent' }}>
+        <View style={{ gap: space.sm, paddingTop: space.sm, paddingBottom: space.xl, backgroundColor: 'transparent' }}>
           <PrimaryButton testID="finish-session-btn" label="SAVE & FINISH" onPress={handleFinish} />
-          <SecondaryButton label="Back to Session" onPress={handleCancel} />
-          <TouchableOpacity 
-            onPress={handleDiscard}
-            style={{ minHeight: 48, justifyContent: 'center', alignItems: 'center', marginTop: space.xs }}
-            accessibilityRole="button"
-            accessibilityLabel="Discard Session"
-          >
-            <Text style={[type.heading, { color: colors.danger }]}>Discard Session</Text>
-          </TouchableOpacity>
+          <View style={{ flexDirection: 'row', gap: space.sm }}>
+            <View style={{ flex: 1 }}>
+              <SecondaryButton label="Back to Session" onPress={handleCancel} />
+            </View>
+            <TouchableOpacity 
+              onPress={handleDiscard}
+              style={{
+                paddingHorizontal: space.md,
+                minHeight: 48,
+                justifyContent: 'center',
+                alignItems: 'center',
+                borderRadius: radius.pill,
+                backgroundColor: colors.dangerSoft,
+              }}
+              accessibilityRole="button"
+              accessibilityLabel="Discard Session"
+            >
+              <Text style={[type.control, { color: colors.dangerText, fontWeight: '600' }]}>Discard</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </KeyboardAvoidingView>
     </Screen>

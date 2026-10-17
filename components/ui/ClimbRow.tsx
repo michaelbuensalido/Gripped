@@ -63,6 +63,7 @@ export const ClimbRow = React.memo(function ClimbRow({ climb, onEdit, onDelete, 
 
     return (
       <RectButton
+        testID="delete-climb-btn"
         style={{
           width: 80,
           backgroundColor: colors.danger,
@@ -87,6 +88,10 @@ export const ClimbRow = React.memo(function ClimbRow({ climb, onEdit, onDelete, 
   };
 
   const stripeColor = gradeBand(climb.grade_index ?? 0).solid;
+  const failureLabel = climb.failure_reason
+    ? String(climb.failure_reason).replace(/_/g, ' ')
+    : null;
+  const hasSecondaryLine = Boolean(climb.projectTitle || climb.notes || failureLabel);
 
   const content = (
     <Swipeable ref={swipeableRef} renderRightActions={renderRightActions} overshootRight={false}>
@@ -137,7 +142,7 @@ export const ClimbRow = React.memo(function ClimbRow({ climb, onEdit, onDelete, 
         </Text>
         
         <View style={{ flex: 1 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm, marginBottom: climb.projectTitle ? 2 : 0 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm, marginBottom: hasSecondaryLine ? 2 : 0 }}>
             {climb.result === 'flash' ? (
               <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: colors.flash, paddingHorizontal: 8, paddingVertical: 2, borderRadius: radius.pill }}>
                 <Zap size={11} color="#000000" strokeWidth={2.5} style={{ marginRight: 3 }} />
@@ -149,15 +154,39 @@ export const ClimbRow = React.memo(function ClimbRow({ climb, onEdit, onDelete, 
             {climb.attempts > 1 && (
               <Text style={[type.caption, { color: colors.textWhiteMuted }]}>×{climb.attempts}</Text>
             )}
+            {failureLabel && (
+              <View
+                style={{
+                  backgroundColor: colors.attemptSoft,
+                  paddingHorizontal: 6,
+                  paddingVertical: 1,
+                  borderRadius: radius.sm,
+                }}
+              >
+                <Text
+                  style={[
+                    type.caption,
+                    { color: colors.attemptText, fontSize: 10, textTransform: 'capitalize', fontWeight: '600' },
+                  ]}
+                >
+                  {failureLabel}
+                </Text>
+              </View>
+            )}
             <Text style={[type.caption, { color: colors.textWhiteMuted, marginLeft: 'auto' }]}>
               {climb.logged_at ? formatTime(climb.logged_at) : ''}
             </Text>
           </View>
-          {climb.projectTitle && (
-            <Text style={[type.caption, { color: colors.text, marginTop: 4 }]} numberOfLines={1}>
+          {climb.projectTitle ? (
+            <Text style={[type.caption, { color: colors.accentText, marginTop: 2, fontWeight: '600' }]} numberOfLines={1}>
               {climb.projectTitle}
+              {climb.notes ? ` · ${climb.notes}` : ''}
             </Text>
-          )}
+          ) : climb.notes ? (
+            <Text style={[type.caption, { color: colors.textMuted, marginTop: 2 }]} numberOfLines={1}>
+              {climb.notes}
+            </Text>
+          ) : null}
         </View>
       </ScalePressable>
     </Swipeable>

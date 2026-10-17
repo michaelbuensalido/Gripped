@@ -23,7 +23,7 @@ private enum WidgetTheme {
 
 // ─── Reusable Interactive Control Row ─────────────────────────────────────────
 
-@available(iOS 16.2, *)
+@available(iOS 17.0, *)
 private struct InteractiveActionRow: View {
     let activityId: String
     let state: CruxLogAttributes.ContentState
@@ -180,7 +180,7 @@ private struct InteractiveActionRow: View {
 
 // ─── Live Activity Widget Configuration ───────────────────────────────────────
 
-@available(iOS 16.2, *)
+@available(iOS 17.0, *)
 struct CruxLogWidgetLiveActivity: Widget {
     var body: some WidgetConfiguration {
         ActivityConfiguration(for: CruxLogAttributes.self) { context in

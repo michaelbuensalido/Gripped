@@ -18,11 +18,13 @@ export function UndoToast({
   onUndo,
   onDismiss,
   message = "Climb deleted",
+  bottomOffset = 40,
 }: {
   visible: boolean;
   onUndo: () => void;
   onDismiss: () => void;
   message?: string;
+  bottomOffset?: number;
 }) {
   const { colors, type, radius, shadow, motion } = useTheme();
   const reduceMotion = useReducedMotion();
@@ -100,6 +102,7 @@ export function UndoToast({
         styles.container,
         shadow.floating,
         {
+          bottom: bottomOffset,
           backgroundColor: colors.card,
           borderColor: colors.border,
           borderRadius: radius.md,

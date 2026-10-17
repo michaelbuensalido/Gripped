@@ -8,6 +8,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   StyleSheet,
+  ScrollView,
 } from 'react-native';
 import Animated, {
   useSharedValue,
@@ -18,7 +19,7 @@ import Animated, {
   runOnJS,
   Easing,
 } from 'react-native-reanimated';
-import { Plus, X, Minus, ChevronLeft, ChevronRight, Lock } from 'lucide-react-native';
+import { Plus, X, Minus, ChevronLeft, ChevronRight, Lock, Target, FileText } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { SectionHeader } from '../ui/SectionHeader';
 import { PrimaryButton } from '../ui/PrimaryButton';
@@ -34,7 +35,16 @@ const GRADES = ['V0','V1','V2','V3','V4','V5','V6','V7','V8','V9','V10','V11','V
 
 function GradePicker({ value, onChange }: { value: string; onChange: (g: string) => void }) {
   const { colors, type, space, radius, gradeBand } = useTheme();
+  const scrollRef = useRef<ScrollView>(null);
   const idx = Math.max(0, GRADES.indexOf(value));
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const targetX = Math.max(0, idx * 52 - 120);
+      scrollRef.current?.scrollTo({ x: targetX, animated: true });
+    }, 60);
+    return () => clearTimeout(timer);
+  }, [idx]);
 
   const prev = () => {
     if (idx > 0) {
@@ -125,7 +135,8 @@ function GradePicker({ value, onChange }: { value: string; onChange: (g: string)
       </View>
 
       {/* Quick Tap Grade Bar */}
-      <Animated.ScrollView
+      <ScrollView
+        ref={scrollRef}
         horizontal
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={{ gap: space.xs, paddingVertical: 2 }}
@@ -167,7 +178,7 @@ function GradePicker({ value, onChange }: { value: string; onChange: (g: string)
             </ScalePressable>
           );
         })}
-      </Animated.ScrollView>
+      </ScrollView>
     </View>
   );
 }
@@ -309,20 +320,35 @@ export function LogSheet({
   initialResult,
   initialAttempts,
   initialNotes,
+  initialFailureReason,
   lockGrade = false,
   disableFlash = false,
   title,
+  projects = [],
+  selectedProject = null,
+  onSelectProject,
 }: {
   visible: boolean;
   onClose: () => void;
-  onSave: (grade: string, result: ResultType, attempts: number, notes: string) => void;
+  onSave: (
+    grade: string,
+    result: ResultType,
+    attempts: number,
+    notes: string,
+    failureReason?: FailureReason | null,
+    project?: any | null
+  ) => void;
   initialGrade?: string;
   initialResult?: ResultType;
   initialAttempts?: number;
   initialNotes?: string;
+  initialFailureReason?: FailureReason | null;
   lockGrade?: boolean;
   disableFlash?: boolean;
   title?: string;
+  projects?: any[];
+  selectedProject?: any | null;
+  onSelectProject?: (proj: any | null) => void;
 }) {
   const { colors, space, type, radius, shadow, motion } = useTheme();
   const insets = useSafeAreaInsets();
@@ -331,17 +357,18 @@ export function LogSheet({
   const [grade, setGrade] = useState(initialGrade ?? 'V4');
   const [result, setResult] = useState<ResultType>(initialResult ?? 'top');
   const [attempts, setAttempts] = useState(initialAttempts ?? 1);
-  const [failureReason, setFailureReason] = useState<FailureReason | null>(null);
+  const [failureReason, setFailureReason] = useState<FailureReason | null>(initialFailureReason ?? null);
   const [notes, setNotes] = useState(initialNotes ?? '');
+  const [showNotesInput, setShowNotesInput] = useState(Boolean(initialNotes));
   const [isRendered, setIsRendered] = useState(visible);
 
-  const backdropOpacity = useSharedValue(1);
-  const sheetTranslateY = useSharedValue(0);
+  const backdropOpacity = useSharedValue(0);
+  const sheetTranslateY = useSharedValue(320);
 
   useEffect(() => {
     if (visible) {
       setIsRendered(true);
-      setGrade(initialGrade ?? 'V4');
+      setGrade(selectedProject?.gradeRaw || selectedProject?.grade_raw || initialGrade || 'V4');
       let defaultResult = initialResult ?? 'top';
       if (disableFlash && defaultResult === 'flash') {
         defaultResult = 'attempt';
@@ -349,16 +376,39 @@ export function LogSheet({
       setResult(defaultResult);
       setAttempts(initialAttempts ?? 1);
       setNotes(initialNotes ?? '');
-      setFailureReason(null);
+      setShowNotesInput(Boolean(initialNotes && initialNotes.trim().length > 0));
+      setFailureReason(initialFailureReason ?? null);
 
-      backdropOpacity.value = 1;
-      sheetTranslateY.value = 0;
-    } else {
+      if (reduceMotion) {
+        backdropOpacity.value = 1;
+        sheetTranslateY.value = 0;
+      } else {
+        backdropOpacity.value = withTiming(1, {
+          duration: motion.duration.fast,
+          easing: Easing.bezier(0.23, 1, 0.32, 1),
+        });
+        sheetTranslateY.value = withSpring(0, {
+          damping: motion.sheetSpring.damping,
+          stiffness: motion.sheetSpring.stiffness,
+        });
+      }
+    } else if (isRendered) {
       setIsRendered(false);
       backdropOpacity.value = 0;
-      sheetTranslateY.value = 0;
+      sheetTranslateY.value = 320;
     }
   }, [visible]);
+
+  // Keep grade synced if user taps an active project inside the sheet
+  useEffect(() => {
+    if (selectedProject) {
+      const pGrade = selectedProject.gradeRaw || selectedProject.grade_raw;
+      if (pGrade) setGrade(pGrade);
+      if ((selectedProject.attempts || 0) > 0 && result === 'flash') {
+        setResult('top');
+      }
+    }
+  }, [selectedProject]);
 
   useEffect(() => {
     if (result === 'flash') setAttempts(1);
@@ -375,12 +425,16 @@ export function LogSheet({
   };
 
   const handleSave = () => {
-    let finalNotes = notes.trim();
-    if (result === 'attempt' && failureReason) {
-      const reasonLabel = failureReason.replace('_', ' ').toUpperCase();
-      finalNotes = finalNotes ? `[${reasonLabel}] ${finalNotes}` : `[${reasonLabel}]`;
-    }
-    onSave(grade, result, result === 'flash' ? 1 : attempts, finalNotes);
+    const finalNotes = notes.trim();
+    const activeFailure = result === 'attempt' ? failureReason : null;
+    onSave(
+      grade,
+      result,
+      result === 'flash' ? 1 : attempts,
+      finalNotes,
+      activeFailure,
+      selectedProject
+    );
   };
 
   const backdropStyle = useAnimatedStyle(() => ({
@@ -393,9 +447,19 @@ export function LogSheet({
 
   if (!visible && !isRendered) return null;
 
+  const isGradeLocked = Boolean(lockGrade || selectedProject);
+  const isFlashDisabled = Boolean(
+    disableFlash ||
+    attempts > 1 ||
+    (selectedProject && ((selectedProject.attempts || 0) > 0 || (selectedProject.burns || 0) > 0))
+  );
+
   return (
     <Modal visible={visible || isRendered} transparent onRequestClose={handleCloseAnimation}>
-      <View style={styles.modalRoot}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        style={styles.modalRoot}
+      >
         {/* Animated backdrop */}
         <Animated.View style={[StyleSheet.absoluteFill, { backgroundColor: colors.scrim }, backdropStyle]}>
           <Pressable style={StyleSheet.absoluteFill} onPress={handleCloseAnimation} />
@@ -413,7 +477,7 @@ export function LogSheet({
                 paddingHorizontal: space.lg,
                 paddingTop: space.md,
                 paddingBottom: Math.max(insets.bottom, space.md),
-                maxHeight: '90%',
+                maxHeight: '92%',
                 ...shadow.floating,
               },
               sheetStyle,
@@ -437,11 +501,13 @@ export function LogSheet({
                 flexDirection: 'row',
                 justifyContent: 'space-between',
                 alignItems: 'center',
-                marginBottom: space.lg,
+                marginBottom: space.md,
               }}
             >
-              <Text style={[type.title, { color: colors.text, fontWeight: '700' }]}>
-                {title || 'Log Climb'}
+              <Text style={[type.title, { color: colors.text, fontWeight: '700', flex: 1 }]} numberOfLines={1}>
+                {selectedProject
+                  ? `Log • ${selectedProject.title}`
+                  : title || 'Log Climb'}
               </Text>
               <ScalePressable
                 onPress={handleCloseAnimation}
@@ -460,20 +526,74 @@ export function LogSheet({
               style={{ flexShrink: 1 }}
               contentContainerStyle={{ gap: space.lg, paddingBottom: space.md }}
             >
+              {/* Optional Active Gym Projects Quick Picker */}
+              {projects.length > 0 && onSelectProject && (
+                <View>
+                  <SectionHeader title="Project (Optional)" />
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    keyboardShouldPersistTaps="handled"
+                    contentContainerStyle={{ gap: space.xs }}
+                  >
+                    {projects.map((p: any) => {
+                      const isSelected = selectedProject?.id === p.id;
+                      const pGrade = p.gradeRaw || p.grade_raw || 'V0';
+                      return (
+                        <ScalePressable
+                          key={p.id}
+                          onPress={() => {
+                            triggerHaptic('selection');
+                            onSelectProject(isSelected ? null : p);
+                          }}
+                          haptic="light"
+                          activeScale={0.95}
+                          style={{
+                            flexDirection: 'row',
+                            alignItems: 'center',
+                            gap: 6,
+                            paddingHorizontal: space.md,
+                            height: 40,
+                            borderRadius: radius.pill,
+                            backgroundColor: isSelected ? colors.accentSoft : colors.cardMuted,
+                            borderWidth: 1,
+                            borderColor: isSelected ? colors.accent : colors.border,
+                          }}
+                        >
+                          <Target size={14} color={isSelected ? colors.accentText : colors.textMuted} />
+                          <Text
+                            style={[
+                              type.control,
+                              {
+                                color: isSelected ? colors.accentText : colors.text,
+                                fontWeight: isSelected ? '700' : '500',
+                              },
+                            ]}
+                            numberOfLines={1}
+                          >
+                            {p.title} ({pGrade})
+                          </Text>
+                        </ScalePressable>
+                      );
+                    })}
+                  </ScrollView>
+                </View>
+              )}
+
               {/* Result Section */}
               <View>
                 <SectionHeader title="Outcome" />
                 <ResultSelector
                   value={result}
                   onChange={setResult}
-                  disableFlash={disableFlash || attempts > 1}
+                  disableFlash={isFlashDisabled}
                 />
               </View>
 
               {/* Root Cause Failure tags if Attempt */}
               {result === 'attempt' && (
                 <View>
-                  <SectionHeader title="Root Cause (Optional)" />
+                  <SectionHeader title="Why did you fall? (Optional)" />
                   <FailureTagSelector
                     selectedReason={failureReason}
                     onSelectReason={setFailureReason}
@@ -483,8 +603,8 @@ export function LogSheet({
 
               {/* Grade Section */}
               <View>
-                <SectionHeader title={lockGrade ? "Grade (Locked to Project)" : "Grade"} />
-                {lockGrade ? (
+                <SectionHeader title={isGradeLocked ? "Grade (Locked to Project)" : "Grade"} />
+                {isGradeLocked ? (
                   <View
                     style={{
                       flexDirection: 'row',
@@ -524,30 +644,59 @@ export function LogSheet({
                 </View>
               )}
 
-              {/* Notes Input */}
+              {/* Collapsed / Expandable Notes Input */}
               <View>
-                <SectionHeader title="Notes (Optional)" />
-                <TextInput
-                  value={notes}
-                  onChangeText={setNotes}
-                  placeholder="Beta, holds, sequence, feeling…"
-                  placeholderTextColor={colors.textMuted}
-                  multiline
-                  numberOfLines={2}
-                  style={[
-                    type.body,
-                    {
-                      color: colors.text,
-                      backgroundColor: 'rgba(255,255,255,0.05)',
-                      borderRadius: radius.lg,
+                {showNotesInput ? (
+                  <>
+                    <SectionHeader title="Notes (Optional)" />
+                    <TextInput
+                      value={notes}
+                      onChangeText={setNotes}
+                      placeholder="Beta, holds, sequence, feeling…"
+                      placeholderTextColor={colors.textMuted}
+                      multiline
+                      numberOfLines={2}
+                      style={[
+                        type.body,
+                        {
+                          color: colors.text,
+                          backgroundColor: 'rgba(255,255,255,0.05)',
+                          borderRadius: radius.lg,
+                          borderWidth: 1,
+                          borderColor: colors.border,
+                          padding: space.md,
+                          minHeight: 74,
+                          textAlignVertical: 'top',
+                        },
+                      ]}
+                    />
+                  </>
+                ) : (
+                  <ScalePressable
+                    onPress={() => {
+                      triggerHaptic('light');
+                      setShowNotesInput(true);
+                    }}
+                    haptic="light"
+                    activeScale={0.97}
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: space.xs,
+                      height: 44,
+                      borderRadius: radius.md,
+                      backgroundColor: colors.cardMuted,
                       borderWidth: 1,
                       borderColor: colors.border,
-                      padding: space.md,
-                      minHeight: 74,
-                      textAlignVertical: 'top',
-                    },
-                  ]}
-                />
+                    }}
+                  >
+                    <FileText size={15} color={colors.textMuted} />
+                    <Text style={[type.control, { color: colors.textMuted }]}>
+                      + Add beta or notes
+                    </Text>
+                  </ScalePressable>
+                )}
               </View>
             </Animated.ScrollView>
 
@@ -561,7 +710,7 @@ export function LogSheet({
             </View>
           </Animated.View>
         </View>
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }

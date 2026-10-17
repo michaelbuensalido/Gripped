@@ -244,4 +244,50 @@ describe('Session Lifecycle & Edge Cases', () => {
     expect(Q.getSessionById(sessionId)).toBeNull();
     expect(Q.getClimbsForSession(sessionId).length).toBe(0);
   });
+
+  it('persists notes and failure_reason in insertAttempt and promotes climb to project', () => {
+    const sessionId = 'session_promote_test';
+    Q.insertSession({
+      id: sessionId,
+      gymName: 'Sender One',
+      startTime: Date.now(),
+      notes: '',
+    });
+
+    const climbId = 'climb_to_promote';
+    Q.insertAttempt({
+      id: climbId,
+      sessionId,
+      projectId: null,
+      gradeRaw: 'V6',
+      normalizedDifficulty: 6,
+      wallAngle: 'overhang',
+      holdType: 'pinches',
+      outcome: 'attempt',
+      attemptNumber: 3,
+      failureReason: 'power',
+      notes: 'Fell on the big left hand pinch move',
+      timestamp: Date.now(),
+    });
+
+    let climbs = Q.getClimbsForSession(sessionId);
+    expect(climbs.length).toBe(1);
+    expect(climbs[0].notes).toBe('Fell on the big left hand pinch move');
+    expect(climbs[0].failure_reason).toBe('power');
+    expect(climbs[0].project_id).toBeNull();
+
+    const promoted = Q.promoteClimbToProject(climbId, 'Sender One');
+    expect(promoted).not.toBeNull();
+
+    climbs = Q.getClimbsForSession(sessionId);
+    expect(climbs[0].project_id).toBe(promoted!.projectId);
+    expect(climbs[0].project_title).toBe('V6 Project');
+
+    const project = Q.getRichProjectById(promoted!.projectId);
+    expect(project).not.toBeNull();
+    expect(project.gradeRaw).toBe('V6');
+    expect(project.gymName).toBe('Sender One');
+    expect(project.microBeta).toBe('Fell on the big left hand pinch move');
+  });
 });
+
