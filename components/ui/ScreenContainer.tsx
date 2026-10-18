@@ -23,9 +23,9 @@ export function ScreenContainer({
 
   return (
     <View style={[{ flex: 1, backgroundColor: colors.bgTexture }, style]}>
-      {/* ── Textured Speckled Gym Mat Background Layer, heavily dimmed ── */}
+      {/* ── Textured Chalk Climbing Wall Background Layer ── */}
       <ImageBackground
-        source={require('../../assets/speckled_mat_bg.jpg')}
+        source={require('../../assets/chalk_bg.jpg')}
         style={StyleSheet.absoluteFill}
         imageStyle={{ opacity: colors.backdropImageOpacity }}
         resizeMode="cover"

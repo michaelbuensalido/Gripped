@@ -823,11 +823,13 @@ export default function SettingsScreen() {
               }}
             >
               <Image
-                source={require('../assets/icon.png')}
+                source={require('../assets/logo.png')}
                 style={{
                   width: 44,
                   height: 44,
                   borderRadius: radius.md,
+                  borderWidth: 1,
+                  borderColor: colors.glassBorder,
                 }}
                 resizeMode="cover"
                 accessibilityLabel="Gripped Logo"

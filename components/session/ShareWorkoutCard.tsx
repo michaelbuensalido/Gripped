@@ -69,8 +69,8 @@ export const ShareWorkoutCard = forwardRef<View, ShareWorkoutCardProps>(
           <View style={styles.brandRow}>
             <View style={styles.logoPill}>
               <Image
-                source={require('../../assets/icon.png')}
-                style={{ width: 14, height: 14, borderRadius: 3 }}
+                source={require('../../assets/logo.png')}
+                style={{ width: 16, height: 16, borderRadius: 4 }}
                 resizeMode="cover"
                 accessibilityLabel="Gripped Logo"
               />

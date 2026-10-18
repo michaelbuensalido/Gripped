@@ -10,6 +10,7 @@ import {
 } from "react-native";
 import { Tabs, SplashScreen, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
+import { LinearGradient } from "expo-linear-gradient";
 import { Platform } from 'react-native';
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
@@ -172,12 +173,16 @@ export default function RootLayout() {
     <GlobalErrorBoundary>
       <GestureHandlerRootView style={{ flex: 1, backgroundColor: colors.bgTexture }}>
         <ImageBackground
-          source={require("../assets/speckled_mat_bg.jpg")}
+          source={require("../assets/chalk_bg.jpg")}
           style={StyleSheet.absoluteFill}
           imageStyle={{ opacity: colors.backdropImageOpacity }}
           resizeMode="cover"
         />
-        <View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: colors.backdropScrimBottom, opacity: 0.8 }]} />
+        <LinearGradient
+          pointerEvents="none"
+          colors={[colors.backdropScrimTop, colors.backdropScrimBottom]}
+          style={StyleSheet.absoluteFill}
+        />
         <SafeAreaProvider>
           <StatusBar style="light" />
           <CelebrationProvider>

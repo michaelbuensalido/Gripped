@@ -23,7 +23,7 @@ export default function WelcomeScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
       <ImageBackground
-        source={require('../assets/speckled_mat_bg.jpg')}
+        source={require('../assets/chalk_bg.jpg')}
         style={StyleSheet.absoluteFill}
         imageStyle={{ opacity: colors.backdropImageOpacity }}
         resizeMode="cover"
@@ -31,8 +31,8 @@ export default function WelcomeScreen() {
       <View style={{ flex: 1, paddingHorizontal: space.xl, paddingBottom: Math.max(insets.bottom, space.xl), paddingTop: insets.top + space.xxl, justifyContent: 'space-between' }}>
         <View style={{ marginTop: space.xxl }}>
           <Image
-            source={require('../assets/icon.png')}
-            style={{ width: 68, height: 68, borderRadius: radius.lg, marginBottom: space.md }}
+            source={require('../assets/logo.png')}
+            style={{ width: 68, height: 68, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.glassBorder, marginBottom: space.md }}
             resizeMode="cover"
             accessibilityLabel="Gripped Logo"
           />

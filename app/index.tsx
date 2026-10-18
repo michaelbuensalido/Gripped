@@ -152,11 +152,13 @@ export default function HomeScreen() {
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
             <Image
-              source={require('../assets/icon.png')}
+              source={require('../assets/logo.png')}
               style={{
-                width: 36,
-                height: 36,
-                borderRadius: radius.md,
+                width: 38,
+                height: 38,
+                borderRadius: radius.sm,
+                borderWidth: 1,
+                borderColor: colors.glassBorder,
               }}
               resizeMode="cover"
               accessibilityLabel="Gripped Logo"
