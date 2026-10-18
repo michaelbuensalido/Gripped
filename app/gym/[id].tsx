@@ -40,7 +40,7 @@ export default function GymDetailScreen() {
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: colors.bgTexture }}>
+    <View style={{ flex: 1, backgroundColor: colors.bg }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: space.lg, paddingTop: Math.max(insets.top, 20), paddingBottom: space.md }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, marginRight: space.sm }}>
           <TouchableOpacity

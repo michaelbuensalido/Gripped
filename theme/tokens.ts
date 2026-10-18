@@ -1,14 +1,14 @@
 export const colors = {
-  // Surfaces: translucent on dark speckled mat background
+  // Surfaces: translucent on dark chalk-dusted climbing wall background
   bg: "transparent",
-  bgTexture: "#000000",
-  // Backdrop dimming: the speckled mat should sit behind content
-  backdropImageOpacity: 0.35,
-  backdropScrimTop: "rgba(0, 0, 0, 0.40)",
-  backdropScrimBottom: "rgba(0, 0, 0, 0.85)",
-  card: "rgba(22, 22, 30, 0.92)",
-  cardMuted: "rgba(28, 28, 38, 0.80)", // inset tiles, inputs, unselected chips
-  border: "rgba(255, 255, 255, 0.06)",
+  bgTexture: "#0D0D12",
+  // Backdrop dimming: chalk wall texture sits visibly behind content
+  backdropImageOpacity: 0.52,
+  backdropScrimTop: "rgba(13, 13, 18, 0.25)",
+  backdropScrimBottom: "rgba(13, 13, 18, 0.55)",
+  card: "rgba(22, 22, 30, 0.86)",
+  cardMuted: "rgba(28, 28, 38, 0.76)", // inset tiles, inputs, unselected chips
+  border: "rgba(255, 255, 255, 0.08)",
   // Zero-state chart skeleton
   chartGhost: "rgba(255, 255, 255, 0.06)",
   chartGhostStrong: "rgba(255, 255, 255, 0.12)",
@@ -21,7 +21,7 @@ export const colors = {
   // Accent: Primary Neon Violet / Lavender
   accent: "#8E7CFF",
   accentPressed: "#7A67F5",
-  accentSoft: "rgba(142, 124, 255, 0.20)", // selected chip, active tab capsule
+  accentSoft: "rgba(142, 124, 255, 0.22)", // selected chip, active tab capsule
   accentText: "#D4CCFF",
 
   // Results: Secondary Neon Green & Reference Palette
@@ -58,20 +58,21 @@ export const colors = {
   dangerText: "#FF9999",
   success: "#6EE756",
 
-  // Overlay
+  // Overlay & Frosted Glass
   scrim: "rgba(0, 0, 0, 0.75)",
-  glass: "rgba(18, 18, 24, 0.85)",
+  glass: "rgba(22, 22, 32, 0.48)",
+  glassHighlight: "rgba(255, 255, 255, 0.12)",
 
   // Depth (v3.0)
   bevelHighlight: "rgba(255, 255, 255, 0.08)",
   bevelShadow: "rgba(0, 0, 0, 0.6)",
-  glassBorder: "rgba(255, 255, 255, 0.08)",
+  glassBorder: "rgba(255, 255, 255, 0.16)",
   glow: "rgba(142, 124, 255, 0.25)",
 
   // Translucent Materials (v4.0 Spatial Editorial)
-  materialBase: "rgba(22, 22, 30, 0.92)",
-  materialBorder: "rgba(255, 255, 255, 0.06)",
-  materialHighlight: "rgba(255, 255, 255, 0.10)",
+  materialBase: "rgba(22, 22, 30, 0.88)",
+  materialBorder: "rgba(255, 255, 255, 0.08)",
+  materialHighlight: "rgba(255, 255, 255, 0.12)",
 
   // Translucent Typography
   textWhitePrimary: "#FFFFFF",

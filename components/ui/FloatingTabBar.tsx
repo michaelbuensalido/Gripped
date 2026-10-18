@@ -1,12 +1,19 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Keyboard, Platform, Animated } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Keyboard, Platform, Animated, AccessibilityInfo, UIManager } from 'react-native';
+import { BlurView } from 'expo-blur';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../../theme/useTheme';
 import { Home, Plus, TrendingUp, MapPin, BookOpen } from 'lucide-react-native';
 import { useSessionActions } from '../../hooks/useSessionActions';
 import { useSessionStore } from '../../store/sessionStore';
 import { StartSessionSheet } from '../session/StartSessionSheet';
-import { AccessibilityInfo } from 'react-native';
 import { triggerHaptic } from '../../utils/haptics';
+
+const isNativeBlurAvailable = Boolean(
+  UIManager &&
+  typeof UIManager.getViewManagerConfig === 'function' &&
+  (UIManager.getViewManagerConfig('ExpoBlurView') || UIManager.getViewManagerConfig('ViewManagerAdapter_ExpoBlur_ExpoBlurView'))
+);
 
 function formatDuration(ms: number) {
   const totalSecs = Math.max(0, Math.floor(ms / 1000));
@@ -75,8 +82,8 @@ function CenterSessionButton({ activeSession, startOrResume, onOpenStartSheet }:
             backgroundColor: colors.accent,
             alignItems: 'center',
             justifyContent: 'center',
-            borderWidth: 3.5,
-            borderColor: colors.bgTexture,
+            borderWidth: 2,
+            borderColor: colors.glassBorder,
             zIndex: 10,
             shadowColor: colors.accent,
             shadowOpacity: 0.55,
@@ -171,7 +178,20 @@ export function FloatingTabBar({ state, descriptors, navigation }: any) {
             overflow: 'hidden',
           }]}
         >
-          <View style={[StyleSheet.absoluteFill, { backgroundColor: colors.materialBase }]} />
+          {isNativeBlurAvailable && (
+            <BlurView
+              intensity={55}
+              tint="dark"
+              style={StyleSheet.absoluteFill}
+            />
+          )}
+          <View style={[StyleSheet.absoluteFill, { backgroundColor: colors.glass }]} />
+          <LinearGradient
+            colors={[colors.glassHighlight, 'transparent']}
+            start={{ x: 0.5, y: 0 }}
+            end={{ x: 0.5, y: 0.6 }}
+            style={StyleSheet.absoluteFill}
+          />
         </View>
 
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', height: 66, paddingHorizontal: 6, overflow: 'visible' }}>
@@ -208,6 +228,8 @@ export function FloatingTabBar({ state, descriptors, navigation }: any) {
                   alignItems: 'center',
                   justifyContent: 'center',
                   backgroundColor: isFocused ? colors.accentSoft : 'transparent',
+                  borderWidth: isFocused ? 1 : 0,
+                  borderColor: isFocused ? colors.glassBorder : 'transparent',
                   paddingHorizontal: isFocused ? 12 : 8,
                   paddingVertical: 5,
                   borderRadius: radius.pill,

@@ -187,7 +187,7 @@ export function BrandedLaunchSequence({
     >
       <StatusBar style="light" />
       <Animated.Image
-        source={require("../../assets/splash-icon.png")}
+        source={require("../../assets/logo.png")}
         style={[styles.logo, iconAnimatedStyle]}
         resizeMode="contain"
         accessibilityLabel="Gripped Logo"
@@ -199,7 +199,7 @@ export function BrandedLaunchSequence({
 const styles = StyleSheet.create({
   container: {
     ...StyleSheet.absoluteFill,
-    backgroundColor: "#000000",
+    backgroundColor: "#0B0B0F",
     alignItems: "center",
     justifyContent: "center",
     zIndex: 999999,
@@ -208,5 +208,6 @@ const styles = StyleSheet.create({
   logo: {
     width: 140,
     height: 140,
+    borderRadius: 32,
   },
 });

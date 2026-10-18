@@ -18,7 +18,7 @@ export type HoldType =
 
 export const HOLD_IMAGES: Record<string, ImageSourcePropType> = {
   // Named routes
-  'ripple-effect': require('../../assets/holds-images/v6-ripple-effect-square.jpg'),
+  'ripple-effect': require('../../assets/holds-images/v6-ripple-effect-square.png'),
   'slab-rise': require('../../assets/holds-images/v5-slab-rise.png'),
   'kars-sloper': require('../../assets/holds-images/v7-kars-sloper.png'),
   'poly-edge': require('../../assets/holds-images/v8-poly-edge.png'),
@@ -28,7 +28,7 @@ export const HOLD_IMAGES: Record<string, ImageSourcePropType> = {
   'slab-rise-blue': require('../../assets/holds-images/v7-slab-rlise.png'),
 
   // Generic hold types mapping
-  'sloper': require('../../assets/holds-images/v6-ripple-effect-square.jpg'),
+  'sloper': require('../../assets/holds-images/v6-ripple-effect-square.png'),
   'pinch': require('../../assets/holds-images/v5-slab-rise.png'),
   'crimp': require('../../assets/holds-images/v8-poly-edge.png'),
   'jug': require('../../assets/holds-images/v3-yellow-jug.png'),

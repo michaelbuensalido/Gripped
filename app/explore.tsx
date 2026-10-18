@@ -78,7 +78,7 @@ export default function ExploreScreen() {
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: colors.bgTexture }}>
+    <View style={{ flex: 1, backgroundColor: colors.bg }}>
       <ScrollView 
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{

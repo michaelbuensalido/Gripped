@@ -50,7 +50,7 @@ export default function PrivacyPolicyScreen() {
   const { colors, type, space, radius } = useTheme();
 
   return (
-    <View style={{ flex: 1, backgroundColor: colors.bgTexture }}>
+    <View style={{ flex: 1, backgroundColor: colors.bg }}>
       {/* Header */}
       <View
         style={{
