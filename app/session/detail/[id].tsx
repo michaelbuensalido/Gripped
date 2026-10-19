@@ -23,8 +23,11 @@ import {
   AlertCircle,
   Zap,
 } from 'lucide-react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Screen } from '../../../components/ui/Screen';
 import { ClimbRow } from '../../../components/ui/ClimbRow';
+import { GradePill } from '../../../components/ui/GradePill';
+import { ScalePressable } from '../../../components/ui/ScalePressable';
 import { UndoToast } from '../../../components/ui/UndoToast';
 import { ResultDonut } from '../../../components/ui/ResultDonut';
 import { ProjectCard } from '../../../components/ui/ProjectCard';
@@ -406,9 +409,10 @@ export default function SessionDetailScreen({
           zIndex: 10,
         }}
       >
-        {/* Left Side: Back chevron */}
-        <TouchableOpacity
+        <ScalePressable
           testID="session-detail-back-btn"
+          haptic="light"
+          activeScale={0.92}
           onPress={() => {
             if (router.canGoBack()) {
               router.back();
@@ -419,21 +423,39 @@ export default function SessionDetailScreen({
           accessibilityRole="button"
           accessibilityLabel="Back"
           hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+          style={{
+            width: 44,
+            height: 44,
+            borderRadius: radius.md,
+            backgroundColor: colors.card,
+            borderWidth: 1,
+            borderColor: colors.border,
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
         >
-          <ChevronLeft size={24} color={colors.text} />
-        </TouchableOpacity>
+          <ChevronLeft size={22} color={colors.text} />
+        </ScalePressable>
 
         {/* Center / Title Block */}
-        <View style={{ flex: 1, paddingHorizontal: space.sm }}>
+        <View style={{ flex: 1, paddingHorizontal: space.md }}>
           <Text
-            style={[type.heading, { color: colors.text, fontSize: 18 }]}
+            style={[
+              type.label,
+              { color: colors.accentText, fontSize: 9, letterSpacing: 1.8, marginBottom: 1 },
+            ]}
+          >
+            SESSION REPORT
+          </Text>
+          <Text
+            style={[type.heading, { color: colors.text, fontSize: 18, fontWeight: '700' }]}
             numberOfLines={1}
             adjustsFontSizeToFit
           >
             {session?.gymName || 'Session'}
           </Text>
           <Text
-            style={[type.caption, { color: colors.textMuted, marginTop: 2 }]}
+            style={[type.caption, { color: colors.textMuted, marginTop: 1 }]}
             numberOfLines={1}
             adjustsFontSizeToFit
           >
@@ -442,17 +464,27 @@ export default function SessionDetailScreen({
         </View>
 
         {/* Right Side: ⋯ Menu */}
-        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-          <TouchableOpacity
-            testID="session-detail-more-menu"
-            onPress={() => setShowMenu(!showMenu)}
-            accessibilityRole="button"
-            accessibilityLabel="More options"
-            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-          >
-            <MoreHorizontal size={24} color={colors.text} />
-          </TouchableOpacity>
-        </View>
+        <ScalePressable
+          testID="session-detail-more-menu"
+          haptic="light"
+          activeScale={0.92}
+          onPress={() => setShowMenu(!showMenu)}
+          accessibilityRole="button"
+          accessibilityLabel="More options"
+          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+          style={{
+            width: 44,
+            height: 44,
+            borderRadius: radius.md,
+            backgroundColor: colors.card,
+            borderWidth: 1,
+            borderColor: colors.border,
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <MoreHorizontal size={20} color={colors.text} />
+        </ScalePressable>
 
         {/* Dropdown Menu */}
         {showMenu && (
@@ -460,10 +492,10 @@ export default function SessionDetailScreen({
             style={[
               styles.menu,
               {
-                backgroundColor: colors.card,
-                borderColor: colors.border,
+                backgroundColor: colors.materialBase,
+                borderColor: colors.glassBorder,
                 borderRadius: radius.md,
-                top: insets.top + 40,
+                top: insets.top + 52,
                 right: space.lg,
               },
             ]}
@@ -495,8 +527,8 @@ export default function SessionDetailScreen({
       <Reanimated.ScrollView
         contentContainerStyle={{
           paddingHorizontal: space.lg,
-          paddingTop: space.sm,
-          paddingBottom: isSummary ? 160 : 100,
+          paddingTop: space.xs,
+          paddingBottom: isSummary ? 160 : 110,
         }}
         showsVerticalScrollIndicator={false}
       >
@@ -505,7 +537,9 @@ export default function SessionDetailScreen({
           <View
             style={{
               backgroundColor: colors.accentSoft,
-              borderRadius: radius.md,
+              borderRadius: radius.lg,
+              borderWidth: 1,
+              borderColor: colors.accent,
               padding: space.md,
               marginBottom: space.lg,
               flexDirection: 'row',
@@ -515,8 +549,8 @@ export default function SessionDetailScreen({
           >
             <Trophy size={22} color={colors.accentText} />
             <View style={{ flex: 1 }}>
-              <Text style={[type.heading, { color: colors.accentText }]}>
-                New Personal Best: {prevBestHighlight.currentGrade}!
+              <Text style={[type.heading, { color: colors.accentText, fontWeight: '700' }]}>
+                New Personal Best: {prevBestHighlight.currentGrade}
               </Text>
               <Text style={[type.caption, { color: colors.accentText, marginTop: 1 }]}>
                 Beat your previous best of {prevBestHighlight.prevGrade}
@@ -532,7 +566,9 @@ export default function SessionDetailScreen({
               key={p.id}
               style={{
                 backgroundColor: colors.flashSoft,
-                borderRadius: radius.md,
+                borderRadius: radius.lg,
+                borderWidth: 1,
+                borderColor: colors.flash,
                 padding: space.md,
                 marginBottom: space.lg,
                 flexDirection: 'row',
@@ -542,7 +578,9 @@ export default function SessionDetailScreen({
             >
               <CheckCircle size={22} color={colors.flashText} />
               <View style={{ flex: 1 }}>
-                <Text style={[type.heading, { color: colors.flashText }]}>Project Sent!</Text>
+                <Text style={[type.heading, { color: colors.flashText, fontWeight: '700' }]}>
+                  Project Sent
+                </Text>
                 <Text style={[type.caption, { color: colors.flashText, marginTop: 1 }]}>
                   {p.title} ({p.gradeRaw})
                 </Text>
@@ -550,12 +588,172 @@ export default function SessionDetailScreen({
             </View>
           ))}
 
-        {/* 1. Stat Tiles: compact row of four */}
-        <View style={{ flexDirection: 'row', gap: space.xs, marginBottom: space.xl }}>
-          <CompactStatTile label="Climbs" value={activeClimbs.length} />
-          <CompactStatTile label="Sends" value={sends.length} />
-          <CompactStatTile label="Flashes" value={flashes.length} />
-          <CompactStatTile label="Hardest" value={hardestLabel} />
+        {/* 1. Unified Session Telemetry Hero Card */}
+        <View
+          style={{
+            backgroundColor: colors.materialBase,
+            borderRadius: radius.xl,
+            borderWidth: 1,
+            borderColor: colors.glassBorder,
+            padding: space.lg,
+            marginBottom: space.xl,
+            overflow: 'hidden',
+            position: 'relative',
+            ...shadow.floating,
+          }}
+        >
+          <LinearGradient
+            colors={[colors.glassHighlight, 'transparent']}
+            start={{ x: 0.5, y: 0 }}
+            end={{ x: 0.5, y: 1 }}
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              height: 48,
+            }}
+            pointerEvents="none"
+          />
+
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              marginBottom: space.md,
+            }}
+          >
+            <Text style={[type.label, { color: colors.accentText, fontSize: 10, letterSpacing: 1.8 }]}>
+              SESSION METRICS
+            </Text>
+            {activeClimbs.length > 0 && (
+              <View
+                style={{
+                  backgroundColor: colors.flashSoft,
+                  paddingHorizontal: 8,
+                  paddingVertical: 2,
+                  borderRadius: radius.pill,
+                  borderWidth: 1,
+                  borderColor: colors.flash,
+                }}
+              >
+                <Text style={[type.caption, { color: colors.flashText, fontSize: 10, fontWeight: '700' }]}>
+                  {Math.round((sends.length / activeClimbs.length) * 100)}% SEND RATE
+                </Text>
+              </View>
+            )}
+          </View>
+
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              backgroundColor: colors.cardMuted,
+              borderRadius: radius.lg,
+              borderWidth: 1,
+              borderColor: colors.border,
+              paddingVertical: space.md,
+              paddingHorizontal: space.sm,
+            }}
+          >
+            <View style={{ flex: 1, alignItems: 'center' }}>
+              <Text style={[type.statSm, { color: colors.text, fontSize: 22, fontWeight: '700' }]}>
+                {activeClimbs.length}
+              </Text>
+              <Text style={[type.label, { color: colors.textMuted, fontSize: 9, marginTop: 2 }]}>
+                Climbs
+              </Text>
+            </View>
+
+            <View style={{ width: 1, height: 28, backgroundColor: colors.border }} />
+
+            <View style={{ flex: 1, alignItems: 'center' }}>
+              <Text style={[type.statSm, { color: colors.text, fontSize: 22, fontWeight: '700' }]}>
+                {sends.length}
+              </Text>
+              <Text style={[type.label, { color: colors.textMuted, fontSize: 9, marginTop: 2 }]}>
+                Sends
+              </Text>
+            </View>
+
+            <View style={{ width: 1, height: 28, backgroundColor: colors.border }} />
+
+            <View style={{ flex: 1, alignItems: 'center' }}>
+              <Text
+                style={[
+                  type.statSm,
+                  {
+                    color: flashes.length > 0 ? colors.flashText : colors.text,
+                    fontSize: 22,
+                    fontWeight: '700',
+                  },
+                ]}
+              >
+                {flashes.length}
+              </Text>
+              <Text style={[type.label, { color: colors.textMuted, fontSize: 9, marginTop: 2 }]}>
+                Flashes
+              </Text>
+            </View>
+
+            <View style={{ width: 1, height: 28, backgroundColor: colors.border }} />
+
+            <View style={{ flex: 1, alignItems: 'center' }}>
+              {hardest && hardestLabel !== '–' ? (
+                <GradePill gradeIndex={hardest.grade_index ?? 0} label={hardestLabel} />
+              ) : (
+                <Text style={[type.statSm, { color: colors.textMuted, fontSize: 20 }]}>–</Text>
+              )}
+              <Text style={[type.label, { color: colors.textMuted, fontSize: 9, marginTop: 3 }]}>
+                Hardest
+              </Text>
+            </View>
+          </View>
+
+          {activeClimbs.length > 0 && (
+            <View style={{ marginTop: space.md }}>
+              <View
+                style={{
+                  height: 6,
+                  borderRadius: 3,
+                  overflow: 'hidden',
+                  flexDirection: 'row',
+                  gap: 3,
+                  backgroundColor: colors.chartGhost,
+                }}
+              >
+                {flashes.length > 0 && (
+                  <View
+                    style={{
+                      flex: flashes.length,
+                      backgroundColor: colors.flash,
+                      borderRadius: 3,
+                    }}
+                  />
+                )}
+                {tops.length > 0 && (
+                  <View
+                    style={{
+                      flex: tops.length,
+                      backgroundColor: colors.top,
+                      borderRadius: 3,
+                    }}
+                  />
+                )}
+                {attempts.length > 0 && (
+                  <View
+                    style={{
+                      flex: attempts.length,
+                      backgroundColor: colors.attempt,
+                      borderRadius: 3,
+                      opacity: 0.75,
+                    }}
+                  />
+                )}
+              </View>
+            </View>
+          )}
         </View>
 
         {/* 2. Result Breakdown Donut (Hidden if < 3 climbs) */}
@@ -583,11 +781,31 @@ export default function SessionDetailScreen({
                 marginBottom: space.xs,
               }}
             >
-              <Text style={[type.label, { color: colors.textMuted }]}>
-                {(session as any)?.effort
-                  ? `EFFORT ${(session as any).effort}/5`
-                  : 'SESSION NOTES'}
-              </Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm }}>
+                <Text style={[type.label, { color: colors.accentText }]}>
+                  {(session as any)?.effort
+                    ? `EFFORT ${(session as any).effort}/5`
+                    : 'SESSION NOTES'}
+                </Text>
+                {(session as any)?.effort ? (
+                  <View style={{ flexDirection: 'row', gap: 3 }}>
+                    {[1, 2, 3, 4, 5].map((lvl) => (
+                      <View
+                        key={lvl}
+                        style={{
+                          width: 12,
+                          height: 4,
+                          borderRadius: 2,
+                          backgroundColor:
+                            lvl <= (session as any).effort
+                              ? colors.accent
+                              : colors.chartGhostStrong,
+                        }}
+                      />
+                    ))}
+                  </View>
+                ) : null}
+              </View>
               <TouchableOpacity
                 onPress={handleOpenEditSession}
                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
@@ -604,27 +822,29 @@ export default function SessionDetailScreen({
             ) : null}
           </Card>
         ) : (
-          <TouchableOpacity
+          <ScalePressable
             onPress={handleOpenEditSession}
+            haptic="light"
+            activeScale={0.98}
             style={{
               flexDirection: 'row',
               alignItems: 'center',
               gap: space.sm,
               padding: space.md,
-              backgroundColor: colors.card,
-              borderRadius: radius.md,
+              backgroundColor: colors.materialBase,
+              borderRadius: radius.lg,
               marginBottom: space.xl,
               borderWidth: 1,
-              borderColor: colors.border,
+              borderColor: colors.glassBorder,
             }}
             accessibilityRole="button"
             accessibilityLabel="Add notes"
           >
-            <Edit2 size={16} color={colors.textMuted} />
+            <Edit2 size={16} color={colors.accentText} />
             <Text style={[type.body, { color: colors.textMuted }]}>
-              Add session notes & effort
+              Add session notes & perceived effort
             </Text>
-          </TouchableOpacity>
+          </ScalePressable>
         )}
 
         {/* 4. Projects Section (only when relevant) */}
@@ -662,6 +882,7 @@ export default function SessionDetailScreen({
             {activeClimbs.length === 0 && (
               <EmptyState
                 asCard
+                illustration={require('../../../assets/illustrations/empty-sessions.jpg')}
                 icon={<Zap size={24} color={colors.accent} />}
                 title="No climbs recorded"
                 body="You haven't logged any climbs in this session yet."
@@ -669,16 +890,20 @@ export default function SessionDetailScreen({
             )}
 
             {/* "+ Add climb" Button */}
-            <TouchableOpacity
+            <ScalePressable
               testID="add-climb-btn"
               onPress={handleOpenAddClimb}
+              haptic="light"
+              activeScale={0.98}
               style={{
                 flexDirection: 'row',
                 alignItems: 'center',
                 justifyContent: 'center',
                 paddingVertical: space.md,
-                backgroundColor: colors.cardMuted,
-                borderRadius: radius.md,
+                backgroundColor: colors.materialBase,
+                borderRadius: radius.lg,
+                borderWidth: 1,
+                borderColor: colors.glassBorder,
                 marginTop: space.sm,
                 gap: space.xs,
               }}
@@ -694,7 +919,7 @@ export default function SessionDetailScreen({
               >
                 Add climb
               </Text>
-            </TouchableOpacity>
+            </ScalePressable>
           </View>
         </View>
       </Reanimated.ScrollView>
@@ -707,17 +932,31 @@ export default function SessionDetailScreen({
             bottom: 0,
             left: 0,
             right: 0,
-            backgroundColor: '#000000',
+            backgroundColor: colors.materialBase,
             borderTopWidth: 1,
-            borderTopColor: colors.border,
+            borderTopColor: colors.glassBorder,
             paddingHorizontal: space.lg,
             paddingTop: space.sm,
             paddingBottom: Math.max(insets.bottom, 16),
             flexDirection: 'row',
             gap: space.sm,
+            overflow: 'hidden',
             ...shadow.floating,
           }}
         >
+          <LinearGradient
+            colors={[colors.glassHighlight, 'transparent']}
+            start={{ x: 0.5, y: 0 }}
+            end={{ x: 0.5, y: 1 }}
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              height: 32,
+            }}
+            pointerEvents="none"
+          />
           <TouchableOpacity
             testID="see-progress-btn"
             onPress={() => {
@@ -732,7 +971,7 @@ export default function SessionDetailScreen({
               borderRadius: radius.pill,
               backgroundColor: colors.accentSoft,
               borderWidth: 1,
-              borderColor: colors.border,
+              borderColor: colors.glassBorder,
               alignItems: 'center',
               justifyContent: 'center',
             }}

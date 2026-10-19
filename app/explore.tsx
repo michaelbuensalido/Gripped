@@ -199,6 +199,7 @@ export default function ExploreScreen() {
             {filteredGyms.length === 0 ? (
               <EmptyState
                 asCard
+                illustration={require('../assets/illustrations/empty-projects.jpg')}
                 icon={<MapPin size={26} color={colors.accent} />}
                 title={search.trim() ? "No gyms matching search" : "No gyms saved yet"}
                 body={search.trim() ? `We couldn't find "${search.trim()}". You can add it now.` : "Add your home gym or explore places you climb."}
@@ -248,6 +249,7 @@ export default function ExploreScreen() {
             {filteredInbox.length === 0 ? (
               <EmptyState
                 asCard
+                illustration={require('../assets/illustrations/empty-inbox.jpg')}
                 icon={<Link2 size={26} color={colors.accent} />}
                 title={search.trim() ? "No videos matching search" : "Video inbox is empty"}
                 body="Save social media beta clips from Instagram Reels or TikTok here to attach them to your project beta later."

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, Modal, Pressable } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Flame, Footprints, Zap, GitBranch, ShieldAlert } from 'lucide-react-native';
 import type { FailureReason } from '../../types';
 import { triggerHaptic } from '../../utils/haptics';
 import { useTheme } from '../../theme/useTheme';
@@ -15,15 +16,15 @@ interface FailureOption {
   key: FailureReason;
   label: string;
   sublabel: string;
-  icon: string;
+  Icon: React.ComponentType<{ size?: number; color?: string; strokeWidth?: number }>;
 }
 
 const FAILURE_OPTIONS: FailureOption[] = [
-  { key: 'pump',       label: 'PUMP',       sublabel: 'Forearm pump / endurance', icon: '🔥' },
-  { key: 'foot_slip',  label: 'FOOT SLIP',  sublabel: 'Foot cut or smear',        icon: '🦶' },
-  { key: 'power',      label: 'POWER',      sublabel: 'Contact / raw strength',   icon: '💪' },
-  { key: 'beta_error', label: 'BETA ERROR', sublabel: 'Wrong sequence or move',   icon: '🧠' },
-  { key: 'fear',       label: 'FEAR',       sublabel: 'Mental / commitment',      icon: '😤' },
+  { key: 'pump',       label: 'PUMP',       sublabel: 'Forearm pump / endurance', Icon: Flame },
+  { key: 'foot_slip',  label: 'FOOT SLIP',  sublabel: 'Foot cut or smear',        Icon: Footprints },
+  { key: 'power',      label: 'POWER',      sublabel: 'Contact / raw strength',   Icon: Zap },
+  { key: 'beta_error', label: 'BETA ERROR', sublabel: 'Wrong sequence or move',   Icon: GitBranch },
+  { key: 'fear',       label: 'FEAR',       sublabel: 'Mental / commitment',      Icon: ShieldAlert },
 ];
 
 export function FailureReasonPrompt({
@@ -133,6 +134,7 @@ export function FailureReasonPrompt({
               >
                 {row.map((opt) => {
                   const isSelected = selected === opt.key;
+                  const OptionIcon = opt.Icon;
                   return (
                     <TouchableOpacity
                       key={opt.key}
@@ -141,17 +143,35 @@ export function FailureReasonPrompt({
                       style={{
                         flex: isSingleItem ? 0 : 1,
                         width: isSingleItem ? '48%' : undefined,
-                        minHeight: 80,
+                        minHeight: 88,
                         backgroundColor: isSelected ? colors.attemptSoft : colors.cardMuted,
                         borderWidth: 1,
-                        borderColor: isSelected ? colors.attempt : colors.border,
+                        borderColor: isSelected ? colors.attempt : colors.glassBorder,
                         borderRadius: radius.md,
                         padding: space.md,
                         alignItems: 'center',
                         justifyContent: 'center',
                       }}
                     >
-                      <Text style={{ fontSize: 24, marginBottom: 4 }}>{opt.icon}</Text>
+                      <View
+                        style={{
+                          width: 34,
+                          height: 34,
+                          borderRadius: 17,
+                          backgroundColor: isSelected ? colors.attempt : colors.materialBase,
+                          borderWidth: 1,
+                          borderColor: isSelected ? colors.attempt : colors.glassBorder,
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          marginBottom: 6,
+                        }}
+                      >
+                        <OptionIcon
+                          size={17}
+                          color={isSelected ? colors.textOnAccent : colors.attemptText}
+                          strokeWidth={2.2}
+                        />
+                      </View>
                       <Text
                         style={[
                           type.heading,

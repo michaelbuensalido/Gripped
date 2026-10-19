@@ -17,6 +17,34 @@ function getRelativeTime(timestamp: number | null) {
   return `${days} days ago`;
 }
 
+const CUTOUT_HOLDS_BY_TYPE: Record<string, any> = {
+  jug: require('../../assets/holds-images/yellow_jug.png'),
+  pinch: require('../../assets/holds-images/pink_pinch.png'),
+  sloper: require('../../assets/holds-images/v6-ripple-effect-square.png'),
+  crimp: require('../../assets/holds-images/v8-poly-edge.png'),
+  pocket: require('../../assets/holds-images/v7-slab-rlise.png'),
+  volume: require('../../assets/holds-images/v6-orange-facet.png'),
+};
+
+const CUTOUT_HOLD_ROTATION = [
+  require('../../assets/holds-images/yellow_jug.png'),
+  require('../../assets/holds-images/pink_pinch.png'),
+  require('../../assets/holds-images/v6-ripple-effect-square.png'),
+  require('../../assets/holds-images/v6-orange-facet.png'),
+  require('../../assets/holds-images/v7-slab-rlise.png'),
+  require('../../assets/holds-images/v7-kars-sloper.png'),
+  require('../../assets/holds-images/v8-poly-edge.png'),
+];
+
+function getProjectHoldSource(project: any) {
+  const holdKey = (project?.holdType || '').toLowerCase();
+  if (holdKey && CUTOUT_HOLDS_BY_TYPE[holdKey]) {
+    return CUTOUT_HOLDS_BY_TYPE[holdKey];
+  }
+  const gradeIdx = project?.normalizedDifficulty ?? project?.grade_index ?? 0;
+  return CUTOUT_HOLD_ROTATION[Math.abs(gradeIdx) % CUTOUT_HOLD_ROTATION.length];
+}
+
 export function ProjectCard({ 
   project, 
   onLogAttempt,
@@ -145,11 +173,11 @@ export function ProjectCard({
       ) : (
         <View style={{ position: 'absolute', top: -20, right: -20 }} pointerEvents="none">
           <Image 
-            source={require('../../assets/holds-images/pink_pinch.png')} 
+            source={getProjectHoldSource(project)} 
             style={{
               width: 140,
               height: 140,
-              opacity: 0.7,
+              opacity: 0.72,
             }}
             resizeMode="contain"
           />

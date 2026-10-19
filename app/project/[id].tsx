@@ -231,7 +231,11 @@ export default function ProjectDetailScreen() {
             source={
               project?.mediaUri
                 ? { uri: project.mediaUri }
-                : require("../../assets/holds-images/v6-ripple-effect-square.png")
+                : project?.wallAngle === "overhang" ||
+                    project?.wallAngle === "roof" ||
+                    (project?.normalizedDifficulty ?? project?.grade_index ?? 0) >= 6
+                  ? require("../../assets/covers/cover-overhang.jpg")
+                  : require("../../assets/covers/cover-slab.jpg")
             }
             style={StyleSheet.absoluteFill}
             resizeMode="cover"
