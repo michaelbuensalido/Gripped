@@ -54,3 +54,12 @@ scratch/
 # backups and patches
 *.backup
 *.orig
+
+# AI agents, skills, and tooling
+.agents/
+.claude/
+.aider-desk/
+.cursor/
+.windsurf/
+.expo-home/
+skills-lock.json
