@@ -29,19 +29,38 @@ export default function WelcomeScreen() {
         resizeMode="cover"
       />
       <View style={{ flex: 1, paddingHorizontal: space.xl, paddingBottom: Math.max(insets.bottom, space.xl), paddingTop: insets.top + space.xxl, justifyContent: 'space-between' }}>
-        <View style={{ marginTop: space.xxl }}>
+        <View style={{ marginTop: space.lg }}>
           <Image
             source={require('../assets/logo.png')}
-            style={{ width: 68, height: 68, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.glassBorder, marginBottom: space.md }}
+            style={{ width: 64, height: 64, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.glassBorder, marginBottom: space.md }}
             resizeMode="cover"
             accessibilityLabel="Gripped Logo"
           />
-          <Text style={[type.display, { color: colors.text, fontSize: 40, marginBottom: space.sm }]}>
+          <Text style={[type.display, { color: colors.text, fontSize: 40, marginBottom: space.xs }]}>
             Gripped
           </Text>
           <Text style={[type.heading, { color: colors.textMuted, fontSize: 18 }]}>
             Your premium bouldering ledger.
           </Text>
+        </View>
+
+        <View
+          style={{
+            width: '100%',
+            height: 240,
+            borderRadius: radius.xl,
+            borderWidth: 1,
+            borderColor: colors.glassBorder,
+            overflow: 'hidden',
+            backgroundColor: colors.materialBase,
+          }}
+        >
+          <Image
+            source={require('../assets/illustrations/welcome-hero.jpg')}
+            style={{ width: '100%', height: '100%' }}
+            resizeMode="cover"
+            accessible={false}
+          />
         </View>
 
         <View style={{ gap: space.md }}>

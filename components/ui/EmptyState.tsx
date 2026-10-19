@@ -56,8 +56,15 @@ export function EmptyState({
       {illustration ? (
         <Image
           source={illustration}
-          style={{ width: 160, height: 120, borderRadius: radius.xl, marginBottom: space.md }}
-          resizeMode="contain"
+          style={{
+            width: 176,
+            height: 132,
+            borderRadius: radius.lg,
+            borderWidth: 1,
+            borderColor: colors.glassBorder,
+            marginBottom: space.md,
+          }}
+          resizeMode="cover"
           accessible={false}
           aria-hidden
         />

@@ -361,18 +361,21 @@ export default function ProjectsScreen() {
             </View>
           ) : activeTab === 'in_progress' ? (
             <EmptyState 
+              illustration={require('../assets/illustrations/empty-projects.jpg')}
               icon={<Flag size={24} color={colors.textMuted} />} 
               title="No active projects" 
               body="Add something to work on next." 
             />
           ) : activeTab === 'sent' ? (
             <EmptyState 
+              illustration={require('../assets/illustrations/empty-sent.jpg')}
               icon={<Flag size={24} color={colors.textMuted} />} 
               title="No sent projects" 
               body="Your first send will show up here." 
             />
           ) : (
             <EmptyState 
+              illustration={require('../assets/illustrations/empty-projects.jpg')}
               icon={<Archive size={24} color={colors.textMuted} />} 
               title="No archived projects" 
               body="Projects you archive will appear here." 

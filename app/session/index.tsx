@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   View,
@@ -13,6 +12,7 @@ import Reanimated, { FadeInDown, FadeOutUp } from 'react-native-reanimated';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import { LinearGradient } from 'expo-linear-gradient';
 import {
   ChevronLeft,
   Plus,
@@ -27,10 +27,13 @@ import {
 } from 'lucide-react-native';
 import { PrimaryButton } from '../../components/ui/PrimaryButton';
 import { ClimbRow } from '../../components/ui/ClimbRow';
-import { Card } from '../../components/ui/Card';
+import { GradePill } from '../../components/ui/GradePill';
 import { SectionHeader } from '../../components/ui/SectionHeader';
 import { LogSheet } from '../../components/session/LogSheet';
-import { RestTimerPickerSheet, formatRestDuration } from '../../components/session/RestTimerPickerSheet';
+import {
+  RestTimerPickerSheet,
+  formatRestDuration,
+} from '../../components/session/RestTimerPickerSheet';
 import { UndoToast } from '../../components/ui/UndoToast';
 import { ScalePressable } from '../../components/ui/ScalePressable';
 import { EmptyState } from '../../components/ui/EmptyState';
@@ -83,105 +86,21 @@ function formatRestRemaining(ms: number) {
   return `${m}:${s.toString().padStart(2, '0')}`;
 }
 
-// Telemetry Live Timer Component
-const LiveTimer = React.memo(({ startTime, textStyle }: { startTime: number; textStyle: any }) => {
-  const [elapsed, setElapsed] = useState(Date.now() - startTime);
+const LiveTimer = React.memo(
+  ({ startTime, textStyle }: { startTime: number; textStyle: any }) => {
+    const [elapsed, setElapsed] = useState(Date.now() - startTime);
 
-  useEffect(() => {
-    const interval = setInterval(() => setElapsed(Date.now() - startTime), 1000);
-    return () => clearInterval(interval);
-  }, [startTime]);
+    useEffect(() => {
+      const interval = setInterval(() => setElapsed(Date.now() - startTime), 1000);
+      return () => clearInterval(interval);
+    }, [startTime]);
 
-  return <Text style={textStyle}>{formatActiveDuration(elapsed)}</Text>;
-});
+    return <Text style={textStyle}>{formatActiveDuration(elapsed)}</Text>;
+  }
+);
 LiveTimer.displayName = 'LiveTimer';
 
-// Telemetry Bento Stat Tile
-function TelemetryBentoTile({
-  label,
-  value,
-  sublabel,
-  highlightAnim,
-}: {
-  label: string;
-  value: string | number;
-  sublabel?: string;
-  highlightAnim?: Animated.Value;
-}) {
-  const { colors, type, radius, space } = useTheme();
-
-  const bg = highlightAnim
-    ? highlightAnim.interpolate({
-        inputRange: [0, 1],
-        outputRange: [colors.card, colors.accentSoft],
-      })
-    : colors.card;
-
-  return (
-    <Animated.View
-      style={{
-        flex: 1,
-        backgroundColor: bg,
-        borderRadius: radius.md,
-        borderWidth: 1,
-        borderColor: colors.border,
-        minHeight: 76,
-        paddingHorizontal: space.sm,
-        paddingVertical: space.sm,
-        alignItems: 'center',
-        justifyContent: 'center',
-      }}
-    >
-      <Text
-        style={[
-          type.stat,
-          {
-            color: colors.text,
-            fontSize: 22,
-            lineHeight: 26,
-          },
-        ]}
-        numberOfLines={1}
-        adjustsFontSizeToFit
-      >
-        {value}
-      </Text>
-      <Text
-        style={[
-          type.label,
-          {
-            color: colors.textMuted,
-            fontSize: 10,
-            letterSpacing: 0.8,
-            marginTop: 2,
-          },
-        ]}
-        numberOfLines={1}
-        adjustsFontSizeToFit
-      >
-        {label}
-      </Text>
-      {sublabel ? (
-        <Text
-          style={[
-            type.caption,
-            {
-              color: colors.textMuted,
-              fontSize: 9,
-              marginTop: 1,
-              opacity: 0.8,
-            },
-          ]}
-          numberOfLines={1}
-        >
-          {sublabel}
-        </Text>
-      ) : null}
-    </Animated.View>
-  );
-}
-
-// Heavy Sticky Bottom Action Bar with Rest Toggle + Visible Rest Controls + LOG CLIMB button
+// Optical Glass Sticky Bottom Action Dock with Rest Progress Bar + LOG CLIMB CTA
 function StickyActionBar({
   onOpenLogSheet,
   restRemaining,
@@ -206,6 +125,10 @@ function StickyActionBar({
   const { colors, radius, type, space, shadow } = useTheme();
   const insets = useSafeAreaInsets();
   const hasActiveRest = isRestRunning || restRemaining > 0 || isRestComplete;
+  const totalRestMs = Math.max(1000, defaultRestSeconds * 1000);
+  const restProgress = isRestComplete
+    ? 1
+    : Math.min(1, Math.max(0, 1 - restRemaining / totalRestMs));
 
   return (
     <View
@@ -214,17 +137,55 @@ function StickyActionBar({
         bottom: 0,
         left: 0,
         right: 0,
-        backgroundColor: '#000000',
+        backgroundColor: colors.materialBase,
         paddingHorizontal: space.lg,
-        paddingTop: space.sm,
+        paddingTop: space.md,
         paddingBottom: Math.max(insets.bottom, space.md),
-        gap: space.xs,
+        gap: space.sm,
         borderTopWidth: 1,
-        borderTopColor: colors.border,
+        borderTopColor: colors.glassBorder,
+        overflow: 'hidden',
         ...shadow.floating,
       }}
     >
-      {/* Visible 1-handed Rest Timer quick actions when resting or complete */}
+      {/* Top Specular Glass Sheen */}
+      <LinearGradient
+        colors={[colors.glassHighlight, 'transparent']}
+        start={{ x: 0.5, y: 0 }}
+        end={{ x: 0.5, y: 1 }}
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          height: 36,
+        }}
+        pointerEvents="none"
+      />
+
+      {/* Live Rest Progress Bar along top edge when resting */}
+      {hasActiveRest && (
+        <View
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            height: 3,
+            backgroundColor: colors.chartGhost,
+          }}
+        >
+          <View
+            style={{
+              width: `${Math.round(restProgress * 100)}%`,
+              height: '100%',
+              backgroundColor: isRestComplete ? colors.flash : colors.accent,
+            }}
+          />
+        </View>
+      )}
+
+      {/* 1-Handed Rest Timer Quick Actions when resting or complete */}
       {hasActiveRest && (
         <View
           style={{
@@ -232,16 +193,34 @@ function StickyActionBar({
             alignItems: 'center',
             justifyContent: 'space-between',
             paddingHorizontal: space.xs,
-            paddingBottom: 2,
           }}
         >
-          <Text style={[type.caption, { color: isRestComplete ? colors.flashText : colors.accentText, fontWeight: '600' }]}>
-            {isRestComplete
-              ? 'Rest complete — ready for next burn'
-              : isRestRunning
-              ? `Resting · ${formatRestRemaining(restRemaining)} left`
-              : `Rest paused · ${formatRestRemaining(restRemaining)} left`}
-          </Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <View
+              style={{
+                width: 6,
+                height: 6,
+                borderRadius: 3,
+                backgroundColor: isRestComplete ? colors.flash : colors.accent,
+              }}
+            />
+            <Text
+              style={[
+                type.caption,
+                {
+                  color: isRestComplete ? colors.flashText : colors.accentText,
+                  fontWeight: '700',
+                },
+              ]}
+            >
+              {isRestComplete
+                ? 'Rest complete — ready for next burn'
+                : isRestRunning
+                ? `Resting · ${formatRestRemaining(restRemaining)} left`
+                : `Rest paused · ${formatRestRemaining(restRemaining)} left`}
+            </Text>
+          </View>
+
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.xs }}>
             {!isRestComplete && (
               <ScalePressable
@@ -257,7 +236,7 @@ function StickyActionBar({
                   borderRadius: radius.pill,
                   backgroundColor: colors.cardMuted,
                   borderWidth: 1,
-                  borderColor: colors.border,
+                  borderColor: colors.glassBorder,
                 }}
               >
                 <Text style={[type.caption, { color: colors.text, fontWeight: '700' }]}>+30s</Text>
@@ -283,14 +262,16 @@ function StickyActionBar({
               }}
             >
               <RotateCcw size={12} color={colors.textMuted} />
-              <Text style={[type.caption, { color: colors.textMuted, fontWeight: '600' }]}>Reset</Text>
+              <Text style={[type.caption, { color: colors.textMuted, fontWeight: '600' }]}>
+                Reset
+              </Text>
             </ScalePressable>
           </View>
         </View>
       )}
 
       <View style={{ flexDirection: 'row', gap: space.md, alignItems: 'center' }}>
-        {/* Secondary REST Toggle */}
+        {/* Secondary REST Toggle Capsule */}
         <ScalePressable
           onPress={onToggleRest}
           onLongPress={onOpenRestPicker}
@@ -300,14 +281,14 @@ function StickyActionBar({
           accessibilityLabel="Rest Timer"
           style={{
             flex: 0.85,
-            height: 56,
-            minHeight: 56,
+            height: 54,
+            minHeight: 54,
             borderRadius: radius.pill,
             backgroundColor: isRestComplete
-              ? 'rgba(110, 231, 86, 0.12)'
+              ? colors.flashSoft
               : isRestRunning
-              ? 'rgba(142, 124, 255, 0.15)'
-              : colors.materialBase,
+              ? colors.accentSoft
+              : colors.cardMuted,
             flexDirection: 'row',
             alignItems: 'center',
             justifyContent: 'center',
@@ -318,7 +299,7 @@ function StickyActionBar({
               ? colors.flash
               : isRestRunning
               ? colors.accent
-              : colors.border,
+              : colors.glassBorder,
           }}
         >
           {isRestComplete ? (
@@ -338,8 +319,8 @@ function StickyActionBar({
                     : isRestRunning
                     ? colors.accentText
                     : colors.textMuted,
-                  fontSize: 10,
-                  letterSpacing: 0.8,
+                  fontSize: 9,
+                  letterSpacing: 1.2,
                 },
               ]}
             >
@@ -354,7 +335,8 @@ function StickyActionBar({
                     : isRestRunning
                     ? colors.accentText
                     : colors.text,
-                  fontSize: 14,
+                  fontSize: 15,
+                  fontWeight: '700',
                   fontVariant: ['tabular-nums'],
                 },
               ]}
@@ -368,7 +350,7 @@ function StickyActionBar({
           </View>
         </ScalePressable>
 
-        {/* Massive + LOG CLIMB PrimaryButton */}
+        {/* Primary + LOG CLIMB CTA */}
         <View style={{ flex: 1.15 }}>
           <PrimaryButton
             testID="log-climb-btn"
@@ -384,7 +366,7 @@ function StickyActionBar({
 
 export default function ActiveSessionScreen() {
   const router = useRouter();
-  const { colors, space, type, radius } = useTheme();
+  const { colors, space, type, radius, shadow, gradeBand } = useTheme();
   const insets = useSafeAreaInsets();
 
   const session = useActiveSession();
@@ -422,7 +404,6 @@ export default function ActiveSessionScreen() {
   const [restRemaining, setRestRemaining] = useState(0);
   const pulseAnim = useRef(new Animated.Value(0)).current;
 
-  // Hydrate user's preferred rest timer length
   useEffect(() => {
     AsyncStorage.getItem(REST_TIMER_KEY)
       .then((val) => {
@@ -444,13 +425,11 @@ export default function ActiveSessionScreen() {
     }
   };
 
-  // Filter out soft-deleted climbs from UI display
   const activeClimbs = useMemo(
     () => climbs.filter((c: any) => c.deleted_at === null),
     [climbs]
   );
 
-  // Projects strip: in-progress projects at the current gym (or all in-progress if none match gym)
   const activeProjects = useMemo(() => {
     const inProg = allProjects.filter((p: any) => p.status === 'in_progress');
     if (!session?.gymName) return inProg;
@@ -467,9 +446,8 @@ export default function ActiveSessionScreen() {
     [activeClimbs]
   );
 
-  const sendRate = activeClimbs.length > 0
-    ? Math.round((sends.length / activeClimbs.length) * 100)
-    : 0;
+  const sendRate =
+    activeClimbs.length > 0 ? Math.round((sends.length / activeClimbs.length) * 100) : 0;
 
   const hardestIndex = useMemo(() => {
     return sends.reduce((max: number, c: any) => Math.max(max, c.grade_index ?? 0), 0);
@@ -486,7 +464,6 @@ export default function ActiveSessionScreen() {
     }
   }, [activeProjectTarget]);
 
-  // Keep iOS Live Activity (Dynamic Island + Lock Screen) synced with session telemetry
   useEffect(() => {
     try {
       const { liveActivityManager } = require('../../services/liveActivity');
@@ -494,7 +471,6 @@ export default function ActiveSessionScreen() {
     } catch {}
   }, [session?.id, session?.gymName, activeClimbs.length, sends.length]);
 
-  // Rest Timer calculation
   useEffect(() => {
     if (!restTimerEndTime || !isRestTimerRunning) {
       if (restTimerEndTime && !isRestTimerRunning) {
@@ -530,10 +506,8 @@ export default function ActiveSessionScreen() {
     if (!restTimerEndTime || restRemaining === 0) {
       startFreshRest();
     } else if (isRestTimerRunning) {
-      // Pause
       setRestTimer(Date.now() + restRemaining, false);
     } else {
-      // Resume
       setRestTimer(Date.now() + restRemaining, true);
     }
   };
@@ -601,7 +575,12 @@ export default function ActiveSessionScreen() {
           setGlobalHardest(Math.max(globalHardest ?? 0, c.grade_index));
           Animated.sequence([
             Animated.timing(pulseAnim, { toValue: 1, duration: 200, useNativeDriver: false }),
-            Animated.timing(pulseAnim, { toValue: 0, duration: 400, delay: 600, useNativeDriver: false }),
+            Animated.timing(pulseAnim, {
+              toValue: 0,
+              duration: 400,
+              delay: 600,
+              useNativeDriver: false,
+            }),
           ]).start();
         } else if (shouldFireSmallCelebration(c.result)) {
           triggerSmall();
@@ -653,6 +632,7 @@ export default function ActiveSessionScreen() {
         </ScalePressable>
         <EmptyState
           asCard
+          illustration={require('../../assets/illustrations/empty-sessions.jpg')}
           icon={<Zap size={28} color={colors.accent} />}
           title="No Active Session"
           body="You don't have an ongoing climbing session right now. Start a new session to record your climbs and telemetry."
@@ -719,7 +699,6 @@ export default function ActiveSessionScreen() {
       setActiveProjectTarget(null);
     }
 
-    // Auto-start rest timer with user's configured duration
     startFreshRest();
   };
 
@@ -834,6 +813,10 @@ export default function ActiveSessionScreen() {
   };
 
   const lastClimb = activeClimbs.length > 0 ? activeClimbs[activeClimbs.length - 1] : null;
+  const quickGrades: string[] =
+    recentGrades.length > 0
+      ? recentGrades.map((r: any) => (typeof r === 'string' ? r : r.gradeRaw))
+      : ['V0', 'V1', 'V2', 'V3', 'V4', 'V5', 'V6', 'V7', 'V8'];
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
@@ -843,19 +826,19 @@ export default function ActiveSessionScreen() {
           onPress={() => setShowMenu(false)}
         />
       )}
+
       {/* Top Header Bar */}
       <View
         style={{
           paddingTop: Math.max(insets.top, space.lg),
           paddingHorizontal: space.lg,
-          paddingBottom: space.xs,
+          paddingBottom: space.sm,
           flexDirection: 'row',
           alignItems: 'center',
           justifyContent: 'space-between',
           zIndex: 10,
         }}
       >
-        {/* Left: Back */}
         <ScalePressable
           onPress={() => router.back()}
           haptic="light"
@@ -877,9 +860,25 @@ export default function ActiveSessionScreen() {
           <ChevronLeft size={22} color={colors.text} />
         </ScalePressable>
 
-        {/* Center: Gym Name */}
+        {/* Center: Live Gym Title */}
         <View style={{ alignItems: 'center', flex: 1, paddingHorizontal: space.sm }}>
-          <Text style={[type.heading, { color: colors.text, fontSize: 16 }]} numberOfLines={1}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 1 }}>
+            <View
+              style={{
+                width: 6,
+                height: 6,
+                borderRadius: 3,
+                backgroundColor: colors.flash,
+              }}
+            />
+            <Text style={[type.label, { color: colors.flashText, fontSize: 9, letterSpacing: 1.8 }]}>
+              LIVE SESSION
+            </Text>
+          </View>
+          <Text
+            style={[type.heading, { color: colors.text, fontSize: 17, fontWeight: '700' }]}
+            numberOfLines={1}
+          >
             {session.gymName || 'Session'}
           </Text>
         </View>
@@ -917,14 +916,16 @@ export default function ActiveSessionScreen() {
               height: 44,
               paddingHorizontal: 16,
               borderRadius: radius.md,
-              backgroundColor: colors.cardMuted,
+              backgroundColor: colors.accentSoft,
               borderWidth: 1,
-              borderColor: colors.border,
+              borderColor: colors.glassBorder,
               alignItems: 'center',
               justifyContent: 'center',
             }}
           >
-            <Text style={[type.heading, { color: colors.text, fontSize: 14, fontWeight: '600' }]}>End</Text>
+            <Text style={[type.heading, { color: colors.accentText, fontSize: 14, fontWeight: '700' }]}>
+              End
+            </Text>
           </ScalePressable>
         </View>
 
@@ -934,10 +935,10 @@ export default function ActiveSessionScreen() {
             style={[
               styles.menu,
               {
-                backgroundColor: colors.card,
-                borderColor: colors.border,
+                backgroundColor: colors.materialBase,
+                borderColor: colors.glassBorder,
                 borderRadius: radius.md,
-                top: insets.top + 48,
+                top: insets.top + 52,
                 right: space.lg,
               },
             ]}
@@ -995,73 +996,73 @@ export default function ActiveSessionScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{
           paddingHorizontal: space.lg,
-          paddingTop: space.sm,
-          paddingBottom: 190, // Generous padding to clear sticky action bar & toast
+          paddingTop: space.xs,
+          paddingBottom: 195,
           gap: space.lg,
         }}
       >
-        {/* 1. Hero Telemetry Card — Live Elapsed Timer */}
-        <Card style={{ alignItems: 'center', paddingVertical: space.xl }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.xs, marginBottom: space.xs }}>
+        {/* 1. Hero Component: Chronograph Telemetry Deck */}
+        <View
+          style={{
+            backgroundColor: colors.materialBase,
+            borderRadius: radius.xl,
+            borderWidth: 1,
+            borderColor: colors.glassBorder,
+            padding: space.lg,
+            overflow: 'hidden',
+            position: 'relative',
+            ...shadow.floating,
+          }}
+        >
+          <LinearGradient
+            colors={[colors.accentSoft, 'transparent']}
+            start={{ x: 0.5, y: 0 }}
+            end={{ x: 0.5, y: 1 }}
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              height: 90,
+            }}
+            pointerEvents="none"
+          />
+
+          {/* Top Bar inside Hero Deck: Live Status Pill + Rest Config Pill */}
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              marginBottom: space.md,
+            }}
+          >
             <View
               style={{
-                width: 8,
-                height: 8,
-                borderRadius: 4,
-                backgroundColor: colors.flash,
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 6,
+                backgroundColor: colors.flashSoft,
+                paddingHorizontal: 10,
+                paddingVertical: 4,
+                borderRadius: radius.pill,
+                borderWidth: 1,
+                borderColor: colors.flash,
               }}
-            />
-            <Text style={[type.label, { color: colors.textMuted }]}>
-              LIVE TELEMETRY
-            </Text>
-          </View>
-          <LiveTimer
-            startTime={session.startTime}
-            textStyle={[
-              type.stat,
-              {
-                color: colors.textWhitePrimary,
-                fontSize: 44,
-                lineHeight: 50,
-                letterSpacing: -0.5,
-                fontWeight: '200',
-                fontVariant: ['tabular-nums'],
-              },
-            ]}
-          />
-        </Card>
+            >
+              <View
+                style={{
+                  width: 6,
+                  height: 6,
+                  borderRadius: 3,
+                  backgroundColor: colors.flash,
+                }}
+              />
+              <Text style={[type.label, { color: colors.flashText, fontSize: 9, letterSpacing: 1.5 }]}>
+                LIVE TELEMETRY
+              </Text>
+            </View>
 
-        {/* 2. Telemetry Bento Grid — Volume, Send Rate, Flashes, Hardest */}
-        <View style={{ flexDirection: 'row', gap: space.sm }}>
-          <TelemetryBentoTile
-            label="VOLUME"
-            value={activeClimbs.length}
-            sublabel="climbs"
-          />
-          <TelemetryBentoTile
-            label="SEND RATE"
-            value={`${sendRate}%`}
-            sublabel={`${sends.length} sent`}
-          />
-          <TelemetryBentoTile
-            label="FLASHES"
-            value={flashes.length}
-            sublabel="flashed"
-          />
-          <TelemetryBentoTile
-            label="HARDEST"
-            value={hardestLabel}
-            sublabel={sends.length > 0 ? 'top send' : 'no sends'}
-            highlightAnim={pulseAnim}
-          />
-        </View>
-
-        {/* 3. Quick Grade Strip for 1-Tap Grade Pre-Selection */}
-        <View style={{ gap: space.xs }}>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-            <Text style={[type.caption, { color: colors.textMuted, letterSpacing: 1.2, textTransform: 'uppercase', fontSize: 10, fontWeight: '600' }]}>
-              QUICK GRADE LOG
-            </Text>
             <ScalePressable
               onPress={() => {
                 triggerHaptic('light');
@@ -1070,59 +1071,245 @@ export default function ActiveSessionScreen() {
               haptic="light"
               activeScale={0.95}
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 5,
+                backgroundColor: colors.cardMuted,
+                paddingHorizontal: 10,
+                paddingVertical: 4,
+                borderRadius: radius.pill,
+                borderWidth: 1,
+                borderColor: colors.border,
+              }}
             >
-              <SlidersHorizontal size={12} color={colors.textMuted} />
-              <Text style={[type.caption, { color: colors.textMuted, fontSize: 11 }]}>
+              <SlidersHorizontal size={11} color={colors.accentText} />
+              <Text style={[type.caption, { color: colors.textWhiteSecondary, fontSize: 11, fontWeight: '600' }]}>
                 Rest: {formatRestDuration(defaultRestSeconds)}
               </Text>
             </ScalePressable>
           </View>
+
+          {/* Centerpiece Live Elapsed Clock */}
+          <View style={{ alignItems: 'center', paddingVertical: space.sm }}>
+            <LiveTimer
+              startTime={session.startTime}
+              textStyle={[
+                type.stat,
+                {
+                  color: colors.textWhitePrimary,
+                  fontSize: 48,
+                  lineHeight: 54,
+                  letterSpacing: -1,
+                  fontWeight: '700',
+                  fontVariant: ['tabular-nums'],
+                },
+              ]}
+            />
+            <Text
+              style={[
+                type.label,
+                { color: colors.textMuted, fontSize: 9, letterSpacing: 2.2, marginTop: 2 },
+              ]}
+            >
+              ELAPSED WALL TIME
+            </Text>
+          </View>
+
+          {/* Integrated 4-Column Telemetry Bento Strip */}
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              backgroundColor: colors.cardMuted,
+              borderRadius: radius.lg,
+              borderWidth: 1,
+              borderColor: colors.border,
+              paddingVertical: space.md,
+              paddingHorizontal: space.sm,
+              marginTop: space.md,
+            }}
+          >
+            {/* Volume */}
+            <View style={{ flex: 1, alignItems: 'center' }}>
+              <Text
+                style={[
+                  type.statSm,
+                  { color: colors.textWhitePrimary, fontSize: 22, fontWeight: '700' },
+                ]}
+              >
+                {activeClimbs.length}
+              </Text>
+              <Text
+                style={[
+                  type.label,
+                  { color: colors.textMuted, fontSize: 9, letterSpacing: 1.2, marginTop: 2 },
+                ]}
+              >
+                VOLUME
+              </Text>
+            </View>
+
+            <View style={{ width: 1, height: 28, backgroundColor: colors.border }} />
+
+            {/* Send Rate */}
+            <View style={{ flex: 1, alignItems: 'center' }}>
+              <Text
+                style={[
+                  type.statSm,
+                  { color: colors.textWhitePrimary, fontSize: 22, fontWeight: '700' },
+                ]}
+              >
+                {sendRate}%
+              </Text>
+              <Text
+                style={[
+                  type.label,
+                  { color: colors.textMuted, fontSize: 9, letterSpacing: 1.2, marginTop: 2 },
+                ]}
+              >
+                {sends.length} SENT
+              </Text>
+            </View>
+
+            <View style={{ width: 1, height: 28, backgroundColor: colors.border }} />
+
+            {/* Flashes */}
+            <View style={{ flex: 1, alignItems: 'center' }}>
+              <Text
+                style={[
+                  type.statSm,
+                  {
+                    color: flashes.length > 0 ? colors.flashText : colors.textWhitePrimary,
+                    fontSize: 22,
+                    fontWeight: '700',
+                  },
+                ]}
+              >
+                {flashes.length}
+              </Text>
+              <Text
+                style={[
+                  type.label,
+                  { color: colors.textMuted, fontSize: 9, letterSpacing: 1.2, marginTop: 2 },
+                ]}
+              >
+                FLASHES
+              </Text>
+            </View>
+
+            <View style={{ width: 1, height: 28, backgroundColor: colors.border }} />
+
+            {/* Hardest */}
+            <View style={{ flex: 1, alignItems: 'center' }}>
+              {sends.length > 0 && hardestLabel !== '–' ? (
+                <GradePill gradeIndex={hardestIndex} label={hardestLabel} />
+              ) : (
+                <Text
+                  style={[
+                    type.statSm,
+                    { color: colors.textMuted, fontSize: 20, fontWeight: '700' },
+                  ]}
+                >
+                  –
+                </Text>
+              )}
+              <Text
+                style={[
+                  type.label,
+                  { color: colors.textMuted, fontSize: 9, letterSpacing: 1.2, marginTop: 3 },
+                ]}
+              >
+                HARDEST
+              </Text>
+            </View>
+          </View>
+        </View>
+
+        {/* 2. Signature Grade-Band Quick Log Strip */}
+        <View style={{ gap: space.sm }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Text
+              style={[
+                type.label,
+                {
+                  color: colors.textMuted,
+                  letterSpacing: 1.8,
+                  fontSize: 10,
+                },
+              ]}
+            >
+              1-TAP GRADE LOG
+            </Text>
+            <Text style={[type.caption, { color: colors.textMuted, fontSize: 11 }]}>
+              Tap grade to log climb
+            </Text>
+          </View>
           <Reanimated.ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
-            contentContainerStyle={{ gap: space.xs, paddingVertical: 2 }}
+            style={{ marginHorizontal: -space.lg }}
+            contentContainerStyle={{ paddingHorizontal: space.lg, gap: space.xs }}
           >
-            {Array.from(
-              new Set(['V0', 'V1', 'V2', 'V3', 'V4', 'V5', 'V6', ...recentGrades.map((rg: any) => rg.gradeRaw)])
-            ).map((g: string) => (
-              <ScalePressable
-                key={g}
-                onPress={() => {
-                  triggerHaptic('light');
-                  setSelectedQuickGrade(g);
-                  setEditingClimb(null);
-                  setLogSheetOpen(true);
-                }}
-                haptic="light"
-                activeScale={0.92}
-                style={{
-                  height: 40,
-                  minWidth: 48,
-                  paddingHorizontal: space.md,
-                  borderRadius: radius.pill,
-                  backgroundColor: colors.card,
-                  borderWidth: 1,
-                  borderColor: colors.border,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                <Text style={[type.heading, { color: colors.text, fontSize: 13, fontWeight: '600' }]}>
-                  {g}
-                </Text>
-              </ScalePressable>
-            ))}
+            {quickGrades.map((g: string) => {
+              const gNum = parseInt(String(g).replace(/[^0-9]/g, ''), 10);
+              const gBand = gradeBand(isNaN(gNum) ? 0 : gNum);
+              return (
+                <ScalePressable
+                  key={g}
+                  onPress={() => {
+                    triggerHaptic('selection');
+                    setEditingClimb(null);
+                    setSelectedQuickGrade(g);
+                    setLogSheetOpen(true);
+                  }}
+                  haptic="selection"
+                  activeScale={0.94}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Quick log ${g}`}
+                  style={{
+                    height: 42,
+                    minWidth: 58,
+                    paddingHorizontal: 14,
+                    borderRadius: radius.pill,
+                    backgroundColor: colors.materialBase,
+                    borderWidth: 1,
+                    borderColor: colors.glassBorder,
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 6,
+                  }}
+                >
+                  <View
+                    style={{
+                      width: 6,
+                      height: 6,
+                      borderRadius: 3,
+                      backgroundColor: gBand.solid,
+                    }}
+                  />
+                  <Text
+                    style={[
+                      type.heading,
+                      { color: colors.text, fontSize: 14, fontWeight: '700' },
+                    ]}
+                  >
+                    {g}
+                  </Text>
+                </ScalePressable>
+              );
+            })}
           </Reanimated.ScrollView>
         </View>
 
-        {/* 4. Non-blocking "Make this a project?" prompt after logging an Attempt */}
+        {/* 3. Non-blocking "Make this a project?" prompt after logging an Attempt */}
         {projectCandidate && (
           <Reanimated.View
             entering={FadeInDown.duration(180)}
             exiting={FadeOutUp.duration(150)}
             style={{
-              backgroundColor: colors.card,
+              backgroundColor: colors.materialBase,
               borderRadius: radius.lg,
               borderWidth: 1,
               borderColor: colors.accent,
@@ -1173,7 +1360,12 @@ export default function ActiveSessionScreen() {
                   justifyContent: 'center',
                 }}
               >
-                <Text style={[type.control, { color: colors.textOnAccent, fontWeight: '700', fontSize: 13 }]}>
+                <Text
+                  style={[
+                    type.control,
+                    { color: colors.textOnAccent, fontWeight: '700', fontSize: 13 },
+                  ]}
+                >
                   Make project
                 </Text>
               </ScalePressable>
@@ -1192,7 +1384,7 @@ export default function ActiveSessionScreen() {
           </Reanimated.View>
         )}
 
-        {/* 5. Fast Repeat / +1 Attempt Quick Action */}
+        {/* 4. Fast Repeat / +1 Attempt Quick Action */}
         {lastClimb && (
           <ScalePressable
             onPress={() => {
@@ -1216,10 +1408,10 @@ export default function ActiveSessionScreen() {
             style={{
               height: 52,
               minHeight: 52,
-              backgroundColor: colors.card,
-              borderRadius: radius.md,
+              backgroundColor: colors.materialBase,
+              borderRadius: radius.lg,
               borderWidth: 1,
-              borderColor: colors.border,
+              borderColor: colors.glassBorder,
               flexDirection: 'row',
               alignItems: 'center',
               justifyContent: 'center',
@@ -1229,12 +1421,15 @@ export default function ActiveSessionScreen() {
           >
             <Plus size={18} color={colors.attemptText} />
             <Text style={[type.heading, { color: colors.text, fontSize: 15, fontWeight: '600' }]}>
-              +1 Attempt on {lastClimb.projectTitle ? `${lastClimb.projectTitle} (${lastClimb.grade_raw})` : lastClimb.grade_raw}
+              +1 Attempt on{' '}
+              {lastClimb.projectTitle
+                ? `${lastClimb.projectTitle} (${lastClimb.grade_raw})`
+                : lastClimb.grade_raw}
             </Text>
           </ScalePressable>
         )}
 
-        {/* 6. Active Projects Strip */}
+        {/* 5. Active Projects Strip */}
         {activeProjects.length > 0 && (
           <View>
             <SectionHeader title="Active Gym Projects" />
@@ -1245,10 +1440,7 @@ export default function ActiveSessionScreen() {
             >
               <View style={{ flexDirection: 'row', paddingHorizontal: space.lg, gap: space.sm }}>
                 {activeProjects.map((p: any) => (
-                  <View
-                    key={p.id}
-                    style={{ width: 260 }}
-                  >
+                  <View key={p.id} style={{ width: 260 }}>
                     <ProjectCard
                       project={p}
                       onLogAttempt={() => {
@@ -1270,12 +1462,18 @@ export default function ActiveSessionScreen() {
           </View>
         )}
 
-        {/* 7. Session Insights */}
+        {/* 6. Session Insights */}
         {activeClimbs.length > 0 && <SessionInsights climbs={activeClimbs} />}
 
-        {/* 8. Climbs Stream */}
+        {/* 7. Climbs Stream */}
         <View testID="climb-list" style={{ gap: space.sm }}>
-          <SectionHeader title={activeClimbs.length > 0 ? `Climb Stream (${activeClimbs.length})` : 'Climb Stream'} />
+          <SectionHeader
+            title={
+              activeClimbs.length > 0
+                ? `Climb Stream (${activeClimbs.length})`
+                : 'Climb Stream'
+            }
+          />
 
           {[...activeClimbs]
             .sort((a: any, b: any) => b.logged_at - a.logged_at)
@@ -1286,13 +1484,16 @@ export default function ActiveSessionScreen() {
                 onEdit={handleEditClimb}
                 onDelete={handleDeleteClimb}
                 animateEntry={Date.now() - climb.logged_at < 5000}
-                isNewFlash={climb.result === 'flash' && Date.now() - climb.logged_at < 5000}
+                isNewFlash={
+                  climb.result === 'flash' && Date.now() - climb.logged_at < 5000
+                }
               />
             ))}
 
           {activeClimbs.length === 0 && (
             <EmptyState
               asCard
+              illustration={require('../../assets/illustrations/empty-sessions.jpg')}
               icon={<Zap size={24} color={colors.accent} />}
               title="Ready to send?"
               body="Tap a quick grade above or + LOG CLIMB below to record your first climb."
@@ -1301,7 +1502,7 @@ export default function ActiveSessionScreen() {
         </View>
       </Reanimated.ScrollView>
 
-      {/* Heavy, Sticky Bottom Action Bar with REST Toggle and + LOG CLIMB */}
+      {/* Optical Glass Sticky Bottom Action Dock */}
       <StickyActionBar
         onOpenLogSheet={() => {
           setEditingClimb(null);
@@ -1329,50 +1530,67 @@ export default function ActiveSessionScreen() {
           }
         }}
         onSave={handleSaveLog}
-        initialGrade={editingClimb?.grade || selectedQuickGrade || activeProjectTarget?.gradeRaw || lastClimb?.grade_raw || recentGrades[0]?.gradeRaw || 'V4'}
-        initialResult={editingClimb?.result || (activeProjectTarget ? 'attempt' : 'top')}
-        initialAttempts={editingClimb?.attempts || 1}
-        initialNotes={editingClimb?.notes || ''}
-        initialFailureReason={editingClimb?.failureReason || null}
-        lockGrade={Boolean(editingClimb && editingClimb.projectId)}
-        disableFlash={Boolean(
-          (activeProjectTarget && ((activeProjectTarget.attempts || 0) > 0 || (activeProjectTarget.burns || 0) > 0)) ||
-          (editingClimb && (editingClimb.attempts || 1) > 1)
-        )}
-        title={activeProjectTarget ? `Log Attempt • ${activeProjectTarget.title}` : editingClimb ? 'Edit Climb' : 'Log Climb'}
-        projects={editingClimb ? [] : activeProjects}
-        selectedProject={activeProjectTarget}
-        onSelectProject={setActiveProjectTarget}
+        initialGrade={
+          editingClimb?.grade ||
+          selectedQuickGrade ||
+          activeProjectTarget?.gradeRaw ||
+          (activeClimbs.length > 0
+            ? activeClimbs[activeClimbs.length - 1].grade_raw
+            : undefined)
+        }
+        initialResult={editingClimb?.result || (activeProjectTarget ? 'attempt' : undefined)}
+        initialAttempts={editingClimb?.attempts}
+        initialNotes={editingClimb?.notes}
+        initialFailureReason={editingClimb?.failureReason}
+        selectedProject={
+          editingClimb?.projectId
+            ? allProjects.find((p: any) => p.id === editingClimb.projectId)
+            : activeProjectTarget
+        }
+        projects={activeProjects}
       />
 
       {/* Rest Timer Duration Picker Sheet */}
       <RestTimerPickerSheet
         visible={isRestPickerOpen}
         initialSeconds={defaultRestSeconds}
-        onClose={() => setIsRestPickerOpen(false)}
         onSave={handleSaveDefaultRest}
+        onClose={() => setIsRestPickerOpen(false)}
       />
 
-      {/* Undo Toast — positioned cleanly above the sticky action bar */}
+      {/* Undo Toast */}
       <UndoToast
         visible={!!lastAction}
-        bottomOffset={Math.max(insets.bottom, space.md) + 84}
+        bottomOffset={hasActiveRest(isRestTimerRunning, restRemaining, isRestComplete) ? 128 : 96}
         message={
           lastAction?.message ||
           (lastAction?.type === 'logged' ? 'Climb logged' : 'Climb deleted')
         }
-        onUndo={handleUndoAction}
+        onUndo={lastAction?.type === 'project_created' ? undefined : handleUndoAction}
         onDismiss={() => setLastAction(null)}
       />
     </View>
   );
 }
 
+function hasActiveRest(
+  isRunning: boolean,
+  remaining: number,
+  isComplete: boolean
+): boolean {
+  return isRunning || remaining > 0 || isComplete;
+}
+
 const styles = StyleSheet.create({
   menu: {
     position: 'absolute',
-    width: 210,
+    width: 190,
     borderWidth: 1,
-    zIndex: 50,
+    zIndex: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
+    elevation: 6,
   },
 });

@@ -86,6 +86,7 @@ export default function GymDetailScreen() {
 
         {activeProjects.length === 0 ? (
           <EmptyState 
+            illustration={require('../../assets/illustrations/empty-projects.jpg')}
             title="No active projects"
             body={`Start a new project to track your burns and beta at ${decodedId}.`}
             cta={

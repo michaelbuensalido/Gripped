@@ -553,6 +553,7 @@ export default function HomeScreen() {
           ) : (
             <EmptyState
               asCard
+              illustration={require('../assets/illustrations/empty-sessions.jpg')}
               icon={<Clock size={24} color={colors.accent} />}
               title="No sessions logged yet"
               body="Start your first climbing session to track your telemetry and sends."

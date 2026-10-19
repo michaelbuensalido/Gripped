@@ -1,9 +1,17 @@
 import React, { useRef, useEffect } from 'react';
-import { View, Text, TouchableOpacity, Animated, StyleSheet } from 'react-native';
-import { Trash2, Zap } from 'lucide-react-native';
+import { View, Text, Animated } from 'react-native';
+import { Trash2, Zap, Target } from 'lucide-react-native';
 import { Swipeable, RectButton } from 'react-native-gesture-handler';
-import Reanimated, { FadeIn, useSharedValue, useAnimatedStyle, withRepeat, withTiming, Easing, withDelay, useReducedMotion } from 'react-native-reanimated';
-import { GradePill } from './GradePill';
+import Reanimated, {
+  FadeIn,
+  useSharedValue,
+  useAnimatedStyle,
+  withRepeat,
+  withTiming,
+  Easing,
+  withDelay,
+  useReducedMotion,
+} from 'react-native-reanimated';
 import { ResultChip, ResultType } from './ResultChip';
 import { ScalePressable } from './ScalePressable';
 import { useTheme } from '../../theme/useTheme';
@@ -27,7 +35,13 @@ function formatTime(timestamp: number) {
   return `${hour}:${m} ${ampm}`;
 }
 
-export const ClimbRow = React.memo(function ClimbRow({ climb, onEdit, onDelete, animateEntry, isNewFlash }: ClimbRowProps) {
+export const ClimbRow = React.memo(function ClimbRow({
+  climb,
+  onEdit,
+  onDelete,
+  animateEntry,
+  isNewFlash,
+}: ClimbRowProps) {
   const { colors, space, type, radius, gradeBand } = useTheme();
   const swipeableRef = useRef<Swipeable>(null);
   const reduceMotion = useReducedMotion();
@@ -40,7 +54,7 @@ export const ClimbRow = React.memo(function ClimbRow({ climb, onEdit, onDelete, 
         400,
         withRepeat(
           withTiming(1.5, { duration: 1200, easing: Easing.linear }),
-          2, // shimmer twice
+          2,
           false
         )
       );
@@ -54,7 +68,10 @@ export const ClimbRow = React.memo(function ClimbRow({ climb, onEdit, onDelete, 
     };
   });
 
-  const renderRightActions = (progress: Animated.AnimatedInterpolation<number>, dragX: Animated.AnimatedInterpolation<number>) => {
+  const renderRightActions = (
+    progress: Animated.AnimatedInterpolation<number>,
+    dragX: Animated.AnimatedInterpolation<number>
+  ) => {
     const opacity = dragX.interpolate({
       inputRange: [-100, -50, 0],
       outputRange: [1, 0.5, 0],
@@ -69,7 +86,7 @@ export const ClimbRow = React.memo(function ClimbRow({ climb, onEdit, onDelete, 
           backgroundColor: colors.danger,
           justifyContent: 'center',
           alignItems: 'center',
-          borderRadius: radius.md,
+          borderRadius: radius.lg,
           marginLeft: space.sm,
         }}
         onPress={() => {
@@ -81,17 +98,18 @@ export const ClimbRow = React.memo(function ClimbRow({ climb, onEdit, onDelete, 
         accessibilityLabel="Delete climb"
       >
         <Animated.View style={{ opacity }}>
-          <Trash2 size={24} color={colors.textOnAccent} />
+          <Trash2 size={22} color={colors.textOnAccent} />
         </Animated.View>
       </RectButton>
     );
   };
 
-  const stripeColor = gradeBand(climb.grade_index ?? 0).solid;
+  const band = gradeBand(climb.grade_index ?? 0);
+  const stripeColor = band.solid;
   const failureLabel = climb.failure_reason
     ? String(climb.failure_reason).replace(/_/g, ' ')
     : null;
-  const hasSecondaryLine = Boolean(climb.projectTitle || climb.notes || failureLabel);
+  const hasSecondaryLine = Boolean(climb.projectTitle || climb.notes);
 
   const content = (
     <Swipeable ref={swipeableRef} renderRightActions={renderRightActions} overshootRight={false}>
@@ -104,86 +122,183 @@ export const ClimbRow = React.memo(function ClimbRow({ climb, onEdit, onDelete, 
         style={{
           backgroundColor: colors.materialBase,
           borderRadius: radius.lg,
-          borderWidth: 0,
-          minHeight: 56,
+          borderWidth: 1,
+          borderColor: colors.border,
+          minHeight: 62,
           flexDirection: 'row',
           alignItems: 'center',
-          paddingLeft: space.md + 8,
+          paddingLeft: space.md + 6,
           paddingRight: space.md,
-          paddingVertical: space.sm,
+          paddingVertical: 10,
           gap: space.md,
           overflow: 'hidden',
           position: 'relative',
         }}
       >
-        {/* Grade-band left stripe */}
-        <View style={{
-          position: 'absolute',
-          left: 0,
-          top: 14,
-          bottom: 14,
-          width: 4,
-          borderRadius: 2,
-          backgroundColor: stripeColor,
-        }} />
+        {/* Grade-band left accent bar */}
+        <View
+          style={{
+            position: 'absolute',
+            left: 0,
+            top: 12,
+            bottom: 12,
+            width: 4,
+            borderRadius: 2,
+            backgroundColor: stripeColor,
+          }}
+        />
 
         {isNewFlash && (
-          <Reanimated.View style={[{
-            position: 'absolute',
-            width: 80,
-            backgroundColor: '#FFFFFF',
-            transform: [{ skewX: '-20deg' }],
-            zIndex: 10,
-          }, shimmerStyle]} pointerEvents="none" />
+          <Reanimated.View
+            style={[
+              {
+                position: 'absolute',
+                top: 0,
+                bottom: 0,
+                width: 80,
+                backgroundColor: colors.textWhitePrimary,
+                transform: [{ skewX: '-20deg' }],
+                zIndex: 10,
+              },
+              shimmerStyle,
+            ]}
+            pointerEvents="none"
+          />
         )}
 
-        <Text style={[type.display, { color: colors.textWhitePrimary, fontSize: 20, minWidth: 40 }]}>
-          {climb.grade_raw}
-        </Text>
-        
+        {/* Sculpted Grade Badge Tile */}
+        <View
+          style={{
+            minWidth: 46,
+            height: 38,
+            paddingHorizontal: 8,
+            borderRadius: radius.sm,
+            backgroundColor: band.bg,
+            borderWidth: 1,
+            borderColor: band.solid + '44',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <Text
+            style={[
+              type.statSm,
+              {
+                color: band.text,
+                fontSize: 16,
+                lineHeight: 20,
+                fontWeight: '700',
+              },
+            ]}
+          >
+            {climb.grade_raw}
+          </Text>
+        </View>
+
         <View style={{ flex: 1 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm, marginBottom: hasSecondaryLine ? 2 : 0 }}>
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: space.xs,
+              marginBottom: hasSecondaryLine ? 3 : 0,
+            }}
+          >
             {climb.result === 'flash' ? (
-              <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: colors.flash, paddingHorizontal: 8, paddingVertical: 2, borderRadius: radius.pill }}>
-                <Zap size={11} color="#000000" strokeWidth={2.5} style={{ marginRight: 3 }} />
-                <Text style={[type.caption, { color: '#000000', fontWeight: '800' }]}>FLASH</Text>
+              <View
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  backgroundColor: colors.flash,
+                  paddingHorizontal: 8,
+                  paddingVertical: 2,
+                  borderRadius: radius.pill,
+                }}
+              >
+                <Zap
+                  size={11}
+                  color={colors.bgTexture}
+                  strokeWidth={2.5}
+                  style={{ marginRight: 3 }}
+                />
+                <Text style={[type.caption, { color: colors.bgTexture, fontWeight: '800', fontSize: 11 }]}>
+                  FLASH
+                </Text>
               </View>
             ) : (
               <ResultChip result={(climb.result as ResultType) || 'attempt'} />
             )}
+
             {climb.attempts > 1 && (
-              <Text style={[type.caption, { color: colors.textWhiteMuted }]}>×{climb.attempts}</Text>
+              <View
+                style={{
+                  backgroundColor: colors.cardMuted,
+                  paddingHorizontal: 7,
+                  paddingVertical: 2,
+                  borderRadius: radius.pill,
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                }}
+              >
+                <Text style={[type.caption, { color: colors.textWhiteSecondary, fontSize: 11, fontWeight: '600' }]}>
+                  ×{climb.attempts}
+                </Text>
+              </View>
             )}
+
             {failureLabel && (
               <View
                 style={{
                   backgroundColor: colors.attemptSoft,
-                  paddingHorizontal: 6,
-                  paddingVertical: 1,
+                  paddingHorizontal: 7,
+                  paddingVertical: 2,
                   borderRadius: radius.sm,
+                  borderWidth: 1,
+                  borderColor: colors.attempt + '40',
                 }}
               >
                 <Text
                   style={[
                     type.caption,
-                    { color: colors.attemptText, fontSize: 10, textTransform: 'capitalize', fontWeight: '600' },
+                    {
+                      color: colors.attemptText,
+                      fontSize: 10,
+                      textTransform: 'capitalize',
+                      fontWeight: '600',
+                    },
                   ]}
                 >
                   {failureLabel}
                 </Text>
               </View>
             )}
-            <Text style={[type.caption, { color: colors.textWhiteMuted, marginLeft: 'auto' }]}>
+
+            <Text
+              style={[
+                type.caption,
+                { color: colors.textWhiteMuted, marginLeft: 'auto', fontSize: 11 },
+              ]}
+            >
               {climb.logged_at ? formatTime(climb.logged_at) : ''}
             </Text>
           </View>
+
           {climb.projectTitle ? (
-            <Text style={[type.caption, { color: colors.accentText, marginTop: 2, fontWeight: '600' }]} numberOfLines={1}>
-              {climb.projectTitle}
-              {climb.notes ? ` · ${climb.notes}` : ''}
-            </Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+              <Target size={11} color={colors.accentText} />
+              <Text
+                style={[
+                  type.caption,
+                  { color: colors.accentText, fontWeight: '600', flex: 1 },
+                ]}
+                numberOfLines={1}
+              >
+                {climb.projectTitle}
+                {climb.notes ? ` · ${climb.notes}` : ''}
+              </Text>
+            </View>
           ) : climb.notes ? (
-            <Text style={[type.caption, { color: colors.textMuted, marginTop: 2 }]} numberOfLines={1}>
+            <Text style={[type.caption, { color: colors.textMuted }]} numberOfLines={1}>
               {climb.notes}
             </Text>
           ) : null}
