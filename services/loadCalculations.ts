@@ -24,9 +24,9 @@ export function calculateACWR(): ACWRData {
     const windowStart = windowEnd - (7 * ONE_DAY);
 
     const result = db.getFirstSync<{ totalGravity: number }>(
-      `SELECT SUM(normalized_difficulty * attempts) as totalGravity 
-       FROM boulder_logs 
-       WHERE timestamp > ? AND timestamp <= ?`,
+      `SELECT SUM((COALESCE(grade_index, 0) + 1) * COALESCE(attempts, 1)) as totalGravity 
+       FROM climbs 
+       WHERE logged_at > ? AND logged_at <= ? AND deleted_at IS NULL`,
       [windowStart, windowEnd]
     );
 
