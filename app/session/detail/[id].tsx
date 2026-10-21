@@ -22,6 +22,7 @@ import {
   X,
   AlertCircle,
   Zap,
+  Share2,
 } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Screen } from '../../../components/ui/Screen';
@@ -36,7 +37,9 @@ import { Card } from '../../../components/ui/Card';
 import { PrimaryButton } from '../../../components/ui/PrimaryButton';
 import { EmptyState } from '../../../components/ui/EmptyState';
 import { LogSheet } from '../../../components/session/LogSheet';
+import { SessionShareCardModal } from '../../../components/session/SessionShareCardModal';
 import { useTheme } from '../../../theme/useTheme';
+import { usePreferences } from '../../../utils/preferences';
 import {
   useSession,
   useSessionDetail,
@@ -146,6 +149,7 @@ export default function SessionDetailScreen({
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { colors, space, type, radius, shadow } = useTheme();
+  const { formatGradeLabel } = usePreferences();
   const lastTab = useSessionStore((s) => s.lastTab);
 
   const isSummary = params.variant === 'summary' || initialVariant === 'summary';
@@ -165,6 +169,7 @@ export default function SessionDetailScreen({
 
   // Local UI states
   const [showMenu, setShowMenu] = useState(false);
+  const [isShareOpen, setIsShareOpen] = useState(false);
   const [deletedClimbId, setDeletedClimbId] = useState<string | null>(null);
   const [isSessionDeleted, setIsSessionDeleted] = useState(false);
 
@@ -191,7 +196,7 @@ export default function SessionDetailScreen({
     (max: any, c: any) => (!max || c.grade_index > max.grade_index ? c : max),
     null
   );
-  const hardestLabel = hardest ? hardest.grade_raw : '–';
+  const hardestLabel = hardest ? formatGradeLabel(hardest.grade_raw) : '–';
 
   // Personal best check for summary variant: did we beat a real previous best?
   const prevBestHighlight = useMemo(() => {
@@ -214,13 +219,13 @@ export default function SessionDetailScreen({
 
       if (row && row.max_prev !== null && hardest.grade_index > row.max_prev) {
         return {
-          currentGrade: hardest.grade_raw,
-          prevGrade: row.grade_raw || `V${row.max_prev}`,
+          currentGrade: formatGradeLabel(hardest.grade_raw),
+          prevGrade: formatGradeLabel(row.grade_raw || `V${row.max_prev}`),
         };
       }
     } catch {}
     return null;
-  }, [isSummary, session?.id, session?.startTime, sends.length, hardest?.grade_index]);
+  }, [isSummary, session?.id, session?.startTime, sends.length, hardest?.grade_index, formatGradeLabel]);
 
   const toppedProjects = useMemo(() => {
     return sessionProjects.filter((p: any) => p.isToppedInSession);
@@ -463,28 +468,52 @@ export default function SessionDetailScreen({
           </Text>
         </View>
 
-        {/* Right Side: ⋯ Menu */}
-        <ScalePressable
-          testID="session-detail-more-menu"
-          haptic="light"
-          activeScale={0.92}
-          onPress={() => setShowMenu(!showMenu)}
-          accessibilityRole="button"
-          accessibilityLabel="More options"
-          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-          style={{
-            width: 44,
-            height: 44,
-            borderRadius: radius.md,
-            backgroundColor: colors.card,
-            borderWidth: 1,
-            borderColor: colors.border,
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-        >
-          <MoreHorizontal size={20} color={colors.text} />
-        </ScalePressable>
+        {/* Right Side: Share + ⋯ Menu */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <ScalePressable
+            testID="session-detail-share-btn"
+            haptic="light"
+            activeScale={0.92}
+            onPress={() => setIsShareOpen(true)}
+            accessibilityRole="button"
+            accessibilityLabel="Share session card"
+            hitSlop={{ top: 10, bottom: 10, left: 6, right: 6 }}
+            style={{
+              width: 44,
+              height: 44,
+              borderRadius: radius.md,
+              backgroundColor: colors.card,
+              borderWidth: 1,
+              borderColor: colors.border,
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <Share2 size={18} color={colors.accent} />
+          </ScalePressable>
+
+          <ScalePressable
+            testID="session-detail-more-menu"
+            haptic="light"
+            activeScale={0.92}
+            onPress={() => setShowMenu(!showMenu)}
+            accessibilityRole="button"
+            accessibilityLabel="More options"
+            hitSlop={{ top: 12, bottom: 12, left: 6, right: 12 }}
+            style={{
+              width: 44,
+              height: 44,
+              borderRadius: radius.md,
+              backgroundColor: colors.card,
+              borderWidth: 1,
+              borderColor: colors.border,
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <MoreHorizontal size={20} color={colors.text} />
+          </ScalePressable>
+        </View>
 
         {/* Dropdown Menu */}
         {showMenu && (
@@ -500,6 +529,23 @@ export default function SessionDetailScreen({
               },
             ]}
           >
+            <TouchableOpacity
+              onPress={() => {
+                setShowMenu(false);
+                setIsShareOpen(true);
+              }}
+              accessibilityRole="button"
+              accessibilityLabel="Share session card"
+              style={{
+                padding: space.md,
+                borderBottomWidth: 1,
+                borderBottomColor: colors.border,
+              }}
+            >
+              <Text style={[type.body, { color: colors.text, fontWeight: '600' }]}>
+                Share session card
+              </Text>
+            </TouchableOpacity>
             <TouchableOpacity
               onPress={handleOpenEditSession}
               accessibilityRole="button"
@@ -1141,6 +1187,22 @@ export default function SessionDetailScreen({
         message="Session deleted"
         onUndo={handleUndoDeleteSession}
         onDismiss={handleDismissSessionDelete}
+      />
+
+      {/* Session Share Card Modal */}
+      <SessionShareCardModal
+        visible={isShareOpen}
+        gymName={session?.gymName || 'Session'}
+        subtitleText={subtitleText}
+        climbsCount={activeClimbs.length}
+        sendsCount={sends.length}
+        flashesCount={flashes.length}
+        hardestGradeRaw={hardest?.grade_raw || '–'}
+        topClimbs={sends
+          .slice()
+          .sort((a: any, b: any) => b.grade_index - a.grade_index)
+          .map((c: any) => ({ gradeRaw: c.grade_raw, result: c.result }))}
+        onClose={() => setIsShareOpen(false)}
       />
     </View>
   );

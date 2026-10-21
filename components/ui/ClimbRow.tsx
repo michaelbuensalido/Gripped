@@ -16,6 +16,7 @@ import { ResultChip, ResultType } from './ResultChip';
 import { ScalePressable } from './ScalePressable';
 import { useTheme } from '../../theme/useTheme';
 import { triggerHaptic } from '../../utils/haptics';
+import { usePreferences } from '../../utils/preferences';
 import { listLayout } from '../../theme/layout';
 
 export interface ClimbRowProps {
@@ -43,6 +44,7 @@ export const ClimbRow = React.memo(function ClimbRow({
   isNewFlash,
 }: ClimbRowProps) {
   const { colors, space, type, radius, gradeBand } = useTheme();
+  const { formatGrade } = usePreferences();
   const swipeableRef = useRef<Swipeable>(null);
   const reduceMotion = useReducedMotion();
   const shimmerProgress = useSharedValue(-1);
@@ -106,9 +108,14 @@ export const ClimbRow = React.memo(function ClimbRow({
 
   const band = gradeBand(climb.grade_index ?? 0);
   const stripeColor = band.solid;
+  const formattedGrade = formatGrade(climb.grade_index, climb.grade_raw);
   const failureLabel = climb.failure_reason
     ? String(climb.failure_reason).replace(/_/g, ' ')
     : null;
+  const styleBadge = [climb.wall_angle, climb.hold_type]
+    .filter(Boolean)
+    .map((s: string) => s.charAt(0).toUpperCase() + s.slice(1))
+    .join(' · ');
   const hasSecondaryLine = Boolean(climb.projectTitle || climb.notes);
 
   const content = (
@@ -118,7 +125,7 @@ export const ClimbRow = React.memo(function ClimbRow({
         haptic="light"
         activeScale={0.98}
         accessibilityRole="button"
-        accessibilityLabel={`Edit climb ${climb.grade_raw} ${climb.result}`}
+        accessibilityLabel={`Edit climb ${formattedGrade} ${climb.result}`}
         style={{
           backgroundColor: colors.materialBase,
           borderRadius: radius.lg,
@@ -191,7 +198,7 @@ export const ClimbRow = React.memo(function ClimbRow({
               },
             ]}
           >
-            {climb.grade_raw}
+            {formattedGrade}
           </Text>
         </View>
 
@@ -245,6 +252,21 @@ export const ClimbRow = React.memo(function ClimbRow({
                 </Text>
               </View>
             )}
+
+            {styleBadge ? (
+              <View
+                style={{
+                  backgroundColor: colors.cardMuted,
+                  paddingHorizontal: 7,
+                  paddingVertical: 2,
+                  borderRadius: radius.sm,
+                }}
+              >
+                <Text style={[type.caption, { color: colors.textMuted, fontSize: 10, fontWeight: '600' }]} numberOfLines={1}>
+                  {styleBadge}
+                </Text>
+              </View>
+            ) : null}
 
             {failureLabel && (
               <View

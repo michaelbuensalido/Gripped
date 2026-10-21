@@ -25,9 +25,9 @@ interface GradePillProps {
 
 export function GradePill({ gradeIndex, label, style }: GradePillProps) {
   const { type, gradeBand, radius } = useTheme();
-  const { formatGrade } = usePreferences();
+  const { formatGrade, formatGradeLabel } = usePreferences();
   const band = gradeBand(gradeIndex);
-  const displayLabel = label || formatGrade(gradeIndex, '—');
+  const displayLabel = label ? formatGradeLabel(label) : formatGrade(gradeIndex, '—');
 
   return (
     <View

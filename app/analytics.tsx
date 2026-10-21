@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, Modal, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Settings, ChevronDown, Check } from 'lucide-react-native';
@@ -12,7 +12,9 @@ import { SessionRow } from '../components/ui/SessionRow';
 import { GradePyramid } from '../components/ui/GradePyramid';
 import WallAngleRadar from '../components/analytics/WallAngleRadar';
 import { useProgressStats, useRecentSessions } from '../db/hooks';
+import { getSessionSummary } from '../db/queries';
 import { useTheme } from '../theme/useTheme';
+import { usePreferences } from '../utils/preferences';
 import { triggerHaptic } from '../utils/haptics';
 
 type Period = '7d' | '30d' | '90d' | '1y' | 'all';
@@ -31,17 +33,29 @@ const PERIODS: { label: string; value: Period }[] = [
   { label: 'ALL', value: 'all' },
 ];
 
-function formatGrade(idx: number) {
-  return `V${idx}`;
-}
-
-// Upward green sparkline vector
-function SparklineGreen() {
+// Dynamic weekly sparkline vector driven by real SQLite data
+function SparklineGreen({ values }: { values: number[] }) {
   const { colors } = useTheme();
+  const d = useMemo(() => {
+    if (!values || values.length < 2) {
+      return 'M2 20 L12 16 L20 18 L28 8 L36 4';
+    }
+    const max = Math.max(...values, 1);
+    const min = Math.min(...values, 0);
+    const range = Math.max(max - min, 1);
+    return values
+      .map((v, idx) => {
+        const x = 2 + (idx / (values.length - 1)) * 34;
+        const y = 20 - ((v - min) / range) * 16;
+        return `${idx === 0 ? 'M' : 'L'}${x.toFixed(1)} ${y.toFixed(1)}`;
+      })
+      .join(' ');
+  }, [values]);
+
   return (
     <Svg width={36} height={22} viewBox="0 0 38 24">
       <Path
-        d="M2 20 L12 16 L20 18 L28 8 L36 4"
+        d={d}
         fill="none"
         stroke={colors.flash}
         strokeWidth={2.5}
@@ -55,18 +69,24 @@ function SparklineGreen() {
 export default function ProgressScreen() {
   const router = useRouter();
   const { colors, type, space, radius } = useTheme();
+  const { formatGrade } = usePreferences();
   const insets = useSafeAreaInsets();
   const [period, setPeriod] = useState<Period>('30d');
   const [isPeriodSheetOpen, setPeriodSheetOpen] = useState(false);
 
   const stats = useProgressStats(period);
   const recentSessions = useRecentSessions().slice(0, 5);
-  const { resultCounts, avgGradeLast20, weeklyVolume, rates, hardestSendGrade, gradePyramid } = stats;
+  const { resultCounts, avgGradeLast20, weeklyVolume, rates, hardestSendGrade, gradePyramid, sparklineTrends } = stats;
 
   const weeklyVolVal = weeklyVolume.length > 0 ? weeklyVolume[weeklyVolume.length - 1].count : 0;
   const flashRateVal = rates?.flashRate ? `${rates.flashRate}%` : '0%';
   const avgGradeVal = avgGradeLast20 ? formatGrade(avgGradeLast20) : '-';
   const hardestSendVal = hardestSendGrade != null ? formatGrade(hardestSendGrade) : '-';
+
+  const recentSummaries = useMemo(
+    () => recentSessions.map((s: any) => ({ session: s, summary: getSessionSummary(s.id) })),
+    [recentSessions]
+  );
 
   return (
     <View style={{ flex: 1 }}>
@@ -216,7 +236,7 @@ export default function ProgressScreen() {
               <Text style={{ color: colors.text, fontSize: 26, fontWeight: '700', fontVariant: ['tabular-nums'] }}>
                 {flashRateVal}
               </Text>
-              {parseFloat(flashRateVal) > 0 && <SparklineGreen />}
+              {parseFloat(flashRateVal) > 0 && <SparklineGreen values={sparklineTrends?.flashRateSparkline ?? []} />}
             </View>
           </ScalePressable>
 
@@ -276,27 +296,24 @@ export default function ProgressScreen() {
         {/* 7. Recent Sessions List */}
         <SectionHeader title="Recent Sessions" action={{ label: "See all", onPress: () => router.push('/profile') }} />
         <Card style={{ padding: 0, overflow: 'hidden', marginBottom: 40, backgroundColor: colors.card, borderRadius: 22, borderWidth: 1, borderColor: colors.border }}>
-          {recentSessions.length === 0 ? (
+          {recentSummaries.length === 0 ? (
             <View style={{ padding: 20, alignItems: 'center' }}>
               <Text style={{ color: colors.textMuted, fontSize: 14 }}>No recent sessions</Text>
             </View>
           ) : (
-            recentSessions.map((s: any, i: number) => {
-              const summary = require('../db/queries').getSessionSummary(s.id);
-              return (
-                <SessionRow
-                  key={s.id}
-                  id={s.id}
-                  gymName={s.gymName}
-                  startedAt={s.startTime}
-                  durationMs={summary.duration}
-                  climbs={summary.climbs}
-                  sends={summary.sends}
-                  hardestGrade={summary.hardestGradeRaw !== '–' ? summary.hardestGradeRaw : undefined}
-                  isLast={i === recentSessions.length - 1}
-                />
-              );
-            })
+            recentSummaries.map(({ session: s, summary }, i: number) => (
+              <SessionRow
+                key={s.id}
+                id={s.id}
+                gymName={s.gymName}
+                startedAt={s.startTime}
+                durationMs={summary.duration}
+                climbs={summary.climbs}
+                sends={summary.sends}
+                hardestGrade={summary.hardestGradeRaw !== '–' ? summary.hardestGradeRaw : undefined}
+                isLast={i === recentSummaries.length - 1}
+              />
+            ))
           )}
         </Card>
       </View></ScrollView>

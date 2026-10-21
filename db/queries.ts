@@ -158,8 +158,11 @@ export function updateSessionNotes(id: string, notes: string): void {
 }
 
 export function updateSessionGym(id: string, gymName: string): void {
-  const db = getDatabase();
-  runMutation('sessions', id, 'UPDATE', `UPDATE sessions SET gym_name = ?, updated_at = ? WHERE id = ?`, [gymName, Date.now(), id]);
+  const trimmed = gymName.trim();
+  if (trimmed) {
+    insertGym(trimmed);
+  }
+  runMutation('sessions', id, 'UPDATE', `UPDATE sessions SET gym_name = ?, updated_at = ? WHERE id = ?`, [trimmed || null, Date.now(), id]);
 }
 
 export function deleteSession(id: string): void {
@@ -1372,6 +1375,13 @@ export function getRichProjects(): any[] {
 
     const statusChip = getDerivedProjectStatus(pClimbs.length, p.high_water_mark_moves, p.total_moves);
 
+    let parsedAnnotations: any[] = [];
+    if (p.annotations) {
+      try {
+        parsedAnnotations = JSON.parse(p.annotations);
+      } catch {}
+    }
+
     return {
       id: p.id,
       title: p.title,
@@ -1383,6 +1393,8 @@ export function getRichProjects(): any[] {
       highWaterMarkMoves: p.high_water_mark_moves,
       totalMoves: p.total_moves,
       microBeta: p.micro_beta,
+      mediaUri: p.photo_url,
+      annotations: parsedAnnotations,
       attempts: pClimbs.length,
       gymName,
       lastTriedAt,
@@ -1451,18 +1463,48 @@ export function logClimbForSession(sessionId: string, payload: {
   notes?: string;
   failureReason?: string | null;
   projectId?: string | null;
+  wallAngle?: string | null;
+  holdType?: string | null;
   loggedAt?: number;
 }): string {
+  const db = getDatabase();
   const id = `climb_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
   const gradeIndex = gradeToNumeric(payload.gradeRaw);
   const outcome = payload.result === 'top' ? 'send' : payload.result;
   const now = payload.loggedAt || Date.now();
+
+  let wallAngle = payload.wallAngle ?? null;
+  let holdType = payload.holdType ?? null;
+  if (payload.projectId && (!wallAngle || !holdType)) {
+    const proj = db.getFirstSync<{ wall_angle: string | null; hold_type: string | null }>(
+      `SELECT wall_angle, hold_type FROM projects WHERE id = ?`,
+      [payload.projectId]
+    );
+    if (proj) {
+      if (!wallAngle) wallAngle = proj.wall_angle;
+      if (!holdType) holdType = proj.hold_type;
+    }
+  }
+
   runMutation('climbs', id, 'INSERT',
     `INSERT INTO climbs (
-      id, session_id, project_id, grade_raw, grade_index, result, attempts, notes, failure_reason, logged_at, created_at, updated_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      id, session_id, project_id, grade_raw, grade_index, wall_angle, hold_type, result, attempts, notes, failure_reason, logged_at, created_at, updated_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
-      id, sessionId, payload.projectId || null, payload.gradeRaw, gradeIndex, outcome, payload.attempts ?? 1, payload.notes || null, payload.failureReason ?? null, now, now, now
+      id,
+      sessionId,
+      payload.projectId || null,
+      payload.gradeRaw,
+      gradeIndex,
+      wallAngle,
+      holdType,
+      outcome,
+      payload.attempts ?? 1,
+      payload.notes || null,
+      payload.failureReason ?? null,
+      now,
+      now,
+      now,
     ]
   );
   if (payload.projectId && (outcome === 'send' || outcome === 'flash')) {
@@ -1478,6 +1520,8 @@ export function updateClimb(id: string, updates: {
   notes?: string;
   failureReason?: string | null;
   projectId?: string | null;
+  wallAngle?: string | null;
+  holdType?: string | null;
 }): void {
   const gradeIndex = updates.gradeRaw ? gradeToNumeric(updates.gradeRaw) : null;
   const outcome = updates.result ? (updates.result === 'top' ? 'send' : updates.result) : null;
@@ -1491,6 +1535,8 @@ export function updateClimb(id: string, updates: {
       notes = COALESCE(?, notes),
       failure_reason = CASE WHEN ? = 1 THEN ? ELSE failure_reason END,
       project_id = CASE WHEN ? = 1 THEN ? ELSE project_id END,
+      wall_angle = CASE WHEN ? = 1 THEN ? ELSE wall_angle END,
+      hold_type = CASE WHEN ? = 1 THEN ? ELSE hold_type END,
       updated_at = ?
      WHERE id = ?`,
     [
@@ -1503,6 +1549,10 @@ export function updateClimb(id: string, updates: {
       updates.failureReason ?? null,
       updates.projectId !== undefined ? 1 : 0,
       updates.projectId ?? null,
+      updates.wallAngle !== undefined ? 1 : 0,
+      updates.wallAngle ?? null,
+      updates.holdType !== undefined ? 1 : 0,
+      updates.holdType ?? null,
       now,
       id
     ]
@@ -2083,3 +2133,131 @@ export function getStorageUsage(mediaBytes = 0): { dbBytes: number; mediaBytes: 
 
   return { dbBytes, mediaBytes, totalBytes, formatted };
 }
+
+export function getHistoricalHardestGradeIndex(excludeSessionId?: string): number | null {
+  const db = getDatabase();
+  const row = db.getFirstSync<{ max_g: number | null }>(
+    `SELECT MAX(c.grade_index) as max_g
+     FROM climbs c
+     JOIN sessions s ON c.session_id = s.id
+     WHERE c.deleted_at IS NULL
+       AND s.deleted_at IS NULL
+       AND s.ended_at IS NOT NULL
+       AND (? IS NULL OR s.id != ?)
+       AND (c.result = 'send' OR c.result = 'top' OR c.result = 'flash')`,
+    [excludeSessionId ?? null, excludeSessionId ?? null]
+  );
+  return row?.max_g !== undefined && row?.max_g !== null ? row.max_g : null;
+}
+
+export function getUnsyncedCount(): number {
+  const db = getDatabase();
+  try {
+    const outboxRow = db.getFirstSync<{ c: number }>(`SELECT COUNT(*) as c FROM outbox`);
+    if (outboxRow && outboxRow.c > 0) return outboxRow.c;
+  } catch {}
+  return 0;
+}
+
+export function getWeeklySparklineTrends(nowMs: number = Date.now()): {
+  volumeSparkline: number[];
+  sendRateSparkline: number[];
+  flashRateSparkline: number[];
+} {
+  const db = getDatabase();
+  const ONE_WEEK = 7 * 24 * 60 * 60 * 1000;
+  const volumeSparkline: number[] = [];
+  const sendRateSparkline: number[] = [];
+  const flashRateSparkline: number[] = [];
+
+  for (let i = 5; i >= 0; i--) {
+    const wEnd = nowMs - i * ONE_WEEK;
+    const wStart = wEnd - ONE_WEEK;
+    const row = db.getFirstSync<{ total: number; sends: number; flashes: number }>(
+      `SELECT COUNT(*) as total,
+              SUM(CASE WHEN result IN ('send', 'top', 'flash') THEN 1 ELSE 0 END) as sends,
+              SUM(CASE WHEN result = 'flash' THEN 1 ELSE 0 END) as flashes
+       FROM climbs
+       WHERE logged_at > ? AND logged_at <= ? AND deleted_at IS NULL`,
+      [wStart, wEnd]
+    );
+    const total = row?.total || 0;
+    const sends = row?.sends || 0;
+    const flashes = row?.flashes || 0;
+    volumeSparkline.push(total);
+    sendRateSparkline.push(total > 0 ? Math.round((sends / total) * 100) : 0);
+    flashRateSparkline.push(total > 0 ? Math.round((flashes / total) * 100) : 0);
+  }
+
+  return { volumeSparkline, sendRateSparkline, flashRateSparkline };
+}
+
+export function getGymHubData(gymName: string) {
+  const db = getDatabase();
+  const sessions = db.getAllSync<any>(
+    `SELECT s.*,
+            (SELECT COUNT(*) FROM climbs c WHERE c.session_id = s.id AND c.deleted_at IS NULL) as climb_count,
+            (SELECT COUNT(*) FROM climbs c WHERE c.session_id = s.id AND c.deleted_at IS NULL AND c.result IN ('send','top','flash')) as send_count,
+            (SELECT MAX(c.grade_index) FROM climbs c WHERE c.session_id = s.id AND c.deleted_at IS NULL AND c.result IN ('send','top','flash')) as max_grade
+     FROM sessions s
+     WHERE LOWER(s.gym_name) = LOWER(?) AND s.deleted_at IS NULL AND s.ended_at IS NOT NULL
+     ORDER BY s.started_at DESC`,
+    [gymName]
+  );
+
+  let totalClimbs = 0;
+  let totalSends = 0;
+  let hardestGradeIndex: number | null = null;
+
+  for (const s of sessions) {
+    totalClimbs += s.climb_count || 0;
+    totalSends += s.send_count || 0;
+    if (s.max_grade !== null && s.max_grade !== undefined) {
+      if (hardestGradeIndex === null || s.max_grade > hardestGradeIndex) {
+        hardestGradeIndex = s.max_grade;
+      }
+    }
+  }
+
+  return {
+    visits: sessions.length,
+    totalClimbs,
+    totalSends,
+    hardestGradeIndex,
+    recentSessions: sessions.slice(0, 8),
+  };
+}
+
+export function updateProjectTopoAndMoves(
+  id: string,
+  updates: {
+    annotations?: any[];
+    totalMoves?: number | null;
+    highWaterMarkMoves?: number;
+  }
+): void {
+  const now = Date.now();
+  const annotationsJson =
+    updates.annotations !== undefined ? JSON.stringify(updates.annotations) : null;
+  runMutation(
+    'projects',
+    id,
+    'UPDATE',
+    `UPDATE projects SET
+       annotations = CASE WHEN ? = 1 THEN ? ELSE annotations END,
+       total_moves = CASE WHEN ? = 1 THEN ? ELSE total_moves END,
+       high_water_mark_moves = COALESCE(?, high_water_mark_moves),
+       updated_at = ?
+     WHERE id = ?`,
+    [
+      updates.annotations !== undefined ? 1 : 0,
+      annotationsJson,
+      updates.totalMoves !== undefined ? 1 : 0,
+      updates.totalMoves ?? null,
+      updates.highWaterMarkMoves ?? null,
+      now,
+      id,
+    ]
+  );
+}
+

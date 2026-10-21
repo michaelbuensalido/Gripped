@@ -19,6 +19,7 @@ import { captureRef } from 'react-native-view-shot';
 import * as Sharing from 'expo-sharing';
 import { X, Share2, Flame, Trophy, Sparkles, Check, AlertCircle, FileText } from 'lucide-react-native';
 import { useTheme } from '../../theme/useTheme';
+import { usePreferences } from '../../utils/preferences';
 import { triggerHaptic } from '../../utils/haptics';
 import { formatBetaSummaryText } from '../../utils/betaLogic';
 import type { Beta, BetaMove } from '../../types/beta';
@@ -40,6 +41,7 @@ export function ProjectShareCardModal({
   onClose,
 }: ProjectShareCardModalProps) {
   const { colors, radius, space, type } = useTheme();
+  const { formatGradeLabel } = usePreferences();
   const insets = useSafeAreaInsets();
   const cardRef = useRef<View>(null);
 
@@ -108,11 +110,14 @@ export function ProjectShareCardModal({
       transparent
       onRequestClose={onClose}
     >
-      <View style={styles.modalBackdrop}>
+      <View style={[styles.modalBackdrop, { backgroundColor: colors.scrim }]}>
         <View
           style={[
             styles.modalContainer,
             {
+              backgroundColor: colors.bg,
+              borderTopWidth: 1,
+              borderColor: colors.border,
               paddingTop: Math.max(insets.top, space.lg),
               paddingBottom: Math.max(insets.bottom, space.lg),
             },
@@ -124,7 +129,14 @@ export function ProjectShareCardModal({
               onPress={onClose}
               haptic="light"
               activeScale={0.92}
-              style={styles.closeBtn}
+              style={[
+                styles.closeBtn,
+                {
+                  backgroundColor: colors.card,
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                },
+              ]}
               accessibilityRole="button"
               accessibilityLabel="Close share card"
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
@@ -183,9 +195,9 @@ export function ProjectShareCardModal({
               style={[
                 styles.shareCard,
                 {
-                  backgroundColor: '#0F0F14',
-                  borderColor: 'rgba(255, 255, 255, 0.12)',
-                  borderRadius: 24,
+                  backgroundColor: colors.bgTexture,
+                  borderColor: colors.glassBorder,
+                  borderRadius: radius.xl,
                 },
               ]}
             >
@@ -213,7 +225,7 @@ export function ProjectShareCardModal({
                   {project.title}
                 </Text>
                 <View style={styles.cardGradePill}>
-                  <Text style={styles.cardGradeText}>{project.gradeRaw || 'V6'}</Text>
+                  <Text style={styles.cardGradeText}>{formatGradeLabel(project.gradeRaw || 'V6')}</Text>
                 </View>
               </View>
 

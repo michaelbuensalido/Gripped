@@ -13,16 +13,37 @@ interface CardProps extends ViewProps {
 export function Card({ children, variant = 'default', onPress, style, ...props }: CardProps) {
   const { colors, radius, space, shadow } = useTheme();
 
-  // Borderless ghost cards: translucent backgrounds floating on soft shadows.
+  // Spatial Glass cards: translucent backgrounds floating on soft shadows with top specular edge.
   const baseStyle: ViewStyle = {
-    borderRadius: radius.lg,
-    padding: space.lg,
-    backgroundColor: variant === 'muted' ? colors.cardMuted : colors.card,
+    borderRadius: variant === 'hero' ? radius.xl : radius.lg,
+    padding: variant === 'hero' ? space.xl : space.lg,
+    backgroundColor:
+      variant === 'muted'
+        ? colors.cardMuted
+        : variant === 'hero'
+        ? colors.materialBase
+        : colors.card,
     overflow: 'hidden',
+    position: 'relative',
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: variant === 'hero' ? 'rgba(255,255,255,0.12)' : colors.border,
     ...(variant === 'muted' ? {} : shadow.card),
   };
+
+  const specularRim =
+    variant !== 'muted' ? (
+      <View
+        pointerEvents="none"
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 16,
+          right: 16,
+          height: 1,
+          backgroundColor: variant === 'hero' ? 'rgba(255,255,255,0.18)' : 'rgba(255,255,255,0.09)',
+        }}
+      />
+    ) : null;
 
   if (onPress) {
     return (
@@ -33,7 +54,7 @@ export function Card({ children, variant = 'default', onPress, style, ...props }
         style={[{ width: '100%' }]}
       >
         <View style={[baseStyle, style]} {...props}>
-          <View style={[StyleSheet.absoluteFill, { backgroundColor: colors.cardMuted }]} />
+          {specularRim}
           {children}
         </View>
       </ScalePressable>
@@ -42,7 +63,7 @@ export function Card({ children, variant = 'default', onPress, style, ...props }
 
   return (
     <View style={[baseStyle, style]} {...props}>
-      <View style={[StyleSheet.absoluteFill, { backgroundColor: colors.cardMuted }]} />
+      {specularRim}
       {children}
     </View>
   );

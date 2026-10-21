@@ -8,21 +8,27 @@ import {
   ImageBackground,
   ScrollView,
   StyleSheet,
+  Pressable,
+  LayoutChangeEvent,
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import {
   ChevronLeft,
   MoreHorizontal,
   Sparkles,
-  Hand,
   Edit2,
-  CheckCircle2,
   Archive,
   RotateCcw,
   AlertCircle,
+  Crosshair,
+  Trash2,
+  Plus,
+  Minus,
 } from "lucide-react-native";
+import Svg, { Line } from "react-native-svg";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "../../theme/useTheme";
+import { usePreferences } from "../../utils/preferences";
 import { Chip } from "../../components/ui/Chip";
 import { PrimaryButton } from "../../components/ui/PrimaryButton";
 import { SecondaryButton } from "../../components/ui/SecondaryButton";
@@ -35,6 +41,7 @@ import {
   updateProjectStatus,
   deleteProject,
   updateProjectBeta,
+  updateProjectTopoAndMoves,
 } from "../../db/queries";
 import { triggerHaptic } from "../../utils/haptics";
 import { useSessionStore } from "../../store/sessionStore";
@@ -44,10 +51,20 @@ import { UndoToast } from "../../components/ui/UndoToast";
 import { ResultType } from "../../components/ui/ResultChip";
 import { useCelebration } from "../../components/celebration/CelebrationProvider";
 
+type TopoHoldType = "start" | "hand" | "crux" | "finish";
+
+interface TopoMarker {
+  id: string;
+  xPct: number;
+  yPct: number;
+  type: TopoHoldType;
+}
+
 export default function ProjectDetailScreen() {
   const { id } = useLocalSearchParams();
   const router = useRouter();
   const { colors, space, type, radius } = useTheme();
+  const { formatGradeLabel } = usePreferences();
   const insets = useSafeAreaInsets();
   const { triggerBig } = useCelebration();
 
@@ -64,6 +81,11 @@ export default function ProjectDetailScreen() {
   const [isLogModalOpen, setIsLogModalOpen] = useState(false);
   const [isShareOpen, setIsShareOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  // Interactive Topo state
+  const [isEditingTopo, setIsEditingTopo] = useState(false);
+  const [activeHoldType, setActiveHoldType] = useState<TopoHoldType>("hand");
+  const [wallSize, setWallSize] = useState({ width: 360, height: 520 });
 
   if (!project) {
     return (
@@ -111,13 +133,84 @@ export default function ProjectDetailScreen() {
   }
 
   const displayTitle = project.title;
-  const displayGrade = project.gradeRaw || "V6";
+  const rawGrade = project.gradeRaw || "V6";
+  const displayGrade = formatGradeLabel(rawGrade);
   const displayStyle =
     project?.wallAngle && project?.holdType
       ? `${project.wallAngle.charAt(0).toUpperCase() + project.wallAngle.slice(1)} • ${project.holdType.charAt(0).toUpperCase() + project.holdType.slice(1)}`
       : "Overhang • Power endurance";
 
   const hasPriorAttempts = (project?.attempts || 0) > 0 || (history && history.length > 0);
+  const topoMarkers: TopoMarker[] = Array.isArray(project?.annotations) ? project.annotations : [];
+
+  const getHoldColor = (holdType: TopoHoldType) => {
+    switch (holdType) {
+      case "start":
+        return colors.flash;
+      case "crux":
+        return colors.danger;
+      case "finish":
+        return colors.accent;
+      case "hand":
+      default:
+        return colors.top;
+    }
+  };
+
+  const handleWallLayout = (e: LayoutChangeEvent) => {
+    const { width, height } = e.nativeEvent.layout;
+    if (width > 0 && height > 0) {
+      setWallSize({ width, height });
+    }
+  };
+
+  const handleWallTap = (e: any) => {
+    if (!isEditingTopo || !project) return;
+    const { locationX, locationY } = e.nativeEvent;
+    if (!wallSize.width || !wallSize.height) return;
+    const xPct = Math.max(0.05, Math.min(0.95, locationX / wallSize.width));
+    const yPct = Math.max(0.14, Math.min(0.84, locationY / wallSize.height));
+
+    triggerHaptic("selection");
+    const newMarker: TopoMarker = {
+      id: `hold_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+      xPct,
+      yPct,
+      type: activeHoldType,
+    };
+    const next = [...topoMarkers, newMarker];
+    updateProjectTopoAndMoves(project.id, { annotations: next });
+  };
+
+  const handleRemoveMarker = (markerId: string) => {
+    if (!isEditingTopo || !project) return;
+    triggerHaptic("light");
+    const next = topoMarkers.filter((m) => m.id !== markerId);
+    updateProjectTopoAndMoves(project.id, { annotations: next });
+  };
+
+  const handleClearTopo = () => {
+    if (!project) return;
+    triggerHaptic("medium");
+    updateProjectTopoAndMoves(project.id, { annotations: [] });
+  };
+
+  const handleAdjustTotalMoves = (delta: number) => {
+    if (!project) return;
+    triggerHaptic("selection");
+    const currentTotal = project.totalMoves || Math.max(project.highWaterMarkMoves || 6, 6);
+    const nextTotal = Math.max(1, currentTotal + delta);
+    updateProjectTopoAndMoves(project.id, { totalMoves: nextTotal });
+  };
+
+  const handleAdjustHighWaterMark = (delta: number) => {
+    if (!project) return;
+    triggerHaptic("selection");
+    const currentHwm = project.highWaterMarkMoves || 0;
+    const maxAllowed = project.totalMoves ? project.totalMoves : 50;
+    const nextHwm = Math.max(0, Math.min(maxAllowed, currentHwm + delta));
+    updateProjectTopoAndMoves(project.id, { highWaterMarkMoves: nextHwm });
+  };
 
   const handleLogAttempt = () => {
     triggerHaptic("medium");
@@ -128,7 +221,9 @@ export default function ProjectDetailScreen() {
     grade: string,
     result: ResultType,
     attempts: number,
-    notes: string
+    notes: string,
+    wallAngle?: string | null,
+    holdType?: string | null
   ) => {
     triggerHaptic("medium");
     if (!project) return;
@@ -150,8 +245,8 @@ export default function ProjectDetailScreen() {
       movesLinked: attempts,
       notes,
       projectId: project.id,
-      wallAngle: project.wallAngle,
-      holdType: project.holdType,
+      wallAngle: wallAngle ?? project.wallAngle,
+      holdType: holdType ?? project.holdType,
     });
 
     setIsLogModalOpen(false);
@@ -159,7 +254,7 @@ export default function ProjectDetailScreen() {
     if (result === "top" || result === "flash") {
       triggerBig({
         nickname: project.title,
-        gradeRaw: project.gradeRaw,
+        gradeRaw: displayGrade,
         burns: (project.attempts || 0) + attempts,
         sessions: (history?.length || 0) + 1,
       });
@@ -219,14 +314,26 @@ export default function ProjectDetailScreen() {
     setIsEditingNotes(false);
   };
 
+  const hwm = project?.highWaterMarkMoves || 0;
+  const totalMoves = project?.totalMoves || 0;
+  const moveProgressPct =
+    project?.status === "sent"
+      ? 100
+      : totalMoves > 0
+      ? Math.min(100, Math.round((hwm / totalMoves) * 100))
+      : 0;
+
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 130 }}
       >
-        {/* 1. Full Hero Wall View with Real Climbing Wall Photo & Interactive Overlays */}
-        <View style={{ height: 560, width: "100%", position: "relative" }}>
+        {/* 1. Full Hero Wall View with Real Climbing Wall Photo & Interactive Topo Overlays */}
+        <View
+          onLayout={handleWallLayout}
+          style={{ height: 520, width: "100%", position: "relative" }}
+        >
           <ImageBackground
             source={
               project?.mediaUri
@@ -240,6 +347,100 @@ export default function ProjectDetailScreen() {
             style={StyleSheet.absoluteFill}
             resizeMode="cover"
           >
+            {/* Subtle top vignette for crisp white header controls */}
+            <View
+              pointerEvents="none"
+              style={{
+                position: "absolute",
+                top: 0,
+                left: 0,
+                right: 0,
+                height: 120,
+                backgroundColor: "rgba(15, 23, 42, 0.35)",
+              }}
+            />
+
+            {/* Interactive Topo Canvas Layer */}
+            <Pressable
+              disabled={!isEditingTopo}
+              onPress={handleWallTap}
+              style={StyleSheet.absoluteFill}
+            >
+              {/* Connecting Route Line SVG */}
+              {topoMarkers.length > 1 && (
+                <Svg
+                  width={wallSize.width}
+                  height={wallSize.height}
+                  style={StyleSheet.absoluteFill}
+                  pointerEvents="none"
+                >
+                  {topoMarkers.slice(0, -1).map((m, idx) => {
+                    const next = topoMarkers[idx + 1];
+                    return (
+                      <Line
+                        key={`${m.id}_${next.id}`}
+                        x1={m.xPct * wallSize.width}
+                        y1={m.yPct * wallSize.height}
+                        x2={next.xPct * wallSize.width}
+                        y2={next.yPct * wallSize.height}
+                        stroke={colors.textWhitePrimary}
+                        strokeOpacity={0.85}
+                        strokeWidth={2.5}
+                        strokeDasharray="6, 6"
+                      />
+                    );
+                  })}
+                </Svg>
+              )}
+
+              {/* Hold Markers */}
+              {topoMarkers.map((marker, idx) => {
+                const holdColor = getHoldColor(marker.type);
+                const left = marker.xPct * wallSize.width - 18;
+                const top = marker.yPct * wallSize.height - 18;
+                return (
+                  <Pressable
+                    key={marker.id}
+                    onPress={() => handleRemoveMarker(marker.id)}
+                    style={{
+                      position: "absolute",
+                      left,
+                      top,
+                      width: 36,
+                      height: 36,
+                      borderRadius: 18,
+                      borderWidth: 3,
+                      borderColor: holdColor,
+                      backgroundColor: "rgba(15, 23, 42, 0.65)",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      shadowColor: holdColor,
+                      shadowOffset: { width: 0, height: 2 },
+                      shadowOpacity: 0.6,
+                      shadowRadius: 6,
+                    }}
+                  >
+                    <Text
+                      style={{
+                        color: colors.textWhitePrimary,
+                        fontSize: 11,
+                        fontWeight: "800",
+                        fontVariant: ["tabular-nums"],
+                      }}
+                    >
+                      {marker.type === "start"
+                        ? "S"
+                        : marker.type === "finish"
+                        ? "F"
+                        : marker.type === "crux"
+                        ? "★"
+                        : idx + 1}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </Pressable>
+
             {/* Top Navigation Bar overlaid on wall */}
             <View
               style={{
@@ -262,21 +463,22 @@ export default function ProjectDetailScreen() {
                   width: 44,
                   height: 44,
                   borderRadius: 22,
-                  backgroundColor: "rgba(0, 0, 0, 0.45)",
+                  backgroundColor: "rgba(15, 23, 42, 0.55)",
                   borderWidth: 1,
-                  borderColor: "rgba(255, 255, 255, 0.1)",
+                  borderColor: "rgba(255, 255, 255, 0.22)",
                   alignItems: "center",
                   justifyContent: "center",
                 }}
               >
-                <ChevronLeft size={22} color={colors.text} />
+                <ChevronLeft size={22} color={colors.textWhitePrimary} />
               </ScalePressable>
 
               {/* Title & Subtitle in Center */}
-              <View style={{ alignItems: "center" }}>
+              <View style={{ alignItems: "center", flex: 1, paddingHorizontal: 12 }}>
                 <Text
+                  numberOfLines={1}
                   style={{
-                    color: colors.text,
+                    color: colors.textWhitePrimary,
                     fontSize: 17,
                     fontWeight: "700",
                     fontFamily: type.heading.fontFamily,
@@ -285,8 +487,9 @@ export default function ProjectDetailScreen() {
                   {displayTitle} ({displayGrade})
                 </Text>
                 <Text
+                  numberOfLines={1}
                   style={{
-                    color: "rgba(255, 255, 255, 0.65)",
+                    color: "rgba(255, 255, 255, 0.80)",
                     fontSize: 12,
                     marginTop: 2,
                     fontFamily: type.caption.fontFamily,
@@ -307,14 +510,128 @@ export default function ProjectDetailScreen() {
                   width: 44,
                   height: 44,
                   borderRadius: 22,
-                  backgroundColor: "rgba(0, 0, 0, 0.45)",
+                  backgroundColor: "rgba(15, 23, 42, 0.55)",
                   borderWidth: 1,
-                  borderColor: "rgba(255, 255, 255, 0.1)",
+                  borderColor: "rgba(255, 255, 255, 0.22)",
                   alignItems: "center",
                   justifyContent: "center",
                 }}
               >
-                <MoreHorizontal size={22} color={colors.text} />
+                <MoreHorizontal size={22} color={colors.textWhitePrimary} />
+              </ScalePressable>
+            </View>
+
+            {/* Interactive Route Topo Controls Bar (Bottom of Hero Wall, above sheet overlap) */}
+            <View
+              style={{
+                position: "absolute",
+                bottom: 42,
+                left: 20,
+                right: 20,
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "space-between",
+                zIndex: 25,
+              }}
+            >
+              {isEditingTopo ? (
+                <View
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    gap: 6,
+                    backgroundColor: "rgba(15, 23, 42, 0.82)",
+                    paddingHorizontal: 10,
+                    paddingVertical: 6,
+                    borderRadius: radius.pill,
+                    borderWidth: 1,
+                    borderColor: "rgba(255, 255, 255, 0.2)",
+                  }}
+                >
+                  {(
+                    [
+                      { key: "start", label: "Start", color: colors.flash },
+                      { key: "hand", label: "Hold", color: colors.top },
+                      { key: "crux", label: "Crux", color: colors.danger },
+                      { key: "finish", label: "Top", color: colors.accent },
+                    ] as const
+                  ).map((h) => {
+                    const selected = activeHoldType === h.key;
+                    return (
+                      <Pressable
+                        key={h.key}
+                        onPress={() => {
+                          triggerHaptic("selection");
+                          setActiveHoldType(h.key);
+                        }}
+                        style={{
+                          paddingHorizontal: 10,
+                          paddingVertical: 5,
+                          borderRadius: radius.pill,
+                          backgroundColor: selected ? h.color : "transparent",
+                        }}
+                      >
+                        <Text
+                          style={{
+                            color: colors.textWhitePrimary,
+                            fontSize: 11,
+                            fontWeight: "700",
+                          }}
+                        >
+                          {h.label}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                  {topoMarkers.length > 0 && (
+                    <Pressable
+                      onPress={handleClearTopo}
+                      hitSlop={8}
+                      style={{ paddingHorizontal: 6, paddingVertical: 4 }}
+                    >
+                      <Trash2 size={14} color={colors.danger} />
+                    </Pressable>
+                  )}
+                </View>
+              ) : (
+                <View
+                  style={{
+                    backgroundColor: "rgba(15, 23, 42, 0.60)",
+                    paddingHorizontal: 12,
+                    paddingVertical: 6,
+                    borderRadius: radius.pill,
+                    borderWidth: 1,
+                    borderColor: "rgba(255, 255, 255, 0.16)",
+                  }}
+                >
+                  <Text style={{ color: colors.textWhitePrimary, fontSize: 11, fontWeight: "600" }}>
+                    {topoMarkers.length > 0
+                      ? `${topoMarkers.length} topo holds marked`
+                      : "Tap Edit Topo to map holds"}
+                  </Text>
+                </View>
+              )}
+
+              <ScalePressable
+                haptic="selection"
+                activeScale={0.94}
+                onPress={() => setIsEditingTopo(!isEditingTopo)}
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: 6,
+                  backgroundColor: isEditingTopo ? colors.accent : "rgba(15, 23, 42, 0.72)",
+                  paddingHorizontal: 14,
+                  paddingVertical: 8,
+                  borderRadius: radius.pill,
+                  borderWidth: 1,
+                  borderColor: "rgba(255, 255, 255, 0.24)",
+                }}
+              >
+                <Crosshair size={14} color={colors.textWhitePrimary} />
+                <Text style={{ color: colors.textWhitePrimary, fontSize: 12, fontWeight: "700" }}>
+                  {isEditingTopo ? "Done" : "Edit Topo"}
+                </Text>
               </ScalePressable>
             </View>
 
@@ -325,13 +642,13 @@ export default function ProjectDetailScreen() {
                   position: "absolute",
                   top: Math.max(insets.top, 20) + 54,
                   right: 20,
-                  backgroundColor: "rgba(24, 24, 34, 0.95)",
-                  borderRadius: 16,
+                  backgroundColor: colors.card,
+                  borderRadius: radius.lg,
                   borderWidth: 1,
-                  borderColor: "rgba(255, 255, 255, 0.1)",
+                  borderColor: colors.border,
                   zIndex: 100,
                   overflow: "hidden",
-                  width: 170,
+                  width: 180,
                 }}
               >
                 {project?.status !== "sent" && (
@@ -340,7 +657,7 @@ export default function ProjectDetailScreen() {
                     style={{
                       padding: 14,
                       borderBottomWidth: 1,
-                      borderBottomColor: "rgba(255, 255, 255, 0.08)",
+                      borderBottomColor: colors.border,
                     }}
                   >
                     <Text
@@ -362,7 +679,7 @@ export default function ProjectDetailScreen() {
                   style={{
                     padding: 14,
                     borderBottomWidth: 1,
-                    borderBottomColor: "rgba(255, 255, 255, 0.08)",
+                    borderBottomColor: colors.border,
                   }}
                 >
                   <Text style={{ color: colors.text, fontSize: 14, fontWeight: "600" }}>
@@ -375,7 +692,7 @@ export default function ProjectDetailScreen() {
                     style={{
                       padding: 14,
                       borderBottomWidth: 1,
-                      borderBottomColor: "rgba(255, 255, 255, 0.08)",
+                      borderBottomColor: colors.border,
                     }}
                   >
                     <Text style={{ color: colors.text, fontSize: 14, fontWeight: "600" }}>
@@ -388,7 +705,7 @@ export default function ProjectDetailScreen() {
                     style={{
                       padding: 14,
                       borderBottomWidth: 1,
-                      borderBottomColor: "rgba(255, 255, 255, 0.08)",
+                      borderBottomColor: colors.border,
                     }}
                   >
                     <Text style={{ color: colors.text, fontSize: 14 }}>
@@ -400,66 +717,89 @@ export default function ProjectDetailScreen() {
                   onPress={handleDelete}
                   style={{ padding: 14 }}
                 >
-                  <Text style={{ color: colors.dangerText, fontSize: 14 }}>Delete</Text>
+                  <Text style={{ color: colors.dangerText, fontSize: 14, fontWeight: "600" }}>
+                    Delete
+                  </Text>
                 </TouchableOpacity>
               </View>
             )}
-
           </ImageBackground>
         </View>
 
-        {/* Archived Banner if abandoned */}
-        {project?.status === "abandoned" && (
+        {/* 2. Overlapping Spatial Chalk & Glass Sheet */}
+        <View
+          style={{
+            marginTop: -28,
+            borderTopLeftRadius: radius.xl,
+            borderTopRightRadius: radius.xl,
+            backgroundColor: colors.bg,
+            borderTopWidth: 1,
+            borderColor: colors.border,
+            paddingHorizontal: 20,
+            paddingTop: 14,
+          }}
+        >
+          {/* Subtle Sheet Grab Pill */}
           <View
             style={{
-              marginHorizontal: 20,
-              marginTop: 16,
-              padding: 16,
-              borderRadius: radius.md,
-              backgroundColor: "rgba(255, 255, 255, 0.06)",
-              borderWidth: 1,
-              borderColor: "rgba(255, 255, 255, 0.12)",
-              flexDirection: "row",
-              alignItems: "center",
-              justifyContent: "space-between",
-              gap: 12,
+              width: 36,
+              height: 4,
+              borderRadius: 2,
+              backgroundColor: colors.border,
+              alignSelf: "center",
+              marginBottom: 16,
             }}
-          >
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 10, flex: 1 }}>
-              <Archive size={20} color={colors.textMuted} />
-              <View style={{ flex: 1 }}>
-                <Text style={[type.heading, { color: colors.text, fontSize: 14 }]}>
-                  Archived Project
-                </Text>
-                <Text style={[type.caption, { color: colors.textMuted, marginTop: 2 }]}>
-                  This project is archived and hidden from your active hit-list.
-                </Text>
-              </View>
-            </View>
-            <ScalePressable
-              onPress={handleRestore}
-              haptic="medium"
-              style={{
-                paddingHorizontal: 16,
-                paddingVertical: 10,
-                minHeight: 44,
-                backgroundColor: colors.accent,
-                borderRadius: radius.pill,
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-              accessibilityRole="button"
-              accessibilityLabel="Restore project"
-            >
-              <Text style={[type.control, { color: colors.textOnAccent, fontWeight: "600" }]}>
-                Restore
-              </Text>
-            </ScalePressable>
-          </View>
-        )}
+          />
 
-        {/* 2. Telemetry Bento Strip & All Original Sections below wall */}
-        <View style={{ paddingHorizontal: 20, paddingTop: project?.status === "abandoned" ? 14 : 20 }}>
+          {/* Archived Banner if abandoned */}
+          {project?.status === "abandoned" && (
+            <View
+              style={{
+                marginBottom: 16,
+                padding: 16,
+                borderRadius: radius.md,
+                backgroundColor: colors.card,
+                borderWidth: 1,
+                borderColor: colors.border,
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: 12,
+              }}
+            >
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 10, flex: 1 }}>
+                <Archive size={20} color={colors.textMuted} />
+                <View style={{ flex: 1 }}>
+                  <Text style={[type.heading, { color: colors.text, fontSize: 14 }]}>
+                    Archived Project
+                  </Text>
+                  <Text style={[type.caption, { color: colors.textMuted, marginTop: 2 }]}>
+                    This project is archived and hidden from your active hit-list.
+                  </Text>
+                </View>
+              </View>
+              <ScalePressable
+                onPress={handleRestore}
+                haptic="medium"
+                style={{
+                  paddingHorizontal: 16,
+                  paddingVertical: 10,
+                  minHeight: 44,
+                  backgroundColor: colors.accent,
+                  borderRadius: radius.pill,
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+                accessibilityRole="button"
+                accessibilityLabel="Restore project"
+              >
+                <Text style={[type.control, { color: colors.textOnAccent, fontWeight: "600" }]}>
+                  Restore
+                </Text>
+              </ScalePressable>
+            </View>
+          )}
+
           {/* Wall Angle & Hold Type Tags */}
           {(project?.wallAngle || project?.holdType || project?.gymName) && (
             <View
@@ -477,15 +817,15 @@ export default function ProjectDetailScreen() {
           )}
 
           {/* Bento Stats Row: TOTAL BURNS & HIGH-WATER MARK */}
-          <View style={{ flexDirection: "row", gap: 12, marginBottom: 20 }}>
+          <View style={{ flexDirection: "row", gap: 12, marginBottom: 16 }}>
             <View
               style={{
                 flex: 1,
-                backgroundColor: "rgba(22, 22, 30, 0.85)",
-                borderRadius: 20,
+                backgroundColor: colors.card,
+                borderRadius: radius.lg,
                 padding: 16,
                 borderWidth: 1,
-                borderColor: "rgba(255, 255, 255, 0.06)",
+                borderColor: colors.border,
               }}
             >
               <Text
@@ -494,11 +834,11 @@ export default function ProjectDetailScreen() {
                 minimumFontScale={0.75}
                 maxFontSizeMultiplier={1.3}
                 style={{
-                  color: "rgba(255, 255, 255, 0.60)",
+                  color: colors.textMuted,
                   fontSize: 10,
                   letterSpacing: 1.2,
                   textTransform: "uppercase",
-                  fontWeight: "600",
+                  fontWeight: "700",
                 }}
               >
                 TOTAL BURNS
@@ -507,7 +847,7 @@ export default function ProjectDetailScreen() {
                 maxFontSizeMultiplier={1.3}
                 style={{
                   color: colors.text,
-                  fontSize: 26,
+                  fontSize: 28,
                   fontWeight: "700",
                   fontVariant: ["tabular-nums"],
                   marginTop: 4,
@@ -520,42 +860,187 @@ export default function ProjectDetailScreen() {
             <View
               style={{
                 flex: 1,
-                backgroundColor: "rgba(22, 22, 30, 0.85)",
-                borderRadius: 20,
+                backgroundColor: colors.card,
+                borderRadius: radius.lg,
                 padding: 16,
                 borderWidth: 1,
-                borderColor: "rgba(255, 255, 255, 0.06)",
+                borderColor: colors.border,
               }}
             >
-              <Text
-                numberOfLines={1}
-                adjustsFontSizeToFit
-                minimumFontScale={0.75}
-                maxFontSizeMultiplier={1.3}
+              <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+                <Text
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                  minimumFontScale={0.75}
+                  maxFontSizeMultiplier={1.3}
+                  style={{
+                    color: colors.textMuted,
+                    fontSize: 10,
+                    letterSpacing: 1.2,
+                    textTransform: "uppercase",
+                    fontWeight: "700",
+                  }}
+                >
+                  HIGH-WATER MARK
+                </Text>
+              </View>
+              <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 4 }}>
+                <Text
+                  maxFontSizeMultiplier={1.3}
+                  style={{
+                    color: colors.text,
+                    fontSize: 28,
+                    fontWeight: "700",
+                    fontVariant: ["tabular-nums"],
+                  }}
+                >
+                  {hwm}
+                  {totalMoves > 0 ? (
+                    <Text style={{ fontSize: 15, color: colors.textMuted, fontWeight: "600" }}>
+                      {` / ${totalMoves}`}
+                    </Text>
+                  ) : null}
+                </Text>
+                <View style={{ flexDirection: "row", gap: 6 }}>
+                  <ScalePressable
+                    haptic="selection"
+                    onPress={() => handleAdjustHighWaterMark(-1)}
+                    style={{
+                      width: 28,
+                      height: 28,
+                      borderRadius: 14,
+                      backgroundColor: colors.cardMuted,
+                      borderWidth: 1,
+                      borderColor: colors.border,
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    <Minus size={14} color={colors.text} />
+                  </ScalePressable>
+                  <ScalePressable
+                    haptic="selection"
+                    onPress={() => handleAdjustHighWaterMark(1)}
+                    style={{
+                      width: 28,
+                      height: 28,
+                      borderRadius: 14,
+                      backgroundColor: colors.accentSoft,
+                      borderWidth: 1,
+                      borderColor: colors.accent,
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    <Plus size={14} color={colors.accent} />
+                  </ScalePressable>
+                </View>
+              </View>
+            </View>
+          </View>
+
+          {/* Move-Linking Progress Bar Card */}
+          <View
+            style={{
+              backgroundColor: colors.card,
+              borderRadius: radius.lg,
+              padding: 16,
+              borderWidth: 1,
+              borderColor: colors.border,
+              marginBottom: 20,
+            }}
+          >
+            <View
+              style={{
+                flexDirection: "row",
+                justifyContent: "space-between",
+                alignItems: "center",
+                marginBottom: 10,
+              }}
+            >
+              <View>
+                <Text
+                  style={{
+                    color: colors.textMuted,
+                    fontSize: 10,
+                    fontWeight: "700",
+                    letterSpacing: 1.2,
+                    textTransform: "uppercase",
+                  }}
+                >
+                  MOVE LINKING PROGRESS
+                </Text>
+                <Text style={{ color: colors.text, fontSize: 13, fontWeight: "600", marginTop: 2 }}>
+                  {totalMoves > 0
+                    ? `${hwm} of ${totalMoves} moves linked (${moveProgressPct}%)`
+                    : "Set total moves on this boulder to track progress"}
+                </Text>
+              </View>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                <ScalePressable
+                  haptic="selection"
+                  onPress={() => handleAdjustTotalMoves(-1)}
+                  style={{
+                    width: 28,
+                    height: 28,
+                    borderRadius: 14,
+                    backgroundColor: colors.cardMuted,
+                    borderWidth: 1,
+                    borderColor: colors.border,
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <Minus size={13} color={colors.textMuted} />
+                </ScalePressable>
+                <Text
+                  style={{
+                    color: colors.text,
+                    fontSize: 12,
+                    fontWeight: "700",
+                    fontVariant: ["tabular-nums"],
+                    minWidth: 52,
+                    textAlign: "center",
+                  }}
+                >
+                  {totalMoves > 0 ? `${totalMoves} moves` : "Set Goal"}
+                </Text>
+                <ScalePressable
+                  haptic="selection"
+                  onPress={() => handleAdjustTotalMoves(1)}
+                  style={{
+                    width: 28,
+                    height: 28,
+                    borderRadius: 14,
+                    backgroundColor: colors.cardMuted,
+                    borderWidth: 1,
+                    borderColor: colors.border,
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <Plus size={13} color={colors.text} />
+                </ScalePressable>
+              </View>
+            </View>
+
+            <View
+              style={{
+                height: 8,
+                borderRadius: radius.pill,
+                backgroundColor: colors.cardMuted,
+                overflow: "hidden",
+              }}
+            >
+              <View
                 style={{
-                  color: "rgba(255, 255, 255, 0.60)",
-                  fontSize: 10,
-                  letterSpacing: 1.2,
-                  textTransform: "uppercase",
-                  fontWeight: "600",
+                  width: `${moveProgressPct}%`,
+                  height: "100%",
+                  borderRadius: radius.pill,
+                  backgroundColor:
+                    moveProgressPct >= 100 ? colors.flash : colors.accent,
                 }}
-              >
-                HIGH-WATER MARK
-              </Text>
-              <Text
-                maxFontSizeMultiplier={1.3}
-                style={{
-                  color: colors.text,
-                  fontSize: 26,
-                  fontWeight: "700",
-                  fontVariant: ["tabular-nums"],
-                  marginTop: 4,
-                }}
-              >
-                {project?.highWaterMarkMoves
-                  ? `${project.highWaterMarkMoves}`
-                  : "0"}
-              </Text>
+              />
             </View>
           </View>
 
@@ -564,11 +1049,11 @@ export default function ProjectDetailScreen() {
           {/* Notes Section */}
           <View
             style={{
-              backgroundColor: "rgba(22, 22, 30, 0.85)",
-              borderRadius: 20,
+              backgroundColor: colors.card,
+              borderRadius: radius.lg,
               padding: 18,
               borderWidth: 1,
-              borderColor: "rgba(255, 255, 255, 0.06)",
+              borderColor: colors.border,
               marginBottom: 24,
             }}
           >
@@ -582,9 +1067,9 @@ export default function ProjectDetailScreen() {
             >
               <Text
                 style={{
-                  color: "rgba(255, 255, 255, 0.45)",
+                  color: colors.textMuted,
                   fontSize: 11,
-                  fontWeight: "600",
+                  fontWeight: "700",
                   letterSpacing: 1.5,
                   textTransform: "uppercase",
                 }}
@@ -610,11 +1095,13 @@ export default function ProjectDetailScreen() {
                   onChangeText={setNotesDraft}
                   multiline
                   placeholder="Add notes..."
-                  placeholderTextColor="rgba(255, 255, 255, 0.4)"
+                  placeholderTextColor={colors.textMuted}
                   style={{
                     color: colors.text,
-                    backgroundColor: "rgba(255, 255, 255, 0.06)",
-                    borderRadius: 12,
+                    backgroundColor: colors.cardMuted,
+                    borderRadius: radius.md,
+                    borderWidth: 1,
+                    borderColor: colors.border,
                     padding: 12,
                     fontSize: 14,
                     minHeight: 80,
@@ -645,7 +1132,7 @@ export default function ProjectDetailScreen() {
                 {project?.microBeta ? (
                   <Text
                     style={{
-                      color: "rgba(255, 255, 255, 0.85)",
+                      color: colors.text,
                       fontSize: 14,
                       lineHeight: 20,
                     }}
@@ -655,7 +1142,7 @@ export default function ProjectDetailScreen() {
                 ) : (
                   <Text
                     style={{
-                      color: "rgba(255, 255, 255, 0.4)",
+                      color: colors.textMuted,
                       fontStyle: "italic",
                       fontSize: 14,
                     }}
@@ -670,9 +1157,9 @@ export default function ProjectDetailScreen() {
           {/* History Section */}
           <Text
             style={{
-              color: "rgba(255, 255, 255, 0.45)",
+              color: colors.textMuted,
               fontSize: 11,
-              fontWeight: "600",
+              fontWeight: "700",
               letterSpacing: 1.5,
               textTransform: "uppercase",
               marginBottom: 12,
@@ -683,11 +1170,11 @@ export default function ProjectDetailScreen() {
 
           <View
             style={{
-              backgroundColor: "rgba(22, 22, 30, 0.85)",
-              borderRadius: 20,
+              backgroundColor: colors.card,
+              borderRadius: radius.lg,
               padding: 16,
               borderWidth: 1,
-              borderColor: "rgba(255, 255, 255, 0.06)",
+              borderColor: colors.border,
               marginBottom: 28,
             }}
           >
@@ -701,7 +1188,7 @@ export default function ProjectDetailScreen() {
                     alignItems: "center",
                     paddingVertical: 12,
                     borderBottomWidth: idx === history.length - 1 ? 0 : 1,
-                    borderBottomColor: "rgba(255, 255, 255, 0.06)",
+                    borderBottomColor: colors.border,
                   }}
                 >
                   <View style={{ flex: 1 }}>
@@ -723,7 +1210,7 @@ export default function ProjectDetailScreen() {
                       <Text
                         maxFontSizeMultiplier={1.3}
                         style={{
-                          color: colors.flash,
+                          color: colors.flashText,
                           fontSize: 12,
                           fontWeight: "700",
                           marginTop: 2,
@@ -735,7 +1222,7 @@ export default function ProjectDetailScreen() {
                   </View>
                   <Text
                     maxFontSizeMultiplier={1.3}
-                    style={{ color: "rgba(255, 255, 255, 0.60)", fontSize: 13 }}
+                    style={{ color: colors.textMuted, fontSize: 13 }}
                   >
                     {h.burns} burn{h.burns > 1 ? "s" : ""}
                   </Text>
@@ -744,7 +1231,7 @@ export default function ProjectDetailScreen() {
             ) : (
               <Text
                 style={{
-                  color: "rgba(255, 255, 255, 0.45)",
+                  color: colors.textMuted,
                   fontSize: 13,
                   textAlign: "center",
                   paddingVertical: 10,
@@ -819,12 +1306,14 @@ export default function ProjectDetailScreen() {
         visible={isLogModalOpen}
         onClose={() => setIsLogModalOpen(false)}
         onSave={handleSaveAttempt}
-        initialGrade={displayGrade}
+        initialGrade={rawGrade}
         lockGrade={true}
         disableFlash={hasPriorAttempts}
         initialResult="attempt"
         initialAttempts={1}
         initialNotes=""
+        initialWallAngle={project?.wallAngle}
+        initialHoldType={project?.holdType}
         title={`Log Attempt • ${displayTitle}`}
       />
 
@@ -849,3 +1338,4 @@ export default function ProjectDetailScreen() {
     </View>
   );
 }
+

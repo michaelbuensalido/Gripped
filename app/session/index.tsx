@@ -30,6 +30,7 @@ import { ClimbRow } from '../../components/ui/ClimbRow';
 import { GradePill } from '../../components/ui/GradePill';
 import { SectionHeader } from '../../components/ui/SectionHeader';
 import { LogSheet } from '../../components/session/LogSheet';
+import { StartSessionSheet } from '../../components/session/StartSessionSheet';
 import {
   RestTimerPickerSheet,
   formatRestDuration,
@@ -38,6 +39,7 @@ import { UndoToast } from '../../components/ui/UndoToast';
 import { ScalePressable } from '../../components/ui/ScalePressable';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { useTheme } from '../../theme/useTheme';
+import { usePreferences } from '../../utils/preferences';
 import {
   useActiveSession,
   useSessionClimbs,
@@ -51,6 +53,8 @@ import {
   undoDeleteBoulderLog,
   updateClimb,
   promoteClimbToProject,
+  getHistoricalHardestGradeIndex,
+  updateSessionGym,
 } from '../../db/queries';
 import { triggerHaptic } from '../../utils/haptics';
 import { useCelebration } from '../../components/celebration/CelebrationProvider';
@@ -367,6 +371,7 @@ function StickyActionBar({
 export default function ActiveSessionScreen() {
   const router = useRouter();
   const { colors, space, type, radius, shadow, gradeBand } = useTheme();
+  const { formatGradeLabel } = usePreferences();
   const insets = useSafeAreaInsets();
 
   const session = useActiveSession();
@@ -386,6 +391,7 @@ export default function ActiveSessionScreen() {
   } = useSessionStore();
 
   const [isLogSheetOpen, setLogSheetOpen] = useState(false);
+  const [isSwitchGymOpen, setIsSwitchGymOpen] = useState(false);
   const [isRestPickerOpen, setIsRestPickerOpen] = useState(false);
   const [defaultRestSeconds, setDefaultRestSeconds] = useState(DEFAULT_REST_SECONDS);
   const [editingClimb, setEditingClimb] = useState<any>(null);
@@ -535,15 +541,12 @@ export default function ActiveSessionScreen() {
   useEffect(() => {
     try {
       const db = getDatabase();
-      const logsRow = db.getFirstSync<any>(
-        'SELECT MAX(grade_index) as m FROM boulder_logs WHERE result IN ("flash", "top", "send") AND deleted_at IS NULL AND session_id != ?',
-        [session?.id]
-      );
-      setGlobalHardest(logsRow?.m ?? null);
+      const histHardest = getHistoricalHardestGradeIndex(session?.id);
+      setGlobalHardest(histHardest);
 
       const sessionRow = db.getFirstSync<any>(
-        'SELECT count(*) as c FROM sessions WHERE end_time IS NOT NULL AND id != ?',
-        [session?.id]
+        'SELECT count(*) as c FROM sessions WHERE ended_at IS NOT NULL AND deleted_at IS NULL AND id != ?',
+        [session?.id || '']
       );
       setTotalSessionsCount(sessionRow?.c ?? 0);
     } catch (e) {
@@ -562,15 +565,16 @@ export default function ActiveSessionScreen() {
           const proj = allProjects.find((p: any) => p.id === c.project_id);
           triggerBig({
             nickname: proj?.title || 'Project',
-            gradeRaw: proj?.grade || c.grade_raw,
-            burns: proj?.burns || 1,
+            gradeRaw: formatGradeLabel(proj?.gradeRaw || c.grade_raw),
+            burns: proj?.attempts || proj?.burns || 1,
             sessions: proj?.sessions || 1,
           });
           markCelebrated(c.id, 'big');
         } else if (
+          isSend(c.result) &&
           shouldFireMediumCelebration(c.grade_index, globalHardest, totalSessionsCount)
         ) {
-          triggerMedium(`New hardest: ${c.grade_raw}`);
+          triggerMedium(`New hardest: ${formatGradeLabel(c.grade_index, c.grade_raw)}`);
           markCelebrated(c.id, 'medium');
           setGlobalHardest(Math.max(globalHardest ?? 0, c.grade_index));
           Animated.sequence([
@@ -599,6 +603,7 @@ export default function ActiveSessionScreen() {
     triggerBig,
     triggerMedium,
     triggerSmall,
+    formatGradeLabel,
   ]);
 
   if (!session) {
@@ -655,7 +660,9 @@ export default function ActiveSessionScreen() {
     attempts: number,
     notes: string,
     failureReason?: FailureReason | null,
-    selectedProj?: any | null
+    selectedProj?: any | null,
+    wallAngle?: string | null,
+    holdType?: string | null
   ) => {
     triggerHaptic('medium');
     if (editingClimb) {
@@ -666,6 +673,8 @@ export default function ActiveSessionScreen() {
         notes,
         failureReason: result === 'attempt' ? (failureReason ?? null) : null,
         projectId: selectedProj ? selectedProj.id : editingClimb.projectId ?? null,
+        wallAngle: selectedProj ? selectedProj.wallAngle : (wallAngle ?? null),
+        holdType: selectedProj ? selectedProj.holdType : (holdType ?? null),
       });
       setLogSheetOpen(false);
       setEditingClimb(null);
@@ -681,8 +690,8 @@ export default function ActiveSessionScreen() {
       notes,
       failureReason: result === 'attempt' ? (failureReason ?? null) : null,
       projectId: targetProject ? targetProject.id : undefined,
-      wallAngle: targetProject ? targetProject.wallAngle : undefined,
-      holdType: targetProject ? targetProject.holdType : undefined,
+      wallAngle: targetProject ? targetProject.wallAngle : (wallAngle || undefined),
+      holdType: targetProject ? targetProject.holdType : (holdType || undefined),
     });
 
     setLastAction({ type: 'logged', climbId: newId });
@@ -775,6 +784,8 @@ export default function ActiveSessionScreen() {
       notes: climb.notes || '',
       failureReason: climb.failure_reason || null,
       projectId: climb.project_id,
+      wallAngle: climb.wall_angle || null,
+      holdType: climb.hold_type || null,
     });
     setLogSheetOpen(true);
   };
@@ -974,7 +985,7 @@ export default function ActiveSessionScreen() {
               }}
               onPress={() => {
                 setShowMenu(false);
-                router.push(('/session/detail/' + session.id + '?variant=edit') as any);
+                setIsSwitchGymOpen(true);
               }}
             >
               <Text style={[type.body, { color: colors.text }]}>Change gym</Text>
@@ -1254,6 +1265,7 @@ export default function ActiveSessionScreen() {
             {quickGrades.map((g: string) => {
               const gNum = parseInt(String(g).replace(/[^0-9]/g, ''), 10);
               const gBand = gradeBand(isNaN(gNum) ? 0 : gNum);
+              const displayGrade = formatGradeLabel(g);
               return (
                 <ScalePressable
                   key={g}
@@ -1266,7 +1278,7 @@ export default function ActiveSessionScreen() {
                   haptic="selection"
                   activeScale={0.94}
                   accessibilityRole="button"
-                  accessibilityLabel={`Quick log ${g}`}
+                  accessibilityLabel={`Quick log ${displayGrade}`}
                   style={{
                     height: 42,
                     minWidth: 58,
@@ -1295,7 +1307,7 @@ export default function ActiveSessionScreen() {
                       { color: colors.text, fontSize: 14, fontWeight: '700' },
                     ]}
                   >
-                    {g}
+                    {displayGrade}
                   </Text>
                 </ScalePressable>
               );
@@ -1335,7 +1347,7 @@ export default function ActiveSessionScreen() {
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={[type.heading, { color: colors.text, fontSize: 14, fontWeight: '700' }]}>
-                  Working on this {projectCandidate.gradeRaw}?
+                  Working on this {formatGradeLabel(projectCandidate.gradeRaw)}?
                 </Text>
                 <Text style={[type.caption, { color: colors.textMuted, marginTop: 1 }]}>
                   Track attempts across sessions
@@ -1394,6 +1406,8 @@ export default function ActiveSessionScreen() {
                 movesLinked: 1,
                 notes: '',
                 projectId: lastClimb.project_id || undefined,
+                wallAngle: lastClimb.wall_angle || undefined,
+                holdType: lastClimb.hold_type || undefined,
               });
               setLastAction({ type: 'logged', climbId: attemptId });
               if (!lastClimb.project_id) {
@@ -1423,8 +1437,8 @@ export default function ActiveSessionScreen() {
             <Text style={[type.heading, { color: colors.text, fontSize: 15, fontWeight: '600' }]}>
               +1 Attempt on{' '}
               {lastClimb.projectTitle
-                ? `${lastClimb.projectTitle} (${lastClimb.grade_raw})`
-                : lastClimb.grade_raw}
+                ? `${lastClimb.projectTitle} (${formatGradeLabel(lastClimb.grade_raw)})`
+                : formatGradeLabel(lastClimb.grade_raw)}
             </Text>
           </ScalePressable>
         )}
@@ -1450,6 +1464,8 @@ export default function ActiveSessionScreen() {
                           outcome: 'attempt',
                           movesLinked: 1,
                           notes: '',
+                          wallAngle: p.wallAngle || undefined,
+                          holdType: p.holdType || undefined,
                         });
                         setLastAction({ type: 'logged', climbId: attemptId });
                         startFreshRest();
@@ -1542,12 +1558,29 @@ export default function ActiveSessionScreen() {
         initialAttempts={editingClimb?.attempts}
         initialNotes={editingClimb?.notes}
         initialFailureReason={editingClimb?.failureReason}
+        initialWallAngle={editingClimb?.wallAngle}
+        initialHoldType={editingClimb?.holdType}
         selectedProject={
           editingClimb?.projectId
             ? allProjects.find((p: any) => p.id === editingClimb.projectId)
             : activeProjectTarget
         }
+        onSelectProject={(proj) => setActiveProjectTarget(proj)}
         projects={activeProjects}
+      />
+
+      {/* In-Session Gym Switcher Sheet */}
+      <StartSessionSheet
+        visible={isSwitchGymOpen}
+        onClose={() => setIsSwitchGymOpen(false)}
+        title="Switch Gym"
+        subtitle="Update the gym for your active session."
+        ctaLabel="Update gym"
+        onStart={(newGym) => {
+          triggerHaptic('success');
+          updateSessionGym(session.id, newGym);
+          setIsSwitchGymOpen(false);
+        }}
       />
 
       {/* Rest Timer Duration Picker Sheet */}
