@@ -7,11 +7,12 @@ import { Chip } from '../ui/Chip';
 import { PrimaryButton } from '../ui/PrimaryButton';
 import { useRecentGyms } from '../../db/hooks';
 import { triggerHaptic } from '../../utils/haptics';
+import { usePreferences } from '../../utils/preferences';
 import * as Q from '../../db/queries';
 import * as ImagePicker from 'expo-image-picker';
 import { Image } from 'react-native';
 
-const GRADES = ['VB', 'V0', 'V1', 'V2', 'V3', 'V4', 'V5', 'V6', 'V7', 'V8', 'V9', 'V10', 'V11', 'V12', 'V13', 'V14', 'V15'];
+const GRADES = ['V0', 'V1', 'V2', 'V3', 'V4', 'V5', 'V6', 'V7', 'V8', 'V9', 'V10', 'V11', 'V12', 'V13', 'V14', 'V15', 'V16'];
 const WALL_ANGLES = [
   { key: 'slab', label: 'Slab' },
   { key: 'vertical', label: 'Vertical' },
@@ -35,6 +36,7 @@ interface CreateProjectModalProps {
 
 export function CreateProjectModal({ visible, onClose, defaultGym, onCreated }: CreateProjectModalProps) {
   const { colors, space, radius, type } = useTheme();
+  const { formatGrade, homeGym } = usePreferences();
   const insets = useSafeAreaInsets();
   const recentGyms = useRecentGyms();
 
@@ -55,10 +57,10 @@ export function CreateProjectModal({ visible, onClose, defaultGym, onCreated }: 
       if (defaultGym) {
         setNewGym(defaultGym);
       } else if (!newGym) {
-        setNewGym(Q.getLastUsedGym() || '');
+        setNewGym(Q.getLastUsedGym() || homeGym || '');
       }
     }
-  }, [visible, defaultGym]);
+  }, [visible, defaultGym, homeGym]);
 
   
   const pickImage = async () => {
@@ -74,20 +76,22 @@ export function CreateProjectModal({ visible, onClose, defaultGym, onCreated }: 
   };
 
   const handleSave = () => {
-    if (!newTitle.trim() || !newGrade || !newGym.trim()) return;
+    if (!newTitle.trim() || !newGrade) return;
+    const resolvedGym = newGym.trim() || defaultGym || homeGym || 'Home Gym';
 
     triggerHaptic('medium');
+    const gradeIdx = Math.max(0, GRADES.indexOf(newGrade));
     Q.createProject({
       title: newTitle.trim(),
       gradeRaw: newGrade,
-      normalizedDifficulty: GRADES.indexOf(newGrade as any),
+      normalizedDifficulty: gradeIdx,
       wallAngle: newAngle as any,
       holdType: newHoldType as any,
       status: 'in_progress',
       highWaterMarkMoves: 0,
       totalMoves: parseInt(newTotalMoves) || undefined,
       microBeta: newBeta.trim() || undefined,
-      gymName: newGym.trim() || undefined,
+      gymName: resolvedGym,
       zone: newZone.trim() || undefined,
       setDate: newSetDate.trim() || undefined,
       mediaUri: newMediaUri || undefined,
@@ -141,9 +145,6 @@ export function CreateProjectModal({ visible, onClose, defaultGym, onCreated }: 
             </View>
 
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: space.lg, paddingTop: space.lg, paddingBottom: 120 }}>
-
-
-              
               {/* Project Image */}
               <Text style={[type.label, { color: colors.textMuted, marginBottom: space.xs }]}>PROJECT IMAGE (OPTIONAL)</Text>
               <TouchableOpacity onPress={pickImage} style={{ marginBottom: space.lg }}>
@@ -178,12 +179,63 @@ export function CreateProjectModal({ visible, onClose, defaultGym, onCreated }: 
                 ]}
               />
 
+              {/* Gym Field (when not pre-scoped to defaultGym) */}
+              {!defaultGym && (
+                <View style={{ marginBottom: space.lg }}>
+                  <Text style={[type.label, { color: colors.textMuted, marginBottom: space.xs }]}>GYM</Text>
+                  <TextInput
+                    value={newGym}
+                    onChangeText={setNewGym}
+                    placeholder="e.g. Brooklyn Boulders"
+                    placeholderTextColor={colors.textMuted}
+                    style={[
+                      type.body,
+                      {
+                        backgroundColor: colors.cardMuted,
+                        borderRadius: radius.md,
+                        borderWidth: 1,
+                        borderColor: colors.border,
+                        paddingHorizontal: space.md,
+                        height: 48,
+                        color: colors.text,
+                        marginBottom: recentGyms.length > 0 ? space.sm : 0,
+                      },
+                    ]}
+                  />
+                  {recentGyms.length > 0 && (
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                      <View style={{ flexDirection: 'row', gap: space.xs }}>
+                        {recentGyms.slice(0, 6).map((g) => (
+                          <Chip
+                            key={g}
+                            label={g}
+                            active={newGym === g}
+                            onPress={() => {
+                              triggerHaptic('selection');
+                              setNewGym(g);
+                            }}
+                          />
+                        ))}
+                      </View>
+                    </ScrollView>
+                  )}
+                </View>
+              )}
+
               {/* Target Grade */}
               <Text style={[type.label, { color: colors.textMuted, marginBottom: space.xs }]}>TARGET GRADE</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: space.lg }}>
                 <View style={{ flexDirection: 'row', gap: space.sm }}>
-                  {GRADES.map(g => (
-                    <Chip key={g} label={g} active={newGrade === g} onPress={() => { triggerHaptic('light'); setNewGrade(g); }} />
+                  {GRADES.map((g, idx) => (
+                    <Chip
+                      key={g}
+                      label={formatGrade(idx, g)}
+                      active={newGrade === g}
+                      onPress={() => {
+                        triggerHaptic('light');
+                        setNewGrade(g);
+                      }}
+                    />
                   ))}
                 </View>
               </ScrollView>
@@ -303,7 +355,7 @@ export function CreateProjectModal({ visible, onClose, defaultGym, onCreated }: 
               <PrimaryButton 
                 label="SAVE PROJECT" 
                 onPress={handleSave} 
-                disabled={!newTitle.trim() || !newGrade || !newGym.trim()} 
+                disabled={!newTitle.trim() || !newGrade} 
               />
             </ScrollView>
           </View>

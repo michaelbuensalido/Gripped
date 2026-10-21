@@ -54,6 +54,8 @@ export function useAllSessions() {
   return useLiveQuery(() => Q.getAllSessions());
 }
 
+import { calculateACWR } from '../services/loadCalculations';
+
 export function useProgressStats(period: '7d'|'30d'|'90d'|'1y'|'all') {
   return useLiveQuery(() => {
     const now = Date.now();
@@ -69,6 +71,8 @@ export function useProgressStats(period: '7d'|'30d'|'90d'|'1y'|'all') {
       wallAngleRates: Q.getWallAngleSendRates(period, now),
       failureReasons: Q.getFailureReasonCounts(period, now),
       sessionStats: Q.getSessionPeriodStats(period, now),
+      acwr: calculateACWR(),
+      sparklineTrends: Q.getWeeklySparklineTrends(),
     };
   }, [period]);
 }

@@ -83,18 +83,22 @@ export default function ProjectsScreen() {
     
     return [...base].sort((a, b) => {
       if (sortOption === 'Closest to sending') {
-        const pctA = a.total_moves ? (a.high_water_mark_moves || 0) / a.total_moves : 0;
-        const pctB = b.total_moves ? (b.high_water_mark_moves || 0) / b.total_moves : 0;
+        const totalA = a.totalMoves ?? a.total_moves ?? 0;
+        const hwmA = a.highWaterMarkMoves ?? a.high_water_mark_moves ?? 0;
+        const totalB = b.totalMoves ?? b.total_moves ?? 0;
+        const hwmB = b.highWaterMarkMoves ?? b.high_water_mark_moves ?? 0;
+        const pctA = totalA > 0 ? hwmA / totalA : (a.attempts || 0) * 0.05;
+        const pctB = totalB > 0 ? hwmB / totalB : (b.attempts || 0) * 0.05;
         return pctB - pctA;
       }
       if (sortOption === 'Hardest') {
         return (b.normalizedDifficulty || 0) - (a.normalizedDifficulty || 0);
       }
       if (sortOption === 'Newest') {
-        return (b.created_at || 0) - (a.created_at || 0);
+        return (b.createdAt ?? b.created_at ?? 0) - (a.createdAt ?? a.created_at ?? 0);
       }
       // Recently tried (default)
-      return (b.lastTriedAt || 0) - (a.lastTriedAt || 0);
+      return (b.lastTriedAt || b.createdAt || 0) - (a.lastTriedAt || a.createdAt || 0);
     });
   }, [activeTab, activeProjects, sentProjects, archivedProjects, sortOption, wallAngleFilter, holdTypeFilter, gymFilter]);
 

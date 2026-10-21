@@ -145,9 +145,9 @@ export default function RootCauseFailureChart({
   return (
     <View
       style={{
-        backgroundColor: colors.materialBase,
+        backgroundColor: colors.card,
         borderRadius: radius.lg,
-        borderWidth: 0,
+        borderWidth: 1,
         borderColor: colors.border,
         padding: space.lg,
       }}
@@ -158,19 +158,19 @@ export default function RootCauseFailureChart({
           style={[
             type.label,
             {
-              color: 'rgba(255,255,255,0.4)', letterSpacing: 1.5, textTransform: 'uppercase', fontSize: 10,
+              color: colors.textMuted, letterSpacing: 1.5, textTransform: 'uppercase', fontSize: 10,
             },
           ]}
         >
           Root Cause
         </Text>
-        <Text style={[type.label, { color: 'rgba(255,255,255,0.4)', letterSpacing: 1.5, textTransform: 'uppercase', fontSize: 10 }]}>
+        <Text style={[type.label, { color: colors.textMuted, letterSpacing: 1.5, textTransform: 'uppercase', fontSize: 10 }]}>
           {totalFailures} FALLS
         </Text>
       </View>
 
       {/* Subtitle */}
-      <Text style={[type.heading, { color: colors.textWhitePrimary || colors.text, fontSize: 16, fontWeight: '400', marginBottom: space.md }]}>
+      <Text style={[type.heading, { color: colors.text, fontSize: 16, fontWeight: '700', marginBottom: space.md }]}>
         Failure Taxonomy
       </Text>
 

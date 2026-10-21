@@ -31,6 +31,7 @@ import { PrimaryButton } from '../components/ui/PrimaryButton';
 import { SecondaryButton } from '../components/ui/SecondaryButton';
 import { ScalePressable } from '../components/ui/ScalePressable';
 import { EmptyState } from '../components/ui/EmptyState';
+import { SyncChip } from '../components/ui/SyncChip';
 import { UndoToast } from '../components/ui/UndoToast';
 import * as Q from '../db/queries';
 import { WeekStrip } from '../components/ui/WeekStrip';
@@ -131,10 +132,11 @@ export default function HomeScreen() {
     }
   };
 
-  const { gradeSystem } = usePreferences();
+  const { gradeSystem, formatGradeLabel } = usePreferences();
   const highWatermark = data.hardest30d 
     ? formatGradeWithSystem(data.hardest30d.gradeIndex, gradeSystem, data.hardest30d.gradeRaw)
     : formatGradeWithSystem(0, gradeSystem, 'V0');
+  const unsyncedCount = Q.getUnsyncedCount();
 
   return (
     <View style={{ flex: 1 }}>
@@ -148,7 +150,7 @@ export default function HomeScreen() {
           paddingHorizontal: 20,
         }}
       >
-        {/* 1. Header Bar: Brand Logo & Date on Left, Settings on Right */}
+        {/* 1. Header Bar: Brand Logo & Date on Left, SyncChip & Settings on Right */}
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
             <Image
@@ -173,27 +175,31 @@ export default function HomeScreen() {
             </View>
           </View>
 
-          {/* Clean Settings Gear Button */}
-          <ScalePressable
-            haptic="light"
-            activeScale={0.92}
-            onPress={() => router.push('/settings')}
-            accessibilityRole="button"
-            accessibilityLabel="Settings"
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-            style={{
-              width: 44,
-              height: 44,
-              borderRadius: radius.md,
-              backgroundColor: colors.card,
-              borderWidth: 1,
-              borderColor: colors.border,
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <Settings size={20} color={colors.text} />
-          </ScalePressable>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+            <SyncChip state={unsyncedCount > 0 ? { waiting: unsyncedCount } : 'synced'} />
+
+            {/* Clean Settings Gear Button */}
+            <ScalePressable
+              haptic="light"
+              activeScale={0.92}
+              onPress={() => router.push('/settings')}
+              accessibilityRole="button"
+              accessibilityLabel="Settings"
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              style={{
+                width: 44,
+                height: 44,
+                borderRadius: radius.md,
+                backgroundColor: colors.card,
+                borderWidth: 1,
+                borderColor: colors.border,
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <Settings size={20} color={colors.text} />
+            </ScalePressable>
+          </View>
         </View>
 
         {/* 2. Main Title & Grade Pill */}
@@ -240,11 +246,39 @@ export default function HomeScreen() {
             borderRadius: 26,
             padding: 20,
             borderWidth: 1,
-            borderColor: data.activeSession ? colors.accent : colors.border,
+            borderColor: data.activeSession ? colors.accent : 'rgba(255,255,255,0.12)',
             marginBottom: 24,
+            overflow: 'hidden',
+            position: 'relative',
             ...shadow.floating,
           }}
         >
+          {/* Specular Top Glass Highlight */}
+          <View
+            pointerEvents="none"
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 24,
+              right: 24,
+              height: 1,
+              backgroundColor: 'rgba(255,255,255,0.2)',
+            }}
+          />
+
+          {/* 3D Studio-Lit Sculptural Climbing Hold Graphic */}
+          <View style={{ position: 'absolute', top: -18, right: -34 }} pointerEvents="none">
+            <Image
+              source={require('../assets/holds-images/v4-purple-sloper.png')}
+              style={{
+                width: 172,
+                height: 172,
+                opacity: 0.72,
+              }}
+              resizeMode="contain"
+            />
+          </View>
+
           {/* Header Row: Label & Pagination Dots */}
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
             <Text style={{ color: colors.accent, fontSize: 11, fontWeight: '700', letterSpacing: 1.5, textTransform: 'uppercase' }}>
@@ -270,7 +304,7 @@ export default function HomeScreen() {
 
           {data.activeSession || !data.projects || data.projects.length === 0 ? (
             <View>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 4 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 4, maxWidth: '78%' }}>
                 <Text style={{ color: colors.text, fontSize: data.activeSession ? 30 : 24, fontWeight: '700', fontFamily: type.stat.fontFamily }}>
                   {data.activeSession 
                     ? formatDuration(elapsed) 
@@ -302,7 +336,7 @@ export default function HomeScreen() {
                 <Text style={{ color: colors.accentText, fontSize: 12, fontWeight: '600', fontFamily: type.caption.fontFamily }}>
                   {data.activeSession 
                     ? `Elapsed ${formatDuration(elapsed)}` 
-                    : (data.hardest30d ? `Hardest recent: ${data.hardest30d.gradeRaw}` : 'Fresh Start')}
+                    : (data.hardest30d ? `Hardest recent: ${formatGradeLabel(data.hardest30d.gradeIndex, data.hardest30d.gradeRaw)}` : 'Fresh Start')}
                 </Text>
               </View>
 
@@ -384,14 +418,14 @@ export default function HomeScreen() {
             >
               {data.projects.map((proj, i) => (
                 <View key={proj.id} style={{ width: Dimensions.get('window').width - 40, paddingHorizontal: 20 }}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 4 }}>
-                    <Text style={{ color: colors.text, fontSize: 24, fontWeight: '700', fontFamily: type.stat.fontFamily }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 4, maxWidth: '78%' }}>
+                    <Text style={{ color: colors.text, fontSize: 24, fontWeight: '700', fontFamily: type.stat.fontFamily }} numberOfLines={1}>
                       {proj.title}
                     </Text>
                   </View>
 
                   <Text style={{ color: colors.textWhiteSecondary, fontSize: 14, fontFamily: type.body.fontFamily, marginBottom: 14 }}>
-                    Active Project • {proj.gradeRaw || 'Unknown Grade'}
+                    Active Project • {formatGradeLabel(proj.gradeRaw || 'V0')}
                   </Text>
 
                   <View

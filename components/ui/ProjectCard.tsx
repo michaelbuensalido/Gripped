@@ -19,11 +19,17 @@ function getRelativeTime(timestamp: number | null) {
 
 const CUTOUT_HOLDS_BY_TYPE: Record<string, any> = {
   jug: require('../../assets/holds-images/yellow_jug.png'),
+  jugs: require('../../assets/holds-images/yellow_jug.png'),
   pinch: require('../../assets/holds-images/pink_pinch.png'),
+  pinches: require('../../assets/holds-images/pink_pinch.png'),
   sloper: require('../../assets/holds-images/v6-ripple-effect-square.png'),
+  slopers: require('../../assets/holds-images/v6-ripple-effect-square.png'),
   crimp: require('../../assets/holds-images/v8-poly-edge.png'),
+  crimps: require('../../assets/holds-images/v8-poly-edge.png'),
   pocket: require('../../assets/holds-images/v7-slab-rlise.png'),
+  pockets: require('../../assets/holds-images/v7-slab-rlise.png'),
   volume: require('../../assets/holds-images/v6-orange-facet.png'),
+  volumes: require('../../assets/holds-images/v6-orange-facet.png'),
 };
 
 const CUTOUT_HOLD_ROTATION = [

@@ -18,23 +18,44 @@ import Animated, {
   useReducedMotion,
   runOnJS,
   Easing,
+  interpolate,
+  Extrapolation,
 } from 'react-native-reanimated';
-import { Plus, X, Minus, ChevronLeft, ChevronRight, Lock, Target, FileText } from 'lucide-react-native';
+import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
+import { Plus, X, Minus, ChevronLeft, ChevronRight, Lock, Target, FileText, Layers } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { SectionHeader } from '../ui/SectionHeader';
 import { PrimaryButton } from '../ui/PrimaryButton';
 import { ResultType } from '../ui/ResultChip';
 import { GradePill } from '../ui/GradePill';
 import { ScalePressable } from '../ui/ScalePressable';
+import { Chip } from '../ui/Chip';
 import { useTheme } from '../../theme/useTheme';
 import { triggerHaptic } from '../../utils/haptics';
+import { usePreferences } from '../../utils/preferences';
 import { FailureTagSelector } from './FailureTagSelector';
 import type { FailureReason } from '../../types';
 
 const GRADES = ['V0','V1','V2','V3','V4','V5','V6','V7','V8','V9','V10','V11','V12','V13','V14','V15','V16'];
 
+const WALL_ANGLE_OPTIONS = [
+  { key: 'slab', label: 'Slab' },
+  { key: 'vertical', label: 'Vertical' },
+  { key: 'overhang', label: 'Overhang' },
+  { key: 'roof', label: 'Roof' },
+];
+
+const HOLD_TYPE_OPTIONS = [
+  { key: 'crimps', label: 'Crimps' },
+  { key: 'slopers', label: 'Slopers' },
+  { key: 'pinches', label: 'Pinches' },
+  { key: 'jug', label: 'Jugs' },
+  { key: 'volumes', label: 'Volumes' },
+];
+
 function GradePicker({ value, onChange }: { value: string; onChange: (g: string) => void }) {
   const { colors, type, space, radius, gradeBand } = useTheme();
+  const { formatGrade } = usePreferences();
   const scrollRef = useRef<ScrollView>(null);
   const idx = Math.max(0, GRADES.indexOf(value));
 
@@ -58,6 +79,7 @@ function GradePicker({ value, onChange }: { value: string; onChange: (g: string)
   };
 
   const band = gradeBand(idx);
+  const formattedSelected = formatGrade(idx, value);
 
   return (
     <View style={{ gap: space.sm }}>
@@ -85,8 +107,8 @@ function GradePicker({ value, onChange }: { value: string; onChange: (g: string)
 
         <View
           accessibilityRole="adjustable"
-          accessibilityLabel={`Grade ${value}`}
-          accessibilityValue={{ text: value }}
+          accessibilityLabel={`Grade ${formattedSelected}`}
+          accessibilityValue={{ text: formattedSelected }}
           style={{
             flex: 1,
             height: 56,
@@ -109,7 +131,7 @@ function GradePicker({ value, onChange }: { value: string; onChange: (g: string)
               },
             ]}
           >
-            {value}
+            {formattedSelected}
           </Text>
         </View>
 
@@ -173,7 +195,7 @@ function GradePicker({ value, onChange }: { value: string; onChange: (g: string)
                   },
                 ]}
               >
-                {g}
+                {formatGrade(gIdx, g)}
               </Text>
             </ScalePressable>
           );
@@ -321,6 +343,8 @@ export function LogSheet({
   initialAttempts,
   initialNotes,
   initialFailureReason,
+  initialWallAngle,
+  initialHoldType,
   lockGrade = false,
   disableFlash = false,
   title,
@@ -336,13 +360,17 @@ export function LogSheet({
     attempts: number,
     notes: string,
     failureReason?: FailureReason | null,
-    project?: any | null
+    project?: any | null,
+    wallAngle?: string | null,
+    holdType?: string | null
   ) => void;
   initialGrade?: string;
   initialResult?: ResultType;
   initialAttempts?: number;
   initialNotes?: string;
   initialFailureReason?: FailureReason | null;
+  initialWallAngle?: string | null;
+  initialHoldType?: string | null;
   lockGrade?: boolean;
   disableFlash?: boolean;
   title?: string;
@@ -351,6 +379,7 @@ export function LogSheet({
   onSelectProject?: (proj: any | null) => void;
 }) {
   const { colors, space, type, radius, shadow, motion } = useTheme();
+  const { formatGradeLabel } = usePreferences();
   const insets = useSafeAreaInsets();
   const reduceMotion = useReducedMotion();
 
@@ -358,12 +387,15 @@ export function LogSheet({
   const [result, setResult] = useState<ResultType>(initialResult ?? 'top');
   const [attempts, setAttempts] = useState(initialAttempts ?? 1);
   const [failureReason, setFailureReason] = useState<FailureReason | null>(initialFailureReason ?? null);
+  const [wallAngle, setWallAngle] = useState<string | null>(initialWallAngle ?? null);
+  const [holdType, setHoldType] = useState<string | null>(initialHoldType ?? null);
+  const [showStyleTags, setShowStyleTags] = useState(Boolean(initialWallAngle || initialHoldType));
   const [notes, setNotes] = useState(initialNotes ?? '');
   const [showNotesInput, setShowNotesInput] = useState(Boolean(initialNotes));
   const [isRendered, setIsRendered] = useState(visible);
 
   const backdropOpacity = useSharedValue(0);
-  const sheetTranslateY = useSharedValue(320);
+  const sheetTranslateY = useSharedValue(420);
 
   useEffect(() => {
     if (visible) {
@@ -378,6 +410,9 @@ export function LogSheet({
       setNotes(initialNotes ?? '');
       setShowNotesInput(Boolean(initialNotes && initialNotes.trim().length > 0));
       setFailureReason(initialFailureReason ?? null);
+      setWallAngle(selectedProject?.wallAngle || selectedProject?.wall_angle || initialWallAngle || null);
+      setHoldType(selectedProject?.holdType || selectedProject?.hold_type || initialHoldType || null);
+      setShowStyleTags(Boolean(initialWallAngle || initialHoldType));
 
       if (reduceMotion) {
         backdropOpacity.value = 1;
@@ -393,17 +428,32 @@ export function LogSheet({
         });
       }
     } else if (isRendered) {
-      setIsRendered(false);
-      backdropOpacity.value = 0;
-      sheetTranslateY.value = 320;
+      if (reduceMotion) {
+        setIsRendered(false);
+        backdropOpacity.value = 0;
+        sheetTranslateY.value = 420;
+      } else {
+        backdropOpacity.value = withTiming(0, { duration: 180 });
+        sheetTranslateY.value = withTiming(420, { duration: 200, easing: Easing.in(Easing.cubic) }, (finished) => {
+          if (finished) {
+            runOnJS(setIsRendered)(false);
+          }
+        });
+      }
     }
   }, [visible]);
 
-  // Keep grade synced if user taps an active project inside the sheet
+  // Keep grade and style synced if user taps an active project inside the sheet
   useEffect(() => {
     if (selectedProject) {
       const pGrade = selectedProject.gradeRaw || selectedProject.grade_raw;
       if (pGrade) setGrade(pGrade);
+      if (selectedProject.wallAngle || selectedProject.wall_angle) {
+        setWallAngle(selectedProject.wallAngle || selectedProject.wall_angle);
+      }
+      if (selectedProject.holdType || selectedProject.hold_type) {
+        setHoldType(selectedProject.holdType || selectedProject.hold_type);
+      }
       if ((selectedProject.attempts || 0) > 0 && result === 'flash') {
         setResult('top');
       }
@@ -421,8 +471,65 @@ export function LogSheet({
   }, [attempts, result]);
 
   const handleCloseAnimation = () => {
-    onClose();
+    if (reduceMotion) {
+      setIsRendered(false);
+      onClose();
+      return;
+    }
+    backdropOpacity.value = withTiming(0, { duration: 180 });
+    sheetTranslateY.value = withTiming(
+      420,
+      { duration: 200, easing: Easing.in(Easing.cubic) },
+      (finished) => {
+        if (finished) {
+          runOnJS(setIsRendered)(false);
+          runOnJS(onClose)();
+        }
+      }
+    );
   };
+
+  const panGesture = Gesture.Pan()
+    .onUpdate((e) => {
+      if (e.translationY < 0) {
+        sheetTranslateY.value = e.translationY * 0.18;
+      } else {
+        sheetTranslateY.value = e.translationY;
+        backdropOpacity.value = interpolate(
+          e.translationY,
+          [0, 320],
+          [1, 0.2],
+          Extrapolation.CLAMP
+        );
+      }
+    })
+    .onEnd((e) => {
+      if (e.translationY > 110 || e.velocityY > 650) {
+        backdropOpacity.value = withTiming(0, { duration: 180 });
+        sheetTranslateY.value = withSpring(
+          460,
+          {
+            velocity: e.velocityY,
+            damping: 26,
+            stiffness: 260,
+            overshootClamping: true,
+          },
+          (finished) => {
+            if (finished) {
+              runOnJS(setIsRendered)(false);
+              runOnJS(onClose)();
+            }
+          }
+        );
+      } else {
+        backdropOpacity.value = withTiming(1, { duration: 150 });
+        sheetTranslateY.value = withSpring(0, {
+          velocity: e.velocityY,
+          damping: motion.sheetSpring.damping,
+          stiffness: motion.sheetSpring.stiffness,
+        });
+      }
+    });
 
   const handleSave = () => {
     const finalNotes = notes.trim();
@@ -433,7 +540,9 @@ export function LogSheet({
       result === 'flash' ? 1 : attempts,
       finalNotes,
       activeFailure,
-      selectedProject
+      selectedProject,
+      wallAngle,
+      holdType
     );
   };
 
@@ -456,261 +565,347 @@ export function LogSheet({
 
   return (
     <Modal visible={visible || isRendered} transparent onRequestClose={handleCloseAnimation}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        style={styles.modalRoot}
-      >
-        {/* Animated backdrop */}
-        <Animated.View style={[StyleSheet.absoluteFill, { backgroundColor: colors.scrim }, backdropStyle]}>
-          <Pressable style={StyleSheet.absoluteFill} onPress={handleCloseAnimation} />
-        </Animated.View>
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          style={styles.modalRoot}
+        >
+          {/* Animated backdrop */}
+          <Animated.View style={[StyleSheet.absoluteFill, { backgroundColor: colors.scrim }, backdropStyle]}>
+            <Pressable style={StyleSheet.absoluteFill} onPress={handleCloseAnimation} />
+          </Animated.View>
 
-        <View style={{ width: '100%' }}>
-          <Animated.View
-            style={[
-              {
-                backgroundColor: colors.card,
-                borderTopLeftRadius: radius.xl,
-                borderTopRightRadius: radius.xl,
-                borderWidth: 1,
-                borderColor: colors.border,
-                paddingHorizontal: space.lg,
-                paddingTop: space.md,
-                paddingBottom: Math.max(insets.bottom, space.md),
-                maxHeight: '92%',
-                ...shadow.floating,
-              },
-              sheetStyle,
-            ]}
-          >
-            {/* Drag Handle */}
-            <View
-              style={{
-                width: 36,
-                height: 4,
-                borderRadius: radius.pill,
-                backgroundColor: colors.border,
-                alignSelf: 'center',
-                marginBottom: space.md,
-              }}
-            />
-
-            {/* Title & Close */}
-            <View
-              style={{
-                flexDirection: 'row',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                marginBottom: space.md,
-              }}
+          <View style={{ width: '100%' }}>
+            <Animated.View
+              style={[
+                {
+                  backgroundColor: colors.card,
+                  borderTopLeftRadius: radius.xl,
+                  borderTopRightRadius: radius.xl,
+                  borderWidth: 1,
+                  borderColor: 'rgba(255,255,255,0.12)',
+                  paddingHorizontal: space.lg,
+                  paddingTop: space.md,
+                  paddingBottom: Math.max(insets.bottom, space.md),
+                  maxHeight: '92%',
+                  ...shadow.floating,
+                },
+                sheetStyle,
+              ]}
             >
-              <Text style={[type.title, { color: colors.text, fontWeight: '700', flex: 1 }]} numberOfLines={1}>
-                {selectedProject
-                  ? `Log • ${selectedProject.title}`
-                  : title || 'Log Climb'}
-              </Text>
-              <ScalePressable
-                onPress={handleCloseAnimation}
-                hitSlop={{ top: 12, right: 12, bottom: 12, left: 12 }}
-                minTouchTarget
-                accessibilityRole="button"
-                accessibilityLabel="Close"
-              >
-                <X size={22} color={colors.textMuted} />
-              </ScalePressable>
-            </View>
+              {/* Top Specular Glass Rim */}
+              <View
+                pointerEvents="none"
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 24,
+                  right: 24,
+                  height: 1,
+                  backgroundColor: 'rgba(255,255,255,0.2)',
+                }}
+              />
 
-            <Animated.ScrollView
-              showsVerticalScrollIndicator={false}
-              keyboardShouldPersistTaps="handled"
-              style={{ flexShrink: 1 }}
-              contentContainerStyle={{ gap: space.lg, paddingBottom: space.md }}
-            >
-              {/* Optional Active Gym Projects Quick Picker */}
-              {projects.length > 0 && onSelectProject && (
-                <View>
-                  <SectionHeader title="Project (Optional)" />
-                  <ScrollView
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
-                    keyboardShouldPersistTaps="handled"
-                    contentContainerStyle={{ gap: space.xs }}
-                  >
-                    {projects.map((p: any) => {
-                      const isSelected = selectedProject?.id === p.id;
-                      const pGrade = p.gradeRaw || p.grade_raw || 'V0';
-                      return (
-                        <ScalePressable
-                          key={p.id}
-                          onPress={() => {
-                            triggerHaptic('selection');
-                            onSelectProject(isSelected ? null : p);
-                          }}
-                          haptic="light"
-                          activeScale={0.95}
-                          style={{
-                            flexDirection: 'row',
-                            alignItems: 'center',
-                            gap: 6,
-                            paddingHorizontal: space.md,
-                            height: 40,
-                            borderRadius: radius.pill,
-                            backgroundColor: isSelected ? colors.accentSoft : colors.cardMuted,
-                            borderWidth: 1,
-                            borderColor: isSelected ? colors.accent : colors.border,
-                          }}
-                        >
-                          <Target size={14} color={isSelected ? colors.accentText : colors.textMuted} />
-                          <Text
-                            style={[
-                              type.control,
-                              {
-                                color: isSelected ? colors.accentText : colors.text,
-                                fontWeight: isSelected ? '700' : '500',
-                              },
-                            ]}
-                            numberOfLines={1}
-                          >
-                            {p.title} ({pGrade})
-                          </Text>
-                        </ScalePressable>
-                      );
-                    })}
-                  </ScrollView>
-                </View>
-              )}
-
-              {/* Result Section */}
-              <View>
-                <SectionHeader title="Outcome" />
-                <ResultSelector
-                  value={result}
-                  onChange={setResult}
-                  disableFlash={isFlashDisabled}
-                />
-              </View>
-
-              {/* Root Cause Failure tags if Attempt */}
-              {result === 'attempt' && (
-                <View>
-                  <SectionHeader title="Why did you fall? (Optional)" />
-                  <FailureTagSelector
-                    selectedReason={failureReason}
-                    onSelectReason={setFailureReason}
+              {/* Gesture-enabled Drag Handle & Header */}
+              <GestureDetector gesture={panGesture}>
+                <Animated.View>
+                  {/* Drag Handle */}
+                  <View
+                    style={{
+                      width: 36,
+                      height: 4,
+                      borderRadius: radius.pill,
+                      backgroundColor: colors.border,
+                      alignSelf: 'center',
+                      marginBottom: space.md,
+                    }}
                   />
-                </View>
-              )}
 
-              {/* Grade Section */}
-              <View>
-                <SectionHeader title={isGradeLocked ? "Grade (Locked to Project)" : "Grade"} />
-                {isGradeLocked ? (
+                  {/* Title & Close */}
                   <View
                     style={{
                       flexDirection: 'row',
-                      alignItems: 'center',
                       justifyContent: 'space-between',
-                      backgroundColor: colors.cardMuted,
-                      borderRadius: radius.md,
-                      paddingHorizontal: space.md,
-                      height: 56,
-                      borderWidth: 1,
-                      borderColor: colors.border,
+                      alignItems: 'center',
+                      marginBottom: space.md,
                     }}
                   >
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm }}>
-                      <GradePill gradeIndex={Math.max(0, GRADES.indexOf(grade))} label={grade} />
-                      <Text style={[type.body, { color: colors.textMuted, fontSize: 13 }]}>
-                        Fixed to project
-                      </Text>
-                    </View>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                      <Lock size={14} color={colors.textMuted} />
-                      <Text style={[type.caption, { color: colors.textMuted, fontWeight: '600' }]}>
-                        LOCKED
-                      </Text>
-                    </View>
+                    <Text style={[type.title, { color: colors.text, fontWeight: '700', flex: 1 }]} numberOfLines={1}>
+                      {selectedProject
+                        ? `Log • ${selectedProject.title}`
+                        : title || 'Log Climb'}
+                    </Text>
+                    <ScalePressable
+                      onPress={handleCloseAnimation}
+                      hitSlop={{ top: 12, right: 12, bottom: 12, left: 12 }}
+                      minTouchTarget
+                      accessibilityRole="button"
+                      accessibilityLabel="Close"
+                    >
+                      <X size={22} color={colors.textMuted} />
+                    </ScalePressable>
                   </View>
-                ) : (
-                  <GradePicker value={grade} onChange={setGrade} />
+                </Animated.View>
+              </GestureDetector>
+
+              <Animated.ScrollView
+                showsVerticalScrollIndicator={false}
+                keyboardShouldPersistTaps="handled"
+                style={{ flexShrink: 1 }}
+                contentContainerStyle={{ gap: space.lg, paddingBottom: space.md }}
+              >
+                {/* Optional Active Gym Projects Quick Picker */}
+                {projects.length > 0 && onSelectProject && (
+                  <View>
+                    <SectionHeader title="Project (Optional)" />
+                    <ScrollView
+                      horizontal
+                      showsHorizontalScrollIndicator={false}
+                      keyboardShouldPersistTaps="handled"
+                      contentContainerStyle={{ gap: space.xs }}
+                    >
+                      {projects.map((p: any) => {
+                        const isSelected = selectedProject?.id === p.id;
+                        const pGrade = formatGradeLabel(p.gradeRaw || p.grade_raw || 'V0');
+                        return (
+                          <ScalePressable
+                            key={p.id}
+                            onPress={() => {
+                              triggerHaptic('selection');
+                              onSelectProject(isSelected ? null : p);
+                            }}
+                            haptic="light"
+                            activeScale={0.95}
+                            style={{
+                              flexDirection: 'row',
+                              alignItems: 'center',
+                              gap: 6,
+                              paddingHorizontal: space.md,
+                              height: 40,
+                              borderRadius: radius.pill,
+                              backgroundColor: isSelected ? colors.accentSoft : colors.cardMuted,
+                              borderWidth: 1,
+                              borderColor: isSelected ? colors.accent : colors.border,
+                            }}
+                          >
+                            <Target size={14} color={isSelected ? colors.accentText : colors.textMuted} />
+                            <Text
+                              style={[
+                                type.control,
+                                {
+                                  color: isSelected ? colors.accentText : colors.text,
+                                  fontWeight: isSelected ? '700' : '500',
+                                },
+                              ]}
+                              numberOfLines={1}
+                            >
+                              {p.title} ({pGrade})
+                            </Text>
+                          </ScalePressable>
+                        );
+                      })}
+                    </ScrollView>
+                  </View>
                 )}
-              </View>
 
-              {/* Attempts Stepper */}
-              {result !== 'flash' && (
+                {/* Result Section */}
                 <View>
-                  <SectionHeader title="Attempts (Burns)" />
-                  <AttemptsStepper value={attempts} onChange={setAttempts} />
+                  <SectionHeader title="Outcome" />
+                  <ResultSelector
+                    value={result}
+                    onChange={setResult}
+                    disableFlash={isFlashDisabled}
+                  />
                 </View>
-              )}
 
-              {/* Collapsed / Expandable Notes Input */}
-              <View>
-                {showNotesInput ? (
-                  <>
-                    <SectionHeader title="Notes (Optional)" />
-                    <TextInput
-                      value={notes}
-                      onChangeText={setNotes}
-                      placeholder="Beta, holds, sequence, feeling…"
-                      placeholderTextColor={colors.textMuted}
-                      multiline
-                      numberOfLines={2}
-                      style={[
-                        type.body,
-                        {
-                          color: colors.text,
-                          backgroundColor: 'rgba(255,255,255,0.05)',
-                          borderRadius: radius.lg,
+                {/* Root Cause Failure tags if Attempt */}
+                {result === 'attempt' && (
+                  <View>
+                    <SectionHeader title="Why did you fall? (Optional)" />
+                    <FailureTagSelector
+                      selectedReason={failureReason}
+                      onSelectReason={setFailureReason}
+                    />
+                  </View>
+                )}
+
+                {/* Grade Section */}
+                <View>
+                  <SectionHeader title={isGradeLocked ? "Grade (Locked to Project)" : "Grade"} />
+                  {isGradeLocked ? (
+                    <View
+                      style={{
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        backgroundColor: colors.cardMuted,
+                        borderRadius: radius.md,
+                        paddingHorizontal: space.md,
+                        height: 56,
+                        borderWidth: 1,
+                        borderColor: colors.border,
+                      }}
+                    >
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm }}>
+                        <GradePill gradeIndex={Math.max(0, GRADES.indexOf(grade))} label={grade} />
+                        <Text style={[type.body, { color: colors.textMuted, fontSize: 13 }]}>
+                          Fixed to project
+                        </Text>
+                      </View>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                        <Lock size={14} color={colors.textMuted} />
+                        <Text style={[type.caption, { color: colors.textMuted, fontWeight: '600' }]}>
+                          LOCKED
+                        </Text>
+                      </View>
+                    </View>
+                  ) : (
+                    <GradePicker value={grade} onChange={setGrade} />
+                  )}
+                </View>
+
+                {/* Attempts Stepper */}
+                {result !== 'flash' && (
+                  <View>
+                    <SectionHeader title="Attempts (Burns)" />
+                    <AttemptsStepper value={attempts} onChange={setAttempts} />
+                  </View>
+                )}
+
+                {/* 1-Tap Wall Angle & Hold Type Tagging (powers WallAngleRadar) */}
+                {!selectedProject && (
+                  <View>
+                    {showStyleTags ? (
+                      <View style={{ gap: space.sm }}>
+                        <SectionHeader title="Wall Angle & Hold Style (Optional)" />
+                        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                          <View style={{ flexDirection: 'row', gap: space.xs }}>
+                            {WALL_ANGLE_OPTIONS.map((a) => (
+                              <Chip
+                                key={a.key}
+                                label={a.label}
+                                active={wallAngle === a.key}
+                                onPress={() => {
+                                  triggerHaptic('selection');
+                                  setWallAngle(wallAngle === a.key ? null : a.key);
+                                }}
+                              />
+                            ))}
+                          </View>
+                        </ScrollView>
+                        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                          <View style={{ flexDirection: 'row', gap: space.xs }}>
+                            {HOLD_TYPE_OPTIONS.map((h) => (
+                              <Chip
+                                key={h.key}
+                                label={h.label}
+                                active={holdType === h.key}
+                                onPress={() => {
+                                  triggerHaptic('selection');
+                                  setHoldType(holdType === h.key ? null : h.key);
+                                }}
+                              />
+                            ))}
+                          </View>
+                        </ScrollView>
+                      </View>
+                    ) : (
+                      <ScalePressable
+                        onPress={() => {
+                          triggerHaptic('light');
+                          setShowStyleTags(true);
+                        }}
+                        haptic="light"
+                        activeScale={0.97}
+                        style={{
+                          flexDirection: 'row',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: space.xs,
+                          height: 40,
+                          borderRadius: radius.md,
+                          backgroundColor: colors.cardMuted,
                           borderWidth: 1,
                           borderColor: colors.border,
-                          padding: space.md,
-                          minHeight: 74,
-                          textAlignVertical: 'top',
-                        },
-                      ]}
-                    />
-                  </>
-                ) : (
-                  <ScalePressable
-                    onPress={() => {
-                      triggerHaptic('light');
-                      setShowNotesInput(true);
-                    }}
-                    haptic="light"
-                    activeScale={0.97}
-                    style={{
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: space.xs,
-                      height: 44,
-                      borderRadius: radius.md,
-                      backgroundColor: colors.cardMuted,
-                      borderWidth: 1,
-                      borderColor: colors.border,
-                    }}
-                  >
-                    <FileText size={15} color={colors.textMuted} />
-                    <Text style={[type.control, { color: colors.textMuted }]}>
-                      + Add beta or notes
-                    </Text>
-                  </ScalePressable>
+                        }}
+                      >
+                        <Layers size={14} color={colors.textMuted} />
+                        <Text style={[type.control, { color: colors.textMuted }]}>
+                          + Tag wall angle & hold style
+                        </Text>
+                      </ScalePressable>
+                    )}
+                  </View>
                 )}
-              </View>
-            </Animated.ScrollView>
 
-            {/* Save Button */}
-            <View style={{ paddingTop: space.md }}>
-              <PrimaryButton
-                testID="save-climb-btn"
-                label="SAVE CLIMB"
-                onPress={handleSave}
-              />
-            </View>
-          </Animated.View>
-        </View>
-      </KeyboardAvoidingView>
+                {/* Collapsed / Expandable Notes Input */}
+                <View>
+                  {showNotesInput ? (
+                    <>
+                      <SectionHeader title="Notes (Optional)" />
+                      <TextInput
+                        value={notes}
+                        onChangeText={setNotes}
+                        placeholder="Beta, holds, sequence, feeling…"
+                        placeholderTextColor={colors.textMuted}
+                        multiline
+                        numberOfLines={2}
+                        style={[
+                          type.body,
+                          {
+                            color: colors.text,
+                            backgroundColor: 'rgba(255,255,255,0.05)',
+                            borderRadius: radius.lg,
+                            borderWidth: 1,
+                            borderColor: colors.border,
+                            padding: space.md,
+                            minHeight: 74,
+                            textAlignVertical: 'top',
+                          },
+                        ]}
+                      />
+                    </>
+                  ) : (
+                    <ScalePressable
+                      onPress={() => {
+                        triggerHaptic('light');
+                        setShowNotesInput(true);
+                      }}
+                      haptic="light"
+                      activeScale={0.97}
+                      style={{
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: space.xs,
+                        height: 44,
+                        borderRadius: radius.md,
+                        backgroundColor: colors.cardMuted,
+                        borderWidth: 1,
+                        borderColor: colors.border,
+                      }}
+                    >
+                      <FileText size={15} color={colors.textMuted} />
+                      <Text style={[type.control, { color: colors.textMuted }]}>
+                        + Add beta or notes
+                      </Text>
+                    </ScalePressable>
+                  )}
+                </View>
+              </Animated.ScrollView>
+
+              {/* Save Button */}
+              <View style={{ paddingTop: space.md }}>
+                <PrimaryButton
+                  testID="save-climb-btn"
+                  label="SAVE CLIMB"
+                  onPress={handleSave}
+                />
+              </View>
+            </Animated.View>
+          </View>
+        </KeyboardAvoidingView>
+      </GestureHandlerRootView>
     </Modal>
   );
 }

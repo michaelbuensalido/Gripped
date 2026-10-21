@@ -11,6 +11,7 @@ import { ScalePressable } from '../../components/ui/ScalePressable';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { useProgressStats, useClimbsForGrade, useClimbsForStat } from '../../db/hooks';
 import { useTheme } from '../../theme/useTheme';
+import { usePreferences } from '../../utils/preferences';
 
 export default function StatDetailScreen() {
   const { stat = 'volume', period = '30d', grade } = useLocalSearchParams<{
@@ -21,6 +22,7 @@ export default function StatDetailScreen() {
 
   const router = useRouter();
   const { colors, type, space, radius, gradeBand } = useTheme();
+  const { formatGrade } = usePreferences();
   const { width } = useWindowDimensions();
   const reduceMotion = useReducedMotion();
 
@@ -46,7 +48,7 @@ export default function StatDetailScreen() {
   const chartWidth = Math.max(260, Math.min(width - 64, 380));
 
   if (stat === 'grade') {
-    title = `Grade V${gradeIndex ?? 0} Climbs`;
+    title = `Grade ${formatGrade(gradeIndex ?? 0)} Climbs`;
   } else if (stat === 'volume') {
     title = 'Weekly Volume';
     isBar = true;
@@ -346,11 +348,11 @@ export default function StatDetailScreen() {
                   activeScale={0.98}
                   onPress={() => {
                     if (climb.sessionId) {
-                      router.push(`/session/${climb.sessionId}` as any);
+                      router.push(`/session/detail/${climb.sessionId}` as any);
                     }
                   }}
                   accessibilityRole="button"
-                  accessibilityLabel={`${climb.gradeRaw} ${climb.result} at ${climb.gymName}. Tap to view session.`}
+                  accessibilityLabel={`${formatGrade(climb.gradeIndex, climb.gradeRaw)} ${climb.result} at ${climb.gymName}. Tap to view session.`}
                   style={{
                     backgroundColor: colors.card,
                     borderRadius: radius.md,
@@ -374,7 +376,7 @@ export default function StatDetailScreen() {
                         }}
                       >
                         <Text style={[type.label, { color: colors.text, fontWeight: '700' }]}>
-                          {climb.gradeRaw}
+                          {formatGrade(climb.gradeIndex, climb.gradeRaw)}
                         </Text>
                       </View>
 
