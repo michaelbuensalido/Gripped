@@ -31,6 +31,7 @@ import {
 } from 'lucide-react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect, useRouter } from 'expo-router';
+import Constants from 'expo-constants';
 import { seedDemoData } from '../db/seed';
 import { clearAllData, exportDataToJSON, importDataFromJSON, getStorageUsage } from '../db/queries';
 import { useTheme } from '../theme/useTheme';
@@ -843,8 +844,8 @@ export default function SettingsScreen() {
             </View>
             <SettingsRow
               label="Version"
-              sublabel="1.0.0 (Build 42)"
-              right={<Text style={[type.body, { color: colors.accentText }]}>v1.0.0</Text>}
+              sublabel={`${Constants.expoConfig?.version ?? '1.0.0'} (Build ${Constants.expoConfig?.ios?.buildNumber ?? '1'})`}
+              right={<Text style={[type.body, { color: colors.accentText }]}>v{Constants.expoConfig?.version ?? '1.0.0'}</Text>}
             />
             <SettingsRow
               label="Architecture"
