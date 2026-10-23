@@ -13,7 +13,15 @@ module.exports = defineConfig([
     },
   },
   {
+    files: ['plugins/**/*.js'],
+    languageOptions: {
+      globals: { __dirname: 'readonly', __filename: 'readonly' },
+    },
+  },
+  {
     ignores: [
+      'ios/**',
+      'android/**',
       'node_modules/**',
       '.expo/**',
       'dist/**',
