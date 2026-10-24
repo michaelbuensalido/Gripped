@@ -1,85 +1,207 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
-  View,
-  Text,
-  Image,
-  TouchableOpacity,
-  Switch,
-  TextInput,
   Alert,
-  Modal,
+  Image,
   KeyboardAvoidingView,
+  LayoutChangeEvent,
+  Modal,
   Platform,
   ScrollView,
+  Switch,
+  Text,
+  TextInput,
+  View,
 } from 'react-native';
-import Reanimated from 'react-native-reanimated';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import Constants from 'expo-constants';
+import * as FileSystem from 'expo-file-system/legacy';
+import { useFocusEffect, useRouter } from 'expo-router';
+import * as Sharing from 'expo-sharing';
 import {
   ChevronLeft,
   ChevronRight,
-  Trash2,
-  Download,
-  Upload,
-  HardDrive,
+  FileText,
   RefreshCw,
-  Info,
-  Shield,
-  Layers,
-  Ruler,
-  Check,
   X,
 } from 'lucide-react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useFocusEffect, useRouter } from 'expo-router';
-import Constants from 'expo-constants';
-import { seedDemoData } from '../db/seed';
-import { clearAllData, exportDataToJSON, importDataFromJSON, getStorageUsage } from '../db/queries';
-import { useTheme } from '../theme/useTheme';
+import Reanimated, {
+  useAnimatedStyle,
+  useReducedMotion,
+  useSharedValue,
+  withSpring,
+} from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Card } from '../components/ui/Card';
-import { SectionHeader } from '../components/ui/SectionHeader';
 import { PrimaryButton } from '../components/ui/PrimaryButton';
-import { SecondaryButton } from '../components/ui/SecondaryButton';
 import { ScalePressable } from '../components/ui/ScalePressable';
-import { getHapticsEnabled, setHapticsEnabled, HAPTICS_STORAGE_KEY, triggerHaptic } from '../utils/haptics';
+import { SecondaryButton } from '../components/ui/SecondaryButton';
+import {
+  clearAllData,
+  exportDataToJSON,
+  getStorageUsage,
+  importDataFromJSON,
+} from '../db/queries';
+import { seedDemoData } from '../db/seed';
 import { useCelebrationStore } from '../store/celebrationStore';
-import { usePreferences, GradeSystem, UnitSystem } from '../utils/preferences';
-import * as FileSystem from 'expo-file-system/legacy';
-import * as Sharing from 'expo-sharing';
+import { useTheme } from '../theme/useTheme';
+import {
+  getHapticsEnabled,
+  HAPTICS_STORAGE_KEY,
+  setHapticsEnabled,
+  triggerHaptic,
+} from '../utils/haptics';
+import { GradeSystem, UnitSystem, usePreferences } from '../utils/preferences';
 
 const REST_TIMER_KEY = '@cruxlog/rest_timer_seconds';
 const DEFAULT_REST = 90;
+const REST_PRESETS = [60, 90, 120, 180] as const;
 
-function SettingsRow({
-  label,
-  sublabel,
-  right,
-  isLast,
-}: {
+interface SegmentOption<T extends string> {
+  value: T;
   label: string;
-  sublabel?: string;
-  right?: React.ReactNode;
-  isLast?: boolean;
-}) {
-  const { colors, type, space } = useTheme();
+  accessibilityLabel: string;
+}
+
+interface SlidingSegmentedControlProps<T extends string> {
+  options: [SegmentOption<T>, SegmentOption<T>];
+  value: T;
+  onChange: (next: T) => void;
+}
+
+/**
+ * Spring-driven segmented control.
+ * Animates only `transform: [{ translateX }]` on the UI thread via Reanimated worklets,
+ * respecting reduced-motion preferences and retargeting smoothly if interrupted mid-flight.
+ */
+function SlidingSegmentedControl<T extends string>({
+  options,
+  value,
+  onChange,
+}: SlidingSegmentedControlProps<T>) {
+  const { colors, type, space, radius } = useTheme();
+  const reduceMotion = useReducedMotion();
+  const [trackWidth, setTrackWidth] = useState(0);
+  const activeIndex = options[0].value === value ? 0 : 1;
+  const thumbX = useSharedValue(0);
+
+  const innerPadding = space.xs;
+  const segmentWidth = trackWidth > 0 ? (trackWidth - innerPadding * 2) / 2 : 0;
+
+  useEffect(() => {
+    if (segmentWidth <= 0) return;
+    const target = activeIndex * segmentWidth;
+    if (reduceMotion) {
+      thumbX.value = target;
+    } else {
+      thumbX.value = withSpring(target, {
+        damping: 24,
+        stiffness: 320,
+        mass: 0.7,
+      });
+    }
+  }, [activeIndex, segmentWidth, reduceMotion, thumbX]);
+
+  const handleLayout = useCallback((e: LayoutChangeEvent) => {
+    setTrackWidth(e.nativeEvent.layout.width);
+  }, []);
+
+  const thumbStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: thumbX.value }],
+  }));
+
   return (
     <View
+      onLayout={handleLayout}
       style={{
         flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        paddingVertical: space.md,
-        borderBottomWidth: isLast ? 0 : 1,
-        borderBottomColor: colors.border,
+        backgroundColor: colors.cardMuted,
+        padding: innerPadding,
+        borderRadius: radius.md,
+        borderWidth: 1,
+        borderColor: colors.border,
+        position: 'relative',
       }}
     >
-      <View style={{ flex: 1, marginRight: space.md }}>
-        <Text style={[type.heading, { color: colors.text }]}>{label}</Text>
-        {sublabel ? (
-          <Text style={[type.caption, { color: colors.textMuted, marginTop: 2 }]}>{sublabel}</Text>
-        ) : null}
-      </View>
-      {right}
+      {segmentWidth > 0 ? (
+        <Reanimated.View
+          pointerEvents="none"
+          style={[
+            {
+              position: 'absolute',
+              top: innerPadding,
+              bottom: innerPadding,
+              left: innerPadding,
+              width: segmentWidth,
+              borderRadius: radius.sm,
+              backgroundColor: colors.accentSoft,
+              borderWidth: 1,
+              borderColor: colors.glassBorder,
+            },
+            thumbStyle,
+          ]}
+        />
+      ) : null}
+
+      {options.map((option) => {
+        const isSelected = option.value === value;
+        return (
+          <ScalePressable
+            key={option.value}
+            onPress={() => {
+              if (option.value !== value) {
+                triggerHaptic('light');
+                onChange(option.value);
+              }
+            }}
+            accessibilityRole="button"
+            accessibilityLabel={option.accessibilityLabel}
+            accessibilityState={{ selected: isSelected }}
+            style={{
+              flex: 1,
+              height: 40,
+              minHeight: 40,
+              borderRadius: radius.sm,
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <Text
+              style={[
+                type.control,
+                {
+                  color: isSelected ? colors.text : colors.textMuted,
+                },
+              ]}
+              numberOfLines={1}
+            >
+              {option.label}
+            </Text>
+          </ScalePressable>
+        );
+      })}
     </View>
+  );
+}
+
+interface GroupLabelProps {
+  title: string;
+}
+
+function GroupLabel({ title }: GroupLabelProps) {
+  const { colors, type, space } = useTheme();
+  return (
+    <Text
+      style={[
+        type.caption,
+        {
+          color: colors.textMuted,
+          marginBottom: space.sm,
+          paddingHorizontal: space.xs,
+        },
+      ]}
+    >
+      {title}
+    </Text>
   );
 }
 
@@ -95,9 +217,8 @@ export default function SettingsScreen() {
   const { celebrationsEnabled, setCelebrationsEnabled } = useCelebrationStore();
 
   // Storage usage
-  const [storageFormatted, setStorageFormatted] = useState('Calculating...');
-  const [dbSizeFormatted, setDbSizeFormatted] = useState('');
-  const [isRefreshingStorage, setIsRefreshingStorage] = useState(false);
+  const [storageFormatted, setStorageFormatted] = useState('...');
+  const [storageBreakdown, setStorageBreakdown] = useState('');
 
   // Import modal state
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
@@ -105,8 +226,10 @@ export default function SettingsScreen() {
   const [detectedBackups, setDetectedBackups] = useState<string[]>([]);
   const [isImporting, setIsImporting] = useState(false);
 
+  const appVersion = Constants.expoConfig?.version ?? '1.0.0';
+  const appBuild = Constants.expoConfig?.ios?.buildNumber ?? '1';
+
   const refreshStorage = useCallback(async () => {
-    setIsRefreshingStorage(true);
     try {
       let mediaBytes = 0;
       const docDir = (FileSystem as any)?.documentDirectory;
@@ -127,11 +250,9 @@ export default function SettingsScreen() {
       setStorageFormatted(usage.formatted);
       const dbKb = Math.round(usage.dbBytes / 1024);
       const mediaKb = Math.round(usage.mediaBytes / 1024);
-      setDbSizeFormatted(`SQLite: ${dbKb} KB • Cache: ${mediaKb} KB`);
+      setStorageBreakdown(`${dbKb} KB database, ${mediaKb} KB media`);
     } catch {
       setStorageFormatted('Local');
-    } finally {
-      setIsRefreshingStorage(false);
     }
   }, []);
 
@@ -140,7 +261,11 @@ export default function SettingsScreen() {
       const docDir = (FileSystem as any)?.documentDirectory;
       if (docDir) {
         const files = await FileSystem.readDirectoryAsync(docDir);
-        const backups = files.filter(f => (f.startsWith('gripped-export-') || f.startsWith('cruxlog-export-')) && f.endsWith('.json'));
+        const backups = files.filter(
+          (f) =>
+            (f.startsWith('gripped-export-') || f.startsWith('cruxlog-export-')) &&
+            f.endsWith('.json')
+        );
         setDetectedBackups(backups);
       }
     } catch {}
@@ -175,15 +300,18 @@ export default function SettingsScreen() {
     if (val) triggerHaptic('light');
   }, []);
 
-  const saveRestTimer = useCallback((value: string) => {
-    const n = parseInt(value, 10);
-    if (!isNaN(n) && n >= 10 && n <= 600) {
-      setRestSeconds(n);
-      AsyncStorage.setItem(REST_TIMER_KEY, String(n));
-    } else {
-      setRestInput(String(restSeconds));
-    }
-  }, [restSeconds]);
+  const saveRestTimer = useCallback(
+    (value: string) => {
+      const n = parseInt(value, 10);
+      if (!isNaN(n) && n >= 10 && n <= 600) {
+        setRestSeconds(n);
+        AsyncStorage.setItem(REST_TIMER_KEY, String(n));
+      } else {
+        setRestInput(String(restSeconds));
+      }
+    },
+    [restSeconds]
+  );
 
   const handleExportData = async () => {
     try {
@@ -194,7 +322,9 @@ export default function SettingsScreen() {
       const climbCount = Array.isArray(parsed.climbs) ? parsed.climbs.length : 0;
       const fileName = `gripped-export-${new Date().toISOString().split('T')[0]}.json`;
       const fileUri = `${(FileSystem as any).documentDirectory}${fileName}`;
-      await FileSystem.writeAsStringAsync(fileUri, jsonStr, { encoding: FileSystem.EncodingType.UTF8 });
+      await FileSystem.writeAsStringAsync(fileUri, jsonStr, {
+        encoding: FileSystem.EncodingType.UTF8,
+      });
       refreshStorage();
       loadLocalBackups();
 
@@ -248,7 +378,9 @@ export default function SettingsScreen() {
   const handleImportLocalFile = async (fileName: string) => {
     try {
       const fileUri = `${(FileSystem as any).documentDirectory}${fileName}`;
-      const content = await FileSystem.readAsStringAsync(fileUri, { encoding: FileSystem.EncodingType.UTF8 });
+      const content = await FileSystem.readAsStringAsync(fileUri, {
+        encoding: FileSystem.EncodingType.UTF8,
+      });
       Alert.alert(
         'Confirm Restore',
         `Restore data from "${fileName}"? Existing items with matching IDs will be overwritten.`,
@@ -261,7 +393,7 @@ export default function SettingsScreen() {
           },
         ]
       );
-    } catch (e) {
+    } catch {
       Alert.alert('File Read Error', 'Could not read the selected backup file.');
     }
   };
@@ -281,7 +413,7 @@ export default function SettingsScreen() {
               clearAllData();
               refreshStorage();
               Alert.alert('Done', 'All data has been cleared.');
-            } catch (e) {
+            } catch {
               Alert.alert('Error', 'Could not clear data.');
             }
           },
@@ -290,11 +422,9 @@ export default function SettingsScreen() {
     );
   }, [refreshStorage]);
 
-  const REST_PRESETS = [60, 90, 120, 180];
-
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
-      {/* Header */}
+      {/* Clean Header: No eyebrow, no decorative badges */}
       <View
         style={{
           paddingTop: Math.max(insets.top, space.lg),
@@ -311,10 +441,10 @@ export default function SettingsScreen() {
           accessibilityLabel="Back"
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           style={{
-            width: 48,
-            height: 48,
-            minHeight: 48,
-            minWidth: 48,
+            width: 40,
+            height: 40,
+            minHeight: 40,
+            minWidth: 40,
             borderRadius: radius.md,
             backgroundColor: colors.card,
             borderWidth: 1,
@@ -323,307 +453,198 @@ export default function SettingsScreen() {
             justifyContent: 'center',
           }}
         >
-          <ChevronLeft size={24} color={colors.text} />
+          <ChevronLeft size={20} color={colors.text} />
         </ScalePressable>
-        <View style={{ flex: 1 }}>
-          <Text style={[type.title, { color: colors.text }]}>Settings</Text>
-        </View>
+
+        <Text style={[type.title, { color: colors.text }]}>Settings</Text>
       </View>
 
-      <Reanimated.ScrollView
+      <ScrollView
         contentContainerStyle={{
           paddingHorizontal: space.lg,
-          paddingBottom: 140,
+          paddingTop: space.xs,
+          paddingBottom: 120,
           gap: space.xl,
         }}
         showsVerticalScrollIndicator={false}
       >
-        {/* Rest Timer */}
+        {/* 1. Climbing Controls */}
         <View>
-          <SectionHeader title="Rest Timer" />
-          <Card>
-            <SettingsRow
-              label="Default Rest Duration"
-              sublabel="Seconds between climbs (10–600)"
-              right={
-                <TextInput
-                  value={restInput}
-                  onChangeText={setRestInput}
-                  onBlur={() => saveRestTimer(restInput)}
-                  onSubmitEditing={() => saveRestTimer(restInput)}
-                  keyboardType="numeric"
-                  returnKeyType="done"
-                  accessibilityLabel="Default rest duration in seconds"
-                  style={[
-                    type.statSm,
-                    {
-                      color: colors.accentText,
-                      backgroundColor: colors.cardMuted,
-                      borderRadius: radius.sm,
-                      borderWidth: 1,
-                      borderColor: colors.border,
-                      paddingHorizontal: space.sm,
-                      paddingVertical: 6,
-                      minHeight: 44,
-                      minWidth: 64,
-                      textAlign: 'center',
-                    },
-                  ]}
-                />
-              }
-            />
-
-            {/* Presets */}
-            <View style={{ flexDirection: 'row', gap: space.sm, paddingTop: space.md }}>
-              {REST_PRESETS.map((s) => {
-                const isSelected = restSeconds === s;
-                return (
-                  <ScalePressable
-                    key={s}
-                    onPress={() => {
-                      triggerHaptic('light');
-                      setRestSeconds(s);
-                      setRestInput(String(s));
-                      AsyncStorage.setItem(REST_TIMER_KEY, String(s));
-                    }}
-                    accessibilityRole="button"
-                    accessibilityLabel={`${s} seconds rest preset`}
-                    accessibilityState={{ selected: isSelected }}
-                    style={{
-                      flex: 1,
-                      height: 56,
-                      minHeight: 56,
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      backgroundColor: isSelected ? colors.accentSoft : colors.cardMuted,
-                      borderRadius: radius.md,
-                      borderWidth: 1,
-                      borderColor: isSelected ? colors.accent : colors.border,
-                    }}
-                  >
-                    <Text
-                      style={[
-                        type.heading,
-                        {
-                          color: isSelected ? colors.accentText : colors.textMuted,
-                          fontSize: 15,
-                        },
-                      ]}
-                    >
-                      {s}s
-                    </Text>
-                  </ScalePressable>
-                );
-              })}
-            </View>
-          </Card>
-        </View>
-
-        {/* Climbing Preferences */}
-        <View>
-          <SectionHeader title="Climbing Preferences" />
-          <Card>
+          <GroupLabel title="Climbing" />
+          <Card style={{ gap: space.lg }}>
             {/* Grade System */}
-            <View style={{ paddingVertical: space.sm, borderBottomWidth: 1, borderBottomColor: colors.border }}>
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: space.xs }}>
-                <Text style={[type.heading, { color: colors.text }]}>Grade System</Text>
-                <Text style={[type.caption, { color: colors.accentText, fontWeight: '600' }]}>
-                  {gradeSystem === 'v_scale' ? 'V0 – V16' : '4 – 8C+'}
+            <View style={{ gap: space.sm }}>
+              <View
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'baseline',
+                  justifyContent: 'space-between',
+                }}
+              >
+                <Text style={[type.heading, { color: colors.text }]}>Grade Scale</Text>
+                <Text style={[type.caption, { color: colors.textMuted }]}>
+                  {gradeSystem === 'v_scale' ? 'Hueco (V0-V16)' : 'Fontainebleau (4-8C+)'}
                 </Text>
               </View>
-              <Text style={[type.caption, { color: colors.textMuted, marginBottom: space.sm }]}>
-                Choose between Hueco (V-Scale) and Fontainebleau (Font)
-              </Text>
-              <View style={{ flexDirection: 'row', gap: space.sm }}>
-                <ScalePressable
-                  onPress={() => {
-                    triggerHaptic('light');
-                    setGradeSystem('v_scale');
-                  }}
-                  accessibilityRole="button"
-                  accessibilityLabel="V-Scale grading system"
-                  accessibilityState={{ selected: gradeSystem === 'v_scale' }}
-                  style={{
-                    flex: 1,
-                    height: 48,
-                    minHeight: 48,
-                    borderRadius: radius.md,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    backgroundColor: gradeSystem === 'v_scale' ? colors.accentSoft : colors.cardMuted,
-                    borderWidth: 1,
-                    borderColor: gradeSystem === 'v_scale' ? colors.accent : colors.border,
-                  }}
-                >
-                  <Text
-                    style={[
-                      type.control,
-                      {
-                        color: gradeSystem === 'v_scale' ? colors.accentText : colors.textMuted,
-                        fontWeight: gradeSystem === 'v_scale' ? '700' : '500',
-                      },
-                    ]}
-                  >
-                    V-Scale (Hueco)
-                  </Text>
-                </ScalePressable>
 
-                <ScalePressable
-                  onPress={() => {
-                    triggerHaptic('light');
-                    setGradeSystem('font');
-                  }}
-                  accessibilityRole="button"
-                  accessibilityLabel="Fontainebleau grading system"
-                  accessibilityState={{ selected: gradeSystem === 'font' }}
-                  style={{
-                    flex: 1,
-                    height: 48,
-                    minHeight: 48,
-                    borderRadius: radius.md,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    backgroundColor: gradeSystem === 'font' ? colors.accentSoft : colors.cardMuted,
-                    borderWidth: 1,
-                    borderColor: gradeSystem === 'font' ? colors.accent : colors.border,
-                  }}
-                >
-                  <Text
-                    style={[
-                      type.control,
-                      {
-                        color: gradeSystem === 'font' ? colors.accentText : colors.textMuted,
-                        fontWeight: gradeSystem === 'font' ? '700' : '500',
-                      },
-                    ]}
-                  >
-                    Font (Fontainebleau)
-                  </Text>
-                </ScalePressable>
-              </View>
+              <SlidingSegmentedControl<GradeSystem>
+                value={gradeSystem}
+                onChange={setGradeSystem}
+                options={[
+                  {
+                    value: 'v_scale',
+                    label: 'V-Scale',
+                    accessibilityLabel: 'V-Scale grading system',
+                  },
+                  {
+                    value: 'font',
+                    label: 'Font',
+                    accessibilityLabel: 'Fontainebleau grading system',
+                  },
+                ]}
+              />
             </View>
+
+            {/* Hairline Divider */}
+            <View style={{ height: 1, backgroundColor: colors.border }} />
 
             {/* Units */}
-            <View style={{ paddingVertical: space.sm }}>
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: space.xs }}>
+            <View style={{ gap: space.sm }}>
+              <View
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'baseline',
+                  justifyContent: 'space-between',
+                }}
+              >
                 <Text style={[type.heading, { color: colors.text }]}>Units</Text>
-                <Text style={[type.caption, { color: colors.accentText, fontWeight: '600' }]}>
-                  {unitSystem === 'metric' ? 'Metric (kg, cm)' : 'Imperial (lbs, in)'}
+                <Text style={[type.caption, { color: colors.textMuted }]}>
+                  {unitSystem === 'metric' ? 'kg, cm, m' : 'lbs, in, ft'}
                 </Text>
               </View>
-              <Text style={[type.caption, { color: colors.textMuted, marginBottom: space.sm }]}>
-                Measurement system for climber telemetry and wall dimensions
-              </Text>
-              <View style={{ flexDirection: 'row', gap: space.sm }}>
-                <ScalePressable
-                  onPress={() => {
-                    triggerHaptic('light');
-                    setUnitSystem('metric');
-                  }}
-                  accessibilityRole="button"
-                  accessibilityLabel="Metric units"
-                  accessibilityState={{ selected: unitSystem === 'metric' }}
-                  style={{
-                    flex: 1,
-                    height: 48,
-                    minHeight: 48,
-                    borderRadius: radius.md,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    backgroundColor: unitSystem === 'metric' ? colors.accentSoft : colors.cardMuted,
-                    borderWidth: 1,
-                    borderColor: unitSystem === 'metric' ? colors.accent : colors.border,
-                  }}
-                >
-                  <Text
-                    style={[
-                      type.control,
-                      {
-                        color: unitSystem === 'metric' ? colors.accentText : colors.textMuted,
-                        fontWeight: unitSystem === 'metric' ? '700' : '500',
-                      },
-                    ]}
-                  >
-                    Metric (kg / cm)
-                  </Text>
-                </ScalePressable>
 
-                <ScalePressable
-                  onPress={() => {
-                    triggerHaptic('light');
-                    setUnitSystem('imperial');
-                  }}
-                  accessibilityRole="button"
-                  accessibilityLabel="Imperial units"
-                  accessibilityState={{ selected: unitSystem === 'imperial' }}
+              <SlidingSegmentedControl<UnitSystem>
+                value={unitSystem}
+                onChange={setUnitSystem}
+                options={[
+                  {
+                    value: 'metric',
+                    label: 'Metric',
+                    accessibilityLabel: 'Metric units',
+                  },
+                  {
+                    value: 'imperial',
+                    label: 'Imperial',
+                    accessibilityLabel: 'Imperial units',
+                  },
+                ]}
+              />
+            </View>
+
+            {/* Hairline Divider */}
+            <View style={{ height: 1, backgroundColor: colors.border }} />
+
+            {/* Rest Timer */}
+            <View style={{ gap: space.md }}>
+              <View
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: space.md,
+                }}
+              >
+                <View style={{ flex: 1 }}>
+                  <Text style={[type.heading, { color: colors.text }]}>Rest Timer</Text>
+                  <Text style={[type.caption, { color: colors.textMuted, marginTop: 2 }]}>
+                    Default countdown between attempts (10-600s)
+                  </Text>
+                </View>
+
+                <View
                   style={{
-                    flex: 1,
-                    height: 48,
-                    minHeight: 48,
-                    borderRadius: radius.md,
+                    flexDirection: 'row',
                     alignItems: 'center',
-                    justifyContent: 'center',
-                    backgroundColor: unitSystem === 'imperial' ? colors.accentSoft : colors.cardMuted,
+                    backgroundColor: colors.cardMuted,
+                    borderRadius: radius.sm,
                     borderWidth: 1,
-                    borderColor: unitSystem === 'imperial' ? colors.accent : colors.border,
+                    borderColor: colors.border,
+                    paddingHorizontal: space.sm,
+                    height: 40,
                   }}
                 >
-                  <Text
+                  <TextInput
+                    value={restInput}
+                    onChangeText={setRestInput}
+                    onBlur={() => saveRestTimer(restInput)}
+                    onSubmitEditing={() => saveRestTimer(restInput)}
+                    keyboardType="numeric"
+                    returnKeyType="done"
+                    accessibilityLabel="Default rest duration in seconds"
                     style={[
                       type.control,
                       {
-                        color: unitSystem === 'imperial' ? colors.accentText : colors.textMuted,
-                        fontWeight: unitSystem === 'imperial' ? '700' : '500',
+                        color: colors.text,
+                        minWidth: 36,
+                        textAlign: 'right',
+                        paddingVertical: 0,
                       },
                     ]}
-                  >
-                    Imperial (lbs / in)
-                  </Text>
-                </ScalePressable>
+                  />
+                  <Text style={[type.caption, { color: colors.textMuted, marginLeft: 2 }]}>s</Text>
+                </View>
+              </View>
+
+              {/* Single-line Preset Pills */}
+              <View style={{ flexDirection: 'row', gap: space.sm }}>
+                {REST_PRESETS.map((s) => {
+                  const isSelected = restSeconds === s;
+                  return (
+                    <ScalePressable
+                      key={s}
+                      onPress={() => {
+                        triggerHaptic('light');
+                        setRestSeconds(s);
+                        setRestInput(String(s));
+                        AsyncStorage.setItem(REST_TIMER_KEY, String(s));
+                      }}
+                      accessibilityRole="button"
+                      accessibilityLabel={`${s} seconds rest preset`}
+                      accessibilityState={{ selected: isSelected }}
+                      style={{
+                        flex: 1,
+                        height: 38,
+                        minHeight: 38,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        backgroundColor: isSelected ? colors.accentSoft : colors.cardMuted,
+                        borderRadius: radius.sm,
+                        borderWidth: 1,
+                        borderColor: isSelected ? colors.glassBorder : colors.border,
+                      }}
+                    >
+                      <Text
+                        style={[
+                          type.control,
+                          {
+                            color: isSelected ? colors.text : colors.textMuted,
+                          },
+                        ]}
+                      >
+                        {s}s
+                      </Text>
+                    </ScalePressable>
+                  );
+                })}
               </View>
             </View>
           </Card>
         </View>
 
-        {/* Feedback & Celebrations */}
+        {/* 2. Feedback */}
         <View>
-          <SectionHeader title="Feedback & Celebrations" />
-          <Card>
-            <SettingsRow
-              label="Haptic Feedback"
-              sublabel="Vibration cues during logging and timers"
-              right={
-                <Switch
-                  value={haptics}
-                  onValueChange={handleToggleHaptics}
-                  trackColor={{ false: colors.cardMuted, true: colors.accent }}
-                  thumbColor={colors.textOnAccent}
-                  accessibilityLabel="Toggle haptic feedback"
-                />
-              }
-            />
-            <SettingsRow
-              label="Celebrations & Animations"
-              sublabel="Visual effects for flashes & topped projects"
-              isLast
-              right={
-                <Switch
-                  value={celebrationsEnabled}
-                  onValueChange={setCelebrationsEnabled}
-                  trackColor={{ false: colors.cardMuted, true: colors.accent }}
-                  thumbColor={colors.textOnAccent}
-                  accessibilityLabel="Toggle celebration effects"
-                />
-              }
-            />
-          </Card>
-        </View>
-
-        {/* Data Management */}
-        <View>
-          <SectionHeader title="Data Management" />
-          <Card>
-            {/* Storage Usage Row */}
+          <GroupLabel title="Feedback" />
+          <Card style={{ paddingVertical: space.xs }}>
             <View
               style={{
                 flexDirection: 'row',
@@ -632,36 +653,102 @@ export default function SettingsScreen() {
                 paddingVertical: space.md,
                 borderBottomWidth: 1,
                 borderBottomColor: colors.border,
+                gap: space.md,
               }}
             >
-              <View style={{ flex: 1, marginRight: space.md }}>
-                <Text style={[type.heading, { color: colors.text }]}>Storage Usage</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={[type.heading, { color: colors.text }]}>Haptics</Text>
                 <Text style={[type.caption, { color: colors.textMuted, marginTop: 2 }]}>
-                  {dbSizeFormatted || 'Offline-first SQLite database and media'}
+                  Tactile feedback when logging climbs and timers
                 </Text>
               </View>
+              <Switch
+                value={haptics}
+                onValueChange={handleToggleHaptics}
+                trackColor={{ false: colors.cardMuted, true: colors.accent }}
+                thumbColor={colors.textOnAccent}
+                accessibilityLabel="Toggle haptic feedback"
+              />
+            </View>
+
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                paddingVertical: space.md,
+                gap: space.md,
+              }}
+            >
+              <View style={{ flex: 1 }}>
+                <Text style={[type.heading, { color: colors.text }]}>Send Celebrations</Text>
+                <Text style={[type.caption, { color: colors.textMuted, marginTop: 2 }]}>
+                  Milestone banners and confetti on flashes and sends
+                </Text>
+              </View>
+              <Switch
+                value={celebrationsEnabled}
+                onValueChange={setCelebrationsEnabled}
+                trackColor={{ false: colors.cardMuted, true: colors.accent }}
+                thumbColor={colors.textOnAccent}
+                accessibilityLabel="Toggle celebration effects"
+              />
+            </View>
+          </Card>
+        </View>
+
+        {/* 3. Data & Storage */}
+        <View>
+          <GroupLabel title="Data & Backups" />
+          <Card style={{ paddingVertical: space.xs }}>
+            {/* Storage Row */}
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                paddingVertical: space.md,
+                borderBottomWidth: 1,
+                borderBottomColor: colors.border,
+                gap: space.md,
+              }}
+            >
+              <View style={{ flex: 1 }}>
+                <Text style={[type.heading, { color: colors.text }]}>Local Storage</Text>
+                <Text style={[type.caption, { color: colors.textMuted, marginTop: 2 }]}>
+                  {storageBreakdown || 'SQLite database and media cache'}
+                </Text>
+              </View>
+
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm }}>
-                <Text style={[type.statSm, { color: colors.accentText }]}>{storageFormatted}</Text>
+                <Text style={[type.control, { color: colors.textMuted }]}>
+                  {storageFormatted}
+                </Text>
                 <ScalePressable
-                  onPress={refreshStorage}
+                  onPress={() => {
+                    triggerHaptic('light');
+                    refreshStorage();
+                  }}
                   accessibilityRole="button"
                   accessibilityLabel="Refresh storage usage"
                   hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                   style={{
-                    width: 36,
-                    height: 36,
+                    width: 32,
+                    height: 32,
                     borderRadius: radius.sm,
                     backgroundColor: colors.cardMuted,
+                    borderWidth: 1,
+                    borderColor: colors.border,
                     alignItems: 'center',
                     justifyContent: 'center',
                   }}
                 >
-                  <RefreshCw size={16} color={colors.textMuted} />
+                  <RefreshCw size={14} color={colors.textMuted} />
                 </ScalePressable>
               </View>
             </View>
 
-            {/* Export Data */}
+            {/* Export Backup */}
             <ScalePressable
               onPress={handleExportData}
               accessibilityRole="button"
@@ -669,37 +756,23 @@ export default function SettingsScreen() {
               style={{
                 flexDirection: 'row',
                 alignItems: 'center',
-                gap: space.md,
+                justifyContent: 'space-between',
                 paddingVertical: space.md,
                 borderBottomWidth: 1,
                 borderBottomColor: colors.border,
-                minHeight: 56,
+                gap: space.md,
               }}
             >
-              <View
-                style={{
-                  width: 44,
-                  height: 44,
-                  minHeight: 44,
-                  minWidth: 44,
-                  borderRadius: radius.md,
-                  backgroundColor: colors.accentSoft,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                <Download size={20} color={colors.accentText} />
-              </View>
               <View style={{ flex: 1 }}>
-                <Text style={[type.heading, { color: colors.text }]}>Export Data</Text>
+                <Text style={[type.heading, { color: colors.text }]}>Export Backup</Text>
                 <Text style={[type.caption, { color: colors.textMuted, marginTop: 2 }]}>
-                  Download full database backup as JSON
+                  Save or share your climbing log as JSON
                 </Text>
               </View>
               <ChevronRight size={18} color={colors.textMuted} />
             </ScalePressable>
 
-            {/* Import Data */}
+            {/* Restore Backup */}
             <ScalePressable
               onPress={() => {
                 triggerHaptic('light');
@@ -707,176 +780,133 @@ export default function SettingsScreen() {
                 setIsImportModalOpen(true);
               }}
               accessibilityRole="button"
-              accessibilityLabel="Import data from backup"
+              accessibilityLabel="Import data from JSON backup"
               style={{
                 flexDirection: 'row',
                 alignItems: 'center',
-                gap: space.md,
+                justifyContent: 'space-between',
                 paddingVertical: space.md,
                 borderBottomWidth: 1,
                 borderBottomColor: colors.border,
-                minHeight: 56,
+                gap: space.md,
               }}
             >
-              <View
-                style={{
-                  width: 44,
-                  height: 44,
-                  minHeight: 44,
-                  minWidth: 44,
-                  borderRadius: radius.md,
-                  backgroundColor: colors.accentSoft,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                <Upload size={20} color={colors.accentText} />
-              </View>
               <View style={{ flex: 1 }}>
-                <Text style={[type.heading, { color: colors.text }]}>Import Data</Text>
+                <Text style={[type.heading, { color: colors.text }]}>Restore from Backup</Text>
                 <Text style={[type.caption, { color: colors.textMuted, marginTop: 2 }]}>
-                  Restore sessions, climbs, and projects from JSON
+                  Import sessions, climbs, and projects from JSON
                 </Text>
               </View>
-              <ChevronRight size={18} color={colors.textMuted} />
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.xs }}>
+                {detectedBackups.length > 0 ? (
+                  <Text style={[type.caption, { color: colors.textMuted }]}>
+                    {detectedBackups.length} saved
+                  </Text>
+                ) : null}
+                <ChevronRight size={18} color={colors.textMuted} />
+              </View>
             </ScalePressable>
 
             {/* Clear All Data */}
             <ScalePressable
               onPress={handleClearData}
               accessibilityRole="button"
-              accessibilityLabel="Clear all session, climb, and project data"
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: space.md,
-                paddingVertical: space.md,
-                minHeight: 56,
-              }}
-            >
-              <View
-                style={{
-                  width: 44,
-                  height: 44,
-                  minHeight: 44,
-                  minWidth: 44,
-                  borderRadius: radius.md,
-                  backgroundColor: colors.dangerSoft,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                <Trash2 size={20} color={colors.dangerText} />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={[type.heading, { color: colors.dangerText }]}>Clear All Data</Text>
-                <Text style={[type.caption, { color: colors.textMuted, marginTop: 2 }]}>
-                  Permanently deletes all sessions, climbs, and projects
-                </Text>
-              </View>
-            </ScalePressable>
-
-            {__DEV__ && (
-              <View style={{ marginTop: space.md, borderTopWidth: 1, borderTopColor: colors.border, paddingTop: space.md }}>
-                <PrimaryButton
-                  label="RESET & SEED DEMO DATA"
-                  onPress={() => {
-                    Alert.alert(
-                      'Seed Demo Data',
-                      'This will delete existing data and populate 10 weeks of realistic climbing history. Proceed?',
-                      [
-                        { text: 'Cancel', style: 'cancel' },
-                        {
-                          text: 'Seed Data',
-                          style: 'destructive',
-                          onPress: () => {
-                            try {
-                              seedDemoData();
-                              refreshStorage();
-                              Alert.alert('Success', 'Demo climbing data seeded.');
-                            } catch (e) {
-                              Alert.alert('Error', 'Could not seed demo data.');
-                            }
-                          },
-                        },
-                      ]
-                    );
-                  }}
-                />
-              </View>
-            )}
-          </Card>
-        </View>
-
-        {/* About & Privacy */}
-        <View>
-          <SectionHeader title="About Gripped" />
-          <Card>
-            <View
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: space.md,
-                paddingVertical: space.sm,
-                paddingBottom: space.md,
-                borderBottomWidth: 1,
-                borderBottomColor: colors.border,
-              }}
-            >
-              <Image
-                source={require('../assets/logo.png')}
-                style={{
-                  width: 44,
-                  height: 44,
-                  borderRadius: radius.md,
-                  borderWidth: 1,
-                  borderColor: colors.glassBorder,
-                }}
-                resizeMode="cover"
-                accessibilityLabel="Gripped Logo"
-              />
-              <View style={{ flex: 1 }}>
-                <Text style={[type.heading, { color: colors.text, fontSize: 17 }]}>Gripped</Text>
-                <Text style={[type.caption, { color: colors.textMuted, marginTop: 2 }]}>
-                  Offline-first Bouldering Ledger
-                </Text>
-              </View>
-            </View>
-            <SettingsRow
-              label="Version"
-              sublabel={`${Constants.expoConfig?.version ?? '1.0.0'} (Build ${Constants.expoConfig?.ios?.buildNumber ?? '1'})`}
-              right={<Text style={[type.body, { color: colors.accentText }]}>v{Constants.expoConfig?.version ?? '1.0.0'}</Text>}
-            />
-            <SettingsRow
-              label="Architecture"
-              sublabel="Offline-first SQLite local store • CRDT outbox"
-              right={<Text style={[type.body, { color: colors.flashText }]}>100% Local</Text>}
-            />
-            <ScalePressable
-              onPress={() => router.push('/privacy-policy' as any)}
-              accessibilityRole="button"
-              accessibilityLabel="Read Privacy Policy"
+              accessibilityLabel="Clear all data"
               style={{
                 flexDirection: 'row',
                 alignItems: 'center',
                 justifyContent: 'space-between',
                 paddingVertical: space.md,
-                minHeight: 48,
+                gap: space.md,
               }}
             >
-              <View style={{ flex: 1, marginRight: space.md }}>
+              <View style={{ flex: 1 }}>
+                <Text style={[type.heading, { color: colors.dangerText }]}>Clear All Data</Text>
+                <Text style={[type.caption, { color: colors.textMuted, marginTop: 2 }]}>
+                  Permanently delete all local sessions and projects
+                </Text>
+              </View>
+              <ChevronRight size={18} color={colors.dangerText} />
+            </ScalePressable>
+          </Card>
+        </View>
+
+        {/* 4. Legal & App Info */}
+        <View>
+          <GroupLabel title="About" />
+          <Card style={{ paddingVertical: space.xs }}>
+            <ScalePressable
+              onPress={() => router.push('/privacy-policy' as any)}
+              accessibilityRole="button"
+              accessibilityLabel="Privacy Policy"
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                paddingVertical: space.md,
+                gap: space.md,
+              }}
+            >
+              <View style={{ flex: 1 }}>
                 <Text style={[type.heading, { color: colors.text }]}>Privacy Policy</Text>
                 <Text style={[type.caption, { color: colors.textMuted, marginTop: 2 }]}>
-                  Zero cloud telemetry • Your data never leaves your device
+                  Offline-first architecture, zero cloud tracking
                 </Text>
               </View>
               <ChevronRight size={18} color={colors.textMuted} />
             </ScalePressable>
           </Card>
-        </View>
-      </Reanimated.ScrollView>
 
-      {/* Import Modal */}
+          {__DEV__ ? (
+            <View style={{ marginTop: space.lg }}>
+              <SecondaryButton
+                label="Reset & Seed Demo Data"
+                onPress={() => {
+                  try {
+                    triggerHaptic('medium');
+                    seedDemoData();
+                    refreshStorage();
+                    Alert.alert('Done', 'Demo data has been loaded.');
+                    router.replace('/');
+                  } catch (e: any) {
+                    console.error('Seed error:', e);
+                    Alert.alert('Error', e?.message || String(e));
+                  }
+                }}
+              />
+            </View>
+          ) : null}
+
+          {/* Quiet Footer */}
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: space.sm,
+              marginTop: space.xl,
+            }}
+          >
+            <Image
+              source={require('../assets/logo.png')}
+              style={{
+                width: 20,
+                height: 20,
+                borderRadius: radius.sm,
+                borderWidth: 1,
+                borderColor: colors.glassBorder,
+              }}
+              resizeMode="cover"
+              accessibilityLabel="Gripped Logo"
+            />
+            <Text style={[type.caption, { color: colors.textMuted }]}>
+              Gripped {appVersion} ({appBuild})
+            </Text>
+          </View>
+        </View>
+      </ScrollView>
+
+      {/* Restore Data Modal */}
       <Modal
         visible={isImportModalOpen}
         animationType="slide"
@@ -884,116 +914,149 @@ export default function SettingsScreen() {
         onRequestClose={() => setIsImportModalOpen(false)}
       >
         <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'flex-end' }}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={{
+            flex: 1,
+            backgroundColor: colors.scrim,
+            justifyContent: 'flex-end',
+          }}
         >
           <View
             style={{
-              backgroundColor: colors.card,
+              backgroundColor: colors.materialBase,
               borderTopLeftRadius: radius.xl,
               borderTopRightRadius: radius.xl,
-              paddingTop: space.lg,
-              paddingHorizontal: space.lg,
-              paddingBottom: Math.max(insets.bottom, 24),
-              maxHeight: '88%',
-              borderWidth: 1,
-              borderColor: colors.border,
+              padding: space.lg,
+              paddingBottom: Math.max(insets.bottom, space.xl),
+              maxHeight: '85%',
+              borderTopWidth: 1,
+              borderColor: colors.glassBorder,
             }}
           >
-            {/* Header */}
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: space.md }}>
-              <View>
-                <Text style={[type.title, { color: colors.text }]}>Import Gripped Data</Text>
-                <Text style={[type.caption, { color: colors.textMuted, marginTop: 2 }]}>
-                  Restore your climbing logs from a JSON backup
-                </Text>
-              </View>
+            {/* Sheet Drag Handle */}
+            <View
+              style={{
+                width: 36,
+                height: 4,
+                borderRadius: radius.pill,
+                backgroundColor: colors.glassHighlight,
+                alignSelf: 'center',
+                marginBottom: space.md,
+              }}
+            />
+
+            <View
+              style={{
+                flexDirection: 'row',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginBottom: space.md,
+              }}
+            >
+              <Text style={[type.title, { color: colors.text }]}>Restore Data</Text>
               <ScalePressable
                 onPress={() => setIsImportModalOpen(false)}
                 accessibilityRole="button"
-                accessibilityLabel="Close import modal"
-                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                accessibilityLabel="Close restore modal"
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                 style={{
-                  width: 44,
-                  height: 44,
-                  borderRadius: 22,
+                  width: 36,
+                  height: 36,
+                  borderRadius: radius.sm,
                   backgroundColor: colors.cardMuted,
+                  borderWidth: 1,
+                  borderColor: colors.border,
                   alignItems: 'center',
                   justifyContent: 'center',
                 }}
               >
-                <X size={20} color={colors.text} />
+                <X size={18} color={colors.textMuted} />
               </ScalePressable>
             </View>
 
-            <ScrollView showsVerticalScrollIndicator={false}>
-              {/* Detected local backup files */}
-              {detectedBackups.length > 0 && (
-                <View style={{ marginBottom: space.lg }}>
-                  <Text style={[type.label, { color: colors.textMuted, marginBottom: space.sm }]}>
-                    DETECTED LOCAL BACKUPS
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={{ gap: space.md, paddingBottom: space.lg }}
+            >
+              {detectedBackups.length > 0 ? (
+                <View style={{ gap: space.xs }}>
+                  <Text style={[type.caption, { color: colors.textMuted, marginBottom: 2 }]}>
+                    Saved Backups on Device
                   </Text>
-                  {detectedBackups.map((fileName) => (
+                  {detectedBackups.map((file) => (
                     <ScalePressable
-                      key={fileName}
-                      onPress={() => handleImportLocalFile(fileName)}
+                      key={file}
+                      onPress={() => handleImportLocalFile(file)}
                       accessibilityRole="button"
-                      accessibilityLabel={`Restore backup ${fileName}`}
+                      accessibilityLabel={`Restore from ${file}`}
                       style={{
                         flexDirection: 'row',
                         alignItems: 'center',
                         justifyContent: 'space-between',
+                        backgroundColor: colors.card,
                         padding: space.md,
-                        backgroundColor: colors.cardMuted,
                         borderRadius: radius.md,
                         borderWidth: 1,
                         borderColor: colors.border,
-                        marginBottom: space.sm,
-                        minHeight: 52,
                       }}
                     >
-                      <View style={{ flex: 1, marginRight: space.sm }}>
-                        <Text style={[type.heading, { color: colors.text, fontSize: 14 }]}>{fileName}</Text>
-                        <Text style={[type.caption, { color: colors.accentText }]}>Tap to restore</Text>
+                      <View
+                        style={{
+                          flexDirection: 'row',
+                          alignItems: 'center',
+                          gap: space.sm,
+                          flex: 1,
+                        }}
+                      >
+                        <FileText size={16} color={colors.textMuted} />
+                        <Text
+                          style={[type.control, { color: colors.text, flex: 1 }]}
+                          numberOfLines={1}
+                        >
+                          {file}
+                        </Text>
                       </View>
-                      <Upload size={18} color={colors.accent} />
+                      <Text style={[type.control, { color: colors.accentText }]}>Restore</Text>
                     </ScalePressable>
                   ))}
                 </View>
-              )}
+              ) : null}
 
-              {/* Paste JSON directly */}
-              <View style={{ marginBottom: space.lg }}>
-                <Text style={[type.label, { color: colors.textMuted, marginBottom: space.sm }]}>
-                  PASTE BACKUP JSON
+              <View style={{ gap: space.xs }}>
+                <Text style={[type.caption, { color: colors.textMuted }]}>
+                  Paste Backup JSON
+                </Text>
+                <Text style={[type.caption, { color: colors.textMuted, marginBottom: space.xs }]}>
+                  Paste the contents of a Gripped backup file (.json) below:
                 </Text>
                 <TextInput
                   value={importJsonText}
                   onChangeText={setImportJsonText}
-                  placeholder="Paste JSON string here..."
+                  placeholder='{"version": 1, "sessions": [...], "climbs": [...]}'
                   placeholderTextColor={colors.textMuted}
                   multiline
-                  accessibilityLabel="Paste JSON backup content"
-                  style={{
-                    height: 140,
-                    backgroundColor: colors.cardMuted,
-                    borderRadius: radius.md,
-                    borderWidth: 1,
-                    borderColor: colors.border,
-                    padding: space.md,
-                    color: colors.text,
-                    fontSize: 13,
-                    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
-                    textAlignVertical: 'top',
-                  }}
+                  numberOfLines={6}
+                  accessibilityLabel="Paste JSON backup data"
+                  style={[
+                    type.caption,
+                    {
+                      backgroundColor: colors.cardMuted,
+                      color: colors.text,
+                      borderRadius: radius.md,
+                      borderWidth: 1,
+                      borderColor: colors.border,
+                      padding: space.md,
+                      minHeight: 140,
+                      textAlignVertical: 'top',
+                    },
+                  ]}
                 />
               </View>
 
               <PrimaryButton
-                label={isImporting ? 'IMPORTING...' : 'VALIDATE & IMPORT JSON'}
-                loading={isImporting}
-                disabled={!importJsonText.trim()}
+                label={isImporting ? 'Restoring...' : 'Restore from JSON'}
                 onPress={() => handleImportJson(importJsonText)}
+                disabled={isImporting}
               />
             </ScrollView>
           </View>
