@@ -261,6 +261,7 @@ Always compose screens from existing shared components before creating new primi
 | **Logbook** (`app/profile.tsx`) | Lifetime Telemetry Strip | Display header + action icons (Add, Search, List/Calendar toggle, Settings) → 4 lifetime `StatTile`s → Month-grouped `SessionCard` stream (or `LogbookCalendar`). |
 | **Project Detail** (`app/project/[id].tsx`) | Full-Bleed Photo / 3D Hold | Top photo/hold header with glass overlay controls → Overlapping translucent sheet (`radius.xl`) with grade, burns, beta videos, sequence notes, and attempt history. |
 | **Active Session** (`app/session/index.tsx`) | Live Elapsed Timer | Distraction-free logger (tab bar hidden) → Live session clock + `RestTimerPill` → Grade & outcome logger controls → Live `ClimbRow` stream + iOS Live Activity sync. |
+| **Settings** (`app/settings.tsx`) | Spring Segmented Controls | Clean utility header → `Climbing` card (spring-sliding `Grade Scale` & `Units` segmented controls + `Rest Timer` presets) → `Feedback` card (`Haptics` & `Send Celebrations` switches) → `Data & Backups` card (`Local Storage`, `Export Backup`, `Restore from Backup`, `Clear All Data`) → `About` card & quiet version footer. |
 
 ---
 
