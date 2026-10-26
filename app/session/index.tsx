@@ -1567,6 +1567,16 @@ export default function ActiveSessionScreen() {
         }
         onSelectProject={(proj) => setActiveProjectTarget(proj)}
         projects={activeProjects}
+        onDelete={
+          editingClimb
+            ? () => {
+                const idToDelete = editingClimb.id;
+                setLogSheetOpen(false);
+                setEditingClimb(null);
+                handleDeleteClimb(idToDelete);
+              }
+            : undefined
+        }
       />
 
       {/* In-Session Gym Switcher Sheet */}
