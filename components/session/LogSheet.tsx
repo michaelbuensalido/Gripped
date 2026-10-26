@@ -351,6 +351,7 @@ export function LogSheet({
   projects = [],
   selectedProject = null,
   onSelectProject,
+  onDelete,
 }: {
   visible: boolean;
   onClose: () => void;
@@ -377,6 +378,7 @@ export function LogSheet({
   projects?: any[];
   selectedProject?: any | null;
   onSelectProject?: (proj: any | null) => void;
+  onDelete?: () => void;
 }) {
   const { colors, space, type, radius, shadow, motion } = useTheme();
   const { formatGradeLabel } = usePreferences();
@@ -894,13 +896,32 @@ export function LogSheet({
                 </View>
               </Animated.ScrollView>
 
-              {/* Save Button */}
-              <View style={{ paddingTop: space.md }}>
+              {/* Save / Delete Actions */}
+              <View style={{ paddingTop: space.md, gap: space.xs }}>
                 <PrimaryButton
                   testID="save-climb-btn"
-                  label="SAVE CLIMB"
+                  label={onDelete ? 'UPDATE CLIMB' : 'SAVE CLIMB'}
                   onPress={handleSave}
                 />
+                {onDelete && (
+                  <ScalePressable
+                    testID="delete-climb-btn"
+                    onPress={onDelete}
+                    haptic="heavy"
+                    accessibilityRole="button"
+                    accessibilityLabel="Delete climb"
+                    style={{
+                      height: 44,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      borderRadius: radius.pill,
+                    }}
+                  >
+                    <Text style={[type.control, { color: colors.danger, fontWeight: '600' }]}>
+                      Delete climb
+                    </Text>
+                  </ScalePressable>
+                )}
               </View>
             </Animated.View>
           </View>
