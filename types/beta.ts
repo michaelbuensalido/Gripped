@@ -25,7 +25,7 @@ export interface BetaMove {
   limb: Limb | null;
 }
 
-export type VideoSourceType = 'local' | 'instagram' | 'tiktok' | 'other';
+export type VideoSourceType = 'local' | 'instagram' | 'tiktok' | 'youtube' | 'other';
 
 export interface BetaVideo {
   id: string;

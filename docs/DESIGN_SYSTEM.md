@@ -1,4 +1,4 @@
-# Gripped (CruxLog) — Design System (v4.2, Spatial Chalk & Glass Editorial)
+# Gripped (CruxLog) — Design System (v4.3, Spatial Chalk & Glass Editorial)
 
 An atmospheric, tactile, photo-forward dark interface engineered for the climbing gym floor: translucent obsidian-charcoal cards suspended over an authentic magnesium-carbonate chalked wall canvas (`assets/chalk_bg.jpg`), an optical frosted-glass floating dock (`FloatingTabBar`), a jewel-like 3D faceted volume brand mark (`assets/logo.png`), electric lavender action accents (`#8E7CFF`), tabular `Sora` & `Inter` typography, and signature four-band grade color coding.
 
@@ -108,17 +108,28 @@ export const colors = {
   bevelShadow: "rgba(0, 0, 0, 0.6)",
   glassBorder: "rgba(255, 255, 255, 0.16)",
   glow: "rgba(142, 124, 255, 0.25)",
+  glowFlash: "rgba(110, 231, 86, 0.20)",
 
   // Translucent Materials (v4.2 Spatial Editorial)
   materialBase: "rgba(22, 22, 30, 0.88)",
   materialBorder: "rgba(255, 255, 255, 0.08)",
   materialHighlight: "rgba(255, 255, 255, 0.12)",
+  surfaceInset: "rgba(13, 13, 18, 0.48)", // recessed telemetry strips inside hero cards
+  divider: "rgba(255, 255, 255, 0.06)",      // 1px vertical/horizontal cell hairlines
 
   // Translucent Typography
   textWhitePrimary: "#FFFFFF",
   textWhiteSecondary: "rgba(255, 255, 255, 0.60)",
   textWhiteMuted: "rgba(255, 255, 255, 0.40)",
+
+  // Drill-down hero washes + chart grid (v4.3)
+  washAccent: "rgba(142, 124, 255, 0.16)", // top-edge linear wash on volume / neutral heroes
+  washFlash: "rgba(110, 231, 86, 0.12)",   // top-edge linear wash on flash heroes
+  chartGrid: "rgba(255, 255, 255, 0.05)",  // hairline gridlines behind charts
 };
+
+/** Applies alpha to a 6-digit hex (e.g. grade-band `solid` → hero wash). Exposed via `useTheme().withAlpha`. */
+export function withAlpha(hex: string, alpha: number): string;
 
 export const radius = { sm: 10, md: 16, lg: 22, xl: 28, pill: 999 };
 export const space = { xs: 4, sm: 8, md: 12, lg: 16, xl: 24, xxl: 32 }; // 4pt spatial grid
@@ -212,15 +223,22 @@ Where grade colours appear (always accompanied by explicit grade text):
 
 | Role | Token | Typeface & Weight | Size / Line Height | Tracking & Features |
 | :--- | :--- | :--- | :--- | :--- |
+| **Hero Stat Readout** | `type.heroStat` | `Sora_700Bold` | `42pt / 46pt` | `-1.0pt`, `tabular-nums` |
 | **Hero Display** | `type.display` | `Sora_400Regular` | `36pt / 42pt` | `-0.5pt`, `tabular-nums` |
 | **Section / Card Title** | `type.title` | `Sora_400Regular` | `22pt / 28pt` | `0pt`, `tabular-nums` |
+| **Bold Header / Metric** | `type.titleBold` | `Sora_700Bold` | `22pt / 28pt` | `-0.4pt`, `tabular-nums` |
 | **Primary Stat / Timer** | `type.stat` | `Sora_400Regular` | `36pt / 40pt` | `0pt`, `tabular-nums` |
 | **Compact Stat** | `type.statSm` | `Sora_400Regular` | `24pt / 28pt` | `0pt`, `tabular-nums` |
+| **Inset Telemetry Stat** | `type.statBold` | `Sora_600SemiBold` | `20pt / 24pt` | `-0.3pt`, `tabular-nums` |
 | **Row / Modal Heading** | `type.heading` | `Inter_400Regular` | `17pt / 22pt` | `0pt`, `tabular-nums` |
+| **Section Subtitle** | `type.sectionTitle` | `Inter_600SemiBold` | `16pt / 22pt` | `0pt`, `tabular-nums` |
 | **Body Copy / Notes** | `type.body` | `Inter_400Regular` | `15pt / 22pt` | `0pt`, `tabular-nums` |
 | **Interactive Control** | `type.control` | `Inter_500Medium` | `14pt / 20pt` | Sentence case, `tabular-nums` |
 | **Micro Eyebrow Label** | `type.label` | `Inter_500Medium` | `10pt / 14pt` | `UPPERCASE`, `+2.5pt` tracking |
+| **Compact Micro Badge** | `type.micro` | `Inter_600SemiBold` | `10pt / 13pt` | `UPPERCASE`, `+1.4pt` tracking |
 | **Timestamp / Caption** | `type.caption` | `Inter_400Regular` | `12pt / 16pt` | `colors.textMuted`, `tabular-nums` |
+| **Medium Caption** | `type.captionMedium` | `Inter_500Medium` | `12pt / 16pt` | `tabular-nums` |
+| **Semibold Caption** | `type.captionSemibold` | `Inter_600SemiBold` | `12pt / 16pt` | `tabular-nums` |
 
 ---
 
@@ -246,8 +264,34 @@ Always compose screens from existing shared components before creating new primi
 | `StatTile` / `TrendTile` | Single-line tabular `Sora` stat value, tracked uppercase `type.label`, and optional sparkline or band tint. |
 | `ProjectCard` / `SentProjectCard` | 3D hold or user photo thumbnail, `GradePill`, nickname, gym & tags, burns count, and `4pt` left grade band stripe. |
 | `SessionCard` / `ClimbRow` | Session summary card with segmented outcome bar and individual climb stream rows with swipe-to-delete + `UndoToast`. |
+| `ClimbLogCard` | Read-only cross-session route card (`components/ui/ClimbLogCard.tsx`) with `4pt` vertical grade-band stripe, `GradePill`, `ResultChip`, inline burns (`×N`), inline Peak label, linked project/notes/crux metadata, and gym/date footer. |
+| `GlowBackdrop` | Radial SVG aura reserved for Home/Progress ring heroes (`colors.glow` default). Drill-down hero cards use a clean translucent slate surface + top-edge specular gradient without circular backdrop blobs. |
 | `ResultDonut` | Progress hero ring gauge with `Flash`, `Top`, `Attempt`, and `Fail` arcs surrounding the average grade. |
+| `DrillHeroCard` | Shared hero scaffold for every drill-down page: `Card variant="hero"` + `168pt` top-edge **linear** tint wash (`washAccent` / `washFlash` / grade-band `withAlpha(solid, 0.2)`) + eyebrow row (`32pt` circular `surfaceInset` icon badge, `type.micro` metric name, `type.captionMedium` context line, right-aligned `trailing` slot). |
+| `ContextPill` | `28pt` pill for the hero `trailing` slot. Tones: `accent` (dismissible reset, e.g. `All weeks ×`), `positive` (delta up), `neutral`, `custom` (grade-band tinted, e.g. `All-time PB`). Pressable variants keep a `>= 44pt` hit area via `hitSlop`. |
+| `StatStrip` | Recessed `surfaceInset` telemetry strip (2–4 cells, hairline `divider`s). **Value-first:** `type.statBold` numeral above a sentence-case `type.captionMedium` label; optional `valueColor` / `labelColor`. |
+| `SegmentedBar` / `BarLegend` | Proportional outcome / band bar: each segment is its own `radius.pill` capsule separated by a `2pt` gap on a `chartGhost` track. `BarLegend` renders dot · bold count · muted label (count optional for pure colour keys). |
+| `ChartCardHeader` | Plane-1 chart card title block: `type.sectionTitle` + `type.caption` subtitle + quiet interaction-hint pill (`Tap a bar` / `Tap a grade` / `Tap a node`). |
+| `SectionHeader` | Tracked `type.label` title with optional `count` badge (`cardMuted` pill) and optional `action`. |
 | `WeekStrip` / `LogbookCalendar` | Weekly streak activity dots with vector flame badge and monthly climbing calendar grid. |
+
+### 8.2 Progress Drill-Down Views (`components/analytics/views/`)
+
+All four Progress drill-down pages share one anatomy (v4.3), built from the primitives above so they read as a single family:
+
+1. **Pinned header** (`app/analytics/stat-detail.tsx`): circular `44×44pt` glass Back button (`glassBorder` rim, `shadow.card`) · two-line title block (`type.label` `PROGRESS` eyebrow over `type.titleBold` page title) · `accentSoft` Timeframe pill (`CalendarDays` + `7D/30D/3M/1Y/All` + chevron) opening the Timeframe sheet.
+2. **Hero — `DrillHeroCard`** (1 per page): eyebrow row → primary readout (`type.heroStat` + `type.body` unit) → `SegmentedBar` + `BarLegend` (or hold artwork / focused-grade readout) → `StatStrip`. The top wash is tinted to the metric: lavender (volume, pyramid overview), green (flash), grade-band colour (hardest send, focused grade).
+3. **Interactive chart — `Card` + `ChartCardHeader`** (1 per page): tappable `>= 44pt` columns / rows / nodes; selection = `accent` ring or `accentSoft` row, unselected items dim to `0.38–0.45` opacity; hairline `chartGrid` guides.
+4. **Route stream:** `SectionHeader` with `count` badge → `Chip` filter row → `ClimbLogCard` list (`listLayout` spring reflow) or `EmptyState`.
+
+Sections enter with a staggered `sectionEntering(i)` (`FadeInDown`, `motion.duration.slow`, `50ms` stagger, UI thread; disabled when `reduceMotion`).
+
+| View | Visual & Interactive Specification |
+| :--- | :--- |
+| `WeeklyVolumeView` | Hero: total routes + vs-last-week `ContextPill` → outcome `SegmentedBar` + legend → `StatStrip` (`Weekly avg`, `Sessions`, `Wall time`). Chart: stacked capsule columns (`24pt` wide, `Flash` + `Top` + `Attempt`), `chartGrid` baseline / midpoint / ceiling, accent-dashed `avg` guide with pill label, current-week dot. Selecting a week re-scopes hero, strip and list. |
+| `FlashEfficiencyView` | Hero: Flash Rate in `flashText` + `Peak flash` `GradePill` → conversion bar + legend → `StatStrip` (`Send rate`, `1st-try share`, `Avg burns`). Chart: `Conversion by grade` rows (`GradePill` · `SegmentedBar` · `statBold` rate + `x/y 1st`) with colour key. |
+| `HardestSendView` | Hero: Peak Grade (`heroStat`, grade-band tint) + `All-time PB` `ContextPill` + `~88pt` hold artwork with band-coloured glow + `Best ascent` spotlight row → `StatStrip` (`All-time PB`, `Peak flash`, `Last-20 avg`). Chart: **smoothed (Catmull-Rom Bézier)** weekly progression curve with accent area gradient, grade Y-axis, halo'd peak node, grade value labels above the peak / selected node and a dashed drop line on selection. |
+| `SendsByGradeView` | Dual-mode hero: overview (distinct sends, 4-band `SegmentedBar` + counted legend, `StatStrip`) ↔ focused grade (band-tinted readout, 4-cell strip, `All grades ×` reset). Chart: `Ascent pyramid` with flash / grade-band top / `attemptSoft` tail segments, colour key and per-row send + conversion readout. |
 
 ---
 
@@ -257,7 +301,8 @@ Always compose screens from existing shared components before creating new primi
 | :--- | :--- | :--- |
 | **Home** (`app/index.tsx`) | `HeroCard` ("Next Objective") | Brand header (`assets/logo.png` `38×38pt` + `GRIPPED` wordmark + Settings gear) →Greeting & `30d Peak Send` pill → 3 `StatTile`s → `HeroCard` with `"START SESSION"` CTA → `WeekStrip` card → Horizontal `PROJECTS` carousel → `RECENT SESSIONS` stack. |
 | **Explore** (`app/explore.tsx`) | Gyms & Video Inbox | Display header + `+ ADD GYM` CTA → `GYMS` / `VIDEO INBOX` segmented pill → Search bar → Translucent gym cards & shared beta video cards over chalk backdrop. |
-| **Progress** (`app/analytics.tsx`) | `ResultDonut` | Display header + period selector → `ResultDonut` hero card → 3 `TrendTile`s (Weekly Volume, Flash Efficiency, Hardest Send) → `SENDS BY GRADE` pyramid → Deep-dive analytics cards (`WallAngleRadar`, `ACWRWidget`, `RootCauseFailureChart`). |
+| **Progress** (`app/analytics.tsx`) | `ResultDonut` | Display header + period selector → `ResultDonut` hero card → 3 `Performance Trends` Bento Tiles (Weekly Volume, Flash Efficiency, Hardest Send) → `SENDS BY GRADE` pyramid (`Explore` + per-grade tap) → Deep-dive analytics cards (`WallAngleRadar`, `Recent Sessions`). |
+| **Progress Drill-Downs** (`app/analytics/stat-detail.tsx`) | `Card variant="hero"` | Pinned navigation header (`Back`, `titleBold`, Timeframe Sheet pill) → Bespoke drill-down view (`WeeklyVolumeView`, `FlashEfficiencyView`, `HardestSendView`, or `SendsByGradeView`) over global chalk backdrop. |
 | **Logbook** (`app/profile.tsx`) | Lifetime Telemetry Strip | Display header + action icons (Add, Search, List/Calendar toggle, Settings) → 4 lifetime `StatTile`s → Month-grouped `SessionCard` stream (or `LogbookCalendar`). |
 | **Project Detail** (`app/project/[id].tsx`) | Full-Bleed Photo / 3D Hold | Top photo/hold header with glass overlay controls → Overlapping translucent sheet (`radius.xl`) with grade, burns, beta videos, sequence notes, and attempt history. |
 | **Active Session** (`app/session/index.tsx`) | Live Elapsed Timer | Distraction-free logger (tab bar hidden) → Live session clock + `RestTimerPill` → Grade & outcome logger controls → Live `ClimbRow` stream + iOS Live Activity sync. |

@@ -1,476 +1,307 @@
-import React, { useState } from 'react';
-import { View, Text, ScrollView, useWindowDimensions, TouchableOpacity } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, Text, ScrollView, Modal, Pressable } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { BarChart, LineChart } from 'react-native-gifted-charts';
-import { useReducedMotion } from 'react-native-reanimated';
-import { ChevronLeft, Calendar, MapPin, X, Sparkles, CheckCircle2, CircleDashed } from 'lucide-react-native';
-import { Screen } from '../../components/ui/Screen';
-import { Card } from '../../components/ui/Card';
-import { Chip } from '../../components/ui/Chip';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { ChevronLeft, ChevronDown, Check, CalendarDays } from 'lucide-react-native';
 import { ScalePressable } from '../../components/ui/ScalePressable';
-import { EmptyState } from '../../components/ui/EmptyState';
-import { useProgressStats, useClimbsForGrade, useClimbsForStat } from '../../db/hooks';
+import { WeeklyVolumeView } from '../../components/analytics/views/WeeklyVolumeView';
+import { FlashEfficiencyView } from '../../components/analytics/views/FlashEfficiencyView';
+import { HardestSendView } from '../../components/analytics/views/HardestSendView';
+import { SendsByGradeView } from '../../components/analytics/views/SendsByGradeView';
+import type { FilteredClimbItem, ProgressPeriod } from '../../db/queries';
 import { useTheme } from '../../theme/useTheme';
 import { usePreferences } from '../../utils/preferences';
 
+type StatMode = 'volume' | 'flash' | 'hardest' | 'grade';
+
+const VALID_PERIODS: ProgressPeriod[] = ['7d', '30d', '90d', '1y', 'all'];
+
+const PERIOD_LABELS: Record<ProgressPeriod, string> = {
+  '7d': 'Last 7 Days',
+  '30d': 'Last 30 Days',
+  '90d': 'Last 3 Months',
+  '1y': 'Last Year',
+  all: 'All Time',
+};
+
+const PERIOD_SHORT: Record<ProgressPeriod, string> = {
+  '7d': '7D',
+  '30d': '30D',
+  '90d': '3M',
+  '1y': '1Y',
+  all: 'All',
+};
+
+function parsePeriod(raw?: string): ProgressPeriod {
+  if (raw && (VALID_PERIODS as string[]).includes(raw)) {
+    return raw as ProgressPeriod;
+  }
+  return '30d';
+}
+
+function parseStatMode(raw?: string): StatMode {
+  if (raw === 'flash' || raw === 'hardest' || raw === 'grade' || raw === 'volume') {
+    return raw;
+  }
+  return 'volume';
+}
+
+function parseGradeParam(raw?: string): number | null {
+  if (raw === undefined || raw === null || raw === '') return null;
+  const parsed = parseInt(raw, 10);
+  return Number.isNaN(parsed) ? null : parsed;
+}
+
 export default function StatDetailScreen() {
-  const { stat = 'volume', period = '30d', grade } = useLocalSearchParams<{
+  const params = useLocalSearchParams<{
     stat?: string;
-    period?: any;
+    period?: string;
     grade?: string;
   }>();
 
   const router = useRouter();
-  const { colors, type, space, radius, gradeBand } = useTheme();
+  const insets = useSafeAreaInsets();
+  const { colors, type, space, radius, shadow } = useTheme();
   const { formatGrade } = usePreferences();
-  const { width } = useWindowDimensions();
-  const reduceMotion = useReducedMotion();
 
-  const [selectedWeek, setSelectedWeek] = useState<string | null>(null);
+  const statMode = parseStatMode(params.stat);
+  const initialGrade = parseGradeParam(params.grade);
 
-  const stats = useProgressStats(period || '30d');
-  const gradeIndex = grade !== undefined ? parseInt(grade, 10) : null;
+  const [period, setPeriod] = useState<ProgressPeriod>(() => parsePeriod(params.period));
+  const [focusedGrade, setFocusedGrade] = useState<number | null>(initialGrade);
+  const [isPeriodSheetOpen, setPeriodSheetOpen] = useState(false);
 
-  // Query matching climbs based on whether it is a grade drilldown or metric drilldown
-  const gradeClimbs = useClimbsForGrade(period, gradeIndex);
-  const metricClimbs = useClimbsForStat(
-    (stat as any) || 'volume',
-    period,
-    selectedWeek || undefined
-  );
+  useEffect(() => {
+    setPeriod(parsePeriod(params.period));
+  }, [params.period]);
 
-  const climbs = stat === 'grade' ? gradeClimbs : metricClimbs;
+  useEffect(() => {
+    setFocusedGrade(parseGradeParam(params.grade));
+  }, [params.grade]);
 
-  let title = 'Trend Details';
-  let chartData: any[] = [];
-  let isBar = false;
+  const handleBack = () => {
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/analytics');
+    }
+  };
 
-  const chartWidth = Math.max(260, Math.min(width - 64, 380));
+  const handlePressClimb = (climb: FilteredClimbItem) => {
+    if (climb.sessionId) {
+      router.push(`/session/detail/${climb.sessionId}` as any);
+    }
+  };
 
-  if (stat === 'grade') {
-    title = `Grade ${formatGrade(gradeIndex ?? 0)} Climbs`;
-  } else if (stat === 'volume') {
-    title = 'Weekly Volume';
-    isBar = true;
-    chartData = stats.weeklyVolume.map((v: any) => ({
-      value: v.count,
-      label: v.week.split('-')[1] ? `W${v.week.split('-')[1]}` : v.week,
-      weekKey: v.week,
-      frontColor: selectedWeek === v.week ? colors.flash : colors.accent,
-      onPress: () => {
-        setSelectedWeek((prev) => (prev === v.week ? null : v.week));
-      },
-    }));
-  } else if (stat === 'hardest') {
-    title = 'Hardest Send Trend';
-    chartData = stats.hardestSend.map((v: any) => ({
-      value: v.max_grade,
-      label: v.week.split('-')[1] ? `W${v.week.split('-')[1]}` : v.week,
-      weekKey: v.week,
-      dataPointColor: selectedWeek === v.week ? colors.flash : colors.accent,
-      onPress: () => {
-        setSelectedWeek((prev) => (prev === v.week ? null : v.week));
-      },
-    }));
-  } else if (stat === 'flash') {
-    title = 'Flash Efficiency';
-    isBar = true;
-    chartData = [
-      {
-        value: stats.resultCounts.flash,
-        label: 'Flashes',
-        frontColor: colors.flash,
-      },
-      {
-        value: stats.resultCounts.top,
-        label: 'Sends',
-        frontColor: colors.top,
-      },
-      {
-        value: stats.resultCounts.attempt,
-        label: 'Attempts',
-        frontColor: colors.border,
-      },
-    ];
-  }
+  const title =
+    statMode === 'flash'
+      ? 'Flash Efficiency'
+      : statMode === 'hardest'
+      ? 'Hardest Send'
+      : statMode === 'grade'
+      ? focusedGrade !== null
+        ? `Sends · ${formatGrade(focusedGrade)}`
+        : 'Sends by Grade'
+      : 'Weekly Volume';
 
-  // Summary figures for grade view
-  const gradeSends = climbs.filter((c) => c.result === 'send' || c.result === 'top').length;
-  const gradeFlashes = climbs.filter((c) => c.result === 'flash').length;
-  const gradeAttempts = climbs.filter((c) => c.result === 'attempt').length;
+  const periodReadable = PERIOD_LABELS[period];
 
   return (
-    <Screen
-      title={title}
-      subtitle={`Over ${period?.toUpperCase() || '30D'}`}
-      scroll={false}
-      headerLeft={
+    <View style={{ flex: 1, backgroundColor: colors.bg }}>
+      {/* Pinned Navigation Header */}
+      <View
+        style={{
+          paddingTop: Math.max(insets.top, space.lg) + space.xs,
+          paddingBottom: space.md,
+          paddingHorizontal: space.lg,
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: space.md,
+        }}
+      >
         <ScalePressable
           haptic="light"
-          activeScale={0.94}
-          onPress={() => router.back()}
+          activeScale={0.96}
+          onPress={handleBack}
           accessibilityRole="button"
           accessibilityLabel="Back to Progress"
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           style={{
             width: 44,
             height: 44,
-            borderRadius: radius.md,
+            borderRadius: radius.pill,
             backgroundColor: colors.card,
             borderWidth: 1,
-            borderColor: colors.border,
+            borderColor: colors.glassBorder,
             alignItems: 'center',
             justifyContent: 'center',
+            ...shadow.card,
           }}
         >
-          <ChevronLeft size={22} color={colors.text} />
+          <ChevronLeft size={space.xl} color={colors.text} />
         </ScalePressable>
-      }
-    >
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 60 }}
-      >
-        {/* Metric summary banner */}
-        {stat === 'grade' ? (
-          <View
-            style={{
-              flexDirection: 'row',
-              gap: space.sm,
-              marginTop: space.md,
-              marginBottom: space.lg,
-            }}
-          >
-            <View
-              style={{
-                flex: 1,
-                backgroundColor: colors.card,
-                borderRadius: radius.md,
-                padding: space.md,
-                borderWidth: 1,
-                borderColor: colors.border,
-                alignItems: 'center',
-              }}
-            >
-              <Text style={[type.caption, { color: colors.textMuted }]}>TOTAL</Text>
-              <Text style={[type.heading, { color: colors.text, marginTop: 4, fontVariant: ['tabular-nums'] }]}>
-                {climbs.length}
-              </Text>
-            </View>
 
-            <View
-              style={{
-                flex: 1,
-                backgroundColor: colors.card,
-                borderRadius: radius.md,
-                padding: space.md,
-                borderWidth: 1,
-                borderColor: colors.border,
-                alignItems: 'center',
-              }}
-            >
-              <Text style={[type.caption, { color: colors.flash }]}>FLASHES</Text>
-              <Text style={[type.heading, { color: colors.flash, marginTop: 4, fontVariant: ['tabular-nums'] }]}>
-                {gradeFlashes}
-              </Text>
-            </View>
-
-            <View
-              style={{
-                flex: 1,
-                backgroundColor: colors.card,
-                borderRadius: radius.md,
-                padding: space.md,
-                borderWidth: 1,
-                borderColor: colors.border,
-                alignItems: 'center',
-              }}
-            >
-              <Text style={[type.caption, { color: colors.top }]}>SENDS</Text>
-              <Text style={[type.heading, { color: colors.top, marginTop: 4, fontVariant: ['tabular-nums'] }]}>
-                {gradeSends}
-              </Text>
-            </View>
-
-            <View
-              style={{
-                flex: 1,
-                backgroundColor: colors.card,
-                borderRadius: radius.md,
-                padding: space.md,
-                borderWidth: 1,
-                borderColor: colors.border,
-                alignItems: 'center',
-              }}
-            >
-              <Text style={[type.caption, { color: colors.textMuted }]}>ATTEMPTS</Text>
-              <Text style={[type.heading, { color: colors.textMuted, marginTop: 4, fontVariant: ['tabular-nums'] }]}>
-                {gradeAttempts}
-              </Text>
-            </View>
-          </View>
-        ) : (
-          /* Chart Card for non-grade views */
-          <Card
-            style={{
-              paddingVertical: space.lg,
-              paddingHorizontal: space.sm,
-              alignItems: 'center',
-              marginTop: space.md,
-              marginBottom: space.lg,
-              backgroundColor: colors.card,
-              borderRadius: 22,
-              borderWidth: 1,
-              borderColor: colors.border,
-            }}
-          >
-            {chartData.length > 0 ? (
-              <View style={{ alignItems: 'center', width: '100%' }}>
-                {isBar ? (
-                  <BarChart
-                    data={chartData}
-                    height={180}
-                    width={chartWidth}
-                    barWidth={chartData.length > 6 ? 18 : 28}
-                    spacing={chartData.length > 6 ? 14 : 24}
-                    frontColor={colors.accent}
-                    yAxisThickness={0}
-                    xAxisThickness={1}
-                    xAxisColor={colors.border}
-                    yAxisTextStyle={{ color: colors.textMuted, fontSize: 10 }}
-                    xAxisLabelTextStyle={{ color: colors.textMuted, fontSize: 10 }}
-                    noOfSections={4}
-                    isAnimated={!reduceMotion}
-                    animationDuration={reduceMotion ? 0 : 350}
-                  />
-                ) : (
-                  <LineChart
-                    data={chartData}
-                    height={180}
-                    width={chartWidth}
-                    color={colors.accent}
-                    thickness={3}
-                    dataPointsColor={colors.accent}
-                    dataPointsRadius={5}
-                    yAxisThickness={0}
-                    xAxisThickness={1}
-                    xAxisColor={colors.border}
-                    yAxisTextStyle={{ color: colors.textMuted, fontSize: 10 }}
-                    xAxisLabelTextStyle={{ color: colors.textMuted, fontSize: 10 }}
-                    noOfSections={4}
-                    isAnimated={!reduceMotion}
-                    animationDuration={reduceMotion ? 0 : 350}
-                  />
-                )}
-
-                {/* Tappable filter tip */}
-                <Text
-                  style={[
-                    type.caption,
-                    { color: colors.textMuted, marginTop: space.sm, fontStyle: 'italic', fontSize: 11 },
-                  ]}
-                >
-                  Tap any bar/point to filter climbs below
-                </Text>
-              </View>
-            ) : (
-              <Text style={[type.body, { color: colors.textMuted }]}>Not enough data</Text>
-            )}
-          </Card>
-        )}
-
-        {/* Section header with active filter pill */}
-        <View
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            marginBottom: space.md,
-          }}
-        >
-          <Text
-            style={{
-              color: colors.textMuted,
-              fontSize: 11,
-              fontWeight: '600',
-              letterSpacing: 1.5,
-              textTransform: 'uppercase',
-            }}
-          >
-            {selectedWeek ? `CLIMBS IN ${selectedWeek}` : `MATCHING CLIMBS (${climbs.length})`}
+        <View style={{ flex: 1, gap: 2 }}>
+          <Text style={[type.label, { color: colors.textWhiteMuted }]} numberOfLines={1}>
+            Progress
           </Text>
-
-          {selectedWeek && (
-            <ScalePressable
-              haptic="light"
-              activeScale={0.96}
-              onPress={() => setSelectedWeek(null)}
-              accessibilityRole="button"
-              accessibilityLabel="Clear week filter"
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: 4,
-                paddingHorizontal: 8,
-                paddingVertical: 4,
-                borderRadius: radius.pill,
-                backgroundColor: colors.cardMuted,
-              }}
-            >
-              <Text style={[type.caption, { color: colors.accent, fontWeight: '600' }]}>Show all</Text>
-              <X size={12} color={colors.accent} />
-            </ScalePressable>
-          )}
+          <Text style={[type.titleBold, { color: colors.text }]} numberOfLines={1}>
+            {title}
+          </Text>
         </View>
 
-        {/* Filtered Climbs List */}
-        {climbs.length === 0 ? (
-          <EmptyState
-            asCard
-            title="No matching climbs"
-            body={selectedWeek ? "No climbs logged in this week." : "No climbs found for this criteria."}
+        <ScalePressable
+          haptic="selection"
+          activeScale={0.97}
+          onPress={() => setPeriodSheetOpen(true)}
+          accessibilityRole="button"
+          accessibilityLabel={`Timeframe ${PERIOD_LABELS[period]}, tap to change`}
+          style={{
+            minHeight: 44,
+            paddingHorizontal: space.md,
+            borderRadius: radius.pill,
+            backgroundColor: colors.accentSoft,
+            borderWidth: 1,
+            borderColor: colors.accent,
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: space.xs + 2,
+          }}
+        >
+          <CalendarDays size={space.lg} color={colors.accentText} />
+          <Text style={[type.captionSemibold, { color: colors.accentText }]}>
+            {PERIOD_SHORT[period]}
+          </Text>
+          <ChevronDown size={space.md} color={colors.accentText} />
+        </ScalePressable>
+      </View>
+
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{
+          paddingHorizontal: space.lg,
+          paddingTop: space.xs,
+          paddingBottom: Math.max(insets.bottom, space.xl) + space.xxl,
+        }}
+      >
+        {statMode === 'volume' && (
+          <WeeklyVolumeView
+            period={period}
+            periodLabel={periodReadable}
+            onPressClimb={handlePressClimb}
           />
-        ) : (
-          <View style={{ gap: space.sm }}>
-            {climbs.map((climb) => {
-              const band = gradeBand(climb.gradeIndex);
-              const isFlash = climb.result === 'flash';
-              const isSend = climb.result === 'send' || climb.result === 'top';
-              const dateStr = new Date(climb.loggedAt).toLocaleDateString(undefined, {
-                weekday: 'short',
-                month: 'short',
-                day: 'numeric',
-              });
+        )}
 
-              return (
-                <ScalePressable
-                  key={climb.id}
-                  haptic="light"
-                  activeScale={0.98}
-                  onPress={() => {
-                    if (climb.sessionId) {
-                      router.push(`/session/detail/${climb.sessionId}` as any);
-                    }
-                  }}
-                  accessibilityRole="button"
-                  accessibilityLabel={`${formatGrade(climb.gradeIndex, climb.gradeRaw)} ${climb.result} at ${climb.gymName}. Tap to view session.`}
-                  style={{
-                    backgroundColor: colors.card,
-                    borderRadius: radius.md,
-                    padding: space.md,
-                    borderWidth: 1,
-                    borderColor: colors.border,
-                    minHeight: 44,
-                  }}
-                >
-                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.sm }}>
-                      {/* Grade chip */}
-                      <View
-                        style={{
-                          backgroundColor: band.bg,
-                          paddingHorizontal: 8,
-                          paddingVertical: 3,
-                          borderRadius: radius.sm,
-                          borderWidth: 1,
-                          borderColor: band.solid,
-                        }}
-                      >
-                        <Text style={[type.label, { color: colors.text, fontWeight: '700' }]}>
-                          {formatGrade(climb.gradeIndex, climb.gradeRaw)}
-                        </Text>
-                      </View>
+        {statMode === 'flash' && (
+          <FlashEfficiencyView
+            period={period}
+            periodLabel={periodReadable}
+            onPressClimb={handlePressClimb}
+          />
+        )}
 
-                      {/* Result Chip */}
-                      <View
-                        style={{
-                          flexDirection: 'row',
-                          alignItems: 'center',
-                          gap: 4,
-                          paddingHorizontal: 8,
-                          paddingVertical: 3,
-                          borderRadius: radius.sm,
-                          backgroundColor: isFlash
-                            ? colors.flash + '22'
-                            : isSend
-                            ? colors.top + '22'
-                            : colors.cardMuted,
-                        }}
-                      >
-                        {isFlash ? (
-                          <Sparkles size={12} color={colors.flash} />
-                        ) : isSend ? (
-                          <CheckCircle2 size={12} color={colors.top} />
-                        ) : (
-                          <CircleDashed size={12} color={colors.textMuted} />
-                        )}
-                        <Text
-                          style={[
-                            type.caption,
-                            {
-                              color: isFlash ? colors.flash : isSend ? colors.top : colors.textMuted,
-                              fontWeight: '600',
-                              textTransform: 'capitalize',
-                            },
-                          ]}
-                        >
-                          {climb.result}
-                        </Text>
-                      </View>
-                    </View>
+        {statMode === 'hardest' && (
+          <HardestSendView
+            period={period}
+            periodLabel={periodReadable}
+            onPressClimb={handlePressClimb}
+          />
+        )}
 
-                    {/* Attempts count */}
-                    <Text style={[type.caption, { color: colors.textMuted, fontVariant: ['tabular-nums'] }]}>
-                      {climb.attempts} {climb.attempts === 1 ? 'burn' : 'burns'}
-                    </Text>
-                  </View>
+        {statMode === 'grade' && (
+          <SendsByGradeView
+            period={period}
+            periodLabel={periodReadable}
+            initialGrade={initialGrade}
+            onSelectedGradeChange={setFocusedGrade}
+            onPressClimb={handlePressClimb}
+          />
+        )}
+      </ScrollView>
 
-                  {/* Metadata Row: Gym & Date */}
-                  <View
+      {/* Timeframe Action Sheet */}
+      <Modal
+        visible={isPeriodSheetOpen}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setPeriodSheetOpen(false)}
+      >
+        <View style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: colors.scrim }}>
+          <Pressable style={{ flex: 1 }} onPress={() => setPeriodSheetOpen(false)} />
+          <View
+            style={{
+              backgroundColor: colors.materialBase,
+              borderTopLeftRadius: radius.xl,
+              borderTopRightRadius: radius.xl,
+              borderWidth: 1,
+              borderColor: colors.border,
+              padding: space.xl,
+              paddingBottom: Math.max(insets.bottom, space.xl),
+            }}
+          >
+            <View
+              style={{
+                width: space.xxl,
+                height: space.xs,
+                borderRadius: radius.pill,
+                backgroundColor: colors.border,
+                alignSelf: 'center',
+                marginBottom: space.lg,
+              }}
+            />
+
+            <Text
+              style={[
+                type.label,
+                { color: colors.textWhiteMuted, marginBottom: space.md },
+              ]}
+            >
+              Select timeframe
+            </Text>
+
+            <View style={{ gap: space.xs }}>
+              {VALID_PERIODS.map((p) => {
+                const isActive = period === p;
+                return (
+                  <ScalePressable
+                    key={p}
+                    haptic="selection"
+                    activeScale={0.97}
+                    onPress={() => {
+                      setPeriod(p);
+                      setPeriodSheetOpen(false);
+                    }}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: isActive }}
+                    accessibilityLabel={PERIOD_LABELS[p]}
                     style={{
                       flexDirection: 'row',
                       alignItems: 'center',
-                      gap: space.md,
-                      marginTop: space.sm,
-                      flexWrap: 'wrap',
+                      justifyContent: 'space-between',
+                      paddingVertical: space.md,
+                      paddingHorizontal: space.md,
+                      backgroundColor: isActive ? colors.accentSoft : 'transparent',
+                      borderRadius: radius.md,
+                      minHeight: 48,
                     }}
                   >
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                      <MapPin size={12} color={colors.textMuted} />
-                      <Text style={[type.caption, { color: colors.textMuted }]}>{climb.gymName}</Text>
-                    </View>
-
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                      <Calendar size={12} color={colors.textMuted} />
-                      <Text style={[type.caption, { color: colors.textMuted }]}>{dateStr}</Text>
-                    </View>
-                  </View>
-
-                  {/* Wall Angle / Hold Type Tags if present */}
-                  {(climb.wallAngle || climb.holdType) && (
-                    <View style={{ flexDirection: 'row', gap: 6, marginTop: space.sm }}>
-                      {climb.wallAngle && <Chip label={climb.wallAngle} />}
-                      {climb.holdType && <Chip label={climb.holdType} />}
-                    </View>
-                  )}
-
-                  {/* Notes snippet if present */}
-                  {Boolean(climb.notes) && (
                     <Text
-                      numberOfLines={2}
                       style={[
-                        type.caption,
-                        { color: colors.textMuted, marginTop: space.xs, fontStyle: 'italic' },
+                        type.body,
+                        { color: isActive ? colors.accentText : colors.text },
                       ]}
                     >
-                      &ldquo;{climb.notes}&rdquo;
+                      {PERIOD_LABELS[p]}
                     </Text>
-                  )}
-                </ScalePressable>
-              );
-            })}
+                    {isActive && <Check size={space.lg} color={colors.accent} />}
+                  </ScalePressable>
+                );
+              })}
+            </View>
           </View>
-        )}
-      </ScrollView>
-    </Screen>
+        </View>
+      </Modal>
+    </View>
   );
 }

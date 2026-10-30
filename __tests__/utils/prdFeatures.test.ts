@@ -44,6 +44,8 @@ describe('PRD roadmap features', () => {
   it('detects platforms', () => {
     expect(detectVideoPlatform('https://instagram.com/reel/x')).toBe('instagram');
     expect(detectVideoPlatform('https://vm.tiktok.com/x')).toBe('tiktok');
+    expect(detectVideoPlatform('https://www.youtube.com/shorts/x')).toBe('youtube');
+    expect(detectVideoPlatform('https://youtu.be/x')).toBe('youtube');
     expect(detectVideoPlatform('https://example.com')).toBe('other');
   });
 

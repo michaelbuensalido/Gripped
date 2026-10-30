@@ -1,6 +1,13 @@
 import { getDerivedProjectStatus } from '../utils/projectStatus';
 import { isSend } from '../utils/isSend';
-import { calculateWeeklyStreak } from '../utils/analyticsLogic';
+import {
+  buildGradePyramid,
+  calculateSendRate,
+  calculateFlashRate,
+  calculateAverageGradeLast20,
+  getMondayMidnight,
+  calculateWeeklyStreak,
+} from '../utils/analyticsLogic';
 import { getDatabase } from './schema';
 
 import type { Session, BoulderGroup, BoulderLog, FailureReason, Project, ProjectStatus, Outcome, Sector, Route, Attempt, HoldType, WallAngle, RouteStatus } from '../types';
@@ -909,6 +916,10 @@ export interface FilteredClimbItem {
   holdType: string | null;
   notes: string | null;
   loggedAt: number;
+  colour?: string | null;
+  failureReason?: string | null;
+  projectId?: string | null;
+  projectTitle?: string | null;
 }
 
 /** Climbs filtered by specific grade index and timeframe (e.g. from pyramid tap). */
@@ -923,9 +934,12 @@ export function getClimbsForGrade(
     SELECT c.id, c.session_id as sessionId, IFNULL(s.gym_name, 'Session') as gymName,
            c.grade_raw as gradeRaw, c.grade_index as gradeIndex,
            c.result, c.attempts, c.wall_angle as wallAngle,
-           c.hold_type as holdType, c.notes, c.logged_at as loggedAt
+           c.hold_type as holdType, c.notes, c.logged_at as loggedAt,
+           c.colour, c.failure_reason as failureReason,
+           c.project_id as projectId, p.title as projectTitle
     FROM climbs c
     LEFT JOIN sessions s ON s.id = c.session_id
+    LEFT JOIN projects p ON p.id = c.project_id AND p.deleted_at IS NULL
     WHERE c.logged_at >= ? AND c.deleted_at IS NULL AND c.grade_index = ?
     ORDER BY c.logged_at DESC
   `, [since, gradeIndex]);
@@ -958,12 +972,686 @@ export function getClimbsForStat(
     SELECT c.id, c.session_id as sessionId, IFNULL(s.gym_name, 'Session') as gymName,
            c.grade_raw as gradeRaw, c.grade_index as gradeIndex,
            c.result, c.attempts, c.wall_angle as wallAngle,
-           c.hold_type as holdType, c.notes, c.logged_at as loggedAt
+           c.hold_type as holdType, c.notes, c.logged_at as loggedAt,
+           c.colour, c.failure_reason as failureReason,
+           c.project_id as projectId, p.title as projectTitle
     FROM climbs c
     LEFT JOIN sessions s ON s.id = c.session_id
+    LEFT JOIN projects p ON p.id = c.project_id AND p.deleted_at IS NULL
     WHERE ${whereClause}
     ORDER BY c.logged_at DESC
   `, params);
+}
+
+// ─── Progress Drill-Down Telemetry Queries ───────────────────────────────────
+
+const SHORT_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'] as const;
+const MS_PER_WEEK = 7 * 24 * 60 * 60 * 1000;
+
+function formatShortMonthDay(ms: number): string {
+  const d = new Date(ms);
+  return `${SHORT_MONTHS[d.getMonth()]} ${d.getDate()}`;
+}
+
+function formatMondayRange(mondayMs: number): string {
+  const start = new Date(mondayMs);
+  const end = new Date(mondayMs);
+  end.setDate(end.getDate() + 6);
+  const startStr = `${SHORT_MONTHS[start.getMonth()]} ${start.getDate()}`;
+  const endStr =
+    start.getMonth() === end.getMonth()
+      ? `${end.getDate()}`
+      : `${SHORT_MONTHS[end.getMonth()]} ${end.getDate()}`;
+  return `${startStr} – ${endStr}`;
+}
+
+function isClimbSend(result: string): boolean {
+  return result === 'flash' || result === 'send' || result === 'top';
+}
+
+function queryPeriodClimbs(period: ProgressPeriod, nowMs: number): FilteredClimbItem[] {
+  const since = getSince(period, nowMs);
+  const db = getDatabase();
+  return db.getAllSync<FilteredClimbItem>(
+    `
+    SELECT c.id, c.session_id as sessionId, IFNULL(s.gym_name, 'Session') as gymName,
+           c.grade_raw as gradeRaw, c.grade_index as gradeIndex,
+           c.result, c.attempts, c.wall_angle as wallAngle,
+           c.hold_type as holdType, c.notes, c.logged_at as loggedAt,
+           c.colour, c.failure_reason as failureReason,
+           c.project_id as projectId, p.title as projectTitle
+    FROM climbs c
+    LEFT JOIN sessions s ON s.id = c.session_id
+    LEFT JOIN projects p ON p.id = c.project_id AND p.deleted_at IS NULL
+    WHERE c.logged_at >= ? AND c.logged_at <= ? AND c.deleted_at IS NULL
+    ORDER BY c.logged_at DESC
+    `,
+    [since, nowMs]
+  );
+}
+
+export interface WeeklyVolumeBucket {
+  mondayMs: number;
+  dateLabel: string;
+  rangeLabel: string;
+  flashes: number;
+  tops: number;
+  attempts: number;
+  sends: number;
+  totalClimbs: number;
+  sessionsCount: number;
+  durationMinutes: number;
+  isCurrentWeek: boolean;
+}
+
+export interface WeeklyVolumeDetail {
+  buckets: WeeklyVolumeBucket[];
+  totalClimbs: number;
+  totalFlashes: number;
+  totalTops: number;
+  totalAttempts: number;
+  totalSends: number;
+  totalSessions: number;
+  totalMinutes: number;
+  avgPerWeek: number;
+  peakWeek: { mondayMs: number; rangeLabel: string; totalClimbs: number } | null;
+  thisWeekClimbs: number;
+  lastWeekClimbs: number;
+  vsPrevWeekDelta: number;
+  climbs: (FilteredClimbItem & { mondayMs: number })[];
+}
+
+export function getWeeklyVolumeDetail(
+  period: ProgressPeriod,
+  nowMs: number = Date.now()
+): WeeklyVolumeDetail {
+  const since = getSince(period, nowMs);
+  const db = getDatabase();
+  const currentMonday = getMondayMidnight(nowMs);
+  const prevMonday = currentMonday - MS_PER_WEEK;
+
+  const rawClimbs = queryPeriodClimbs(period, nowMs);
+  const climbs = rawClimbs.map((c) => ({
+    ...c,
+    mondayMs: getMondayMidnight(c.loggedAt),
+  }));
+
+  const sessionRows = db.getAllSync<{ id: string; started_at: number; ended_at: number | null }>(
+    `
+    SELECT id, started_at, ended_at
+    FROM sessions
+    WHERE started_at >= ? AND started_at <= ? AND deleted_at IS NULL
+    `,
+    [since, nowMs]
+  );
+
+  // Always compute true current-week vs previous-week delta from SQLite
+  const deltaRow = db.getFirstSync<{ this_week: number; last_week: number }>(
+    `
+    SELECT
+      IFNULL(SUM(CASE WHEN logged_at >= ? AND logged_at <= ? THEN 1 ELSE 0 END), 0) as this_week,
+      IFNULL(SUM(CASE WHEN logged_at >= ? AND logged_at < ? THEN 1 ELSE 0 END), 0) as last_week
+    FROM climbs
+    WHERE logged_at >= ? AND logged_at <= ? AND deleted_at IS NULL
+    `,
+    [currentMonday, nowMs, prevMonday, currentMonday, prevMonday, nowMs]
+  );
+
+  const thisWeekClimbs = deltaRow?.this_week ?? 0;
+  const lastWeekClimbs = deltaRow?.last_week ?? 0;
+  const vsPrevWeekDelta = thisWeekClimbs - lastWeekClimbs;
+
+  if (climbs.length === 0 && sessionRows.length === 0) {
+    return {
+      buckets: [],
+      totalClimbs: 0,
+      totalFlashes: 0,
+      totalTops: 0,
+      totalAttempts: 0,
+      totalSends: 0,
+      totalSessions: 0,
+      totalMinutes: 0,
+      avgPerWeek: 0,
+      peakWeek: null,
+      thisWeekClimbs,
+      lastWeekClimbs,
+      vsPrevWeekDelta,
+      climbs: [],
+    };
+  }
+
+  const bucketMap = new Map<number, WeeklyVolumeBucket>();
+  const ensureBucket = (mondayMs: number): WeeklyVolumeBucket => {
+    let b = bucketMap.get(mondayMs);
+    if (!b) {
+      b = {
+        mondayMs,
+        dateLabel: formatShortMonthDay(mondayMs),
+        rangeLabel: formatMondayRange(mondayMs),
+        flashes: 0,
+        tops: 0,
+        attempts: 0,
+        sends: 0,
+        totalClimbs: 0,
+        sessionsCount: 0,
+        durationMinutes: 0,
+        isCurrentWeek: mondayMs === currentMonday,
+      };
+      bucketMap.set(mondayMs, b);
+    }
+    return b;
+  };
+
+  let totalFlashes = 0;
+  let totalTops = 0;
+  let totalAttempts = 0;
+
+  for (const c of climbs) {
+    const b = ensureBucket(c.mondayMs);
+    b.totalClimbs += 1;
+    if (c.result === 'flash') {
+      b.flashes += 1;
+      b.sends += 1;
+      totalFlashes += 1;
+    } else if (c.result === 'send' || c.result === 'top') {
+      b.tops += 1;
+      b.sends += 1;
+      totalTops += 1;
+    } else {
+      b.attempts += 1;
+      totalAttempts += 1;
+    }
+  }
+
+  let totalMinutes = 0;
+  for (const s of sessionRows) {
+    const m = getMondayMidnight(s.started_at);
+    const b = ensureBucket(m);
+    b.sessionsCount += 1;
+    if (s.ended_at && s.ended_at > s.started_at) {
+      const mins = Math.round((s.ended_at - s.started_at) / 60000);
+      b.durationMinutes += mins;
+      totalMinutes += mins;
+    }
+  }
+
+  // Fill continuous recent weeks up to 16 weeks so gaps in recent training are honestly visible
+  const activeMondays = Array.from(bucketMap.keys()).sort((a, b) => a - b);
+  const earliestMonday =
+    period === 'all' || period === '1y'
+      ? Math.max(activeMondays[0], currentMonday - 15 * MS_PER_WEEK)
+      : Math.max(getMondayMidnight(since), currentMonday - 15 * MS_PER_WEEK);
+
+  const cursorDate = new Date(earliestMonday);
+  while (cursorDate.getTime() <= currentMonday) {
+    ensureBucket(getMondayMidnight(cursorDate.getTime()));
+    cursorDate.setDate(cursorDate.getDate() + 7);
+    cursorDate.setHours(0, 0, 0, 0);
+  }
+
+  const buckets = Array.from(bucketMap.values()).sort((a, b) => a.mondayMs - b.mondayMs);
+  const totalClimbs = climbs.length;
+  const totalSends = totalFlashes + totalTops;
+  const avgPerWeek =
+    buckets.length > 0 ? Math.round((totalClimbs / buckets.length) * 10) / 10 : 0;
+
+  let peakWeek: { mondayMs: number; rangeLabel: string; totalClimbs: number } | null = null;
+  for (const b of buckets) {
+    if (b.totalClimbs > 0 && (!peakWeek || b.totalClimbs >= peakWeek.totalClimbs)) {
+      peakWeek = {
+        mondayMs: b.mondayMs,
+        rangeLabel: b.rangeLabel,
+        totalClimbs: b.totalClimbs,
+      };
+    }
+  }
+
+  return {
+    buckets,
+    totalClimbs,
+    totalFlashes,
+    totalTops,
+    totalAttempts,
+    totalSends,
+    totalSessions: sessionRows.length,
+    totalMinutes,
+    avgPerWeek,
+    peakWeek,
+    thisWeekClimbs,
+    lastWeekClimbs,
+    vsPrevWeekDelta,
+    climbs,
+  };
+}
+
+export interface FlashByGradeRow {
+  gradeIndex: number;
+  flashes: number;
+  tops: number;
+  attempts: number;
+  total: number;
+  flashRate: number;
+  sendRate: number;
+}
+
+export interface FlashEfficiencyDetail {
+  flashes: number;
+  tops: number;
+  attempts: number;
+  total: number;
+  flashRate: number;
+  sendRate: number;
+  firstTryShareOfSends: number;
+  avgBurnsToSend: number;
+  peakFlashGradeIndex: number | null;
+  flashByGrade: FlashByGradeRow[];
+  weeklyFlashTrend: {
+    mondayMs: number;
+    dateLabel: string;
+    flashes: number;
+    total: number;
+    flashRate: number;
+  }[];
+  climbs: FilteredClimbItem[];
+}
+
+export function getFlashEfficiencyDetail(
+  period: ProgressPeriod,
+  nowMs: number = Date.now()
+): FlashEfficiencyDetail {
+  const climbs = queryPeriodClimbs(period, nowMs);
+
+  let flashes = 0;
+  let tops = 0;
+  let attempts = 0;
+  let peakFlashGradeIndex: number | null = null;
+  let sendBurnsSum = 0;
+  let sendCountForBurns = 0;
+
+  const gradeMap = new Map<number, { flashes: number; tops: number; attempts: number; total: number }>();
+  const weekMap = new Map<number, { flashes: number; total: number }>();
+
+  for (const c of climbs) {
+    const g = gradeMap.get(c.gradeIndex) ?? { flashes: 0, tops: 0, attempts: 0, total: 0 };
+    g.total += 1;
+
+    const monday = getMondayMidnight(c.loggedAt);
+    const w = weekMap.get(monday) ?? { flashes: 0, total: 0 };
+    w.total += 1;
+
+    if (c.result === 'flash') {
+      flashes += 1;
+      g.flashes += 1;
+      w.flashes += 1;
+      sendBurnsSum += 1;
+      sendCountForBurns += 1;
+      if (peakFlashGradeIndex === null || c.gradeIndex > peakFlashGradeIndex) {
+        peakFlashGradeIndex = c.gradeIndex;
+      }
+    } else if (c.result === 'send' || c.result === 'top') {
+      tops += 1;
+      g.tops += 1;
+      sendBurnsSum += Math.max(1, c.attempts || 1);
+      sendCountForBurns += 1;
+    } else {
+      attempts += 1;
+      g.attempts += 1;
+    }
+
+    gradeMap.set(c.gradeIndex, g);
+    weekMap.set(monday, w);
+  }
+
+  const total = climbs.length;
+  const flashRate = calculateFlashRate(flashes, total);
+  const sendRate = calculateSendRate(flashes, tops, total);
+  const totalSends = flashes + tops;
+  const firstTryShareOfSends = totalSends > 0 ? Math.round((flashes / totalSends) * 100) : 0;
+  const avgBurnsToSend =
+    sendCountForBurns > 0 ? Math.round((sendBurnsSum / sendCountForBurns) * 10) / 10 : 0;
+
+  const flashByGrade: FlashByGradeRow[] = Array.from(gradeMap.entries())
+    .map(([gradeIndex, s]) => ({
+      gradeIndex,
+      flashes: s.flashes,
+      tops: s.tops,
+      attempts: s.attempts,
+      total: s.total,
+      flashRate: calculateFlashRate(s.flashes, s.total),
+      sendRate: calculateSendRate(s.flashes, s.tops, s.total),
+    }))
+    .sort((a, b) => b.gradeIndex - a.gradeIndex);
+
+  const weeklyFlashTrend = Array.from(weekMap.entries())
+    .sort((a, b) => a[0] - b[0])
+    .map(([mondayMs, w]) => ({
+      mondayMs,
+      dateLabel: formatShortMonthDay(mondayMs),
+      flashes: w.flashes,
+      total: w.total,
+      flashRate: calculateFlashRate(w.flashes, w.total),
+    }));
+
+  return {
+    flashes,
+    tops,
+    attempts,
+    total,
+    flashRate,
+    sendRate,
+    firstTryShareOfSends,
+    avgBurnsToSend,
+    peakFlashGradeIndex,
+    flashByGrade,
+    weeklyFlashTrend,
+    climbs,
+  };
+}
+
+export interface HardestWeekPoint {
+  mondayMs: number;
+  dateLabel: string;
+  rangeLabel: string;
+  maxSendGrade: number;
+  maxFlashGrade: number | null;
+  sendsCount: number;
+  isPeak: boolean;
+}
+
+export interface HardestSendDetail {
+  peakGradeIndex: number | null;
+  allTimePeakGradeIndex: number | null;
+  isAllTimeBest: boolean;
+  peakFlashGradeIndex: number | null;
+  avgLast20GradeIndex: number | null;
+  sendsAtPeakCount: number;
+  totalSends: number;
+  peakClimb: (FilteredClimbItem & { mondayMs: number }) | null;
+  weeklyProgression: HardestWeekPoint[];
+  climbs: (FilteredClimbItem & { mondayMs: number })[];
+}
+
+export function getHardestSendDetail(
+  period: ProgressPeriod,
+  nowMs: number = Date.now()
+): HardestSendDetail {
+  const db = getDatabase();
+  const periodClimbs = queryPeriodClimbs(period, nowMs);
+  const sendClimbs = periodClimbs
+    .filter((c) => isClimbSend(c.result))
+    .map((c) => ({ ...c, mondayMs: getMondayMidnight(c.loggedAt) }));
+
+  const allTimeRow = db.getFirstSync<{ max_grade: number | null }>(
+    `
+    SELECT MAX(grade_index) as max_grade
+    FROM climbs
+    WHERE logged_at <= ? AND deleted_at IS NULL AND (result = 'send' OR result = 'top' OR result = 'flash')
+    `,
+    [nowMs]
+  );
+  const allTimePeakGradeIndex = allTimeRow?.max_grade ?? null;
+
+  const last20Rows = db.getAllSync<{ grade_index: number }>(
+    `
+    SELECT grade_index
+    FROM climbs
+    WHERE logged_at <= ? AND deleted_at IS NULL AND (result = 'send' OR result = 'top' OR result = 'flash')
+    ORDER BY logged_at DESC
+    LIMIT 20
+    `,
+    [nowMs]
+  );
+  const avgLast20GradeIndex =
+    last20Rows.length > 0
+      ? calculateAverageGradeLast20(last20Rows.map((r) => r.grade_index))
+      : null;
+
+  if (sendClimbs.length === 0) {
+    return {
+      peakGradeIndex: null,
+      allTimePeakGradeIndex,
+      isAllTimeBest: false,
+      peakFlashGradeIndex: null,
+      avgLast20GradeIndex,
+      sendsAtPeakCount: 0,
+      totalSends: 0,
+      peakClimb: null,
+      weeklyProgression: [],
+      climbs: [],
+    };
+  }
+
+  let peakGradeIndex: number | null = null;
+  let peakFlashGradeIndex: number | null = null;
+  let peakClimb: (FilteredClimbItem & { mondayMs: number }) | null = null;
+
+  const weekMap = new Map<
+    number,
+    { maxSendGrade: number; maxFlashGrade: number | null; sendsCount: number }
+  >();
+
+  for (const c of sendClimbs) {
+    if (peakGradeIndex === null || c.gradeIndex > peakGradeIndex) {
+      peakGradeIndex = c.gradeIndex;
+      peakClimb = c;
+    } else if (c.gradeIndex === peakGradeIndex && peakClimb) {
+      // Tie-break: prefer Flash over multi-try Top, then newer loggedAt
+      if (c.result === 'flash' && peakClimb.result !== 'flash') {
+        peakClimb = c;
+      }
+    }
+
+    if (c.result === 'flash') {
+      if (peakFlashGradeIndex === null || c.gradeIndex > peakFlashGradeIndex) {
+        peakFlashGradeIndex = c.gradeIndex;
+      }
+    }
+
+    const w = weekMap.get(c.mondayMs);
+    if (!w) {
+      weekMap.set(c.mondayMs, {
+        maxSendGrade: c.gradeIndex,
+        maxFlashGrade: c.result === 'flash' ? c.gradeIndex : null,
+        sendsCount: 1,
+      });
+    } else {
+      w.sendsCount += 1;
+      if (c.gradeIndex > w.maxSendGrade) {
+        w.maxSendGrade = c.gradeIndex;
+      }
+      if (c.result === 'flash' && (w.maxFlashGrade === null || c.gradeIndex > w.maxFlashGrade)) {
+        w.maxFlashGrade = c.gradeIndex;
+      }
+    }
+  }
+
+  const sendsAtPeakCount =
+    peakGradeIndex !== null
+      ? sendClimbs.filter((c) => c.gradeIndex === peakGradeIndex).length
+      : 0;
+
+  const isAllTimeBest =
+    peakGradeIndex !== null &&
+    allTimePeakGradeIndex !== null &&
+    peakGradeIndex >= allTimePeakGradeIndex;
+
+  const weeklyProgression: HardestWeekPoint[] = Array.from(weekMap.entries())
+    .sort((a, b) => a[0] - b[0])
+    .map(([mondayMs, w]) => ({
+      mondayMs,
+      dateLabel: formatShortMonthDay(mondayMs),
+      rangeLabel: formatMondayRange(mondayMs),
+      maxSendGrade: w.maxSendGrade,
+      maxFlashGrade: w.maxFlashGrade,
+      sendsCount: w.sendsCount,
+      isPeak: peakGradeIndex !== null && w.maxSendGrade === peakGradeIndex,
+    }));
+
+  return {
+    peakGradeIndex,
+    allTimePeakGradeIndex,
+    isAllTimeBest,
+    peakFlashGradeIndex,
+    avgLast20GradeIndex,
+    sendsAtPeakCount,
+    totalSends: sendClimbs.length,
+    peakClimb,
+    weeklyProgression,
+    climbs: sendClimbs,
+  };
+}
+
+export interface SendsByGradeRow {
+  gradeIndex: number;
+  uniqueFlashes: number;
+  uniqueTops: number;
+  uniqueSends: number;
+  repeatSends: number;
+  attempts: number;
+  totalClimbs: number;
+  sendRate: number;
+  flashRate: number;
+}
+
+export interface SendsByGradeDetail {
+  pyramidRows: SendsByGradeRow[];
+  totalUniqueSends: number;
+  totalUniqueFlashes: number;
+  totalUniqueTops: number;
+  totalRepeatSends: number;
+  totalAttempts: number;
+  totalClimbs: number;
+  peakSendGrade: number | null;
+  workhorseGrade: { gradeIndex: number; uniqueSends: number } | null;
+  bandCounts: {
+    beginner: number;
+    intermediate: number;
+    advanced: number;
+    expert: number;
+  };
+  climbs: FilteredClimbItem[];
+}
+
+export function getSendsByGradeDetail(
+  period: ProgressPeriod,
+  nowMs: number = Date.now()
+): SendsByGradeDetail {
+  const climbs = queryPeriodClimbs(period, nowMs);
+
+  // Enforce Pyramid Single-Count Rule via shared pure logic
+  const pyramid = buildGradePyramid(
+    climbs.map((c) => ({
+      id: c.id,
+      projectId: c.projectId,
+      gradeIndex: c.gradeIndex,
+      result: c.result,
+      loggedAt: c.loggedAt,
+    }))
+  );
+
+  const pyramidByGrade = new Map<number, { flashes: number; sends: number }>();
+  for (const row of pyramid) {
+    pyramidByGrade.set(row.grade, { flashes: row.flashes, sends: row.sends });
+  }
+
+  const rawByGrade = new Map<
+    number,
+    { rawFlashes: number; rawTops: number; attempts: number; total: number }
+  >();
+  for (const c of climbs) {
+    const r = rawByGrade.get(c.gradeIndex) ?? {
+      rawFlashes: 0,
+      rawTops: 0,
+      attempts: 0,
+      total: 0,
+    };
+    r.total += 1;
+    if (c.result === 'flash') {
+      r.rawFlashes += 1;
+    } else if (c.result === 'send' || c.result === 'top') {
+      r.rawTops += 1;
+    } else {
+      r.attempts += 1;
+    }
+    rawByGrade.set(c.gradeIndex, r);
+  }
+
+  const allGradeKeys = Array.from(
+    new Set([...pyramidByGrade.keys(), ...rawByGrade.keys()])
+  ).sort((a, b) => b - a);
+
+  let totalUniqueFlashes = 0;
+  let totalUniqueTops = 0;
+  let totalRepeatSends = 0;
+  let totalAttempts = 0;
+  let peakSendGrade: number | null = null;
+  let workhorseGrade: { gradeIndex: number; uniqueSends: number } | null = null;
+
+  const bandCounts = {
+    beginner: 0,
+    intermediate: 0,
+    advanced: 0,
+    expert: 0,
+  };
+
+  const pyramidRows: SendsByGradeRow[] = allGradeKeys.map((gradeIndex) => {
+    const p = pyramidByGrade.get(gradeIndex) ?? { flashes: 0, sends: 0 };
+    const r = rawByGrade.get(gradeIndex) ?? {
+      rawFlashes: 0,
+      rawTops: 0,
+      attempts: 0,
+      total: 0,
+    };
+    const uniqueFlashes = p.flashes;
+    const uniqueTops = p.sends;
+    const uniqueSends = uniqueFlashes + uniqueTops;
+    const rawSends = r.rawFlashes + r.rawTops;
+    const repeatSends = Math.max(0, rawSends - uniqueSends);
+
+    totalUniqueFlashes += uniqueFlashes;
+    totalUniqueTops += uniqueTops;
+    totalRepeatSends += repeatSends;
+    totalAttempts += r.attempts;
+
+    if (uniqueSends > 0) {
+      if (peakSendGrade === null || gradeIndex > peakSendGrade) {
+        peakSendGrade = gradeIndex;
+      }
+      if (!workhorseGrade || uniqueSends > workhorseGrade.uniqueSends) {
+        workhorseGrade = { gradeIndex, uniqueSends };
+      }
+      if (gradeIndex <= 2) bandCounts.beginner += uniqueSends;
+      else if (gradeIndex <= 5) bandCounts.intermediate += uniqueSends;
+      else if (gradeIndex <= 8) bandCounts.advanced += uniqueSends;
+      else bandCounts.expert += uniqueSends;
+    }
+
+    return {
+      gradeIndex,
+      uniqueFlashes,
+      uniqueTops,
+      uniqueSends,
+      repeatSends,
+      attempts: r.attempts,
+      totalClimbs: r.total,
+      sendRate: calculateSendRate(r.rawFlashes, r.rawTops, r.total),
+      flashRate: calculateFlashRate(r.rawFlashes, r.total),
+    };
+  });
+
+  return {
+    pyramidRows,
+    totalUniqueSends: totalUniqueFlashes + totalUniqueTops,
+    totalUniqueFlashes,
+    totalUniqueTops,
+    totalRepeatSends,
+    totalAttempts,
+    totalClimbs: climbs.length,
+    peakSendGrade,
+    workhorseGrade,
+    bandCounts,
+    climbs,
+  };
 }
 
 /** Sessions filtered by period and optional week. */

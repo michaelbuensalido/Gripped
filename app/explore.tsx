@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, TextInput, Modal, KeyboardAvoidingView, Platform, StyleSheet, Linking, Alert, TouchableOpacity } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import Animated, { FadeIn, FadeOut, LinearTransition } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Search, MapPin, ChevronRight, Plus, X, Link2, Trash2, ExternalLink, Paperclip } from 'lucide-react-native';
@@ -13,7 +13,7 @@ import { EmptyState } from '../components/ui/EmptyState';
 import { useRecentGyms, useVideoInbox, useProjects } from '../db/hooks';
 import * as Q from '../db/queries';
 import * as B from '../db/betaQueries';
-import { detectVideoPlatform } from '../utils/betaLogic';
+import { detectVideoPlatform, formatVideoPlatformLabel } from '../utils/betaLogic';
 import { triggerHaptic } from '../utils/haptics';
 import type { VideoInboxItem } from '../types/beta';
 
@@ -21,11 +21,22 @@ export default function ExploreScreen() {
   const { colors, type, space, radius } = useTheme();
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { tab, sharedAt } = useLocalSearchParams<{ tab?: string; sharedAt?: string }>();
   const gyms = useRecentGyms();
   const inboxItems = useVideoInbox();
   const projects = useProjects();
 
-  const [activeTab, setActiveTab] = useState<'gyms' | 'inbox'>('gyms');
+  const [activeTab, setActiveTab] = useState<'gyms' | 'inbox'>(
+    tab === 'inbox' ? 'inbox' : 'gyms',
+  );
+
+  useEffect(() => {
+    if (tab === 'inbox') {
+      setActiveTab('inbox');
+    } else if (tab === 'gyms') {
+      setActiveTab('gyms');
+    }
+  }, [tab, sharedAt]);
   const [search, setSearch] = useState('');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [newGymName, setNewGymName] = useState('');
@@ -252,7 +263,7 @@ export default function ExploreScreen() {
                 illustration={require('../assets/illustrations/empty-inbox.jpg')}
                 icon={<Link2 size={26} color={colors.accent} />}
                 title={search.trim() ? "No videos matching search" : "Video inbox is empty"}
-                body="Save social media beta clips from Instagram Reels or TikTok here to attach them to your project beta later."
+                body="Save social media beta clips from Instagram Reels, TikTok, or YouTube here to attach them to your project beta later."
                 cta={
                   <SecondaryButton
                     label="+ Paste Video Link"
@@ -263,7 +274,7 @@ export default function ExploreScreen() {
             ) : (
               <View style={{ gap: space.sm }}>
                 {filteredInbox.map(item => {
-                  const platformLabel = item.sourceType === 'instagram' ? 'Instagram' : item.sourceType === 'tiktok' ? 'TikTok' : 'Web';
+                  const platformLabel = formatVideoPlatformLabel(item.sourceType, 'Web');
                   return (
                     <Animated.View
                       key={item.id}
@@ -442,7 +453,7 @@ export default function ExploreScreen() {
               autoFocus
               value={pasteUrl}
               onChangeText={setPasteUrl}
-              placeholder="https://www.instagram.com/reel/... or tiktok.com"
+              placeholder="https://www.instagram.com/reel/..., tiktok.com, or youtube.com"
               placeholderTextColor={colors.textMuted}
               autoCapitalize="none"
               autoCorrect={false}

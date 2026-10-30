@@ -7,8 +7,8 @@ import { detectVideoPlatform, extractSharedVideoLink } from '../utils/betaLogic'
 import { triggerHaptic } from '../utils/haptics';
 
 /**
- * Receives links shared from Instagram/TikTok via the iOS Share Extension and
- * saves them straight into the local Video Inbox (SQLite). No network involved.
+ * Receives links shared from Instagram, TikTok, or YouTube via the Share Extension
+ * and saves them straight into the local Video Inbox (SQLite). No network involved.
  */
 export function ShareIntentBridge() {
   const { hasShareIntent, shareIntent, resetShareIntent } = useShareIntentContext();
@@ -28,7 +28,10 @@ export function ShareIntentBridge() {
       caption: parsed.caption,
     });
     triggerHaptic('success');
-    router.navigate('/explore');
+    router.navigate({
+      pathname: '/explore',
+      params: { tab: 'inbox', sharedAt: String(Date.now()) },
+    });
   }, [hasShareIntent, shareIntent, resetShareIntent, router]);
 
   return null;

@@ -6,6 +6,8 @@ import { useTheme } from '../../theme/useTheme';
 interface GlowBackdropProps {
   /** How far the glow bleeds past the parent's edges, in px. Defaults to space.xl. */
   spread?: number;
+  /** Optional semantic glow token override (defaults to colors.glow). */
+  color?: string;
 }
 
 let glowCounter = 0;
@@ -20,9 +22,10 @@ let glowCounter = 0;
  * It is a react-native-svg radial gradient rather than a CSS blur, which React Native
  * does not support.
  */
-export function GlowBackdrop({ spread }: GlowBackdropProps) {
+export function GlowBackdrop({ spread, color }: GlowBackdropProps) {
   const { colors, space } = useTheme();
   const bleed = spread ?? space.xl;
+  const glowColor = color ?? colors.glow;
   const id = React.useRef(`glow-${glowCounter++}`).current;
 
   return (
@@ -41,8 +44,8 @@ export function GlowBackdrop({ spread }: GlowBackdropProps) {
       <Svg width="100%" height="100%">
         <Defs>
           <RadialGradient id={id} cx="50%" cy="50%" rx="50%" ry="50%">
-            <Stop offset="0" stopColor={colors.glow} stopOpacity={1} />
-            <Stop offset="1" stopColor={colors.glow} stopOpacity={0} />
+            <Stop offset="0" stopColor={glowColor} stopOpacity={1} />
+            <Stop offset="1" stopColor={glowColor} stopOpacity={0} />
           </RadialGradient>
         </Defs>
         <Rect x="0" y="0" width="100%" height="100%" fill={`url(#${id})`} />

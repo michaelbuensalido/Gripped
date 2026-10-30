@@ -72,6 +72,7 @@ function TabLayout() {
       <Tabs.Screen name="session/end"          options={{ href: null, animation: "none" as any }} />
       <Tabs.Screen name="session/summary"      options={{ href: null, animation: "none" as any }} />
       <Tabs.Screen name="session/detail/[id]"  options={{ href: null, animation: "none" as any }} />
+      <Tabs.Screen name="analytics/stat-detail" options={{ href: null, animation: "none" as any }} />
       <Tabs.Screen name="project/[id]"         options={{ href: null, animation: "none" as any }} />
       <Tabs.Screen name="gym/[id]"             options={{ href: null, animation: "none" as any }} />
     </Tabs>
