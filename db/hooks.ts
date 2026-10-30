@@ -85,6 +85,22 @@ export function useClimbsForStat(stat: 'volume' | 'flash' | 'hardest' | 'all', p
   return useLiveQuery(() => Q.getClimbsForStat(stat, period, week), [stat, period, week]);
 }
 
+export function useWeeklyVolumeDetail(period: Q.ProgressPeriod) {
+  return useLiveQuery(() => Q.getWeeklyVolumeDetail(period), [period]);
+}
+
+export function useFlashEfficiencyDetail(period: Q.ProgressPeriod) {
+  return useLiveQuery(() => Q.getFlashEfficiencyDetail(period), [period]);
+}
+
+export function useHardestSendDetail(period: Q.ProgressPeriod) {
+  return useLiveQuery(() => Q.getHardestSendDetail(period), [period]);
+}
+
+export function useSendsByGradeDetail(period: Q.ProgressPeriod) {
+  return useLiveQuery(() => Q.getSendsByGradeDetail(period), [period]);
+}
+
 export function useSessionsForPeriod(period: '7d'|'30d'|'90d'|'1y'|'all', week?: string) {
   return useLiveQuery(() => Q.getSessionsForPeriod(period, week), [period, week]);
 }

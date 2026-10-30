@@ -46,11 +46,14 @@ export const colors = {
   bevelShadow: "rgba(28, 27, 34, 0.10)",
   glassBorder: "rgba(28, 27, 34, 0.08)",
   glow: "rgba(106, 82, 209, 0.12)",
+  glowFlash: "rgba(59, 164, 98, 0.14)",
 
   // Translucent Materials (v4.0 Spatial Editorial)
   materialBase: "rgba(0, 0, 0, 0.03)",
   materialBorder: "transparent",
   materialHighlight: "transparent",
+  surfaceInset: "rgba(28, 27, 34, 0.04)",
+  divider: "rgba(28, 27, 34, 0.06)",
 
   // Translucent Typography
   textWhitePrimary: "#000000",
@@ -87,7 +90,21 @@ export const type = {
     letterSpacing: -0.5,
     fontVariant: ["tabular-nums" as const],
   },
+  heroStat: {
+    fontFamily: "Sora_700Bold",
+    fontSize: 42,
+    lineHeight: 46,
+    letterSpacing: -1,
+    fontVariant: ["tabular-nums" as const],
+  },
   title: { fontFamily: "Sora_400Regular", fontSize: 22, lineHeight: 28, fontVariant: ["tabular-nums" as const] },
+  titleBold: {
+    fontFamily: "Sora_700Bold",
+    fontSize: 22,
+    lineHeight: 28,
+    letterSpacing: -0.4,
+    fontVariant: ["tabular-nums" as const],
+  },
   stat: {
     fontFamily: "Sora_400Regular",
     fontSize: 36,
@@ -100,7 +117,15 @@ export const type = {
     lineHeight: 28,
     fontVariant: ["tabular-nums" as const],
   },
+  statBold: {
+    fontFamily: "Sora_600SemiBold",
+    fontSize: 20,
+    lineHeight: 24,
+    letterSpacing: -0.3,
+    fontVariant: ["tabular-nums" as const],
+  },
   heading: { fontFamily: "Inter_400Regular", fontSize: 17, lineHeight: 22, fontVariant: ["tabular-nums" as const] },
+  sectionTitle: { fontFamily: "Inter_600SemiBold", fontSize: 16, lineHeight: 22, fontVariant: ["tabular-nums" as const] },
   body: { fontFamily: "Inter_400Regular", fontSize: 15, lineHeight: 22, fontVariant: ["tabular-nums" as const] },
   control: { fontFamily: "Inter_500Medium", fontSize: 14, lineHeight: 20, fontVariant: ["tabular-nums" as const] },
   label: {
@@ -111,7 +136,17 @@ export const type = {
     fontVariant: ["tabular-nums" as const],
     textTransform: "uppercase" as const,
   },
+  micro: {
+    fontFamily: "Inter_600SemiBold",
+    fontSize: 10,
+    lineHeight: 13,
+    letterSpacing: 1.4,
+    fontVariant: ["tabular-nums" as const],
+    textTransform: "uppercase" as const,
+  },
   caption: { fontFamily: "Inter_400Regular", fontSize: 12, lineHeight: 16, fontVariant: ["tabular-nums" as const] },
+  captionMedium: { fontFamily: "Inter_500Medium", fontSize: 12, lineHeight: 16, fontVariant: ["tabular-nums" as const] },
+  captionSemibold: { fontFamily: "Inter_600SemiBold", fontSize: 12, lineHeight: 16, fontVariant: ["tabular-nums" as const] },
 };
 
 export const motion = {

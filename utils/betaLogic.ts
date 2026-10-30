@@ -1,4 +1,4 @@
-import type { Beta, BetaMove, BetaVideo } from '../types/beta';
+import type { Beta, BetaMove, BetaVideo, VideoSourceType } from '../types/beta';
 
 // Pure business rules for Beta. No I/O, so everything here is unit-testable.
 
@@ -92,7 +92,7 @@ export function formatBytes(bytes: number): string {
 }
 
 /** Detects platform from URL string */
-export function detectVideoPlatform(url: string): 'instagram' | 'tiktok' | 'other' {
+export function detectVideoPlatform(url: string): 'instagram' | 'tiktok' | 'youtube' | 'other' {
   const lower = url.toLowerCase().trim();
   if (lower.includes('instagram.com') || lower.includes('instagr.am')) {
     return 'instagram';
@@ -100,11 +100,31 @@ export function detectVideoPlatform(url: string): 'instagram' | 'tiktok' | 'othe
   if (lower.includes('tiktok.com')) {
     return 'tiktok';
   }
+  if (lower.includes('youtube.com') || lower.includes('youtu.be')) {
+    return 'youtube';
+  }
   return 'other';
 }
 
+/** Human-readable platform label for a video source type */
+export function formatVideoPlatformLabel(
+  sourceType?: VideoSourceType | string | null,
+  fallback = 'Web',
+): string {
+  switch (sourceType) {
+    case 'instagram':
+      return 'Instagram';
+    case 'tiktok':
+      return 'TikTok';
+    case 'youtube':
+      return 'YouTube';
+    default:
+      return fallback;
+  }
+}
+
 /**
- * Parses a share-sheet payload from Instagram/TikTok. Those apps often share
+ * Parses a share-sheet payload from Instagram/TikTok/YouTube. Those apps often share
  * "caption text https://..." rather than a bare URL, so pull the first http(s)
  * link out and use the remaining text as the caption.
  */
@@ -116,7 +136,11 @@ export function extractSharedVideoLink(
   const match = (webUrl ?? '').trim() || raw.match(/https?:\/\/[^\s]+/i)?.[0] || '';
   if (!/^https?:\/\//i.test(match)) return null;
   const url = match.replace(/[)\].,;]+$/, '');
-  const caption = raw.replace(match, '').replace(/\s+/g, ' ').trim();
+  const caption = raw
+    .replace(/https?:\/\/[^\s]+/gi, '')
+    .replace(match, '')
+    .replace(/\s+/g, ' ')
+    .trim();
   return { url, caption: caption ? caption.slice(0, 140) : null };
 }
 

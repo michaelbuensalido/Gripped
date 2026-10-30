@@ -68,17 +68,37 @@ export const colors = {
   bevelShadow: "rgba(0, 0, 0, 0.6)",
   glassBorder: "rgba(255, 255, 255, 0.16)",
   glow: "rgba(142, 124, 255, 0.25)",
+  glowFlash: "rgba(110, 231, 86, 0.20)",
 
   // Translucent Materials (v4.0 Spatial Editorial)
   materialBase: "rgba(22, 22, 30, 0.88)",
   materialBorder: "rgba(255, 255, 255, 0.08)",
   materialHighlight: "rgba(255, 255, 255, 0.12)",
+  surfaceInset: "rgba(13, 13, 18, 0.48)",
+  divider: "rgba(255, 255, 255, 0.06)",
 
   // Translucent Typography
   textWhitePrimary: "#FFFFFF",
   textWhiteSecondary: "rgba(255, 255, 255, 0.60)",
   textWhiteMuted: "rgba(255, 255, 255, 0.40)",
+
+  // Drill-down hero tint washes + chart grid (v4.3 Premium Drill-Downs)
+  washAccent: "rgba(142, 124, 255, 0.16)", // top-edge linear wash on volume / neutral heroes
+  washFlash: "rgba(110, 231, 86, 0.12)", // top-edge linear wash on flash heroes
+  chartGrid: "rgba(255, 255, 255, 0.05)", // hairline gridlines behind charts
 };
+
+/**
+ * Applies an alpha channel to a 6-digit hex colour (e.g. a grade-band `solid`).
+ * Used to derive tinted washes / rims from grade-band colours without hard-coding rgba strings.
+ */
+export function withAlpha(hex: string, alpha: number): string {
+  const clean = hex.replace("#", "");
+  const a = Math.round(Math.max(0, Math.min(1, alpha)) * 255)
+    .toString(16)
+    .padStart(2, "0");
+  return `#${clean}${a}`;
+}
 
 export const radius = { sm: 10, md: 16, lg: 22, xl: 28, pill: 999 };
 
@@ -110,7 +130,21 @@ export const type = {
     letterSpacing: -0.5,
     fontVariant: ["tabular-nums" as const],
   },
+  heroStat: {
+    fontFamily: "Sora_700Bold",
+    fontSize: 42,
+    lineHeight: 46,
+    letterSpacing: -1,
+    fontVariant: ["tabular-nums" as const],
+  },
   title: { fontFamily: "Sora_400Regular", fontSize: 22, lineHeight: 28, fontVariant: ["tabular-nums" as const] },
+  titleBold: {
+    fontFamily: "Sora_700Bold",
+    fontSize: 22,
+    lineHeight: 28,
+    letterSpacing: -0.4,
+    fontVariant: ["tabular-nums" as const],
+  },
   stat: {
     fontFamily: "Sora_400Regular",
     fontSize: 36,
@@ -123,7 +157,15 @@ export const type = {
     lineHeight: 28,
     fontVariant: ["tabular-nums" as const],
   },
+  statBold: {
+    fontFamily: "Sora_600SemiBold",
+    fontSize: 20,
+    lineHeight: 24,
+    letterSpacing: -0.3,
+    fontVariant: ["tabular-nums" as const],
+  },
   heading: { fontFamily: "Inter_400Regular", fontSize: 17, lineHeight: 22, fontVariant: ["tabular-nums" as const] },
+  sectionTitle: { fontFamily: "Inter_600SemiBold", fontSize: 16, lineHeight: 22, fontVariant: ["tabular-nums" as const] },
   body: { fontFamily: "Inter_400Regular", fontSize: 15, lineHeight: 22, fontVariant: ["tabular-nums" as const] },
   control: { fontFamily: "Inter_500Medium", fontSize: 14, lineHeight: 20, fontVariant: ["tabular-nums" as const] },
   label: {
@@ -134,7 +176,17 @@ export const type = {
     fontVariant: ["tabular-nums" as const],
     textTransform: "uppercase" as const,
   },
+  micro: {
+    fontFamily: "Inter_600SemiBold",
+    fontSize: 10,
+    lineHeight: 13,
+    letterSpacing: 1.4,
+    fontVariant: ["tabular-nums" as const],
+    textTransform: "uppercase" as const,
+  },
   caption: { fontFamily: "Inter_400Regular", fontSize: 12, lineHeight: 16, fontVariant: ["tabular-nums" as const] },
+  captionMedium: { fontFamily: "Inter_500Medium", fontSize: 12, lineHeight: 16, fontVariant: ["tabular-nums" as const] },
+  captionSemibold: { fontFamily: "Inter_600SemiBold", fontSize: 12, lineHeight: 16, fontVariant: ["tabular-nums" as const] },
 };
 
 export const motion = {

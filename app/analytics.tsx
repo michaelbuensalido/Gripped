@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, Modal, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Settings, ChevronDown, Check } from 'lucide-react-native';
+import { Settings, ChevronDown, ChevronRight, Check } from 'lucide-react-native';
 import Svg, { Path } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Card } from '../components/ui/Card';
@@ -155,128 +155,120 @@ export default function ProgressScreen() {
         </View>
 
         {/* 4. PERFORMANCE TRENDS Section Header & 3 Bento Tiles */}
-        <Text
-          style={{
-            color: colors.textMuted,
-            fontSize: 10.5,
-            fontWeight: '600',
-            letterSpacing: 1.5,
-            textTransform: 'uppercase',
-            marginBottom: 12,
-          }}
-        >
-          PERFORMANCE TRENDS
-        </Text>
+        <SectionHeader title="Performance Trends" />
 
-        <View style={{ flexDirection: 'row', gap: 10, marginBottom: 28 }}>
+        <View style={{ flexDirection: 'row', gap: space.sm, marginBottom: space.xl }}>
           {/* Tile 1: Weekly Volume */}
           <ScalePressable
             haptic="light"
             activeScale={0.96}
+            accessibilityRole="button"
+            accessibilityLabel={`Weekly Volume, ${weeklyVolVal} routes. Tap to explore`}
             onPress={() => router.push(`/analytics/stat-detail?stat=volume&period=${period}` as any)}
             style={{
               flex: 1,
               backgroundColor: colors.card,
-              borderRadius: 20,
-              padding: 14,
+              borderRadius: radius.lg,
+              padding: space.md,
               borderWidth: 1,
               borderColor: colors.border,
+              justifyContent: 'space-between',
             }}
           >
-            <Text
-              style={{
-                color: colors.textMuted,
-                fontSize: 9.5,
-                fontWeight: '600',
-                letterSpacing: 1.2,
-                textTransform: 'uppercase',
-                lineHeight: 13,
-              }}
-            >
-              {'WEEKLY\nVOLUME'}
-            </Text>
-            <Text style={{ color: colors.accent, fontSize: 12, fontWeight: '600', marginTop: 6 }}>
-              Routes
-            </Text>
-            <Text style={{ color: colors.text, fontSize: 26, fontWeight: '700', fontVariant: ['tabular-nums'], marginTop: 2 }}>
-              {weeklyVolVal}
-            </Text>
+            <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+              <Text style={[type.micro, { color: colors.textMuted }]}>
+                {'WEEKLY\nVOLUME'}
+              </Text>
+              <ChevronRight size={space.md} color={colors.textWhiteMuted} />
+            </View>
+            <View style={{ marginTop: space.sm }}>
+              <Text style={[type.captionSemibold, { color: colors.accent }]}>
+                Routes
+              </Text>
+              <Text style={[type.titleBold, { color: colors.text, marginTop: 2 }]}>
+                {weeklyVolVal}
+              </Text>
+            </View>
           </ScalePressable>
 
           {/* Tile 2: Flash Efficiency */}
           <ScalePressable
             haptic="light"
             activeScale={0.96}
+            accessibilityRole="button"
+            accessibilityLabel={`Flash Efficiency, ${flashRateVal}. Tap to explore`}
             onPress={() => router.push(`/analytics/stat-detail?stat=flash&period=${period}` as any)}
             style={{
               flex: 1,
               backgroundColor: colors.card,
-              borderRadius: 20,
-              padding: 14,
+              borderRadius: radius.lg,
+              padding: space.md,
               borderWidth: 1,
               borderColor: colors.border,
+              justifyContent: 'space-between',
             }}
           >
-            <Text
-              style={{
-                color: colors.textMuted,
-                fontSize: 9.5,
-                fontWeight: '600',
-                letterSpacing: 1.2,
-                textTransform: 'uppercase',
-                lineHeight: 13,
-              }}
-            >
-              {'FLASH\nEFFICIENCY'}
-            </Text>
-            <Text style={{ color: colors.flash, fontSize: 12, fontWeight: '600', marginTop: 6 }}>
-              Flashes
-            </Text>
-            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 2 }}>
-              <Text style={{ color: colors.text, fontSize: 26, fontWeight: '700', fontVariant: ['tabular-nums'] }}>
-                {flashRateVal}
+            <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+              <Text style={[type.micro, { color: colors.textMuted }]}>
+                {'FLASH\nEFFICIENCY'}
               </Text>
-              {parseFloat(flashRateVal) > 0 && <SparklineGreen values={sparklineTrends?.flashRateSparkline ?? []} />}
+              <ChevronRight size={space.md} color={colors.textWhiteMuted} />
+            </View>
+            <View style={{ marginTop: space.sm }}>
+              <Text style={[type.captionSemibold, { color: colors.flash }]}>
+                Flashes
+              </Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 2 }}>
+                <Text style={[type.titleBold, { color: colors.text }]}>
+                  {flashRateVal}
+                </Text>
+                {parseFloat(flashRateVal) > 0 && <SparklineGreen values={sparklineTrends?.flashRateSparkline ?? []} />}
+              </View>
             </View>
           </ScalePressable>
 
-          {/* Tile 3: Overhang / Hardest */}
+          {/* Tile 3: Hardest Send */}
           <ScalePressable
             haptic="light"
             activeScale={0.96}
+            accessibilityRole="button"
+            accessibilityLabel={`Hardest Send, ${hardestSendVal}. Tap to explore`}
             onPress={() => router.push(`/analytics/stat-detail?stat=hardest&period=${period}` as any)}
             style={{
               flex: 1,
               backgroundColor: colors.card,
-              borderRadius: 20,
-              padding: 14,
+              borderRadius: radius.lg,
+              padding: space.md,
               borderWidth: 1,
               borderColor: colors.border,
+              justifyContent: 'space-between',
             }}
           >
-            <Text
-              style={{
-                color: colors.textMuted,
-                fontSize: 9.5,
-                fontWeight: '600',
-                letterSpacing: 1.2,
-                textTransform: 'uppercase',
-                lineHeight: 13,
-              }}
-            >
-              {'HARDEST\nSEND'}
-            </Text>
-            <Text style={{ color: colors.textWhiteSecondary, fontSize: 12, fontWeight: '500', marginTop: 6 }}>
-              Peak
-            </Text>
-            <Text style={{ color: colors.text, fontSize: 26, fontWeight: '700', fontVariant: ['tabular-nums'], marginTop: 2 }}>
-              {hardestSendVal}
-            </Text>
+            <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+              <Text style={[type.micro, { color: colors.textMuted }]}>
+                {'HARDEST\nSEND'}
+              </Text>
+              <ChevronRight size={space.md} color={colors.textWhiteMuted} />
+            </View>
+            <View style={{ marginTop: space.sm }}>
+              <Text style={[type.captionMedium, { color: colors.textWhiteSecondary }]}>
+                Peak
+              </Text>
+              <Text style={[type.titleBold, { color: colors.text, marginTop: 2 }]}>
+                {hardestSendVal}
+              </Text>
+            </View>
           </ScalePressable>
         </View>
 
         {/* 5. Sends by Grade (Grade Pyramid) */}
-        <SectionHeader title="Sends by Grade" />
+        <SectionHeader
+          title="Sends by Grade"
+          action={{
+            label: 'Explore',
+            onPress: () => router.push(`/analytics/stat-detail?stat=grade&period=${period}` as any),
+          }}
+        />
         <Card style={{ marginBottom: 28, backgroundColor: colors.card, borderRadius: 22, borderWidth: 1, borderColor: colors.border }}>
           <GradePyramid
             data={gradePyramid}

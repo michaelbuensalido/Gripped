@@ -8,7 +8,7 @@ import { useTheme } from '../../theme/useTheme';
 import { useProjectBetas, useBetaMoves, useProjectVideos, useProject } from '../../db/hooks';
 import * as B from '../../db/betaQueries';
 import { storeClip } from '../../services/betaFiles';
-import { formatBytes, formatTimestamp, formatBetaSummaryText, detectVideoPlatform } from '../../utils/betaLogic';
+import { formatBytes, formatTimestamp, formatBetaSummaryText, detectVideoPlatform, formatVideoPlatformLabel } from '../../utils/betaLogic';
 import { triggerHaptic } from '../../utils/haptics';
 import { SecondaryButton } from '../ui/SecondaryButton';
 import { PrimaryButton } from '../ui/PrimaryButton';
@@ -284,7 +284,7 @@ export function BetaSection({ projectId }: { projectId: string }) {
               <View style={{ gap: 8, marginBottom: space.md }}>
                 {videos.map((v, idx) => {
                   const isSocial = Boolean(v.videoUrl || (v.sourceType && v.sourceType !== 'local'));
-                  const platformLabel = v.sourceType === 'instagram' ? 'Instagram' : v.sourceType === 'tiktok' ? 'TikTok' : 'Web Link';
+                  const platformLabel = formatVideoPlatformLabel(v.sourceType, 'Web Link');
                   
                   return (
                     <View
@@ -505,7 +505,7 @@ export function BetaSection({ projectId }: { projectId: string }) {
             </View>
 
             <Text style={[type.caption, { color: colors.textMuted, marginBottom: space.md }]}>
-              Paste a link from Instagram Reels, TikTok, or the web to keep your beta inspiration attached to this project.
+              Paste a link from Instagram Reels, TikTok, YouTube, or the web to keep your beta inspiration attached to this project.
             </Text>
 
             <Text style={[type.label, { color: colors.textMuted, marginBottom: 4 }]}>VIDEO URL</Text>
@@ -520,7 +520,7 @@ export function BetaSection({ projectId }: { projectId: string }) {
                 fontSize: 14,
                 marginBottom: space.md,
               }}
-              placeholder="https://www.instagram.com/reel/... or tiktok.com"
+              placeholder="https://www.instagram.com/reel/..., tiktok.com, or youtube.com"
               placeholderTextColor={colors.textMuted}
               value={videoUrlInput}
               onChangeText={setVideoUrlInput}
