@@ -10,11 +10,16 @@ import {
   Text,
   View,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { captureRef } from 'react-native-view-shot';
 import * as Sharing from 'expo-sharing';
-import { FileText, Share2, Trophy, X, Zap } from 'lucide-react-native';
+import { Clock, FileText, Share2, Trophy, X, Zap } from 'lucide-react-native';
 import { ScalePressable } from '../ui/ScalePressable';
+import { GradePill } from '../ui/GradePill';
+import { StatStrip } from '../ui/StatStrip';
+import { SegmentedBar, BarLegend } from '../ui/SegmentedBar';
+import { ClimbingHoldGraphic, holdTypeForGrade } from '../ui/ClimbingHoldGraphic';
 import { useTheme } from '../../theme/useTheme';
 import { usePreferences } from '../../utils/preferences';
 import { triggerHaptic } from '../../utils/haptics';
@@ -27,8 +32,21 @@ export interface SessionShareCardModalProps {
   sendsCount: number;
   flashesCount: number;
   hardestGradeRaw: string;
-  topClimbs?: Array<{ gradeRaw: string; result: string }>;
+  /** Normalised grade index of the hardest send; drives band colour + hold artwork. */
+  hardestGradeIndex?: number;
+  /** Session length in minutes (omitted for sessions still in progress). */
+  durationMinutes?: number;
+  topClimbs?: Array<{ gradeRaw: string; gradeIndex?: number; result: string }>;
   onClose: () => void;
+}
+
+const MAX_HIGHLIGHTS = 6;
+
+function formatDurationMinutes(minutes: number): string {
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  if (h <= 0) return `${m}m`;
+  return m === 0 ? `${h}h` : `${h}h ${m}m`;
 }
 
 export function SessionShareCardModal({
@@ -39,10 +57,12 @@ export function SessionShareCardModal({
   sendsCount,
   flashesCount,
   hardestGradeRaw,
+  hardestGradeIndex,
+  durationMinutes,
   topClimbs = [],
   onClose,
 }: SessionShareCardModalProps) {
-  const { colors, radius, space, type } = useTheme();
+  const { colors, radius, space, type, gradeBand, withAlpha } = useTheme();
   const { formatGradeLabel } = usePreferences();
   const insets = useSafeAreaInsets();
   const cardRef = useRef<View>(null);
@@ -53,6 +73,18 @@ export function SessionShareCardModal({
   const sendRate = climbsCount > 0 ? Math.round((sendsCount / climbsCount) * 100) : 0;
   const formattedHardest =
     hardestGradeRaw && hardestGradeRaw !== '–' ? formatGradeLabel(hardestGradeRaw) : '–';
+  const hasPeak = formattedHardest !== '–';
+
+  const topsCount = Math.max(0, sendsCount - flashesCount);
+  const attemptsCount = Math.max(0, climbsCount - sendsCount);
+
+  const peakBand = hardestGradeIndex !== undefined ? gradeBand(hardestGradeIndex) : null;
+  const peakColor = peakBand ? peakBand.text : colors.flashText;
+  const peakSolid = peakBand ? peakBand.solid : colors.flash;
+  const peakIsFlash = topClimbs.length > 0 && topClimbs[0].result === 'flash';
+
+  const highlights = topClimbs.slice(0, MAX_HIGHLIGHTS);
+  const overflow = Math.max(0, topClimbs.length - MAX_HIGHLIGHTS);
 
   const handleShareImage = async () => {
     if (!cardRef.current) return;
@@ -61,7 +93,7 @@ export function SessionShareCardModal({
       setIsExporting(true);
       const uri = await captureRef(cardRef, {
         format: 'png',
-        quality: 0.95,
+        quality: 1,
         result: 'tmpfile',
       });
       setIsExporting(false);
@@ -92,6 +124,7 @@ export function SessionShareCardModal({
         `• Sends: ${sendsCount} (${sendRate}% send rate)`,
         `• Flashes: ${flashesCount}`,
         `• Hardest Send: ${formattedHardest}`,
+        ...(durationMinutes ? [`• Time: ${formatDurationMinutes(durationMinutes)}`] : []),
       ].join('\n');
       await Share.share({
         message: msg,
@@ -108,9 +141,9 @@ export function SessionShareCardModal({
           style={[
             styles.sheet,
             {
-              backgroundColor: colors.bg,
+              backgroundColor: colors.bgTexture,
               borderTopWidth: 1,
-              borderColor: colors.border,
+              borderColor: colors.glassBorder,
               paddingTop: Math.max(insets.top, space.lg),
               paddingBottom: Math.max(insets.bottom, space.lg),
             },
@@ -127,7 +160,7 @@ export function SessionShareCardModal({
                 {
                   backgroundColor: colors.card,
                   borderWidth: 1,
-                  borderColor: colors.border,
+                  borderColor: colors.glassBorder,
                 },
               ]}
               accessibilityRole="button"
@@ -135,9 +168,7 @@ export function SessionShareCardModal({
             >
               <X size={20} color={colors.text} />
             </ScalePressable>
-            <Text style={[type.heading, { color: colors.text, fontSize: 16 }]}>
-              Share Session Card
-            </Text>
+            <Text style={[type.sectionTitle, { color: colors.text }]}>Share Session Card</Text>
             <View style={{ width: 44 }} />
           </View>
 
@@ -145,7 +176,7 @@ export function SessionShareCardModal({
             showsVerticalScrollIndicator={false}
             contentContainerStyle={{ alignItems: 'center', paddingVertical: space.md }}
           >
-            {/* Share Card View to Capture */}
+            {/* ── Share card (captured as PNG) ─────────────────────── */}
             <View
               ref={cardRef}
               collapsable={false}
@@ -158,111 +189,218 @@ export function SessionShareCardModal({
                 },
               ]}
             >
-              {/* Brand Row */}
+              {/* Chalk wall canvas + grade-tinted wash */}
+              <Image
+                source={require('../../assets/chalk_bg.jpg')}
+                style={[StyleSheet.absoluteFill, { opacity: colors.backdropImageOpacity }]}
+                resizeMode="cover"
+              />
+              <LinearGradient
+                pointerEvents="none"
+                colors={[colors.backdropScrimTop, colors.backdropScrimBottom]}
+                style={StyleSheet.absoluteFill}
+              />
+              <LinearGradient
+                pointerEvents="none"
+                colors={[withAlpha(peakSolid, 0.28), 'transparent']}
+                style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 240 }}
+              />
+
+              {/* Brand row */}
               <View style={styles.cardHeader}>
-                <View style={styles.brandBadge}>
+                <View
+                  style={[
+                    styles.brandBadge,
+                    {
+                      backgroundColor: colors.surfaceInset,
+                      borderColor: colors.glassBorder,
+                      borderRadius: radius.pill,
+                    },
+                  ]}
+                >
                   <Image
                     source={require('../../assets/logo.png')}
-                    style={{ width: 16, height: 16, borderRadius: 4 }}
+                    style={styles.brandLogo}
                     resizeMode="cover"
                   />
-                  <Text style={styles.brandTitle}>GRIPPED</Text>
+                  <Text style={[type.micro, { color: colors.text }]}>Gripped</Text>
                 </View>
-                <View style={styles.sendRatePill}>
-                  <Text style={styles.sendRateText}>{sendRate}% SEND RATE</Text>
-                </View>
+                {durationMinutes ? (
+                  <View
+                    style={[
+                      styles.brandBadge,
+                      {
+                        backgroundColor: colors.surfaceInset,
+                        borderColor: colors.glassBorder,
+                        borderRadius: radius.pill,
+                      },
+                    ]}
+                  >
+                    <Clock size={space.md} color={colors.accentText} />
+                    <Text style={[type.captionSemibold, { color: colors.text }]}>
+                      {formatDurationMinutes(durationMinutes)}
+                    </Text>
+                  </View>
+                ) : null}
               </View>
 
-              {/* Gym & Subtitle */}
-              <View style={{ marginBottom: 18 }}>
-                <Text style={styles.gymTitle} numberOfLines={2}>
+              {/* Gym & date */}
+              <View style={{ gap: space.xs }}>
+                <Text style={[type.label, { color: colors.textWhiteMuted }]}>Session recap</Text>
+                <Text
+                  style={[type.titleBold, styles.gymTitle, { color: colors.text }]}
+                  numberOfLines={2}
+                >
                   {gymName || 'Bouldering Session'}
                 </Text>
-                <Text style={styles.subtitleText} numberOfLines={1}>
+                <Text style={[type.captionMedium, { color: colors.textMuted }]} numberOfLines={1}>
                   {subtitleText}
                 </Text>
               </View>
 
-              {/* Hero Peak Grade & Volume Row */}
-              <View style={styles.heroRow}>
-                <View style={styles.heroMetricBox}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                    <Trophy size={14} color={colors.flash} />
-                    <Text style={styles.statLabel}>PEAK SEND</Text>
+              {/* Hero: peak send + hold artwork */}
+              <View
+                style={[
+                  styles.hero,
+                  {
+                    backgroundColor: colors.surfaceInset,
+                    borderColor: withAlpha(peakSolid, 0.45),
+                    borderRadius: radius.lg,
+                  },
+                ]}
+              >
+                <View style={{ flex: 1, gap: space.xs }}>
+                  <View style={styles.row}>
+                    <Trophy size={space.md} color={peakColor} />
+                    <Text style={[type.micro, { color: colors.textWhiteSecondary }]}>
+                      Peak send
+                    </Text>
                   </View>
-                  <Text style={[styles.heroGradeValue, { color: colors.flash }]}>
+                  <Text
+                    style={[type.heroStat, { color: hasPeak ? peakColor : colors.textMuted }]}
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                  >
                     {formattedHardest}
                   </Text>
+                  {hasPeak && (
+                    <View
+                      style={[
+                        styles.resultTag,
+                        {
+                          backgroundColor: peakIsFlash ? colors.flashSoft : colors.topSoft,
+                          borderRadius: radius.pill,
+                        },
+                      ]}
+                    >
+                      {peakIsFlash ? (
+                        <Zap size={space.md} color={colors.flash} />
+                      ) : null}
+                      <Text
+                        style={[
+                          type.captionSemibold,
+                          { color: peakIsFlash ? colors.flashText : colors.topText },
+                        ]}
+                      >
+                        {peakIsFlash ? 'Flashed' : 'Sent'}
+                      </Text>
+                    </View>
+                  )}
                 </View>
+                <ClimbingHoldGraphic
+                  type={holdTypeForGrade(hardestGradeIndex ?? null)}
+                  size={space.xxl * 3}
+                  borderRadius={radius.lg}
+                  style={{
+                    borderWidth: 1,
+                    borderColor: peakSolid,
+                    shadowColor: peakSolid,
+                    shadowOpacity: 0.5,
+                    shadowRadius: space.lg,
+                    shadowOffset: { width: 0, height: space.xs },
+                  }}
+                />
+              </View>
 
-                <View style={styles.heroMetricBox}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                    <Zap size={14} color={colors.attempt} />
-                    <Text style={styles.statLabel}>FLASHES</Text>
-                  </View>
-                  <Text style={[styles.heroGradeValue, { color: colors.textWhitePrimary }]}>
-                    {flashesCount}
+              {/* Outcome split */}
+              <View style={{ gap: space.md }}>
+                <SegmentedBar
+                  segments={[
+                    { value: flashesCount, color: colors.flash },
+                    { value: topsCount, color: colors.top },
+                    { value: attemptsCount, color: colors.attempt },
+                  ]}
+                />
+                <BarLegend
+                  items={[
+                    { label: 'Flashed', value: flashesCount, color: colors.flash },
+                    { label: 'Topped', value: topsCount, color: colors.top },
+                    { label: 'Tries', value: attemptsCount, color: colors.attempt },
+                  ]}
+                />
+              </View>
+
+              <StatStrip
+                cells={[
+                  { label: 'Climbs', value: climbsCount },
+                  { label: 'Sends', value: sendsCount },
+                  {
+                    label: 'Send rate',
+                    value: `${sendRate}%`,
+                    valueColor: sendRate >= 50 ? colors.flashText : colors.text,
+                  },
+                ]}
+              />
+
+              {/* Highlight logs */}
+              {highlights.length > 0 && (
+                <View style={{ gap: space.sm }}>
+                  <Text style={[type.label, { color: colors.textWhiteMuted }]}>
+                    Highlight sends
                   </Text>
-                </View>
-              </View>
-
-              {/* 3-Tile Stats Strip */}
-              <View style={styles.statsStrip}>
-                <View style={styles.statBox}>
-                  <Text style={styles.statLabel}>CLIMBS</Text>
-                  <Text style={styles.statValue}>{climbsCount}</Text>
-                </View>
-                <View style={styles.statBox}>
-                  <Text style={styles.statLabel}>SENDS</Text>
-                  <Text style={styles.statValue}>{sendsCount}</Text>
-                </View>
-                <View style={styles.statBox}>
-                  <Text style={styles.statLabel}>ATTEMPTS</Text>
-                  <Text style={styles.statValue}>{Math.max(0, climbsCount - sendsCount)}</Text>
-                </View>
-              </View>
-
-              {/* Top Climbs Strip */}
-              {topClimbs.length > 0 && (
-                <View style={styles.topClimbsBox}>
-                  <Text style={styles.statLabel}>HIGHLIGHT LOGS</Text>
-                  <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
-                    {topClimbs.slice(0, 6).map((c, i) => {
+                  <View style={styles.chipWrap}>
+                    {highlights.map((c, i) => {
                       const isFlash = c.result === 'flash';
                       return (
-                        <View
-                          key={i}
-                          style={[
-                            styles.climbBadge,
-                            {
-                              borderColor: isFlash
-                                ? 'rgba(16, 185, 129, 0.45)'
-                                : 'rgba(139, 92, 246, 0.45)',
-                              backgroundColor: isFlash
-                                ? 'rgba(16, 185, 129, 0.14)'
-                                : 'rgba(139, 92, 246, 0.14)',
-                            },
-                          ]}
-                        >
-                          <Text
-                            style={{
-                              color: colors.textWhitePrimary,
-                              fontSize: 11,
-                              fontWeight: '800',
-                            }}
-                          >
-                            {formatGradeLabel(c.gradeRaw)} {isFlash ? '⚡' : '✓'}
-                          </Text>
+                        <View key={i} style={styles.row}>
+                          {c.gradeIndex !== undefined ? (
+                            <GradePill gradeIndex={c.gradeIndex} label={formatGradeLabel(c.gradeRaw)} />
+                          ) : (
+                            <View
+                              style={[
+                                styles.fallbackPill,
+                                {
+                                  backgroundColor: colors.cardMuted,
+                                  borderColor: colors.border,
+                                  borderRadius: radius.sm,
+                                },
+                              ]}
+                            >
+                              <Text style={[type.captionSemibold, { color: colors.text }]}>
+                                {formatGradeLabel(c.gradeRaw)}
+                              </Text>
+                            </View>
+                          )}
+                          {isFlash ? (
+                            <Zap size={space.md} color={colors.flash} style={{ marginLeft: -space.xs }} />
+                          ) : null}
                         </View>
                       );
                     })}
+                    {overflow > 0 && (
+                      <Text style={[type.captionSemibold, { color: colors.textMuted }]}>
+                        {`+${overflow} more`}
+                      </Text>
+                    )}
                   </View>
                 </View>
               )}
 
               {/* Footer */}
-              <View style={styles.cardFooter}>
-                <Text style={styles.footerText}>Gripped • Track every burn offline</Text>
+              <View style={[styles.cardFooter, { borderTopColor: colors.divider }]}>
+                <Text style={[type.micro, { color: colors.textWhiteMuted }]}>
+                  Tracked with Gripped
+                </Text>
               </View>
             </View>
           </ScrollView>
@@ -349,127 +487,70 @@ const styles = StyleSheet.create({
   },
   shareCard: {
     width: 340,
-    padding: 22,
-    borderWidth: 1.5,
+    padding: 24,
+    borderWidth: 1,
+    overflow: 'hidden',
+    gap: 20,
   },
   cardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 16,
   },
   brandBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: 'rgba(139, 92, 246, 0.18)',
     paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 8,
+    paddingVertical: 6,
     borderWidth: 1,
-    borderColor: 'rgba(139, 92, 246, 0.35)',
   },
-  brandTitle: {
-    color: '#A78BFA',
-    fontSize: 11,
-    fontWeight: '800',
-    letterSpacing: 1.2,
-  },
-  sendRatePill: {
-    backgroundColor: 'rgba(16, 185, 129, 0.16)',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: 'rgba(16, 185, 129, 0.35)',
-  },
-  sendRateText: {
-    color: '#34D399',
-    fontSize: 10,
-    fontWeight: '800',
-    letterSpacing: 0.8,
+  brandLogo: {
+    width: 16,
+    height: 16,
+    borderRadius: 4,
   },
   gymTitle: {
-    color: '#FFFFFF',
-    fontSize: 24,
-    fontWeight: '800',
-    letterSpacing: -0.5,
+    fontSize: 26,
+    lineHeight: 32,
   },
-  subtitleText: {
-    color: 'rgba(255, 255, 255, 0.65)',
-    fontSize: 12,
-    marginTop: 4,
-    fontWeight: '500',
-  },
-  heroRow: {
+  hero: {
     flexDirection: 'row',
-    gap: 10,
-    marginBottom: 12,
-  },
-  heroMetricBox: {
-    flex: 1,
-    backgroundColor: 'rgba(255, 255, 255, 0.06)',
-    borderRadius: 16,
-    padding: 14,
+    alignItems: 'center',
+    gap: 16,
+    padding: 16,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
   },
-  heroGradeValue: {
-    fontSize: 28,
-    fontWeight: '800',
-    marginTop: 6,
-    fontVariant: ['tabular-nums'],
-  },
-  statsStrip: {
+  row: {
     flexDirection: 'row',
-    gap: 8,
-    marginBottom: 14,
+    alignItems: 'center',
+    gap: 6,
   },
-  statBox: {
-    flex: 1,
-    backgroundColor: 'rgba(255, 255, 255, 0.04)',
-    borderRadius: 12,
-    padding: 10,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.06)',
-  },
-  statLabel: {
-    color: 'rgba(255, 255, 255, 0.5)',
-    fontSize: 9,
-    fontWeight: '700',
-    letterSpacing: 1.0,
-  },
-  statValue: {
-    color: '#FFFFFF',
-    fontSize: 18,
-    fontWeight: '800',
-    marginTop: 4,
-    fontVariant: ['tabular-nums'],
-  },
-  topClimbsBox: {
-    backgroundColor: 'rgba(255, 255, 255, 0.04)',
-    borderRadius: 14,
-    padding: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.06)',
-    marginBottom: 14,
-  },
-  climbBadge: {
+  resultTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    gap: 4,
     paddingHorizontal: 10,
     paddingVertical: 4,
-    borderRadius: 999,
+  },
+  chipWrap: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    gap: 8,
+  },
+  fallbackPill: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
     borderWidth: 1,
+    minWidth: 38,
+    alignItems: 'center',
   },
   cardFooter: {
     alignItems: 'center',
-    paddingTop: 10,
+    paddingTop: 14,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(255, 255, 255, 0.08)',
-  },
-  footerText: {
-    color: 'rgba(255, 255, 255, 0.45)',
-    fontSize: 10,
-    letterSpacing: 0.5,
   },
   actionBtn: {
     flexDirection: 'row',

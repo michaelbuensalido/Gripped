@@ -10,19 +10,10 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withTiming,
-  withSpring,
-  useReducedMotion,
-  runOnJS,
-  Easing,
-  interpolate,
-  Extrapolation,
-} from 'react-native-reanimated';
-import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
+import Animated from 'react-native-reanimated';
+import { GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useTheme } from '../../theme/useTheme';
+import { useSheetMotion } from '../../hooks/useSheetMotion';
 import { PrimaryButton } from '../ui/PrimaryButton';
 import { SecondaryButton } from '../ui/SecondaryButton';
 import { useRecentGyms } from '../../db/hooks';
@@ -48,9 +39,8 @@ export function StartSessionSheet({
   subtitle = "Pick where you're climbing today.",
   ctaLabel = "Start session",
 }: StartSessionSheetProps) {
-  const { colors, space, type, radius, shadow, motion } = useTheme();
+  const { colors, space, type, radius, shadow } = useTheme();
   const { homeGym } = usePreferences();
-  const reduceMotion = useReducedMotion();
   
   const recentGyms = useRecentGyms();
   const gymOptions = useMemo(() => {
@@ -73,119 +63,27 @@ export function StartSessionSheet({
   }, [gymOptions, homeGym, visible]);
   
   const [gymName, setGymName] = useState(defaultGym);
-  const [isRendered, setIsRendered] = useState(visible);
-
-  const backdropOpacity = useSharedValue(0);
-  const sheetTranslateY = useSharedValue(400);
+  const { isRendered, backdropStyle, sheetStyle, panGesture, close } = useSheetMotion(visible, onClose);
 
   useEffect(() => {
-    if (visible) {
-      setIsRendered(true);
-      setGymName(defaultGym);
-      if (reduceMotion) {
-        backdropOpacity.value = 1;
-        sheetTranslateY.value = 0;
-      } else {
-        backdropOpacity.value = withTiming(1, {
-          duration: motion.duration.fast,
-          easing: Easing.bezier(0.23, 1, 0.32, 1),
-        });
-        sheetTranslateY.value = withSpring(0, {
-          damping: motion.sheetSpring.damping,
-          stiffness: motion.sheetSpring.stiffness,
-        });
-      }
-    } else if (isRendered) {
-      handleCloseAnimation();
-    }
+    if (visible) setGymName(defaultGym);
   }, [visible, defaultGym]);
 
-  const handleCloseAnimation = () => {
-    if (reduceMotion) {
-      backdropOpacity.value = 0;
-      sheetTranslateY.value = 400;
-      setIsRendered(false);
-      onClose();
-      return;
-    }
-
-    backdropOpacity.value = withTiming(0, {
-      duration: motion.duration.fast,
-      easing: Easing.in(Easing.cubic),
-    });
-    sheetTranslateY.value = withTiming(380, {
-      duration: motion.duration.fast,
-      easing: Easing.in(Easing.cubic),
-    }, (finished) => {
-      if (finished) {
-        runOnJS(setIsRendered)(false);
-        runOnJS(onClose)();
-      }
-    });
-  };
-
-  const panGesture = Gesture.Pan()
-    .onUpdate((e) => {
-      if (e.translationY < 0) {
-        sheetTranslateY.value = e.translationY * 0.18;
-      } else {
-        sheetTranslateY.value = e.translationY;
-        backdropOpacity.value = interpolate(
-          e.translationY,
-          [0, 300],
-          [1, 0.2],
-          Extrapolation.CLAMP
-        );
-      }
-    })
-    .onEnd((e) => {
-      if (e.translationY > 100 || e.velocityY > 650) {
-        backdropOpacity.value = withTiming(0, { duration: 180 });
-        sheetTranslateY.value = withSpring(
-          420,
-          {
-            velocity: e.velocityY,
-            damping: 26,
-            stiffness: 260,
-            overshootClamping: true,
-          },
-          (finished) => {
-            if (finished) {
-              runOnJS(setIsRendered)(false);
-              runOnJS(onClose)();
-            }
-          }
-        );
-      } else {
-        backdropOpacity.value = withTiming(1, { duration: 150 });
-        sheetTranslateY.value = withSpring(0, {
-          velocity: e.velocityY,
-          damping: motion.sheetSpring.damping,
-          stiffness: motion.sheetSpring.stiffness,
-        });
-      }
-    });
+  const handleCloseAnimation = () => close();
 
   const handleStart = () => {
     const trimmed = gymName.trim() || defaultGym || 'Local Gym';
     try {
       insertGym(trimmed);
     } catch {}
-    onStart(trimmed);
+    // Slide the sheet away first; session creation / navigation runs once it is gone.
+    close(() => onStart(trimmed), { notifyParent: false });
   };
-
-  const backdropStyle = useAnimatedStyle(() => ({
-    opacity: backdropOpacity.value,
-  }));
-
-  const sheetStyle = useAnimatedStyle(() => ({
-    transform: [{ translateY: sheetTranslateY.value }],
-  }));
 
   if (!visible && !isRendered) return null;
 
   return (
-    <Modal visible={isRendered} transparent onRequestClose={handleCloseAnimation}>
+    <Modal visible={isRendered} transparent animationType="none" onRequestClose={handleCloseAnimation}>
       <GestureHandlerRootView style={{ flex: 1 }}>
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}

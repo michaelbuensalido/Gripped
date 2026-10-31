@@ -17,7 +17,7 @@ import { ResultChip } from '../../ui/ResultChip';
 import { ScalePressable } from '../../ui/ScalePressable';
 import { SectionHeader } from '../../ui/SectionHeader';
 import { EmptyState } from '../../ui/EmptyState';
-import { ClimbingHoldGraphic } from '../../ui/ClimbingHoldGraphic';
+import { ClimbingHoldGraphic, holdTypeForGrade } from '../../ui/ClimbingHoldGraphic';
 import { ClimbLogCard } from '../../ui/ClimbLogCard';
 import { DrillHeroCard } from '../../ui/DrillHeroCard';
 import { ContextPill } from '../../ui/ContextPill';
@@ -42,15 +42,6 @@ const SHORT_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'S
 function formatShortDate(ms: number): string {
   const d = new Date(ms);
   return `${SHORT_MONTHS[d.getMonth()]} ${d.getDate()}`;
-}
-
-function holdGraphicForGrade(gradeIndex: number | null): string {
-  if (gradeIndex === null || gradeIndex <= 2) return 'yellow-jug';
-  if (gradeIndex <= 4) return 'purple-sloper';
-  if (gradeIndex === 5) return 'slab-rise';
-  if (gradeIndex === 6) return 'orange-facet';
-  if (gradeIndex === 7) return 'kars-sloper';
-  return 'poly-edge';
 }
 
 interface Coord {
@@ -426,7 +417,7 @@ export function HardestSendView({
             </View>
 
             <ClimbingHoldGraphic
-              type={holdGraphicForGrade(activePeakGrade)}
+              type={holdTypeForGrade(activePeakGrade)}
               size={space.xxl * 2 + space.xl}
               borderRadius={radius.lg}
               style={{

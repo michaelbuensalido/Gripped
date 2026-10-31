@@ -35,6 +35,16 @@ export const HOLD_IMAGES: Record<string, ImageSourcePropType> = {
   'volume': require('../../assets/holds-images/v4-purple-sloper.png'),
 };
 
+/** Maps a normalised grade index to its signature 3D hold artwork. */
+export function holdTypeForGrade(gradeIndex: number | null): HoldType {
+  if (gradeIndex === null || gradeIndex <= 2) return 'yellow-jug';
+  if (gradeIndex <= 4) return 'purple-sloper';
+  if (gradeIndex === 5) return 'slab-rise';
+  if (gradeIndex === 6) return 'orange-facet';
+  if (gradeIndex === 7) return 'kars-sloper';
+  return 'poly-edge';
+}
+
 interface ClimbingHoldGraphicProps {
   type?: HoldType | string;
   size?: number;

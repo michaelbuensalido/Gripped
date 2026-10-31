@@ -10,20 +10,11 @@ import {
   StyleSheet,
   ScrollView,
 } from 'react-native';
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withTiming,
-  withSpring,
-  useReducedMotion,
-  runOnJS,
-  Easing,
-  interpolate,
-  Extrapolation,
-} from 'react-native-reanimated';
-import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
+import Animated from 'react-native-reanimated';
+import { GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Plus, X, Minus, ChevronLeft, ChevronRight, Lock, Target, FileText, Layers } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useSheetMotion } from '../../hooks/useSheetMotion';
 import { SectionHeader } from '../ui/SectionHeader';
 import { PrimaryButton } from '../ui/PrimaryButton';
 import { ResultType } from '../ui/ResultChip';
@@ -380,10 +371,9 @@ export function LogSheet({
   onSelectProject?: (proj: any | null) => void;
   onDelete?: () => void;
 }) {
-  const { colors, space, type, radius, shadow, motion } = useTheme();
+  const { colors, space, type, radius, shadow } = useTheme();
   const { formatGradeLabel } = usePreferences();
   const insets = useSafeAreaInsets();
-  const reduceMotion = useReducedMotion();
 
   const [grade, setGrade] = useState(initialGrade ?? 'V4');
   const [result, setResult] = useState<ResultType>(initialResult ?? 'top');
@@ -394,14 +384,10 @@ export function LogSheet({
   const [showStyleTags, setShowStyleTags] = useState(Boolean(initialWallAngle || initialHoldType));
   const [notes, setNotes] = useState(initialNotes ?? '');
   const [showNotesInput, setShowNotesInput] = useState(Boolean(initialNotes));
-  const [isRendered, setIsRendered] = useState(visible);
-
-  const backdropOpacity = useSharedValue(0);
-  const sheetTranslateY = useSharedValue(420);
+  const { isRendered, backdropStyle, sheetStyle, panGesture, close } = useSheetMotion(visible, onClose);
 
   useEffect(() => {
     if (visible) {
-      setIsRendered(true);
       setGrade(selectedProject?.gradeRaw || selectedProject?.grade_raw || initialGrade || 'V4');
       let defaultResult = initialResult ?? 'top';
       if (disableFlash && defaultResult === 'flash') {
@@ -416,32 +402,6 @@ export function LogSheet({
       setHoldType(selectedProject?.holdType || selectedProject?.hold_type || initialHoldType || null);
       setShowStyleTags(Boolean(initialWallAngle || initialHoldType));
 
-      if (reduceMotion) {
-        backdropOpacity.value = 1;
-        sheetTranslateY.value = 0;
-      } else {
-        backdropOpacity.value = withTiming(1, {
-          duration: motion.duration.fast,
-          easing: Easing.bezier(0.23, 1, 0.32, 1),
-        });
-        sheetTranslateY.value = withSpring(0, {
-          damping: motion.sheetSpring.damping,
-          stiffness: motion.sheetSpring.stiffness,
-        });
-      }
-    } else if (isRendered) {
-      if (reduceMotion) {
-        setIsRendered(false);
-        backdropOpacity.value = 0;
-        sheetTranslateY.value = 420;
-      } else {
-        backdropOpacity.value = withTiming(0, { duration: 180 });
-        sheetTranslateY.value = withTiming(420, { duration: 200, easing: Easing.in(Easing.cubic) }, (finished) => {
-          if (finished) {
-            runOnJS(setIsRendered)(false);
-          }
-        });
-      }
     }
   }, [visible]);
 
@@ -472,89 +432,29 @@ export function LogSheet({
     }
   }, [attempts, result]);
 
-  const handleCloseAnimation = () => {
-    if (reduceMotion) {
-      setIsRendered(false);
-      onClose();
-      return;
-    }
-    backdropOpacity.value = withTiming(0, { duration: 180 });
-    sheetTranslateY.value = withTiming(
-      420,
-      { duration: 200, easing: Easing.in(Easing.cubic) },
-      (finished) => {
-        if (finished) {
-          runOnJS(setIsRendered)(false);
-          runOnJS(onClose)();
-        }
-      }
-    );
-  };
-
-  const panGesture = Gesture.Pan()
-    .onUpdate((e) => {
-      if (e.translationY < 0) {
-        sheetTranslateY.value = e.translationY * 0.18;
-      } else {
-        sheetTranslateY.value = e.translationY;
-        backdropOpacity.value = interpolate(
-          e.translationY,
-          [0, 320],
-          [1, 0.2],
-          Extrapolation.CLAMP
-        );
-      }
-    })
-    .onEnd((e) => {
-      if (e.translationY > 110 || e.velocityY > 650) {
-        backdropOpacity.value = withTiming(0, { duration: 180 });
-        sheetTranslateY.value = withSpring(
-          460,
-          {
-            velocity: e.velocityY,
-            damping: 26,
-            stiffness: 260,
-            overshootClamping: true,
-          },
-          (finished) => {
-            if (finished) {
-              runOnJS(setIsRendered)(false);
-              runOnJS(onClose)();
-            }
-          }
-        );
-      } else {
-        backdropOpacity.value = withTiming(1, { duration: 150 });
-        sheetTranslateY.value = withSpring(0, {
-          velocity: e.velocityY,
-          damping: motion.sheetSpring.damping,
-          stiffness: motion.sheetSpring.stiffness,
-        });
-      }
-    });
+  const handleCloseAnimation = () => close();
 
   const handleSave = () => {
     const finalNotes = notes.trim();
     const activeFailure = result === 'attempt' ? failureReason : null;
-    onSave(
-      grade,
-      result,
-      result === 'flash' ? 1 : attempts,
-      finalNotes,
-      activeFailure,
-      selectedProject,
-      wallAngle,
-      holdType
+    const finalAttempts = result === 'flash' ? 1 : attempts;
+    // Slide the sheet away first; the DB write + list/celebration updates run once it is gone,
+    // so they can't drop frames out of the exit animation.
+    close(
+      () =>
+        onSave(
+          grade,
+          result,
+          finalAttempts,
+          finalNotes,
+          activeFailure,
+          selectedProject,
+          wallAngle,
+          holdType
+        ),
+      { notifyParent: false }
     );
   };
-
-  const backdropStyle = useAnimatedStyle(() => ({
-    opacity: backdropOpacity.value,
-  }));
-
-  const sheetStyle = useAnimatedStyle(() => ({
-    transform: [{ translateY: sheetTranslateY.value }],
-  }));
 
   if (!visible && !isRendered) return null;
 
@@ -566,7 +466,7 @@ export function LogSheet({
   );
 
   return (
-    <Modal visible={visible || isRendered} transparent onRequestClose={handleCloseAnimation}>
+    <Modal visible={visible || isRendered} transparent animationType="none" onRequestClose={handleCloseAnimation}>
       <GestureHandlerRootView style={{ flex: 1 }}>
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}

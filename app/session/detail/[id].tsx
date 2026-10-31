@@ -1198,10 +1198,16 @@ export default function SessionDetailScreen({
         sendsCount={sends.length}
         flashesCount={flashes.length}
         hardestGradeRaw={hardest?.grade_raw || '–'}
+        hardestGradeIndex={hardest ? hardest.grade_index : undefined}
+        durationMinutes={
+          session?.endTime
+            ? Math.max(1, Math.round((session.endTime - session.startTime) / 60000))
+            : undefined
+        }
         topClimbs={sends
           .slice()
           .sort((a: any, b: any) => b.grade_index - a.grade_index)
-          .map((c: any) => ({ gradeRaw: c.grade_raw, result: c.result }))}
+          .map((c: any) => ({ gradeRaw: c.grade_raw, gradeIndex: c.grade_index, result: c.result }))}
         onClose={() => setIsShareOpen(false)}
       />
     </View>
