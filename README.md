@@ -6,7 +6,7 @@ Gripped is a mat-ready, tactile climbing and bouldering ledger. It is designed t
 
 ## Architecture Summary
 
-CruxLog is architected around the offline-first principles detailed in `docs/MVP_SPEC.md` and `docs/DESIGN_SYSTEM.md`:
+Gripped is architected around the offline-first principles detailed in `docs/MVP_SPEC.md` and `docs/DESIGN_SYSTEM.md`:
 
 1. **Local SQLite as the Single Source of Truth**:
    - All screens read and write directly to the local SQLite database (`expo-sqlite` on native / `better-sqlite3` in test).
@@ -17,7 +17,7 @@ CruxLog is architected around the offline-first principles detailed in `docs/MVP
    - A background sync engine replays pending outbox mutations idempotently when network connectivity is established.
 3. **Resilience & Global Error Boundary**:
    - A root `GlobalErrorBoundary` catches unhandled exceptions across both React component trees and Expo Router routes.
-   - Prevents blank screen crashes, protects local SQLite state, and provides an immediate one-tap **Restart CruxLog** action.
+   - Prevents blank screen crashes, protects local SQLite state, and provides an immediate one-tap **Restart Gripped** action.
 4. **Design System & Dark Glassmorphism**:
    - Styled with tokens from `theme/tokens.ts` (Neon Violet `#8E7CFF` primary accent, Flash Green `#6EE756` secondary feedback).
    - Translucent frosted surfaces (`rgba(22, 22, 30, 0.92)`) against a subtle speckled mat background.
@@ -41,8 +41,8 @@ CruxLog is architected around the offline-first principles detailed in `docs/MVP
 
 1. **Clone the repository**:
    ```bash
-   git clone <repo-url>
-   cd CRUXLOG
+   git clone <repo-url> gripped
+   cd gripped
    ```
 
 2. **Install dependencies**:

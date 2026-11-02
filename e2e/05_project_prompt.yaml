@@ -1,4 +1,4 @@
-appId: com.cruxlog
+appId: com.gripped.app
 ---
 # E2E-5: Attempt triggers "Make this a project?"
 # testIDs needed: log-attempt-chip, make-project-btn, projects-tab

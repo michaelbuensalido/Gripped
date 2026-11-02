@@ -1,4 +1,4 @@
-appId: com.cruxlog
+appId: com.gripped.app
 ---
 # E2E-1: Core loop in ≤3 taps — Start, Log, End, Summary, Done, Home
 # testIDs needed: start-session-btn, log-climb-btn, save-climb-btn, end-session-btn, finish-session-btn, done-home-btn

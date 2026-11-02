@@ -13,7 +13,7 @@ async function configureAudio(): Promise<void> {
     });
     isAudioConfigured = true;
   } catch (err) {
-    console.warn('CruxLog Sound: Failed to configure audio mode', err);
+    console.warn('Gripped Sound: Failed to configure audio mode', err);
   }
 }
 
@@ -33,7 +33,7 @@ export async function playRestTimerChime(): Promise<void> {
     chimePlayer.play();
   } catch (err) {
     // Graceful fallback if device audio is disabled or unavailable
-    console.warn('CruxLog Sound: Failed to play rest timer chime', err);
+    console.warn('Gripped Sound: Failed to play rest timer chime', err);
   }
 }
 

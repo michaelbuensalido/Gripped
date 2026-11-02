@@ -9,7 +9,8 @@ export const INTRO_MIN_GAP_DAYS = 0;
 /**
  * AsyncStorage key used to store the ISO timestamp of the last app open.
  */
-export const LAST_OPENED_STORAGE_KEY = "@cruxlog/last_opened_at";
+export const LAST_OPENED_STORAGE_KEY = "@gripped/last_opened_at";
+export const LAST_OPENED_LEGACY_KEY = "@cruxlog/last_opened_at";
 
 /**
  * Checks if the branded launch intro should be displayed based on
@@ -21,7 +22,9 @@ export async function shouldShowLaunchIntro(
   minGapDays: number = INTRO_MIN_GAP_DAYS
 ): Promise<boolean> {
   try {
-    const lastOpenedStr = await AsyncStorage.getItem(LAST_OPENED_STORAGE_KEY);
+    const lastOpenedStr =
+      (await AsyncStorage.getItem(LAST_OPENED_STORAGE_KEY)) ??
+      (await AsyncStorage.getItem(LAST_OPENED_LEGACY_KEY));
     if (!lastOpenedStr) {
       // First ever launch
       return true;

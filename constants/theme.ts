@@ -1,7 +1,7 @@
 import { ViewStyle, TextStyle, Platform } from 'react-native';
 
 /**
- * CruxLog Industrial Tactile Design Tokens
+ * Gripped Industrial Tactile Design Tokens
  * Dieter Rams / Teenage Engineering ledger aesthetic.
  * No gradients. No glows. Function over decoration.
  */

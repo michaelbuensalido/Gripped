@@ -1,6 +1,6 @@
 # Definition of Done: Core Session Flow
 
-This checklist defines the acceptance criteria and verification status for the CruxLog Core Session Flow.
+This checklist defines the acceptance criteria and verification status for the Gripped Core Session Flow.
 
 ---
 

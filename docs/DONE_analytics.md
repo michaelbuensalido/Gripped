@@ -1,6 +1,6 @@
 # Definition of Done: Analytics
 
-This checklist defines the acceptance criteria and verification status for the CruxLog Analytics system (stat calculation rules, timeframe filters, empty/low-data handling, interactive drilldowns, chart motion/accessibility, and high-volume performance).
+This checklist defines the acceptance criteria and verification status for the Gripped Analytics system (stat calculation rules, timeframe filters, empty/low-data handling, interactive drilldowns, chart motion/accessibility, and high-volume performance).
 
 ---
 
@@ -48,7 +48,7 @@ This checklist defines the acceptance criteria and verification status for the C
 ---
 
 ## 4. UI Consistency, Small Screens & Reduce Motion
-- [x] **4.1 Dark Glassmorphism Styling**: Follows CruxLog design tokens with deep dark background `#000000`, Violet `#8E7CFF`, Flash Green `#6EE756`, and glass borders.
+- [x] **4.1 Dark Glassmorphism Styling**: Follows Gripped design tokens with deep dark background `#000000`, Violet `#8E7CFF`, Flash Green `#6EE756`, and glass borders.
   - Verified: Styled with design system tokens and glass cards in `app/analytics.tsx` and `app/analytics/stat-detail.tsx`.
 - [x] **4.2 Responsive Layout**: Charts dynamically fit screen width and remain readable on small devices (e.g. iPhone SE / 375pt).
   - Verified: Dynamically sized via `useWindowDimensions` with `Math.max(260, Math.min(width - 64, 380))`.

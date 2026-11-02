@@ -1,6 +1,6 @@
 # Definition of Done: UI/UX Consistency and Accessibility
 
-This checklist defines the acceptance criteria and verification status for UI/UX consistency, accessibility, responsiveness, and Settings completeness in CruxLog.
+This checklist defines the acceptance criteria and verification status for UI/UX consistency, accessibility, responsiveness, and Settings completeness in Gripped.
 
 ---
 

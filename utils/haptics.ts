@@ -1,15 +1,17 @@
 import * as Haptics from 'expo-haptics';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-export const HAPTICS_STORAGE_KEY = '@cruxlog_haptics_enabled';
+export const HAPTICS_STORAGE_KEY = '@gripped_haptics_enabled';
+export const HAPTICS_LEGACY_KEY = '@cruxlog_haptics_enabled';
 
 let isHapticsEnabled = true;
 
 // Initialize from storage on app startup
 AsyncStorage.getItem(HAPTICS_STORAGE_KEY)
-  .then((val) => {
-    if (val !== null) {
-      isHapticsEnabled = val === 'true';
+  .then(async (val) => {
+    const stored = val !== null ? val : await AsyncStorage.getItem(HAPTICS_LEGACY_KEY);
+    if (stored !== null) {
+      isHapticsEnabled = stored === 'true';
     }
   })
   .catch(() => {});

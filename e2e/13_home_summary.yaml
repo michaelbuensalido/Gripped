@@ -1,4 +1,4 @@
-appId: com.cruxlog
+appId: com.gripped.app
 ---
 - clearState
 - launchApp

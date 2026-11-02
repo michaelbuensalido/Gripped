@@ -381,7 +381,7 @@ struct CruxLogWidgetLiveActivity: Widget {
                         Circle()
                             .fill(Color(red: 142/255, green: 124/255, blue: 255/255))
                             .frame(width: 5, height: 5)
-                        Text("CRUXLOG ACTIVE")
+                        Text("GRIPPED ACTIVE")
                             .font(.system(size: 10, weight: .bold))
                             .foregroundColor(Color(red: 142/255, green: 124/255, blue: 255/255))
                             .tracking(2)
@@ -425,7 +425,7 @@ struct CruxLogWidgetLiveActivity: Widget {
                         .foregroundColor(Color(red: 142/255, green: 124/255, blue: 255/255))
                 }
             }
-            .widgetURL(URL(string: "cruxlog://session/\(context.attributes.sessionId)"))
+            .widgetURL(URL(string: "gripped://session/\(context.attributes.sessionId)"))
             .keylineTint(Color(red: 142/255, green: 124/255, blue: 255/255))
         }
     }

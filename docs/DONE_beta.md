@@ -1,6 +1,6 @@
 # Definition of Done: Projects and Beta
 
-This checklist defines the acceptance criteria and verification status for the CruxLog Projects and Beta system (move sequences, notes, offline video, share cards, and lifecycle).
+This checklist defines the acceptance criteria and verification status for the Gripped Projects and Beta system (move sequences, notes, offline video, share cards, and lifecycle).
 
 ---
 
@@ -63,7 +63,7 @@ This checklist defines the acceptance criteria and verification status for the C
   - Verified: Accessible from Project Detail menu ("Share card"), invokes `Sharing.shareAsync` with high-res PNG.
 - [x] **4.2** Card captures as high-resolution PNG image via `react-native-view-shot`.
   - Verified: Wrapped in `captureRef(cardRef, { format: 'png', quality: 1.0, result: 'tmpfile' })`.
-- [x] **4.3** Dark glassmorphic aesthetic matching CruxLog theme (project title, grade, gym, angle, hold type, total burns, high-water mark, date).
+- [x] **4.3** Dark glassmorphic aesthetic matching Gripped theme (project title, grade, gym, angle, hold type, total burns, high-water mark, date).
   - Verified: Styled in `ProjectShareCardModal` with Violet `#8E7CFF` accents, Flash Green `#6EE756`, and glass borders.
 - [x] **4.4** Spoiler privacy rule: Beta is excluded by default from the share card unless sender explicitly toggles "Include Beta".
   - Verified: `includeBeta` defaults to `false`. Card displays grade, burns, telemetry without spoiling beta.

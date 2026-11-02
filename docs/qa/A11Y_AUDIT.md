@@ -1,4 +1,4 @@
-# CruxLog Comprehensive Accessibility (A11y) & Responsiveness Audit
+# Gripped Comprehensive Accessibility (A11y) & Responsiveness Audit
 
 **Audit Date:** October 12, 2026  
 **Auditor:** Antigravity AI Accessibility & Mobile Systems Engineering  
@@ -11,12 +11,12 @@
 
 ## Executive Summary
 
-This audit evaluates CruxLog's accessibility compliance, dynamic text scaling behavior, system appearance handling, screen responsiveness, device orientation, and touch target ergonomics.
+This audit evaluates Gripped's accessibility compliance, dynamic text scaling behavior, system appearance handling, screen responsiveness, device orientation, and touch target ergonomics.
 
-CruxLog provides good baseline semantics on primary buttons (`PrimaryButton` provides `accessibilityRole="button"`, labels, and `accessibilityState`), but fails severely under non-default accessibility settings:
+Gripped provides good baseline semantics on primary buttons (`PrimaryButton` provides `accessibilityRole="button"`, labels, and `accessibilityState`), but fails severely under non-default accessibility settings:
 
 1. **Systemic Dynamic Type Blocker:** When iOS Dynamic Type is increased to Accessibility sizes (`accessibility-extra-extra-extra-large` / AX5) or large standard sizes (`extra-extra-extra-large` / XXXL), nearly all buttons, stat tiles, and cards experience catastrophic text clipping. Fixed container heights (`height: 56`, `height: 44`) combined with unconstrained font scaling cause letters to be chopped in half horizontally or rendered as illegible slivers.
-2. **Absence of Light Theme:** CruxLog forces a dark glassmorphic palette (`userInterfaceStyle: 'dark'`). Switching iOS to Light appearance leaves the app in dark mode. While intentional per product spec, several muted labels (`rgba(255, 255, 255, 0.45)`) fail WCAG AA contrast (requiring at least 4.5:1 on dark surfaces).
+2. **Absence of Light Theme:** Gripped forces a dark glassmorphic palette (`userInterfaceStyle: 'dark'`). Switching iOS to Light appearance leaves the app in dark mode. While intentional per product spec, several muted labels (`rgba(255, 255, 255, 0.45)`) fail WCAG AA contrast (requiring at least 4.5:1 on dark surfaces).
 3. **Intentional Orientation Lock:** The app configures `"orientation": "portrait"` in `app.json`. Device rotation to landscape is locked at the OS level, keeping the layout stable in portrait.
 4. **Missing Accessibility Labels & Roles on List Cards:** `SessionCard` and active session dropdown menus lack `accessibilityRole="button"` and meaningful spoken labels, leaving VoiceOver users unable to distinguish session details.
 5. **Touch Targets Below 44pt:** Several secondary icon buttons (e.g. 36×36 filter close buttons and view toggles) lack `hitSlop` or `minTouchTarget` padding, violating Apple's 44×44 pt minimum touch target guideline.
@@ -85,7 +85,7 @@ Tested on 375 × 667 pt viewport (iPhone SE) and 393 × 852 pt viewport (iPhone 
 Tested via `mobile_set_orientation landscape` and `portrait`.
 
 ### Findings
-- CruxLog specifies `"orientation": "portrait"` in `app.json`.
+- Gripped specifies `"orientation": "portrait"` in `app.json`.
 - When the device is rotated to landscape, iOS respects the orientation lock and prevents the window from rotating. The UI remains pinned in portrait mode with no visual breakage or unexpected reflows.
 
 ---

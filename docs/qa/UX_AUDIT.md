@@ -1,4 +1,4 @@
-# CruxLog Comprehensive UX & Usability Audit
+# Gripped Comprehensive UX & Usability Audit
 
 **Audit Date:** October 12, 2026  
 **Auditor:** Antigravity AI Design & Mobile Usability Engineering  
@@ -11,9 +11,9 @@
 
 ## Executive Summary
 
-This UX audit evaluates the real-world operational ergonomics, tactile feedback, micro-motion, error resilience, navigation topology, and one-handed reachability of **CruxLog**.
+This UX audit evaluates the real-world operational ergonomics, tactile feedback, micro-motion, error resilience, navigation topology, and one-handed reachability of **Gripped**.
 
-CruxLog's offline-first architecture delivers immediate response times (sub-10ms SQLite reads/writes), eliminating network spinners and server latency. The app excels in high-speed climbing workflows: logging a project attempt takes **1 tap in 0.4 seconds**, starting a session takes **2 taps in 1.2 seconds**, and finding past sessions takes **2 taps in 1.5 seconds**.
+Gripped's offline-first architecture delivers immediate response times (sub-10ms SQLite reads/writes), eliminating network spinners and server latency. The app excels in high-speed climbing workflows: logging a project attempt takes **1 tap in 0.4 seconds**, starting a session takes **2 taps in 1.2 seconds**, and finding past sessions takes **2 taps in 1.5 seconds**.
 
 However, six critical usability bottlenecks compromise the experience on device:
 
@@ -201,7 +201,7 @@ Tested against the physical thumb zones on iPhone 17 Pro (393 × 852 pt):
 #### 5. [MAJOR] Dead Press States and Missing Haptics on SessionCard
 - **File:** `components/ui/SessionCard.tsx` (lines 98–101)
 - **What's Wrong:** Uses plain `TouchableOpacity` with `activeOpacity={0.7}` and no haptic invocation.
-- **User Impact:** Tapping past session cards provides no tactile confirmation, feeling unresponsive compared to the lively spring interactions across the rest of CruxLog.
+- **User Impact:** Tapping past session cards provides no tactile confirmation, feeling unresponsive compared to the lively spring interactions across the rest of Gripped.
 - **Proposed Fix:** Replace `TouchableOpacity` with `ScalePressable` (`activeScale={0.98}`, `haptic="light"`).
 
 #### 6. [MAJOR] Missing Dismiss Scrim on Active Session More Options Dropdown
@@ -271,7 +271,7 @@ Tested against the physical thumb zones on iPhone 17 Pro (393 × 852 pt):
 
 ## Conclusion & Action Plan
 
-CruxLog's offline-first architecture delivers immediate response times and exceptional core telemetry. By resolving the **3 Blockers** (pinning the LogSheet Save button, restoring the Session Summary Back button, and hiding the tab bar on child screens) and addressing the **sluggish modal exit easing** and **one-handed reachability traps**, CruxLog will achieve industry-leading ergonomic polish for active indoor and outdoor boulderers.
+Gripped's offline-first architecture delivers immediate response times and exceptional core telemetry. By resolving the **3 Blockers** (pinning the LogSheet Save button, restoring the Session Summary Back button, and hiding the tab bar on child screens) and addressing the **sluggish modal exit easing** and **one-handed reachability traps**, Gripped will achieve industry-leading ergonomic polish for active indoor and outdoor boulderers.
 
 ---
 

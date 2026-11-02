@@ -2769,7 +2769,7 @@ export async function importDataFromJSON(jsonStr: string): Promise<{ success: bo
   const tablesPresent = Object.keys(parsed).filter(t => validTables.includes(t) && Array.isArray(parsed[t]));
 
   if (tablesPresent.length === 0) {
-    throw new Error('No valid CruxLog data tables found in backup');
+    throw new Error('No valid Gripped data tables found in backup');
   }
 
   let importedCount = 0;

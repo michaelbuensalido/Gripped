@@ -16,7 +16,7 @@ export default function WelcomeScreen() {
   };
 
   const handleSkip = async () => {
-    await AsyncStorage.setItem('@cruxlog/onboarded', 'true');
+    await AsyncStorage.setItem('@gripped/onboarded', 'true');
     router.replace('/');
   };
 

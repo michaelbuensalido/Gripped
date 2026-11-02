@@ -1,12 +1,12 @@
 {
   "expo": {
     "name": "Gripped",
-    "slug": "cruxlog",
+    "slug": "gripped",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
-    "scheme": "cruxlog",
+    "scheme": "gripped",
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
@@ -19,7 +19,7 @@
         "backgroundColor": "#000000"
       },
       "supportsTablet": false,
-      "bundleIdentifier": "com.cruxlog.app",
+      "bundleIdentifier": "com.gripped.app",
       "buildNumber": "1",
       "icon": "./assets/icon.png",
       "infoPlist": {
@@ -49,7 +49,7 @@
         "monochromeImage": "./assets/android-icon-monochrome.png",
         "backgroundColor": "#0F0F0F"
       },
-      "package": "com.cruxlog.app",
+      "package": "com.gripped.app",
       "versionCode": 1,
       "permissions": [
         "android.permission.CAMERA",

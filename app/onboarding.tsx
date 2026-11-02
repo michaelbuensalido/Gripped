@@ -68,7 +68,7 @@ export default function OnboardingScreen() {
       insertGym(gymToSave);
     }
     await setHomeGym(gymToSave);
-    await AsyncStorage.setItem('@cruxlog/onboarded', 'true');
+    await AsyncStorage.setItem('@gripped/onboarded', 'true');
     router.replace('/');
   };
 

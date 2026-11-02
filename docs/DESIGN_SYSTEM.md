@@ -1,4 +1,4 @@
-# Gripped (CruxLog) — Design System (v4.3, Spatial Chalk & Glass Editorial)
+# Gripped — Design System (v4.3, Spatial Chalk & Glass Editorial)
 
 An atmospheric, tactile, photo-forward dark interface engineered for the climbing gym floor: translucent obsidian-charcoal cards suspended over an authentic magnesium-carbonate chalked wall canvas (`assets/chalk_bg.jpg`), an optical frosted-glass floating dock (`FloatingTabBar`), a jewel-like 3D faceted volume brand mark (`assets/logo.png`), electric lavender action accents (`#8E7CFF`), tabular `Sora` & `Inter` typography, and signature four-band grade color coding.
 
@@ -13,7 +13,7 @@ Companion specifications: `MVP_SPEC.md` (product architecture & offline SQLite e
    - **Plane 0 — Chalked Wall Canvas:** `#0D0D12` base + `assets/chalk_bg.jpg` (`opacity: 0.52`) + vertical atmospheric scrim (`backdropScrimTop` → `backdropScrimBottom`).
    - **Plane 1 — Translucent Slate Cards:** `rgba(22, 22, 30, 0.86)` (`colors.card`) with a `1px` specular hairline border (`rgba(255, 255, 255, 0.08)`) and soft ambient shadow (`shadow.card`).
    - **Plane 2 — Optical Frosted Glass:** Floating navigation (`FloatingTabBar`) and photo overlays (`OverlayChip`) use real-time dark blur (`BlurView`, `intensity={55}`), `colors.glass` tint, a top-edge specular gradient (`colors.glassHighlight`), and a `1px` `colors.glassBorder` rim (`rgba(255, 255, 255, 0.16)`).
-3. **One Hero Per Screen.** Every screen has a single unmistakable focal point (Home: `HeroCard`; Progress: `ResultDonut`; Project Detail: 3D Hold / Route Photo; Active Session: Live Elapsed Timer). Secondary elements step back in size and contrast.
+3. **One Hero Per Screen.** Every screen has a single unmistakable focal point (Home: Session / Objective Card; Progress: `ResultDonut`; Project Detail: 3D Hold / Route Photo; Active Session: Live Elapsed Timer). Secondary elements step back in size and contrast.
 4. **Numbers Are the Hero.** Metrics, grades, and live timers use `Sora` with `tabular-nums` at generous scale, anchored by micro-tracked uppercase `Inter` labels (`10px`, `letterSpacing: 2.5`).
 5. **Grade Colour Is the Signature.** The four grade bands (Beginner Slate, Intermediate Teal, Advanced Amber, Expert Plum) are sacred—used exclusively for difficulty across pills, card accent stripes, and pyramid bars.
 6. **Gym-Proof Ergonomics.** Minimum `44×44pt` touch targets (`52pt` primary buttons), one-handed thumb reach for session logging, high-contrast legibility under harsh gym lighting, and zero network latency (100% local SQLite reads/writes).
@@ -167,12 +167,12 @@ export const shadow = {
 ## 4. Layout, Surfaces & Glass Rules
 
 - **Spatial Grid:** `20pt` horizontal screen padding; `24pt` (`space.xl`) vertical rhythm between sections; `12pt` (`space.md`) gap between cards or rows in a stack.
-- **Root Screen Transparency:** All screens inside `app/_layout.tsx` use `backgroundColor: colors.bg` (`"transparent"`) so the global chalk wall canvas remains continuous across tab switches and stack transitions. Full-screen modals use `ScreenContainer` or render `assets/chalk_bg.jpg` over `colors.bgTexture`.
+- **Root Screen Transparency:** All screens inside `app/_layout.tsx` use `backgroundColor: colors.bg` (`"transparent"`) so the global chalk wall canvas remains continuous across tab switches and stack transitions. Full-screen modals render `assets/chalk_bg.jpg` over `colors.bgTexture`.
 - **Card Anatomy:** `colors.card` fill (`rgba(22, 22, 30, 0.86)`), `1px` `colors.border` rim, `radius.lg` (`22pt`), `16pt` (`space.lg`) internal padding, and `shadow.card`. Interactive cards wrap in `ScalePressable` (`activeScale: 0.97`).
 - **Gradients (Strictly Controlled):**
   1. **Atmospheric Wall Scrim:** `LinearGradient` (`[colors.backdropScrimTop, colors.backdropScrimBottom]`) over `assets/chalk_bg.jpg`.
   2. **Glass Specular Highlight:** Top-to-center `LinearGradient` (`[colors.glassHighlight, 'transparent']`) inside `FloatingTabBar`.
-  3. **Hero & Photo Scrims:** Radial/linear purple glow (`colors.glow`) on `HeroCard` and legibility scrims over user photography.
+  3. **Hero & Photo Scrims:** Radial/linear purple glow (`colors.glow`) on hero cards and legibility scrims over user photography.
 - **Density Guardrails:**
   - Maximum **1 hero component** per screen.
   - Maximum **1 control row** (segmented toggle or search/filter bar) above scroll content; secondary filters live in bottom sheets.
@@ -215,7 +215,7 @@ Grades are stored in SQLite as a normalized difficulty index and mapped exclusiv
 Where grade colours appear (always accompanied by explicit grade text):
 - `GradePill`: `band*Soft` background + `band*Text` label.
 - `ProjectCard` & `ClimbRow`: `4pt` vertical left accent bar in solid `band*` colour.
-- `GradePyramid`, `AscentPyramid`, & `SessionPyramidChart`: solid `band*` bar fills.
+- `GradePyramid`: solid `band*` bar fills.
 
 ---
 
@@ -250,19 +250,17 @@ Always compose screens from existing shared components before creating new primi
 
 | Component | Craft & Visual Specification |
 | :--- | :--- |
-| `ScreenContainer` | Full-bleed root wrapper rendering `assets/chalk_bg.jpg` (`opacity: 0.52`) + `LinearGradient` scrim over `colors.bgTexture`. |
 | `Screen` | Transparent scroll/static screen scaffold (`backgroundColor: colors.bg`) with safe-area header and `display` title. |
 | `FloatingTabBar` | Optical frosted-glass dock (`BlurView` + `colors.glass` + `colors.glassHighlight` + `colors.glassBorder`) and raised `CenterSessionButton`. |
 | `BrandedLaunchSequence` |Choreographed launch transition animating `assets/logo.png` (`140×140pt`, `borderRadius: 32`) on `#0B0B0F`. |
 | `Card` | Translucent slate surface (`colors.card`), `1px` `colors.border`, `radius.lg`, `shadow.card`, spring press feedback. |
-| `HeroCard` | Home centerpiece combining 3D hold artwork (`ClimbingHoldGraphic`), purple ambient glow, objective metadata, and primary CTA. |
 | `ClimbingHoldGraphic` | High-resolution 3D studio-lit climbing hold renders (`assets/holds-images/*.png`) mapped by hold type and grade. |
 | `PrimaryButton` | `52pt` height, `colors.accent` fill, `colors.textOnAccent` label, `radius.pill` / `radius.lg`, spring scale + haptic. |
 | `SecondaryButton` | `colors.accentSoft` fill, `colors.accentText` label, `1px` `colors.border`. |
 | `ScalePressable` | Reanimated worklet press wrapper (`motion.pressSpring`, `scale: 0.97`) with integrated `triggerHaptic`. |
 | `GradePill` / `ResultChip` | Semantic grade band and outcome (`Flash`, `Top`, `Attempt`) badges with soft tinted fills and high-contrast text. |
-| `StatTile` / `TrendTile` | Single-line tabular `Sora` stat value, tracked uppercase `type.label`, and optional sparkline or band tint. |
-| `ProjectCard` / `SentProjectCard` | 3D hold or user photo thumbnail, `GradePill`, nickname, gym & tags, burns count, and `4pt` left grade band stripe. |
+| `StatTile` | Single-line tabular `Sora` stat value, tracked uppercase `type.label`, and optional sparkline or band tint. |
+| `ProjectCard` | 3D hold or user photo thumbnail, `GradePill`, nickname, gym & tags, burns count, and `4pt` left grade band stripe. |
 | `SessionCard` / `ClimbRow` | Session summary card with segmented outcome bar and individual climb stream rows with swipe-to-delete + `UndoToast`. |
 | `ClimbLogCard` | Read-only cross-session route card (`components/ui/ClimbLogCard.tsx`) with `4pt` vertical grade-band stripe, `GradePill`, `ResultChip`, inline burns (`×N`), inline Peak label, linked project/notes/crux metadata, and gym/date footer. |
 | `GlowBackdrop` | Radial SVG aura reserved for Home/Progress ring heroes (`colors.glow` default). Drill-down hero cards use a clean translucent slate surface + top-edge specular gradient without circular backdrop blobs. |
@@ -300,13 +298,13 @@ Sections enter with a staggered `sectionEntering(i)` (`FadeInDown`, `motion.dura
 
 | Screen | Named Hero | Spatial Composition |
 | :--- | :--- | :--- |
-| **Home** (`app/index.tsx`) | `HeroCard` ("Next Objective") | Brand header (`assets/logo.png` `38×38pt` + `GRIPPED` wordmark + Settings gear) →Greeting & `30d Peak Send` pill → 3 `StatTile`s → `HeroCard` with `"START SESSION"` CTA → `WeekStrip` card → Horizontal `PROJECTS` carousel → `RECENT SESSIONS` stack. |
+| **Home** (`app/index.tsx`) | Objective Card ("Next Objective") | Brand header (`assets/logo.png` `38×38pt` + `GRIPPED` wordmark + Settings gear) →Greeting & `30d Peak Send` pill → 3 `StatTile`s → Session/Objective Card with `"START SESSION"` CTA → `WeekStrip` card → Horizontal `PROJECTS` carousel → `RECENT SESSIONS` stack. |
 | **Explore** (`app/explore.tsx`) | Gyms & Video Inbox | Display header + `+ ADD GYM` CTA → `GYMS` / `VIDEO INBOX` segmented pill → Search bar → Translucent gym cards & shared beta video cards over chalk backdrop. |
 | **Progress** (`app/analytics.tsx`) | `ResultDonut` | Display header + period selector → `ResultDonut` hero card → 3 `Performance Trends` Bento Tiles (Weekly Volume, Flash Efficiency, Hardest Send) → `SENDS BY GRADE` pyramid (`Explore` + per-grade tap) → Deep-dive analytics cards (`WallAngleRadar`, `Recent Sessions`). |
 | **Progress Drill-Downs** (`app/analytics/stat-detail.tsx`) | `Card variant="hero"` | Pinned navigation header (`Back`, `titleBold`, Timeframe Sheet pill) → Bespoke drill-down view (`WeeklyVolumeView`, `FlashEfficiencyView`, `HardestSendView`, or `SendsByGradeView`) over global chalk backdrop. |
 | **Logbook** (`app/profile.tsx`) | Lifetime Telemetry Strip | Display header + action icons (Add, Search, List/Calendar toggle, Settings) → 4 lifetime `StatTile`s → Month-grouped `SessionCard` stream (or `LogbookCalendar`). |
 | **Project Detail** (`app/project/[id].tsx`) | Full-Bleed Photo / 3D Hold | Top photo/hold header with glass overlay controls → Overlapping translucent sheet (`radius.xl`) with grade, burns, beta videos, sequence notes, and attempt history. |
-| **Active Session** (`app/session/index.tsx`) | Live Elapsed Timer | Distraction-free logger (tab bar hidden) → Live session clock + `RestTimerPill` → Grade & outcome logger controls → Live `ClimbRow` stream + iOS Live Activity sync. |
+| **Active Session** (`app/session/index.tsx`) | Live Elapsed Timer | Distraction-free logger (tab bar hidden) → Live session clock + rest controls → Grade & outcome logger controls → Live `ClimbRow` stream + iOS Live Activity sync. |
 | **Settings** (`app/settings.tsx`) | Spring Segmented Controls | Clean utility header → `Climbing` card (spring-sliding `Grade Scale` & `Units` segmented controls + `Rest Timer` presets) → `Feedback` card (`Haptics` & `Send Celebrations` switches) → `Data & Backups` card (`Local Storage`, `Export Backup`, `Restore from Backup`, `Clear All Data`) → `About` card & quiet version footer. |
 
 ---
@@ -321,7 +319,7 @@ Sections enter with a staggered `sectionEntering(i)` (`FadeInDown`, `motion.dura
 - **Tiered Send Celebrations (`CelebrationProvider`):**
   - **Small (Flash):** Subtle row highlight + light haptic + non-blocking toast.
   - **Medium (New Hardest Grade):** Stat pulse + success haptic + milestone banner.
-  - **Big (Project Sent):** Dismissible celebration sheet with `ConfettiBurst` in grade-band colours and shareable `ProjectShareCardModal`.
+  - **Big (Project Sent):** Dismissible celebration sheet with grade-band colours and shareable `ProjectShareCardModal`.
 - **Accessibility (`reduceMotion`):** Automatically disables looping pulses (`CenterSessionButton`), confetti particles, and spring bounces while preserving instant state transitions.
 
 ---
