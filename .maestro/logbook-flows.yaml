@@ -1,4 +1,4 @@
-appId: com.michaelbuensalido.cruxlog
+appId: com.michaelbuensalido.gripped
 ---
 - launchApp
 - tapOn: "Logbook"

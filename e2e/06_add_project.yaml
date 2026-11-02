@@ -1,4 +1,4 @@
-appId: com.cruxlog.app # replace with actual
+appId: com.gripped.app # replace with actual
 ---
 - clearState
 - launchApp

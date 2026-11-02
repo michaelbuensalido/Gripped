@@ -70,9 +70,9 @@ describe('Backup, Restore, and Storage Management', () => {
     expect(climbRow.grade_raw).toBe('V5');
   });
 
-  test('importDataFromJSON rejects invalid JSON and non-CruxLog data', async () => {
+  test('importDataFromJSON rejects invalid JSON and non-Gripped data', async () => {
     await expect(importDataFromJSON('not json')).rejects.toThrow('Invalid JSON format');
-    await expect(importDataFromJSON(JSON.stringify({ randomKey: 'invalid' }))).rejects.toThrow('No valid CruxLog data tables found');
+    await expect(importDataFromJSON(JSON.stringify({ randomKey: 'invalid' }))).rejects.toThrow('No valid Gripped data tables found');
   });
 
   test('clearAllData wipes all tables', () => {

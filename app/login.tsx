@@ -6,7 +6,7 @@ export default function LoginScreen() {
   const router = useRouter();
 
   useEffect(() => {
-    AsyncStorage.setItem('@cruxlog/onboarded', 'true').then(() => {
+    AsyncStorage.setItem('@gripped/onboarded', 'true').then(() => {
       router.replace('/');
     });
   }, [router]);

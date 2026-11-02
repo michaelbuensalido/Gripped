@@ -1,4 +1,4 @@
-appId: com.cruxlog
+appId: com.gripped.app
 ---
 # E2E-4: Delete a climb, then Undo within 5 seconds
 # testIDs needed: delete-climb-btn, undo-toast-btn

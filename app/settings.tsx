@@ -52,7 +52,8 @@ import {
 } from '../utils/haptics';
 import { GradeSystem, UnitSystem, usePreferences } from '../utils/preferences';
 
-const REST_TIMER_KEY = '@cruxlog/rest_timer_seconds';
+const REST_TIMER_KEY = '@gripped/rest_timer_seconds';
+const REST_TIMER_LEGACY_KEY = '@cruxlog/rest_timer_seconds';
 const DEFAULT_REST = 90;
 const REST_PRESETS = [60, 90, 120, 180] as const;
 
@@ -273,9 +274,10 @@ export default function SettingsScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      AsyncStorage.getItem(REST_TIMER_KEY).then((val) => {
-        if (val) {
-          const n = parseInt(val, 10);
+      AsyncStorage.getItem(REST_TIMER_KEY).then(async (val) => {
+        const stored = val ?? (await AsyncStorage.getItem(REST_TIMER_LEGACY_KEY));
+        if (stored) {
+          const n = parseInt(stored, 10);
           if (!isNaN(n)) {
             setRestSeconds(n);
             setRestInput(String(n));

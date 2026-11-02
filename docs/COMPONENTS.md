@@ -1,4 +1,4 @@
-# CruxLog — Components (v3.0)
+# Gripped — Components (v3.0)
 
 The full component register (with the duplicate-component table) lives in `DESIGN_SYSTEM.md` Section 7. This file lists what the **v3.0 premium depth** pass added or changed. Reuse before creating.
 
@@ -29,5 +29,3 @@ The full component register (with the duplicate-component table) lives in `DESIG
 ## Known gaps
 
 - `SectionList` (Logbook) has no Reanimated version, so it keeps React Native's and has no item layout animation.
-- `Animated.FlatList` ignores `itemLayoutAnimation` when `numColumns > 1` (the unused `GradeSheet` grid).
-- `HeroCard` uses `overflow: 'hidden'`, which clips the iOS card shadow on that card.

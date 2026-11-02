@@ -1,8 +1,8 @@
-# CruxLog Comprehensive UI/UX & Design Engineering Audit
+# Gripped Comprehensive UI/UX & Design Engineering Audit
 
 **Audit Date:** October 12, 2026  
 **Auditor:** Antigravity AI Design & Mobile Engineering  
-**Guidelines Followed:** Emil Kowalski Design Principles (`emil-design-eng`), Anti-Slop Frontend Taste (`design-taste-frontend`), CruxLog Design System (`docs/DESIGN_SYSTEM.md`), Apple Human Interface Guidelines  
+**Guidelines Followed:** Emil Kowalski Design Principles (`emil-design-eng`), Anti-Slop Frontend Taste (`design-taste-frontend`), Gripped Design System (`docs/DESIGN_SYSTEM.md`), Apple Human Interface Guidelines  
 **Device Tested:** iPhone 17 Pro Simulator (iOS 26.5, Scale 3x, Display 393×852 pt)  
 **Database State:** Realistic 10-week climbing profile seeded (20+ historical sessions, 7 active/sent projects V4–V8, 274 boulder logs, 3-week streak)  
 **Screenshots Stored At:** `docs/qa/ui/` (31 high-resolution captures)
@@ -11,14 +11,14 @@
 
 ## Executive Summary
 
-This comprehensive audit inspected every user journey in CruxLog across cold start, onboarding, active bouldering session logging, analytics, project beta drafting, and logbook review.
+This comprehensive audit inspected every user journey in Gripped across cold start, onboarding, active bouldering session logging, analytics, project beta drafting, and logbook review.
 
-CruxLog establishes an exceptional aesthetic foundation with its dark glassmorphism palette, violet `#8E7CFF` primary accent, and flash green `#6EE756` celebration cues. However, severe architecture and layout defects impede real-world climbing use:
+Gripped establishes an exceptional aesthetic foundation with its dark glassmorphism palette, violet `#8E7CFF` primary accent, and flash green `#6EE756` celebration cues. However, severe architecture and layout defects impede real-world climbing use:
 
 1. **Systemic Blocker:** The custom `FloatingTabBar` is declared at the root layout without route filtering, causing it to overlay and physically obscure buttons on child screens (`/settings`, `/projects`, `/project/[id]`, `/project/beta-editor`, `/gym/[id]`, and `/welcome`).
 2. **Session Wrap-Up Blocker:** In `app/session/end.tsx`, an unconstrained container in `Screen.tsx` (`scroll={false}`) collapses the `<Reanimated.ScrollView>` to 0 height. The entire wrap-up form (RPE 1–5, skin state, finger fatigue, photos, notes, and insights) is completely invisible.
 3. **LogSheet Viewport Clipping:** In `LogSheet.tsx`, the primary CTA button ("SAVE CLIMB") is pushed below the device viewport on standard heights, requiring manual vertical drag before a climb can be confirmed.
-4. **Notch Collision on Welcome:** A missing token key (`space['2xl']` instead of `space.xxl`) causes `paddingTop` to evaluate to `NaN` and collapse to 0, crashing the "CruxLog" title directly into the Dynamic Island / status bar clock.
+4. **Notch Collision on Welcome:** A missing token key (`space['2xl']` instead of `space.xxl`) causes `paddingTop` to evaluate to `NaN` and collapse to 0, crashing the "Gripped" title directly into the Dynamic Island / status bar clock.
 5. **Typographic & Data Artifacts:** Narrow bento cards cause single-letter wrapping (e.g., `"ARCHIVE\nD"` on Projects list), truncated strings (`"linke..."`), and historical session cards display `"HARDEST —"` despite containing V4/V5 sends.
 
 ---
@@ -48,7 +48,7 @@ CruxLog establishes an exceptional aesthetic foundation with its dark glassmorph
 
 #### [MAJOR] Notch Collision & Title Padding Collapse
 - **Screenshot:** `docs/qa/ui/onboarding.png`
-- **What's Wrong:** The top title "CruxLog" collides directly with the iOS Dynamic Island / status bar clock at `y = 0`.
+- **What's Wrong:** The top title "Gripped" collides directly with the iOS Dynamic Island / status bar clock at `y = 0`.
 - **Root Cause:** In `app/welcome.tsx`, padding is calculated as `paddingTop: insets.top + space['2xl']`. Because `theme/tokens.ts` exports `space.xxl` rather than `space['2xl']`, `space['2xl']` is `undefined`. `insets.top + undefined` evaluates to `NaN`, causing React Native style resolver to collapse `paddingTop` to 0.
 - **Proposed Fix:** In `app/welcome.tsx`:
   ```tsx
@@ -165,7 +165,7 @@ CruxLog establishes an exceptional aesthetic foundation with its dark glassmorph
 #### [MINOR] Discard Session Destructive Feedback
 - **Screenshot:** `docs/qa/ui/session_end_confirm_dialog.png`
 - **What's Wrong:** The alert dialog uses standard iOS system alert appearance which breaks the immersive dark glassmorphic styling.
-- **Proposed Fix:** Create a dark glassmorphic `ConfirmDialog` component matching the CruxLog tokens.
+- **Proposed Fix:** Create a dark glassmorphic `ConfirmDialog` component matching the Gripped tokens.
 
 ---
 

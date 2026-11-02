@@ -10,7 +10,7 @@ const withClimbingPoseTrackerIOS = (config) => {
   return withInfoPlist(config, (config) => {
     config.modResults.NSCameraUsageDescription =
       config.modResults.NSCameraUsageDescription ||
-      'CruxLog uses the camera to detect climbing holds and real-time body pose sequences on the wall.';
+      'Gripped uses the camera to detect climbing holds and real-time body pose sequences on the wall.';
     return config;
   });
 };
@@ -22,7 +22,7 @@ const withClimbingPoseTrackerAndroid = (config) => {
     }
 
     const dependencyString = `
-    // ML Kit Pose Detection bundle for CruxLog Real-Time Climbing Pose Tracker
+    // ML Kit Pose Detection bundle for Gripped Real-Time Climbing Pose Tracker
     implementation 'com.google.mlkit:pose-detection:18.0.0-beta3'
 `;
 

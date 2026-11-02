@@ -142,7 +142,7 @@ export default function RootLayout() {
     (async () => {
       try {
         await initializeDatabase();
-        const onboarded = await AsyncStorage.getItem('@cruxlog/onboarded');
+        const onboarded = (await AsyncStorage.getItem('@gripped/onboarded')) ?? (await AsyncStorage.getItem('@cruxlog/onboarded'));
         setHasOnboarded(onboarded === 'true');
         setIsDbReady(true);
         notificationEngine.requestPermissions();

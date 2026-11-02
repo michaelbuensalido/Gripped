@@ -1,5 +1,5 @@
 /**
- * Pure business logic and mathematical rules for CruxLog Analytics.
+ * Pure business logic and mathematical rules for Gripped Analytics.
  * Documented rules tested in unit tests.
  */
 

@@ -2,7 +2,11 @@
 #import <VisionCamera/FrameProcessorPlugin.h>
 #import <VisionCamera/FrameProcessorPluginRegistry.h>
 
-#if __has_include("CruxLog-Swift.h")
+#if __has_include("Gripped-Swift.h")
+#import "Gripped-Swift.h"
+#elif __has_include("gripped-Swift.h")
+#import "gripped-Swift.h"
+#elif __has_include("CruxLog-Swift.h")
 #import "CruxLog-Swift.h"
 #elif __has_include("cruxlog-Swift.h")
 #import "cruxlog-Swift.h"

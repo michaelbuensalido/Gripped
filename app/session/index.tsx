@@ -71,7 +71,8 @@ import { SessionInsights } from '../../components/session/SessionInsights';
 import { ProjectCard } from '../../components/ui/ProjectCard';
 import type { FailureReason } from '../../types';
 
-const REST_TIMER_KEY = '@cruxlog/rest_timer_seconds';
+const REST_TIMER_KEY = '@gripped/rest_timer_seconds';
+const REST_TIMER_LEGACY_KEY = '@cruxlog/rest_timer_seconds';
 const DEFAULT_REST_SECONDS = 180;
 
 function formatActiveDuration(ms: number) {
@@ -412,9 +413,10 @@ export default function ActiveSessionScreen() {
 
   useEffect(() => {
     AsyncStorage.getItem(REST_TIMER_KEY)
-      .then((val) => {
-        if (val) {
-          const parsed = parseInt(val, 10);
+      .then(async (val) => {
+        const stored = val ?? (await AsyncStorage.getItem(REST_TIMER_LEGACY_KEY));
+        if (stored) {
+          const parsed = parseInt(stored, 10);
           if (!isNaN(parsed) && parsed >= 10 && parsed <= 600) {
             setDefaultRestSeconds(parsed);
           }

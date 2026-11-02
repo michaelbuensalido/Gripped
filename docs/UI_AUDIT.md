@@ -1,4 +1,4 @@
-# CruxLog UI/UX Audit & Redesign Plan
+# Gripped UI/UX Audit & Redesign Plan
 
 Based on the **Emil Kowalski UI Polish & Motion (`emil-design-eng`)** and **Frontend Design Taste (`design-taste-frontend`)** skills, translated for React Native, Reanimated, Pressable feedback, and `expo-haptics`.
 

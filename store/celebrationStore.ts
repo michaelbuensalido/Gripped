@@ -39,7 +39,7 @@ export const useCelebrationStore = create<CelebrationState>()(
       hasStreakCelebrated: (week) => get().celebratedStreaks[week] === true,
     }),
     {
-      name: 'cruxlog-celebration-storage',
+      name: 'gripped-celebration-storage',
       storage: createJSONStorage(() => AsyncStorage),
     }
   )

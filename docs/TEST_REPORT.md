@@ -1,4 +1,4 @@
-# CruxLog Test Report & Audit
+# Gripped Test Report & Audit
 
 ## Environment & Testing Capabilities
 - **Jest (Layer 1 Logic):** Can run natively via Node (`__tests__/flow/layer1.test.js`).

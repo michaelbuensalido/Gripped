@@ -270,7 +270,7 @@ struct CruxLogWidgetLiveActivity: Widget {
             .background(WidgetTheme.bg)
             .activityBackgroundTint(WidgetTheme.bg)
             .activitySystemActionForegroundColor(WidgetTheme.text)
-            .widgetURL(URL(string: "cruxlog://session/active"))
+            .widgetURL(URL(string: "gripped://session/active"))
 
         } dynamicIsland: { context in
 
@@ -396,7 +396,7 @@ struct CruxLogWidgetLiveActivity: Widget {
                         .foregroundColor(WidgetTheme.accentText)
                 }
             }
-            .widgetURL(URL(string: "cruxlog://session/active"))
+            .widgetURL(URL(string: "gripped://session/active"))
             .keylineTint(WidgetTheme.accent)
         }
     }

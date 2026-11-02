@@ -1,5 +1,5 @@
 /**
- * The share extension reopens the app with a `cruxlog://dataUrl=...` deep link.
+ * The share extension reopens the app with a `gripped://dataUrl=...` deep link.
  * That is not a route, so send it to Home; ShareIntentBridge consumes the payload.
  */
 export function redirectSystemPath({ path }: { path: string; initial: boolean }) {

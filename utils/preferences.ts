@@ -5,10 +5,17 @@ export type GradeSystem = 'v_scale' | 'font';
 export type UnitSystem = 'metric' | 'imperial';
 export type ExperienceLevel = 'beginner' | 'intermediate' | 'advanced';
 
-export const GRADE_SYSTEM_KEY = '@cruxlog/grade_system';
-export const UNITS_KEY = '@cruxlog/units';
-export const EXPERIENCE_LEVEL_KEY = '@cruxlog/experience_level';
-export const HOME_GYM_KEY = '@cruxlog/home_gym';
+export const GRADE_SYSTEM_KEY = '@gripped/grade_system';
+export const UNITS_KEY = '@gripped/units';
+export const EXPERIENCE_LEVEL_KEY = '@gripped/experience_level';
+export const HOME_GYM_KEY = '@gripped/home_gym';
+
+const LEGACY_KEYS = {
+  gradeSystem: '@cruxlog/grade_system',
+  units: '@cruxlog/units',
+  experienceLevel: '@cruxlog/experience_level',
+  homeGym: '@cruxlog/home_gym',
+};
 
 export const V_TO_FONT: Record<number, string> = {
   0: '4',
@@ -43,36 +50,40 @@ function notify() {
 
 // Initial hydration from storage
 AsyncStorage.getItem(GRADE_SYSTEM_KEY)
-  .then((val) => {
-    if (val === 'font' || val === 'v_scale') {
-      currentGradeSystem = val;
+  .then(async (val) => {
+    const stored = val ?? (await AsyncStorage.getItem(LEGACY_KEYS.gradeSystem));
+    if (stored === 'font' || stored === 'v_scale') {
+      currentGradeSystem = stored;
       notify();
     }
   })
   .catch(() => {});
 
 AsyncStorage.getItem(UNITS_KEY)
-  .then((val) => {
-    if (val === 'metric' || val === 'imperial') {
-      currentUnitSystem = val;
+  .then(async (val) => {
+    const stored = val ?? (await AsyncStorage.getItem(LEGACY_KEYS.units));
+    if (stored === 'metric' || stored === 'imperial') {
+      currentUnitSystem = stored;
       notify();
     }
   })
   .catch(() => {});
 
 AsyncStorage.getItem(EXPERIENCE_LEVEL_KEY)
-  .then((val) => {
-    if (val === 'beginner' || val === 'intermediate' || val === 'advanced') {
-      currentExperienceLevel = val;
+  .then(async (val) => {
+    const stored = val ?? (await AsyncStorage.getItem(LEGACY_KEYS.experienceLevel));
+    if (stored === 'beginner' || stored === 'intermediate' || stored === 'advanced') {
+      currentExperienceLevel = stored;
       notify();
     }
   })
   .catch(() => {});
 
 AsyncStorage.getItem(HOME_GYM_KEY)
-  .then((val) => {
-    if (val !== null) {
-      currentHomeGym = val || null;
+  .then(async (val) => {
+    const stored = val !== null ? val : await AsyncStorage.getItem(LEGACY_KEYS.homeGym);
+    if (stored !== null) {
+      currentHomeGym = stored || null;
       notify();
     }
   })

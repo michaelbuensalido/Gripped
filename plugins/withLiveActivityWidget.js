@@ -108,7 +108,7 @@ function applyWidgetTargetToPbxProject(pbxProject, { appIdentifier, currentProje
 
   // Also add LiveActivityIntents.swift to the main app target's Sources build phase
   // so iOS 17+ AppIntents metadata is embedded in both the app and widget extension
-  const mainTarget = pbxProject.pbxTargetByName('CruxLog');
+  const mainTarget = pbxProject.pbxTargetByName('Gripped') || pbxProject.pbxTargetByName('CruxLog');
   if (mainTarget) {
     const fileRefs = pbxProject.hash.project.objects.PBXFileReference;
     let intentsFileRefUuid = null;
@@ -209,7 +209,7 @@ const withLiveActivityWidget = (config) => {
     copyWidgetFiles(platformProjectRoot);
 
     applyWidgetTargetToPbxProject(config.modResults, {
-      appIdentifier: config.ios?.bundleIdentifier || 'com.cruxlog.app',
+      appIdentifier: config.ios?.bundleIdentifier || 'com.gripped.app',
       currentProjectVersion: config.ios?.buildNumber || '1',
       marketingVersion: config.version || '1.0.0',
     });

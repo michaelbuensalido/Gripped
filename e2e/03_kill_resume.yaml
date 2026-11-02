@@ -1,4 +1,4 @@
-appId: com.cruxlog
+appId: com.gripped.app
 ---
 # E2E-3: Kill and relaunch mid-session — session and climbs survive
 # testIDs needed: start-session-btn, log-climb-btn, save-climb-btn, climb-list, resume-session-btn
